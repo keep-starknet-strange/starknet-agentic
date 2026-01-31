@@ -1,0 +1,3 @@
+[submodule "references/starknet-docs"]
+	path = references/starknet-docs
+	url = https://github.com/starknet-io/starknet-docs.git

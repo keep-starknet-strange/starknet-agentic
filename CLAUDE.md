@@ -18,6 +18,9 @@ starknet-agentic/
 │   ├── starknet-wallet/          # Wallet management skill
 │   ├── starknet-defi/            # DeFi operations skill
 │   └── starknet-identity/        # Agent identity skill
+├── references/                   # Reference documentation for agents and developers
+│   ├── agentskills/              # AgentSkills specs (integration, overview, what skills are)
+│   └── starknet-docs/            # Official Starknet documentation (git submodule)
 └── docs/                         # Specifications and architecture docs
 ```
 
@@ -105,6 +108,17 @@ Allows gas fees to be paid in any token or sponsored by a third party:
 - Include keywords for activation triggers
 - Layer documentation: SKILL.md (quick ref) + references/ (deep guides) + scripts/ (examples)
 - Test scripts should be runnable standalone
+
+## References
+
+The `references/` directory contains reference material that agents and developers should consult when writing skills, building integrations, or doing any agentic development on Starknet.
+
+| Reference | Path | Description |
+|-----------|------|-------------|
+| AgentSkills | `references/agentskills/` | Specifications and integration patterns for the AgentSkills format |
+| Starknet Docs | `references/starknet-docs/` | Official Starknet documentation (git submodule from [starknet-io/starknet-docs](https://github.com/starknet-io/starknet-docs)). Covers architecture, Cairo language, account abstraction, messaging, and all core Starknet concepts. |
+
+When developing skills or contracts, read relevant sections from `references/starknet-docs/` to ensure correctness and alignment with Starknet's current architecture and APIs.
 
 ## External Integrations
 
