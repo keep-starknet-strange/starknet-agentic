@@ -14,6 +14,15 @@ A consolidated infrastructure layer that provides:
 4. **Skills marketplace** for Claude Code and OpenClaw agents
 5. **Framework extensions** for Daydreams and Lucid Agents
 
+## References
+
+The `references/` directory is your knowledge base for agentic development on Starknet. Always consult it before writing skills, contracts, or integrations.
+
+- **`references/starknet-docs/`** -- Official Starknet documentation (git submodule from [starknet-io/starknet-docs](https://github.com/starknet-io/starknet-docs)). Use this as the authoritative source for Starknet architecture, Cairo language, account abstraction, transaction lifecycle, messaging, and protocol-level details.
+- **`references/agentskills/`** -- AgentSkills specifications covering integration patterns, skill format, and what skills are.
+
+When building anything in this repo, ground your work in these references rather than relying solely on training data.
+
 ## The Agent Standards Stack
 
 Three protocols are converging into the standard infrastructure for AI agents:
