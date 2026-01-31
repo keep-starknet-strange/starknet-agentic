@@ -9,7 +9,8 @@
   },
   "license": "MIT",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "website"
   ],
   "scripts": {
     "build": "pnpm -r build",

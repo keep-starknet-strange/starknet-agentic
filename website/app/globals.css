@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-cream text-neo-dark font-body;
+  }
+
+  ::selection {
+    @apply bg-neo-yellow text-neo-dark;
+  }
+}
+
+@layer components {
+  .neo-card {
+    @apply border-2 border-black bg-white shadow-neo transition-all duration-150;
+  }
+
+  .neo-card-hover {
+    @apply neo-card hover:shadow-neo-lg hover:-translate-x-[2px] hover:-translate-y-[2px];
+  }
+
+  .neo-btn {
+    @apply inline-flex items-center justify-center border-2 border-black px-6 py-3 font-heading font-bold
+      shadow-neo transition-all duration-100
+      hover:shadow-neo-sm hover:translate-x-[2px] hover:translate-y-[2px]
+      active:shadow-none active:translate-x-1 active:translate-y-1;
+  }
+
+  .neo-btn-primary {
+    @apply neo-btn bg-neo-yellow text-neo-dark;
+  }
+
+  .neo-btn-secondary {
+    @apply neo-btn bg-white text-neo-dark;
+  }
+
+  .neo-btn-dark {
+    @apply neo-btn bg-neo-dark text-white;
+  }
+
+  .neo-badge {
+    @apply inline-flex items-center border-2 border-black px-3 py-1 text-sm font-bold shadow-neo-sm;
+  }
+
+  .neo-input {
+    @apply border-2 border-black px-4 py-3 font-mono text-sm shadow-neo-sm
+      focus:outline-none focus:shadow-neo focus:-translate-x-[1px] focus:-translate-y-[1px]
+      transition-all duration-100;
+  }
+
+  .section-padding {
+    @apply px-6 md:px-12 lg:px-20 py-20 md:py-28;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .bg-dots {
+    background-image: radial-gradient(circle, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-cream;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neo-dark border-2 border-black;
+}
+
+/* Marquee pause on hover */
+.marquee-container:hover .animate-marquee,
+.marquee-container:hover .animate-marquee-reverse {
+  animation-play-state: paused;
+}
