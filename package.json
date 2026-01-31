@@ -1,0 +1,24 @@
+{
+  "name": "starknet-agentic",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The infrastructure layer for the agentic era on Starknet",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/starknet-agentic"
+  },
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "website"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "tsup": "^8.5.0"
+  }
+}
