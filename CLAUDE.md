@@ -1,176 +1,251 @@
 # Starknet Agentic -- Development Context
 
-## Project Overview
+<identity>
+Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (ERC-8004 identity/reputation), MCP server, A2A adapter, and skills that enable any AI agent to hold wallets, transact, build reputation, and access DeFi on Starknet.
+</identity>
 
-Starknet Agentic is the infrastructure layer for AI agents on Starknet. It provides smart contracts, SDK packages, MCP servers, and skills that enable AI agents to use Starknet as their financial rails.
+<stack>
 
-## Repository Structure
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Smart contracts | Cairo (Scarb + snforge) | Cairo 2.12.1, Scarb 2.12.1 |
+| Contract deps | OpenZeppelin Cairo | 0.20.0 |
+| TypeScript packages | pnpm workspaces, tsup | Node 18+ |
+| MCP server | `@modelcontextprotocol/sdk` | ^1.0.0 |
+| Starknet interaction | starknet.js | ^6.24.1 |
+| DeFi aggregation | `@avnu/avnu-sdk` | ^2.0.0 |
+| Schema validation | zod | ^3.23.0 |
+| TS testing | Vitest | -- |
+| Cairo testing | snforge | 0.51.2 |
+| Skills format | SKILL.md (YAML frontmatter + markdown) | AgentSkills spec |
+| Website | Next.js 15 + React 19 + Tailwind | -- |
+
+</stack>
+
+<structure>
 
 ```
 starknet-agentic/
-├── contracts/                    # Cairo smart contracts
-│   ├── agent-wallet/             # Agent Account contract (AA + session keys)
-│   └── agent-registry/           # ERC-8004 on Starknet (identity, reputation, validation)
 ├── packages/
-│   ├── starknet-mcp-server/      # MCP server exposing Starknet tools
-│   └── starknet-a2a/             # A2A protocol adapter
-├── skills/                       # Claude Code / OpenClaw skills marketplace
-│   ├── starknet-wallet/          # Wallet management skill
-│   ├── starknet-defi/            # DeFi operations skill
-│   └── starknet-identity/        # Agent identity skill
-├── references/                   # Reference documentation for agents and developers
-│   ├── agentskills/              # AgentSkills specs (integration, overview, what skills are)
-│   └── starknet-docs/            # Official Starknet documentation (git submodule)
-└── docs/                         # Specifications and architecture docs
+│   ├── starknet-mcp-server/              # MCP server (TODO: implement tools)
+│   ├── starknet-a2a/                     # A2A protocol adapter (TODO: implement)
+│   └── starknet-identity/
+│       └── erc8004-cairo/                # ERC-8004 Cairo contracts (PRODUCTION)
+│           ├── src/                      # Contract source (identity, reputation, validation)
+│           ├── tests/                    # 74 unit tests (snforge)
+│           └── e2e-tests/               # 47 E2E tests (Sepolia)
+├── contracts/                            # Future Cairo contracts (agent-wallet planned)
+├── skills/
+│   ├── starknet-wallet/SKILL.md          # Wallet management skill
+│   ├── starknet-defi/SKILL.md            # DeFi operations skill
+│   └── starknet-identity/SKILL.md        # Identity & reputation skill
+├── references/
+│   ├── agentskills/                      # AgentSkills format specs
+│   └── starknet-docs/                    # Official Starknet docs (git submodule)
+├── docs/
+│   ├── SPECIFICATION.md                  # Technical architecture & component specs
+│   └── AGENTIC_ECONOMY_PLAN.md           # Use cases, apps, token economy vision
+├── website/                              # Next.js documentation site (Vercel)
+├── AGENT.md                              # Agent mission & ecosystem context
+├── CLAUDE.md                             # This file
+└── package.json                          # Root monorepo (pnpm workspaces)
 ```
 
-## Tech Stack
+NOTE: The `contracts/` directory is currently empty. All production Cairo contracts live in `packages/starknet-identity/erc8004-cairo/`. The Agent Account contract (with session keys) is planned but not yet built.
 
-| Component | Technology |
-|-----------|-----------|
-| Smart contracts | Cairo 2.x (Scarb, snforge) |
-| TypeScript packages | pnpm workspaces, tsup, TypeScript |
-| MCP server | TypeScript, `@modelcontextprotocol/sdk` |
-| Starknet interaction | starknet.js v8+, @avnu/avnu-sdk |
-| Testing | snforge (Cairo), Vitest (TypeScript) |
-| Skills | SKILL.md format (YAML frontmatter + markdown) |
+</structure>
 
-## Key Dependencies
+<commands>
 
-### Cairo Contracts
-- `starknet` >= 2.12.1
-- `openzeppelin` >= 0.20.0 (ERC-721, SRC5, ReentrancyGuard)
-- `snforge_std` >= 0.43.1 (testing)
+| Task | Command | Working Directory |
+|------|---------|-------------------|
+| Install TS deps | `pnpm install` | repo root |
+| Build TS packages | `pnpm build` | repo root |
+| Test TS packages | `pnpm test` | repo root |
+| Build Cairo contracts | `scarb build` | `packages/starknet-identity/erc8004-cairo/` |
+| Test Cairo contracts | `snforge test` | `packages/starknet-identity/erc8004-cairo/` |
+| Run specific Cairo test | `snforge test --filter test_name` | `packages/starknet-identity/erc8004-cairo/` |
+| Build single TS package | `pnpm build` | `packages/<pkg>/` |
+| Dev mode (website) | `pnpm dev` | `website/` |
+| Deploy contracts (Sepolia) | `bash scripts/deploy_sepolia.sh` | `packages/starknet-identity/erc8004-cairo/` |
 
-### TypeScript Packages
-- `starknet` (starknet.js) >= 6.24.1
-- `@avnu/avnu-sdk` -- DeFi aggregation (swaps, DCA, staking)
-- `@modelcontextprotocol/sdk` -- MCP server SDK
-- `zod` -- Schema validation
+</commands>
 
-## Standards This Project Implements
+<conventions>
 
-### MCP (Model Context Protocol)
-- Agent-to-tool connectivity standard by Anthropic
-- Our MCP server exposes Starknet operations as tools
-- Any MCP client (Claude, ChatGPT, Cursor, OpenClaw) can use them
-- Spec: https://modelcontextprotocol.io/specification/2025-11-25
+### Cairo
+- Use OpenZeppelin Cairo components (ERC-721, SRC5, ReentrancyGuard, access control)
+- Contracts use `#[starknet::contract]` module pattern with component embedding
+- Interfaces defined separately in `src/interfaces/` with `#[starknet::interface]` trait
+- Tests use snforge `declare`, `deploy`, dispatchers pattern
+- Use Poseidon hashing (not Pedersen) for new cryptographic operations
+- Use `ByteArray` for string-like metadata keys
 
-### A2A (Agent-to-Agent Protocol)
-- Inter-agent communication standard by Google
-- Agents publish capabilities via Agent Cards at `/.well-known/agent.json`
-- Built on HTTP/SSE/JSON-RPC
-- Spec: https://a2a-protocol.org/latest/
-
-### ERC-8004 (Trustless Agents)
-- On-chain agent identity and trust standard
-- Three registries: Identity (ERC-721), Reputation (feedback), Validation (assessments)
-- Reference Cairo implementation: https://github.com/Akashneelesh/erc8004-cairo
-- EIP: https://eips.ethereum.org/EIPS/eip-8004
-
-## Starknet Concepts
-
-### Native Account Abstraction
-Every Starknet account is a smart contract. This means:
-- Custom validation logic per account (agents can have their own signing schemes)
-- Session keys are first-class (temporary keys with limited permissions)
-- Fee abstraction (paymasters can sponsor agent transactions)
-- Nonce abstraction (parallel transaction execution)
-
-### Session Keys
-Temporary keys granting limited transaction permissions without per-action user signatures:
-- Define allowed contract methods, time bounds, spending limits
-- Critical for agent autonomy within safe bounds
-- Cartridge Controller provides a production implementation
-
-### Paymaster
-Allows gas fees to be paid in any token or sponsored by a third party:
-- AVNU paymaster supports USDC, USDT, STRK, ETH
-- "Gasfree" mode: dApp sponsors all gas via API key
-- Agents never need to hold ETH
-
-## Development Guidelines
-
-### Cairo Contracts
-- Use OpenZeppelin Cairo components (ERC-721, access control, reentrancy guard)
-- Test with snforge: `snforge test`
-- Build with Scarb: `scarb build`
-- Deploy with sncast to Sepolia first, then mainnet
-
-### TypeScript Packages
-- Use pnpm workspaces
-- Build with tsup
-- Test with Vitest
-- Follow the Daydreams extension pattern for framework integrations
+### TypeScript
+- ESM-only (`"type": "module"` in package.json)
+- Build with tsup targeting ESM format with `.d.ts` generation
+- Use Zod for input validation on all MCP tool schemas
+- starknet.js `Account` class for transaction signing
+- `RpcProvider` for read-only operations
 
 ### Skills
-- Follow the SKILL.md frontmatter convention
-- Include keywords for activation triggers
-- Layer documentation: SKILL.md (quick ref) + references/ (deep guides) + scripts/ (examples)
-- Test scripts should be runnable standalone
+- YAML frontmatter: `name`, `description`, `keywords`, `allowed-tools`, `user-invocable`
+- Name format: lowercase, hyphens only, 1-64 chars
+- Include code examples with starknet.js patterns
+- Reference AVNU SDK for all DeFi operations
+- List error codes with recovery steps
 
-## References
+### Git
+- Conventional commits preferred (feat:, fix:, docs:, chore:)
+- Branch from main for features
+- Sepolia testing before any mainnet deployment
 
-The `references/` directory contains reference material that agents and developers should consult when writing skills, building integrations, or doing any agentic development on Starknet.
+</conventions>
 
-| Reference | Path | Description |
-|-----------|------|-------------|
-| AgentSkills | `references/agentskills/` | Specifications and integration patterns for the AgentSkills format |
-| Starknet Docs | `references/starknet-docs/` | Official Starknet documentation (git submodule from [starknet-io/starknet-docs](https://github.com/starknet-io/starknet-docs)). Covers architecture, Cairo language, account abstraction, messaging, and all core Starknet concepts. |
+<standards>
 
-When developing skills or contracts, read relevant sections from `references/starknet-docs/` to ensure correctness and alignment with Starknet's current architecture and APIs.
+This project implements three converging agent standards:
 
-## External Integrations
+| Standard | Role | Spec |
+|----------|------|------|
+| **MCP** (Model Context Protocol) | Agent-to-tool connectivity | Anthropic standard. Our MCP server exposes Starknet ops as tools. |
+| **A2A** (Agent-to-Agent Protocol) | Inter-agent communication | Google standard. Agent Cards at `/.well-known/agent.json`. |
+| **ERC-8004** (Trustless Agents) | On-chain identity & trust | Three registries: Identity (ERC-721), Reputation (feedback), Validation (assessments). |
 
-### Daydreams Framework
-- Extension system: `extension({ name, contexts, actions, services, inputs, outputs })`
-- StarknetChain class exists at `@daydreamsai/defai` (minimal: read/write only)
-- We extend this with full DeFi actions and wallet management
-- Docs: https://github.com/daydreamsai/daydreams
+</standards>
 
-### Lucid Agents SDK
-- Commerce SDK: wallets, payments (x402), identity, A2A
-- Extension interface: `{ name, build(ctx) => runtime_slice }`
-- WalletConnector interface for adding new chains
-- Currently no Starknet support -- we add it
-- Docs: https://github.com/daydreamsai/lucid-agents
+<starknet_concepts>
 
-### AVNU SDK
-- DeFi aggregator for Starknet (swaps, DCA, staking, gasless/gasfree)
-- `@avnu/avnu-sdk` npm package
-- Key functions: getQuotes, executeSwap, quoteToCalls, executeCreateDca, executeStake
-- Mainnet API: https://starknet.api.avnu.fi
-- Sepolia API: https://sepolia.api.avnu.fi
+- **Native Account Abstraction**: Every account is a smart contract. Custom validation, session keys, fee abstraction, nonce abstraction are all first-class.
+- **Session Keys**: Temporary keys with limited permissions (allowed methods, time bounds, spending limits). Critical for agent autonomy. Cartridge Controller is the reference implementation.
+- **Paymaster**: Gas fees paid in any token or sponsored by third party. AVNU paymaster supports USDC/USDT/STRK/ETH. "Gasfree" mode = dApp sponsors all gas.
+- **V3 Transactions**: Current transaction version. Fees paid in STRK (not ETH).
 
-### OpenClaw / MoltBook
-- Skills follow AgentSkills convention (SKILL.md + YAML frontmatter)
-- Publish to ClawHub for distribution to 157K+ agents
-- MoltBook API: https://www.moltbook.com/api/v1
-- MCP servers natively supported
+</starknet_concepts>
 
-## Key Contract Addresses (Sepolia)
+<contracts_detail>
 
-Will be populated after deployment. Reference addresses:
-- AVNU Router: Check https://app.avnu.fi for current addresses
-- STRK Token: `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d`
-- ETH Token: `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7`
+### ERC-8004 Cairo Contracts (`packages/starknet-identity/erc8004-cairo/src/`)
 
-## Common Tasks
+| Contract | File | Lines | Purpose |
+|----------|------|-------|---------|
+| IdentityRegistry | `identity_registry.cairo` | 271 | ERC-721 agent NFT registry with key-value metadata |
+| ReputationRegistry | `reputation_registry.cairo` | 560 | Feedback system with cryptographic auth & signatures |
+| ValidationRegistry | `validation_registry.cairo` | 356 | Third-party validator assessments with request/response |
+
+Key interfaces: `IIdentityRegistry`, `IReputationRegistry`, `IValidationRegistry` (in `src/interfaces/`)
+
+Metadata schema keys: `agentName`, `agentType`, `version`, `model`, `status`, `framework`, `capabilities`, `a2aEndpoint`, `moltbookId`
+
+</contracts_detail>
+
+<key_addresses>
+
+### Mainnet Tokens
+- ETH: `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7`
+- STRK: `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d`
+- USDC: `0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8`
+- USDT: `0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8`
+
+### API Endpoints
+- AVNU Mainnet: `https://starknet.api.avnu.fi`
+- AVNU Sepolia: `https://sepolia.api.avnu.fi`
+- AVNU Paymaster: `https://starknet.api.avnu.fi/paymaster/v1`
+
+</key_addresses>
+
+<workflows>
 
 ### Adding a new skill
 1. Create `skills/<skill-name>/SKILL.md` with YAML frontmatter
-2. Add `references/` directory with detailed guides
-3. Add `scripts/` directory with runnable examples
-4. Update README.md skills table
+2. Follow AgentSkills spec in `references/agentskills/SPECS.md`
+3. Include code examples, error handling, token addresses
+4. Optionally add `references/` and `scripts/` subdirectories
 
 ### Adding a new MCP tool
-1. Define the tool schema in `packages/starknet-mcp-server/src/tools/`
-2. Implement the handler
+1. Define tool schema with Zod in `packages/starknet-mcp-server/src/tools/`
+2. Implement handler using starknet.js or AVNU SDK
 3. Register in the server's tool list
-4. Add tests
+4. Add Vitest tests
+5. Document in AGENT.md tool list
 
 ### Adding a new Cairo contract
-1. Create module in `contracts/<contract-name>/`
-2. Add Scarb.toml with dependencies
-3. Implement with tests
-4. Add deployment script for Sepolia
+1. Create module in `contracts/<contract-name>/` or extend existing in `packages/`
+2. Add `Scarb.toml` with starknet 2.12.1 + openzeppelin 0.20.0 deps
+3. Implement with `#[starknet::contract]` pattern
+4. Write snforge tests (aim for >90% coverage)
+5. Add Sepolia deployment script
+
+### Running E2E tests (ERC-8004)
+1. Ensure `.env` has Sepolia RPC URL, account address, private key
+2. `cd packages/starknet-identity/erc8004-cairo/e2e-tests`
+3. `pnpm install && pnpm test`
+
+</workflows>
+
+<boundaries>
+
+### DO NOT modify
+- `.env*` files (credentials -- use `.env.example` for templates)
+- `packages/starknet-identity/erc8004-cairo/Scarb.lock` (dependency lock)
+- `references/starknet-docs/` (git submodule -- update via `git submodule update`)
+- Deployed contract addresses in production without team review
+
+### Require human review
+- Any contract deployment (Sepolia or mainnet)
+- Changes to contract interfaces (breaking for deployed instances)
+- Dependency version bumps in `Scarb.toml` or root `package.json`
+- Security-sensitive code (key handling, signature verification, spending limits)
+
+### Safe for agents
+- Reading and analyzing any file
+- Writing/editing TypeScript source, tests, skills, docs
+- Writing/editing Cairo source and tests (not deploying)
+- Running builds and tests
+- Creating new skills following the established pattern
+
+</boundaries>
+
+<references>
+
+| Reference | Path | Use When |
+|-----------|------|----------|
+| AgentSkills spec | `references/agentskills/SPECS.md` | Writing or validating skill YAML frontmatter |
+| AgentSkills integration | `references/agentskills/INTEGRATION.md` | Building skill discovery/loading |
+| Starknet docs | `references/starknet-docs/` | Any Starknet architecture, Cairo, or AA questions |
+| Technical spec | `docs/SPECIFICATION.md` | Understanding planned architecture, interfaces, security model |
+| Economy plan | `docs/AGENTIC_ECONOMY_PLAN.md` | Understanding long-term vision and use cases |
+| Agent mission | `AGENT.md` | Understanding project goals, existing assets, gaps |
+
+Always consult `references/` before relying on training data for Starknet-specific or AgentSkills-specific information.
+
+</references>
+
+<implementation_status>
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| ERC-8004 Cairo contracts | Production (74 unit + 47 E2E tests) | `packages/starknet-identity/erc8004-cairo/` |
+| Skills (wallet, defi, identity) | Complete | `skills/` |
+| Docs & specs | Complete | `docs/` |
+| Website | Scaffolded | `website/` |
+| MCP server | **TODO** (placeholder) | `packages/starknet-mcp-server/` |
+| A2A adapter | **TODO** (placeholder) | `packages/starknet-a2a/` |
+| Agent Account contract | **TODO** (designed in spec) | Not yet created |
+| Framework extensions | **TODO** | Not yet created |
+| CI/CD | **TODO** | No `.github/workflows/` yet |
+
+</implementation_status>
+
+<troubleshooting>
+
+| Problem | Solution |
+|---------|----------|
+| `scarb build` fails with version mismatch | Ensure Scarb 2.12.1 installed. Check `Scarb.toml` edition. |
+| snforge tests fail on deploy | Mock contracts must implement required interfaces. Check `src/mock/`. |
+| pnpm install fails | Ensure pnpm installed globally. Node 18+ required. |
+| E2E tests fail | Check `.env` has valid Sepolia RPC URL and funded account. |
+| Git submodule empty (`references/starknet-docs/`) | Run `git submodule update --init --recursive` |
+| starknet.js type errors | Ensure using starknet.js v6.x (not v5). Types changed significantly. |
+
+</troubleshooting>
