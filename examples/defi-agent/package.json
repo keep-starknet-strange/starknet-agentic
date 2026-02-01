@@ -1,0 +1,21 @@
+{
+  "name": "defi-agent-example",
+  "version": "0.1.0",
+  "description": "Example DeFi agent using Starknet Agentic infrastructure",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "start": "tsx index.ts",
+    "dev": "tsx watch index.ts"
+  },
+  "dependencies": {
+    "starknet": "^6.24.1",
+    "@avnu/avnu-sdk": "^2.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.0"
+  }
+}
