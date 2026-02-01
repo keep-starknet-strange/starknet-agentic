@@ -1,0 +1,8 @@
+[sncast.sepolia_deployer]
+account = "sepolia_deployer"
+url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7"
+
+[sncast.devnet_account]
+account = "devnet_account"
+accounts-file = "/Users/akashbalasubramani/.starknet_accounts/starknet_open_zeppelin_accounts.json"
+url = "http://localhost:5050"

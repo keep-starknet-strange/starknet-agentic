@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Deployment artifacts
+deployed_addresses.json
+
+# Test outputs
+*.log
+.DS_Store
+
