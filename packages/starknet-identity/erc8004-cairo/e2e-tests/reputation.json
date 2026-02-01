@@ -1,0 +1,218 @@
+{
+  "testRun": "2025-10-28T08:58:52.400Z",
+  "network": "Sepolia",
+  "accounts": {
+    "agentOwner": {
+      "address": "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac",
+      "privateKey": "0x0000000000000000000000000000000abc123def456789abc123def456789001",
+      "publicKey": "0x3ba036442989513e0f1b1614031da0b378d08ed1de051fc10cfc8b484a1ef4"
+    },
+    "client": {
+      "address": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+      "privateKey": "0x0000000000000000000000000000000def456789abc123def456789abc123002",
+      "publicKey": "0x3ee44eb96137425ee63fe2054617a02355061454e0dad12ebf6ce18a691d900"
+    }
+  },
+  "agent": {
+    "agentId": "68",
+    "owner": "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac",
+    "tokenUri": "ipfs://oz-agent.json",
+    "registrationTx": "0xb0ca5bfa1d45d5b7f05fc1ab1ddd46ed2e687132cade744fd9a399876b6d33"
+  },
+  "feedbackOperations": [
+    {
+      "operation": "give_feedback",
+      "feedbackNumber": 1,
+      "inputs": {
+        "agentId": "68",
+        "score": 92,
+        "tag1": 100,
+        "tag2": 200,
+        "fileUri": "ipfs://oz-feedback.json",
+        "fileHash": "0xABCDEF",
+        "feedbackAuth": {
+          "agent_id": "68",
+          "client_address": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+          "index_limit": 1000,
+          "expiry": 1761645546,
+          "chain_id": "393402133025997798000961",
+          "identity_registry": "0x0501f59f95afbf692d842e4f5d7e1996e4d1be1ecc5b9c3890710a7db33f7f76",
+          "signer_address": "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac"
+        },
+        "signature": {
+          "r": "545012711566108885421545701802633301985455119060900571297943464718730105053",
+          "s": "1134651660844401841964740861393673348065320881164979470079151092188442935006"
+        },
+        "messageHash": "0x63046a71e48011c024578a33749bb17e56f61b7f07133d2435d7229a3af9279"
+      },
+      "transactionHash": "0x420b73d52fcc54ffcecc8ee15a8b3100ae9bed57bc0fbf685eaf723bb13de1b",
+      "submittedBy": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+    },
+    {
+      "operation": "give_feedback",
+      "feedbackNumber": 2,
+      "inputs": {
+        "agentId": "68",
+        "score": 88,
+        "tag1": 150,
+        "tag2": 250,
+        "fileUri": "ipfs://oz-feedback2.json",
+        "fileHash": "0x123456"
+      },
+      "transactionHash": "0xb6d8df6a022e8eb77381b6d12f724e00bff633a7f7626f905ff6135e3c977b"
+    },
+    {
+      "operation": "append_response",
+      "inputs": {
+        "agentId": "68",
+        "clientAddress": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+        "feedbackIndex": 1,
+        "responseUri": "ipfs://oz-response.json",
+        "responseHash": "0xAABBCC"
+      },
+      "transactionHash": "0x5cd10daeea5d815943fbe78ae23fe92e6cc7a5ae6b6fad2f7016611ea537b55",
+      "respondedBy": "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac"
+    },
+    {
+      "operation": "revoke_feedback",
+      "inputs": {
+        "agentId": "68",
+        "feedbackIndex": 1
+      },
+      "transactionHash": "0x1e5d589a77d112fb1f336e3abdfbab781d4e7b13238df11692f5b73f6737c69",
+      "revokedBy": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+    }
+  ],
+  "readOperations": [
+    {
+      "operation": "read_feedback",
+      "inputs": {
+        "agentId": "68",
+        "clientAddress": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+        "feedbackIndex": 1
+      },
+      "outputs": {
+        "score": "92",
+        "tag1": "100",
+        "tag2": "200",
+        "isRevoked": false
+      }
+    },
+    {
+      "operation": "get_last_index",
+      "inputs": {
+        "agentId": "68",
+        "clientAddress": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+      },
+      "outputs": {
+        "lastIndex": "1"
+      }
+    },
+    {
+      "operation": "get_clients",
+      "inputs": {
+        "agentId": "68"
+      },
+      "outputs": {
+        "clientsCount": 1,
+        "clients": [
+          "385239345699097541321725406735117547621878676729723576341372753696306983142"
+        ]
+      }
+    },
+    {
+      "operation": "read_all_feedback",
+      "inputs": {
+        "agentId": "68",
+        "clientAddresses": [
+          "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+        ],
+        "tag1Filter": 0,
+        "tag2Filter": 0,
+        "includeRevoked": false
+      },
+      "outputs": {
+        "feedbackCount": 2,
+        "scores": [
+          "92",
+          "88"
+        ],
+        "clients": [
+          "385239345699097541321725406735117547621878676729723576341372753696306983142",
+          "385239345699097541321725406735117547621878676729723576341372753696306983142"
+        ],
+        "tag1s": [
+          "100",
+          "150"
+        ],
+        "tag2s": [
+          "200",
+          "250"
+        ]
+      }
+    },
+    {
+      "operation": "get_response_count",
+      "inputs": {
+        "agentId": "68",
+        "clientAddress": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+        "feedbackIndex": 1,
+        "responders": [
+          "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac"
+        ]
+      },
+      "outputs": {
+        "responseCount": "1"
+      }
+    },
+    {
+      "operation": "read_feedback_after_revoke",
+      "inputs": {
+        "agentId": "68",
+        "clientAddress": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+        "feedbackIndex": 1
+      },
+      "outputs": {
+        "score": "92",
+        "tag1": "100",
+        "tag2": "200",
+        "isRevoked": true
+      }
+    },
+    {
+      "operation": "read_all_feedback_exclude_revoked",
+      "inputs": {
+        "agentId": "68",
+        "clientAddresses": [
+          "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+        ],
+        "tag1Filter": 0,
+        "tag2Filter": 0,
+        "includeRevoked": false
+      },
+      "outputs": {
+        "nonRevokedCount": 1,
+        "scores": [
+          "88"
+        ]
+      }
+    }
+  ],
+  "summaryOperations": [
+    {
+      "operation": "get_summary",
+      "inputs": {
+        "agentId": "68",
+        "clientAddresses": [
+          "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+        ],
+        "tag1Filter": 0,
+        "tag2Filter": 0
+      },
+      "outputs": {
+        "count": "2",
+        "averageScore": "90"
+      }
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+{
+  "testRun": "2025-10-28T09:01:12.745Z",
+  "network": "Sepolia",
+  "accounts": {
+    "agentOwner": {
+      "address": "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac",
+      "publicKey": "0x3ba036442989513e0f1b1614031da0b378d08ed1de051fc10cfc8b484a1ef4",
+      "privateKey": "0x0000000000000000000000000000000abc123def456789abc123def456789001"
+    },
+    "validator": {
+      "address": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+      "publicKey": "0x3ee44eb96137425ee63fe2054617a02355061454e0dad12ebf6ce18a691d900",
+      "privateKey": "0x0000000000000000000000000000000def456789abc123def456789abc123002"
+    }
+  },
+  "agent": {
+    "agentId": "68",
+    "owner": "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac",
+    "verified": true
+  },
+  "validationOperations": [
+    {
+      "operation": "validation_request",
+      "requestNumber": 1,
+      "inputs": {
+        "validatorAddress": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+        "agentId": "68",
+        "requestUri": "ipfs://validation-req1.json",
+        "requestHash": "1761653335061",
+        "usedRequestHash": "19a2ab8a415"
+      },
+      "transactionHash": "0x64ebfadb360d7768e67e5f0aac34288ed6b73b0646ace4898f7e85bd01308b8",
+      "submittedBy": "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac"
+    },
+    {
+      "operation": "validation_response",
+      "inputs": {
+        "requestHash": "19a2ab8a415",
+        "response": 1,
+        "responseUri": "ipfs://validation-resp1.json",
+        "responseHash": "1761643208354",
+        "tag": "3735928559"
+      },
+      "transactionHash": "0x2846057fca3cc9ee54cf625f05af9e7ae2b93c1019fe9f9f6c89619589e0abc",
+      "submittedBy": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+    },
+    {
+      "operation": "validation_request",
+      "requestNumber": 2,
+      "inputs": {
+        "validatorAddress": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+        "agentId": "68",
+        "requestUri": "ipfs://validation-req2.json",
+        "requestHash": "1761658812839",
+        "usedRequestHash": "19a2b0c39a7"
+      },
+      "transactionHash": "0x5f260f7132c98cc2f1700e2681a0a5cdb99468d2cecf9754187ac2fcecfdf4b",
+      "submittedBy": "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac"
+    },
+    {
+      "operation": "validation_response",
+      "inputs": {
+        "requestHash": "19a2b0c39a7",
+        "response": 2,
+        "responseUri": "ipfs://validation-resp2.json",
+        "responseHash": "1761644360386",
+        "tag": "3405691582"
+      },
+      "transactionHash": "0x53ca5d0a04e5ff5c18dfcec18339c5fec965b2317521ae7f28c6b02493f5c64",
+      "submittedBy": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+    }
+  ],
+  "readOperations": [
+    {
+      "operation": "get_identity_registry",
+      "inputs": {},
+      "outputs": {
+        "identityRegistry": "501f59f95afbf692d842e4f5d7e1996e4d1be1ecc5b9c3890710a7db33f7f76"
+      }
+    },
+    {
+      "operation": "request_exists",
+      "inputs": {
+        "requestHash": "19a2ab8a415"
+      },
+      "outputs": {
+        "exists": true
+      }
+    },
+    {
+      "operation": "get_request",
+      "inputs": {
+        "requestHash": "19a2ab8a415"
+      },
+      "outputs": {
+        "validatorAddress": "da09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+        "agentId": "68",
+        "requestUri": "ipfs://validation-req1.json",
+        "timestamp": "1761642073"
+      }
+    },
+    {
+      "operation": "get_agent_validations",
+      "inputs": {
+        "agentId": "68"
+      },
+      "outputs": {
+        "validationCount": 2,
+        "requestHashes": [
+          "19a2ab7e202",
+          "19a2ab8a415"
+        ]
+      }
+    },
+    {
+      "operation": "get_validator_requests",
+      "inputs": {
+        "validatorAddress": "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+      },
+      "outputs": {
+        "requestCount": 11,
+        "requestHashes": [
+          "abcdef123456",
+          "12345678",
+          "19a2a950350",
+          "19a2a9675e5",
+          "fedcba987654",
+          "19a2a9e3805",
+          "19a2af1ba85",
+          "19a2aafcfd5",
+          "19a2b0364c1",
+          "19a2ab7e202",
+          "19a2ab8a415"
+        ]
+      }
+    },
+    {
+      "operation": "get_validation_status",
+      "inputs": {
+        "requestHash": "19a2ab8a415"
+      },
+      "outputs": {
+        "validatorAddress": "da09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+        "agentId": "68",
+        "response": "1",
+        "tag": "3735928559",
+        "timestamp": "1761642089"
+      }
+    }
+  ],
+  "summaryOperations": [
+    {
+      "operation": "get_summary",
+      "inputs": {
+        "agentId": "68",
+        "validatorAddresses": [
+          "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+        ],
+        "tagFilter": 0
+      },
+      "outputs": {
+        "count": "2",
+        "averageResponse": "1"
+      }
+    },
+    {
+      "operation": "get_summary_filtered",
+      "inputs": {
+        "agentId": "68",
+        "validatorAddresses": [
+          "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6"
+        ],
+        "tagFilter": "3735928559"
+      },
+      "outputs": {
+        "count": "1",
+        "averageResponse": "1"
+      }
+    },
+    {
+      "operation": "get_summary_multi_validator",
+      "inputs": {
+        "agentId": "68",
+        "validatorAddresses": [
+          "0xda09a9816aff64296f983832b0f230ed3e55ed8c4c94b5ab5050c1444b70e6",
+          "0x337bf51f8c538565bd675a53d8bfa2da1dd2bb893b8c97596b843e541cc0bac"
+        ],
+        "tagFilter": 0
+      },
+      "outputs": {
+        "totalCount": "2",
+        "overallAverage": "1"
+      }
+    }
+  ]
+}
