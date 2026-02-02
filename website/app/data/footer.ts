@@ -10,7 +10,7 @@ export const INFRASTRUCTURE_LINKS: FooterLink[] = [
 
 export const ECOSYSTEM_LINKS: FooterLink[] = [
   { name: "Starknet", url: "https://starknet.io" },
-  { name: "AVNU", url: "https://avnu.fi" },
+  { name: "avnu", url: "https://avnu.fi" },
   { name: "Cartridge", url: "https://cartridge.gg" },
   { name: "OpenClaw", url: "https://docs.openclaw.ai" },
   { name: "Giza", url: "https://gizatech.xyz" },
