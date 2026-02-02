@@ -211,7 +211,8 @@ export function starknetWallet(config: StarknetConfig): Extension {
 ### API Endpoints
 - avnu Mainnet: `https://starknet.api.avnu.fi`
 - avnu Sepolia: `https://sepolia.api.avnu.fi`
-- avnu Paymaster: `https://starknet.api.avnu.fi/paymaster/v1`
+- avnu Paymaster Mainnet: `https://starknet.paymaster.avnu.fi`
+- avnu Paymaster Sepolia: `https://sepolia.paymaster.avnu.fi`
 
 ## Decision Log
 

@@ -26,7 +26,10 @@ Create a `.env` file with your Starknet credentials:
 STARKNET_RPC_URL=https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY
 STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_PRIVATE_KEY=0x...
-AVNU_BASE_URL=https://starknet.api.avnu.fi  # Optional
+
+# avnu URLs (optional -- defaults shown)
+AVNU_BASE_URL=https://starknet.api.avnu.fi
+AVNU_PAYMASTER_URL=https://starknet.paymaster.avnu.fi
 ```
 
 ## Usage

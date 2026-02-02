@@ -137,9 +137,10 @@ import { getQuotes, executeSwap } from "@avnu/avnu-sdk";
 import { PaymasterRpc } from "starknet";
 
 // SDK v4: Use PaymasterRpc from starknet.js
+// Mainnet: https://starknet.paymaster.avnu.fi
+// Sepolia: https://sepolia.paymaster.avnu.fi
 const paymaster = new PaymasterRpc({
-  nodeUrl: "https://starknet.paymaster.avnu.fi",  // Mainnet
-  // nodeUrl: "https://sepolia.paymaster.avnu.fi", // Testnet
+  nodeUrl: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
 });
 
 // Any swap can be made gasless by adding paymaster option
@@ -184,6 +185,16 @@ Session keys allow agents to execute pre-approved transactions without per-actio
 3. Owner can revoke at any time
 
 Reference implementation: [Cartridge Controller](https://docs.cartridge.gg/controller/getting-started)
+
+## Configuration
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `STARKNET_RPC_URL` | Starknet JSON-RPC endpoint | Required |
+| `STARKNET_ACCOUNT_ADDRESS` | Agent's account address | Required |
+| `STARKNET_PRIVATE_KEY` | Agent's signing key | Required |
+| `AVNU_BASE_URL` | avnu API base URL | `https://starknet.api.avnu.fi` |
+| `AVNU_PAYMASTER_URL` | avnu paymaster URL | `https://starknet.paymaster.avnu.fi` |
 
 ## Error Handling
 

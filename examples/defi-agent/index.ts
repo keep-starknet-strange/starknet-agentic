@@ -25,7 +25,8 @@ const CONFIG = {
   RPC_URL: process.env.STARKNET_RPC_URL || "https://starknet-mainnet.public.blastapi.io",
   ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS!,
   PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY!,
-  AVNU_API_URL: "https://starknet.api.avnu.fi",
+  AVNU_BASE_URL: process.env.AVNU_BASE_URL || "https://starknet.api.avnu.fi",
+  AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
 
   // Trading parameters
   MIN_PROFIT_BPS: 50, // Minimum 0.5% profit to trade
@@ -182,7 +183,7 @@ class DeFiAgent {
       };
 
       const quotes1 = await getQuotes(quote1Request, {
-        baseUrl: CONFIG.AVNU_API_URL,
+        baseUrl: CONFIG.AVNU_BASE_URL,
       });
 
       if (quotes1.length === 0) {
@@ -200,7 +201,7 @@ class DeFiAgent {
       };
 
       const quotes2 = await getQuotes(quote2Request, {
-        baseUrl: CONFIG.AVNU_API_URL,
+        baseUrl: CONFIG.AVNU_BASE_URL,
       });
 
       if (quotes2.length === 0) {

@@ -125,9 +125,10 @@ const quotes = await getQuotes(quoteParams);
 const bestQuote = quotes[0];
 
 // SDK v4: Use PaymasterRpc from starknet.js
+// Mainnet: https://starknet.paymaster.avnu.fi
+// Sepolia: https://sepolia.paymaster.avnu.fi
 const paymaster = new PaymasterRpc({
-  nodeUrl: "https://starknet.paymaster.avnu.fi",  // Mainnet
-  // nodeUrl: "https://sepolia.paymaster.avnu.fi", // Testnet
+  nodeUrl: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
 });
 
 const result = await executeSwap({
@@ -283,7 +284,16 @@ const tokens = await fetchTokens({ page: 0, size: 20, tags: ["verified"] });
 | `STARKNET_RPC_URL` | Starknet JSON-RPC endpoint | Required |
 | `STARKNET_ACCOUNT_ADDRESS` | Agent's account address | Required |
 | `STARKNET_PRIVATE_KEY` | Agent's signing key | Required |
+| `AVNU_BASE_URL` | avnu API base URL | `https://starknet.api.avnu.fi` |
+| `AVNU_PAYMASTER_URL` | avnu paymaster URL | `https://starknet.paymaster.avnu.fi` |
 | `AVNU_API_KEY` | Optional avnu integrator key | None |
+
+### avnu URL Reference
+
+| Network | API URL | Paymaster URL |
+|---------|---------|---------------|
+| Mainnet | `https://starknet.api.avnu.fi` | `https://starknet.paymaster.avnu.fi` |
+| Sepolia | `https://sepolia.api.avnu.fi` | `https://sepolia.paymaster.avnu.fi` |
 
 ## Error Handling
 
