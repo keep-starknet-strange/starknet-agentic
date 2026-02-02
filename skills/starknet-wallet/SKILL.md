@@ -33,7 +33,7 @@ Manage Starknet wallets for AI agents with native Account Abstraction support.
 ## Prerequisites
 
 ```bash
-npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.0 ethers@^6.15.0
+npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
 ```
 
 Environment variables:
@@ -63,7 +63,7 @@ const balance = await ethContract.balanceOf(accountAddress);
 
 // starknet.js v8: Convert uint256 to bigint
 const balanceBigInt = BigInt(balance.low) + (BigInt(balance.high) << 128n);
-// Format with ethers.formatUnits(balanceBigInt, 18)
+// Format: (balanceBigInt / 10n ** 18n).toString() for whole units
 ```
 
 ### Transfer Tokens
@@ -199,4 +199,4 @@ Reference implementation: [Cartridge Controller](https://docs.cartridge.gg/contr
 - [starknet.js Documentation](https://www.starknetjs.com/)
 - [Starknet Account Abstraction](https://www.starknet.io/blog/native-account-abstraction/)
 - [Session Keys Guide](https://www.starknet.io/blog/session-keys-on-starknet-unlocking-gasless-secure-transactions/)
-- [AVNU Paymaster](https://docs.avnu.fi/paymaster)
+- [avnu Paymaster](https://docs.avnu.fi/paymaster)

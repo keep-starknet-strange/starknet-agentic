@@ -44,7 +44,7 @@ vi.mock("starknet", () => ({
 
 import { getQuotes, executeSwap } from "@avnu/avnu-sdk";
 
-describe("AVNU SDK v4 Integration", () => {
+describe("avnu SDK v4 Integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

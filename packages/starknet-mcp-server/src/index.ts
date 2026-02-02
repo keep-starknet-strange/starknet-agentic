@@ -11,7 +11,7 @@
  * - starknet_transfer: Send tokens
  * - starknet_call_contract: Read contract state
  * - starknet_invoke_contract: Write to contracts
- * - starknet_swap: Execute swaps via AVNU
+ * - starknet_swap: Execute swaps via avnu
  * - starknet_get_quote: Get swap quotes
  * - starknet_register_agent: Register agent identity (ERC-8004)
  *
@@ -213,7 +213,7 @@ const tools: Tool[] = [
   {
     name: "starknet_swap",
     description:
-      "Execute a token swap on Starknet using AVNU aggregator for best prices. Supports gasless mode where gas is paid in the sell token.",
+      "Execute a token swap on Starknet using avnu aggregator for best prices. Supports gasless mode where gas is paid in the sell token.",
     inputSchema: {
       type: "object",
       properties: {
@@ -633,7 +633,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    // AVNU-specific error handling with user-friendly messages
+    // avnu-specific error handling with user-friendly messages
     let userMessage = errorMessage;
     if (errorMessage.includes("INSUFFICIENT_LIQUIDITY") || errorMessage.includes("insufficient liquidity")) {
       userMessage = "Insufficient liquidity for this swap. Try a smaller amount or different token pair.";

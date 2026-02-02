@@ -2,7 +2,7 @@
 name: starknet-defi
 description: >
   Execute DeFi operations on Starknet: token swaps with best-price routing
-  via AVNU aggregator, DCA recurring buys, STRK staking, lending/borrowing,
+  via avnu aggregator, DCA recurring buys, STRK staking, lending/borrowing,
   and liquidity provision. Supports gasless and gasfree transactions.
 keywords:
   - starknet
@@ -30,22 +30,21 @@ user-invocable: true
 
 # Starknet DeFi Skill
 
-Execute DeFi operations on Starknet using AVNU aggregator and native protocols.
+Execute DeFi operations on Starknet using avnu aggregator and native protocols.
 
 ## Prerequisites
 
 ```bash
-npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.0 ethers@^6.15.0
+npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
 ```
 
-## Token Swaps (AVNU SDK v4)
+## Token Swaps (avnu SDK v4)
 
 ### Get Quote and Execute Swap
 
 ```typescript
 import { getQuotes, executeSwap, type QuoteRequest } from "@avnu/avnu-sdk";
 import { Account, RpcProvider, ETransactionVersion } from "starknet";
-import { parseUnits } from "ethers";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
 
@@ -61,7 +60,7 @@ const account = new Account({
 const quoteParams: QuoteRequest = {
   sellTokenAddress: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7", // ETH
   buyTokenAddress: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",  // STRK
-  sellAmount: parseUnits("0.1", 18),
+  sellAmount: BigInt(10 ** 17), // 0.1 ETH
   takerAddress: account.address,
 };
 
@@ -271,7 +270,7 @@ const tokens = await fetchTokens({ page: 0, size: 20, tags: ["verified"] });
 
 | Protocol | Operations | Notes |
 |----------|-----------|-------|
-| **AVNU** | Swap aggregation, DCA, gasless | Best-price routing across all DEXs |
+| **avnu** | Swap aggregation, DCA, gasless | Best-price routing across all DEXs |
 | **Ekubo** | AMM, concentrated liquidity | Highest TVL on Starknet |
 | **JediSwap** | AMM, classic pools | V2 with concentrated liquidity |
 | **zkLend** | Lending, borrowing | Variable and stable rates |
@@ -284,7 +283,7 @@ const tokens = await fetchTokens({ page: 0, size: 20, tags: ["verified"] });
 | `STARKNET_RPC_URL` | Starknet JSON-RPC endpoint | Required |
 | `STARKNET_ACCOUNT_ADDRESS` | Agent's account address | Required |
 | `STARKNET_PRIVATE_KEY` | Agent's signing key | Required |
-| `AVNU_API_KEY` | Optional AVNU integrator key | None |
+| `AVNU_API_KEY` | Optional avnu integrator key | None |
 
 ## Error Handling
 
@@ -323,8 +322,8 @@ async function safeSwap(account, quote, slippage = 0.01) {
 
 ## References
 
-- [AVNU SDK Documentation](https://docs.avnu.fi/)
-- [AVNU Skill (detailed)](https://github.com/avnu-labs/avnu-skill)
+- [avnu SDK Documentation](https://docs.avnu.fi/)
+- [avnu Skill (detailed)](https://github.com/avnu-labs/avnu-skill)
 - [Ekubo Protocol](https://docs.ekubo.org/)
 - [zkLend Documentation](https://docs.zklend.com/)
 - [Nostra Finance](https://docs.nostra.finance/)
