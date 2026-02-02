@@ -7,7 +7,7 @@ edition = "2023_11"
 
 [dependencies]
 starknet = "2.12.1"
-openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.20.0" }
+openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.18.0" }
 
 
 [dev-dependencies]
