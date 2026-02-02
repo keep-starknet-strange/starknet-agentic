@@ -45,7 +45,7 @@ export const mockSwapResult = {
   transactionHash: "0x123abc456def789",
 };
 
-// Create mock AVNU SDK functions
+// Create mock avnu SDK functions
 export function createMockAvnu() {
   return {
     getQuotes: vi.fn().mockResolvedValue([mockQuote]),

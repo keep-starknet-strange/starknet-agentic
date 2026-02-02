@@ -6,7 +6,7 @@ An MCP (Model Context Protocol) server that exposes Starknet blockchain operatio
 
 - **Wallet Operations**: Check balances, transfer tokens
 - **Contract Interactions**: Call read/write functions on any Starknet contract
-- **DeFi Operations**: Execute swaps via AVNU aggregator with best-price routing
+- **DeFi Operations**: Execute swaps via avnu aggregator with best-price routing
 - **Fee Estimation**: Estimate transaction costs before execution
 - **Multi-token Support**: ETH, STRK, USDC, USDT, and custom ERC20 tokens
 
@@ -108,7 +108,7 @@ Invoke a state-changing contract function.
 
 ### `starknet_swap`
 
-Execute a token swap using AVNU aggregator.
+Execute a token swap using avnu aggregator.
 
 ```typescript
 {

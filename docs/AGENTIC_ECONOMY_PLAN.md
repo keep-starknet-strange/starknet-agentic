@@ -114,7 +114,7 @@ The agent economy is emerging on Base via OpenClaw, with social networks (MoltBo
 
 ### 3.2 AgentVault -- Autonomous DeFi Strategies
 
-**What**: AI agents run DeFi vaults on Starknet. Users deposit funds, agents optimize yield across protocols (AVNU, zkLend, Nostra, Ekubo). Every strategy decision is logged and verifiable.
+**What**: AI agents run DeFi vaults on Starknet. Users deposit funds, agents optimize yield across protocols (avnu, zkLend, Nostra, Ekubo). Every strategy decision is logged and verifiable.
 
 **Why Starknet**: ZK proofs can verify that an agent's trading strategy stayed within declared risk parameters without revealing the strategy itself. Session keys enforce spending limits.
 

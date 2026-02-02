@@ -26,7 +26,7 @@ If the round-trip results in more ETH than started with (after fees), it execute
 - ✅ Real-time opportunity detection
 - ✅ Configurable profit thresholds
 - ✅ Risk management (max trade size)
-- ✅ Best-price routing via AVNU aggregator
+- ✅ Best-price routing via avnu aggregator
 - ✅ Comprehensive error handling
 - ✅ Graceful shutdown with statistics
 - ✅ Low-balance warnings
@@ -125,9 +125,9 @@ Executes if:
 ### 3. Trade Execution
 
 When opportunity found:
-1. Execute swap 1: ETH → STRK (via AVNU best route)
+1. Execute swap 1: ETH → STRK (via avnu best route)
 2. Wait for confirmation
-3. Execute swap 2: STRK → ETH (via AVNU best route)
+3. Execute swap 2: STRK → ETH (via avnu best route)
 4. Wait for confirmation
 5. Log results
 
@@ -251,12 +251,12 @@ The agent can be wrapped as an MCP server to allow AI assistants to control it:
 
 ### "Rate limited"
 
-- **Cause**: Too many API calls to AVNU
+- **Cause**: Too many API calls to avnu
 - **Solution**: Increase CHECK_INTERVAL_MS
 
 ## Resources
 
-- [AVNU Documentation](https://docs.avnu.fi/)
+- [avnu Documentation](https://docs.avnu.fi/)
 - [Starknet.js Docs](https://www.starknetjs.com/)
 - [Arbitrage Strategies](https://www.investopedia.com/terms/a/arbitrage.asp)
 
