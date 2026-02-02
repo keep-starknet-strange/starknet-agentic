@@ -1,6 +1,7 @@
 "use client";
 
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
+import { INSTALL_COMMAND } from "@/data/get-started";
 
 interface InstallCommandProps {
   command?: string;
@@ -8,7 +9,7 @@ interface InstallCommandProps {
 }
 
 export function InstallCommand({
-  command = "npx create-starknet-agent@latest",
+  command = INSTALL_COMMAND,
   variant = "default",
 }: InstallCommandProps) {
   const { copied, copy } = useCopyToClipboard();

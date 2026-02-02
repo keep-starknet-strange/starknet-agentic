@@ -1,4 +1,4 @@
-import type { App } from "./types";
+import type { App, Category } from "./types";
 
 export const FEATURED_APPS: App[] = [
   {
@@ -83,7 +83,7 @@ export const FEATURED_APPS: App[] = [
   },
 ];
 
-export const CATEGORIES: import("./types").Category[] = [
+export const CATEGORIES: Category[] = [
   {
     icon: "🤝",
     color: "bg-neo-yellow",

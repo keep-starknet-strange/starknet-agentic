@@ -1,11 +1,5 @@
+import { NAV_LINKS } from "@/data/navigation";
 import { NavbarMobile } from "./NavbarMobile";
-
-const NAV_LINKS = [
-  { href: "#why", label: "Why Starknet" },
-  { href: "#vision", label: "Vision" },
-  { href: "#apps", label: "Apps" },
-  { href: "#architecture", label: "Architecture" },
-];
 
 export function Navbar() {
   return (

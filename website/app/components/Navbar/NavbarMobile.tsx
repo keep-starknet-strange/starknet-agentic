@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const NAV_LINKS = [
-  { href: "#why", label: "Why Starknet" },
-  { href: "#vision", label: "Vision" },
-  { href: "#apps", label: "Apps" },
-  { href: "#architecture", label: "Architecture" },
-];
+import { NAV_LINKS } from "@/data/navigation";
 
 export function NavbarMobile() {
   const [mobileOpen, setMobileOpen] = useState(false);

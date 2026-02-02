@@ -9,8 +9,7 @@ export function WhyCard({ item }: WhyCardProps) {
     <article className="neo-card-hover p-8">
       <div
         className={`inline-flex items-center justify-center w-14 h-14 ${item.color} border-2 border-black shadow-neo-sm text-2xl mb-5`}
-        role="img"
-        aria-label={item.title}
+        aria-hidden="true"
       >
         {item.icon}
       </div>

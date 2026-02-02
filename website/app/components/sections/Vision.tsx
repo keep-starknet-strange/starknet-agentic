@@ -83,8 +83,8 @@ export function Vision() {
                     </span>
                     <span>
                       {point.emphasis && (
-                        <strong>{point.emphasis}</strong>
-                      )}{" "}
+                        <strong>{point.emphasis} </strong>
+                      )}
                       {point.text}
                     </span>
                   </li>

@@ -1,4 +1,4 @@
-import type { FooterLink, FooterSection } from "./types";
+import type { FooterLink } from "./types";
 
 export const INFRASTRUCTURE_LINKS: FooterLink[] = [
   { name: "MCP Server" },
@@ -29,10 +29,4 @@ export const COMMUNITY_LINKS: FooterLink[] = [
     name: "Contributing",
     url: "https://github.com/keep-starknet-strange/starknet-agentic",
   },
-];
-
-export const FOOTER_SECTIONS: FooterSection[] = [
-  { title: "Infrastructure", links: INFRASTRUCTURE_LINKS },
-  { title: "Ecosystem", links: ECOSYSTEM_LINKS },
-  { title: "Community", links: COMMUNITY_LINKS },
 ];

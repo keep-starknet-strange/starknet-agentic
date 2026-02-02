@@ -6,10 +6,14 @@ export function useCopyToClipboard(resetDelay = 2000) {
   const [copied, setCopied] = useState(false);
 
   const copy = useCallback(
-    (text: string) => {
-      navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), resetDelay);
+    async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), resetDelay);
+      } catch (err) {
+        console.error("Failed to copy to clipboard:", err);
+      }
     },
     [resetDelay]
   );
