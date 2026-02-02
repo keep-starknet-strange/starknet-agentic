@@ -310,7 +310,7 @@ async function safeSwap(account, quote, slippage = 0.01) {
     if (error.message?.includes("INSUFFICIENT_BALANCE")) {
       throw new Error("Not enough tokens for swap");
     }
-    if (error.message?.includes("SLIPPAGE")) {
+    if (error.message?.includes("SLIPPAGE") || error.message?.includes("Insufficient tokens received")) {
       // Retry with higher slippage
       return await executeSwap({
         provider: account,

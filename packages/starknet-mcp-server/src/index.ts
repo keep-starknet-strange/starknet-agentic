@@ -637,7 +637,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     let userMessage = errorMessage;
     if (errorMessage.includes("INSUFFICIENT_LIQUIDITY") || errorMessage.includes("insufficient liquidity")) {
       userMessage = "Insufficient liquidity for this swap. Try a smaller amount or different token pair.";
-    } else if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage")) {
+    } else if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage") || errorMessage.includes("Insufficient tokens received")) {
       userMessage = "Slippage exceeded. Try increasing slippage tolerance.";
     } else if (errorMessage.includes("QUOTE_EXPIRED") || errorMessage.includes("quote expired")) {
       userMessage = "Quote expired. Please retry the operation.";
