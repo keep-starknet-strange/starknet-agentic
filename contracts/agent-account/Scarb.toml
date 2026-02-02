@@ -1,0 +1,18 @@
+[package]
+name = "agent_account"
+version = "0.1.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = "2.12.1"
+openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.20.0" }
+
+[dev-dependencies]
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.51.2" }
+
+[[target.starknet-contract]]
+sierra = true
+casm = true
+
+[scripts]
+test = "snforge test"
