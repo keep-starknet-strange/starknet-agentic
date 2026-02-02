@@ -33,7 +33,6 @@ import {
   CallData,
   cairo,
   uint256,
-  PaymasterRpc,
   ETransactionVersion,
   type Call,
   type PaymasterDetails,
@@ -110,50 +109,38 @@ const account = new Account({
   transactionVersion: ETransactionVersion.V3,
 });
 
-// Global Paymaster configuration
-// - If AVNU_PAYMASTER_API_KEY is set, use sponsored (gasfree) mode where dApp pays gas
-// - Otherwise, use default mode where user pays gas in the specified token
-const paymasterRpc = new PaymasterRpc({
-  nodeUrl: env.AVNU_PAYMASTER_URL,
-  ...(env.AVNU_PAYMASTER_API_KEY && {
-    headers: { "x-paymaster-api-key": env.AVNU_PAYMASTER_API_KEY },
-  }),
-});
-
 // Fee mode: sponsored (gasfree, dApp pays) vs default (user pays in gasToken)
 const isSponsored = !!env.AVNU_PAYMASTER_API_KEY;
 
-// Gasfree execution options
-interface GasfreeOptions {
-  gasToken?: string; // Token address for fee payment (only used in default mode)
-}
-
 /**
- * Execute calls with paymaster (gasfree mode).
- * - In sponsored mode: dApp pays all gas fees (requires AVNU_PAYMASTER_API_KEY)
- * - In default mode: user pays gas in the specified token
+ * Execute transaction with optional gasfree mode.
+ * - gasfree=false: standard account.execute
+ * - gasfree=true + API key: sponsored mode (dApp pays all gas)
+ * - gasfree=true + no API key: user pays gas in gasToken
  */
-async function executeWithPaymaster(
+async function executeTransaction(
   calls: Call | Call[],
-  options: GasfreeOptions = {}
-): Promise<{ transaction_hash: string }> {
-  const callsArray = Array.isArray(calls) ? calls : [calls];
+  gasfree: boolean,
+  gasToken: string = TOKENS.STRK
+): Promise<string> {
+  if (!gasfree) {
+    const result = await account.execute(calls);
+    return result.transaction_hash;
+  }
 
+  const callsArray = Array.isArray(calls) ? calls : [calls];
   const feeDetails: PaymasterDetails = isSponsored
     ? { feeMode: { mode: "sponsored" } }
-    : { feeMode: { mode: "default", gasToken: options.gasToken || TOKENS.STRK } };
+    : { feeMode: { mode: "default", gasToken } };
 
-  // Estimate fees
   const estimation = await account.estimatePaymasterTransactionFee(callsArray, feeDetails);
-
-  // Execute with paymaster
   const result = await account.executePaymasterTransaction(
     callsArray,
     feeDetails,
     estimation.suggested_max_fee_in_gas_token
   );
 
-  return { transaction_hash: result.transaction_hash };
+  return result.transaction_hash;
 }
 
 // MCP Server setup
@@ -400,6 +387,46 @@ function formatAmount(amount: bigint, decimals: number): string {
   return `${whole}.${fraction}`.replace(/\.?0+$/, "");
 }
 
+// Helper: Format quote response fields
+function formatQuoteFields(quote: Quote, buyDecimals: number): {
+  buyAmount: string;
+  priceImpact: string | undefined;
+  gasFeesUsd: string | undefined;
+  routes: Array<{ name: string; percent: string }> | undefined;
+} {
+  return {
+    buyAmount: formatAmount(BigInt(quote.buyAmount), buyDecimals),
+    priceImpact: quote.priceImpact
+      ? `${(quote.priceImpact / 100).toFixed(2)}%`
+      : undefined,
+    gasFeesUsd: quote.gasFeesInUsd?.toFixed(4),
+    routes: quote.routes?.map((r: Route) => ({
+      name: r.name,
+      percent: `${(r.percent * 100).toFixed(1)}%`,
+    })),
+  };
+}
+
+// Helper: Convert error message to user-friendly format
+function formatErrorMessage(errorMessage: string): string {
+  if (errorMessage.includes("INSUFFICIENT_LIQUIDITY") || errorMessage.includes("insufficient liquidity")) {
+    return "Insufficient liquidity for this swap. Try a smaller amount or different token pair.";
+  }
+  if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage") || errorMessage.includes("Insufficient tokens received")) {
+    return "Slippage exceeded. Try increasing slippage tolerance.";
+  }
+  if (errorMessage.includes("QUOTE_EXPIRED") || errorMessage.includes("quote expired")) {
+    return "Quote expired. Please retry the operation.";
+  }
+  if (errorMessage.includes("INSUFFICIENT_BALANCE") || errorMessage.includes("insufficient balance")) {
+    return "Insufficient token balance for this operation.";
+  }
+  if (errorMessage.includes("No quotes available")) {
+    return "No swap routes available for this token pair. The pair may not have liquidity.";
+  }
+  return errorMessage;
+}
+
 // Tool handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools,
@@ -452,6 +479,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const tokenAddress = resolveTokenAddress(token);
         const amountWei = await parseAmount(amount, tokenAddress);
+        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
 
         const transferCall: Call = {
           contractAddress: tokenAddress,
@@ -462,17 +490,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }),
         };
 
-        let transaction_hash: string;
-        if (gasfree) {
-          const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
-          const result = await executeWithPaymaster(transferCall, { gasToken: gasTokenAddress });
-          transaction_hash = result.transaction_hash;
-        } else {
-          const result = await account.execute(transferCall);
-          transaction_hash = result.transaction_hash;
-        }
-
-        await provider.waitForTransaction(transaction_hash);
+        const transactionHash = await executeTransaction(transferCall, gasfree, gasTokenAddress);
+        await provider.waitForTransaction(transactionHash);
 
         return {
           content: [
@@ -480,7 +499,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify({
                 success: true,
-                transactionHash: transaction_hash,
+                transactionHash,
                 recipient,
                 token,
                 amount,
@@ -527,23 +546,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           gasToken?: string;
         };
 
-        const invokeCall: Call = {
-          contractAddress,
-          entrypoint,
-          calldata,
-        };
+        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
+        const invokeCall: Call = { contractAddress, entrypoint, calldata };
 
-        let transaction_hash: string;
-        if (gasfree) {
-          const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
-          const result = await executeWithPaymaster(invokeCall, { gasToken: gasTokenAddress });
-          transaction_hash = result.transaction_hash;
-        } else {
-          const result = await account.execute(invokeCall);
-          transaction_hash = result.transaction_hash;
-        }
-
-        await provider.waitForTransaction(transaction_hash);
+        const transactionHash = await executeTransaction(invokeCall, gasfree, gasTokenAddress);
+        await provider.waitForTransaction(transactionHash);
 
         return {
           content: [
@@ -551,7 +558,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify({
                 success: true,
-                transactionHash: transaction_hash,
+                transactionHash,
                 contractAddress,
                 entrypoint,
                 gasfree,
@@ -575,7 +582,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const buyTokenAddress = resolveTokenAddress(buyToken);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
-        // SDK v4: getQuotes takes QuoteRequest object
         const quoteParams: QuoteRequest = {
           sellTokenAddress,
           buyTokenAddress,
@@ -584,14 +590,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const quotes = await getQuotes(quoteParams, { baseUrl: env.AVNU_BASE_URL });
-
         if (!quotes || quotes.length === 0) {
           throw new Error("No quotes available for this swap");
         }
 
         const bestQuote = quotes[0];
 
-        // Build calls from quote (includes approve + swap calls)
         const { calls } = await quoteToCalls({
           quoteId: bestQuote.quoteId,
           takerAddress: account.address,
@@ -599,22 +603,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           executeApprove: true,
         }, { baseUrl: env.AVNU_BASE_URL });
 
-        // Execute: gasfree mode uses paymaster, otherwise regular execute
-        let transaction_hash: string;
-        if (gasfree) {
-          const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : sellTokenAddress;
-          const result = await executeWithPaymaster(calls, { gasToken: gasTokenAddress });
-          transaction_hash = result.transaction_hash;
-        } else {
-          const result = await account.execute(calls);
-          transaction_hash = result.transaction_hash;
-        }
+        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : sellTokenAddress;
+        const transactionHash = await executeTransaction(calls, gasfree, gasTokenAddress);
+        await provider.waitForTransaction(transactionHash);
 
-        await provider.waitForTransaction(transaction_hash);
-
-        // Get buyToken decimals for proper formatting
         const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
-        const buyDecimals = await buyTokenContract.decimals();
+        const buyDecimals = Number(await buyTokenContract.decimals());
+        const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
 
         return {
           content: [
@@ -622,20 +617,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify({
                 success: true,
-                transactionHash: transaction_hash,
+                transactionHash,
                 sellToken,
                 buyToken,
                 sellAmount: amount,
-                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), Number(buyDecimals)),
+                ...quoteFields,
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
-                priceImpact: bestQuote.priceImpact
-                  ? `${(bestQuote.priceImpact / 100).toFixed(2)}%`
-                  : undefined,
-                gasFeesUsd: bestQuote.gasFeesInUsd?.toFixed(4),
-                routes: bestQuote.routes?.map((r: Route) => ({
-                  name: r.name,
-                  percent: `${(r.percent * 100).toFixed(1)}%`,
-                })),
                 slippage,
                 gasfree,
               }, null, 2),
@@ -655,7 +642,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const buyTokenAddress = resolveTokenAddress(buyToken);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
-        // SDK v4: getQuotes takes QuoteRequest object
         const quoteParams: QuoteRequest = {
           sellTokenAddress,
           buyTokenAddress,
@@ -664,16 +650,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const quotes = await getQuotes(quoteParams, { baseUrl: env.AVNU_BASE_URL });
-
         if (!quotes || quotes.length === 0) {
           throw new Error("No quotes available");
         }
 
         const bestQuote = quotes[0];
 
-        // Get buyToken decimals for proper formatting
         const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
-        const buyDecimals = await buyTokenContract.decimals();
+        const buyDecimals = Number(await buyTokenContract.decimals());
+        const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
 
         return {
           content: [
@@ -683,17 +668,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 sellToken,
                 buyToken,
                 sellAmount: amount,
-                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), Number(buyDecimals)),
+                ...quoteFields,
                 sellAmountInUsd: bestQuote.sellAmountInUsd?.toFixed(2),
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
-                priceImpact: bestQuote.priceImpact
-                  ? `${(bestQuote.priceImpact / 100).toFixed(2)}%`
-                  : undefined,
-                gasFeesUsd: bestQuote.gasFeesInUsd?.toFixed(4),
-                routes: bestQuote.routes?.map((r: Route) => ({
-                  name: r.name,
-                  percent: `${(r.percent * 100).toFixed(1)}%`,
-                })),
                 quoteId: bestQuote.quoteId,
               }, null, 2),
             },
@@ -737,20 +714,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-
-    // avnu-specific error handling with user-friendly messages
-    let userMessage = errorMessage;
-    if (errorMessage.includes("INSUFFICIENT_LIQUIDITY") || errorMessage.includes("insufficient liquidity")) {
-      userMessage = "Insufficient liquidity for this swap. Try a smaller amount or different token pair.";
-    } else if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage") || errorMessage.includes("Insufficient tokens received")) {
-      userMessage = "Slippage exceeded. Try increasing slippage tolerance.";
-    } else if (errorMessage.includes("QUOTE_EXPIRED") || errorMessage.includes("quote expired")) {
-      userMessage = "Quote expired. Please retry the operation.";
-    } else if (errorMessage.includes("INSUFFICIENT_BALANCE") || errorMessage.includes("insufficient balance")) {
-      userMessage = "Insufficient token balance for this operation.";
-    } else if (errorMessage.includes("No quotes available")) {
-      userMessage = "No swap routes available for this token pair. The pair may not have liquidity.";
-    }
+    const userMessage = formatErrorMessage(errorMessage);
 
     return {
       content: [
