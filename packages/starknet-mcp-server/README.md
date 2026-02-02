@@ -6,7 +6,7 @@ An MCP (Model Context Protocol) server that exposes Starknet blockchain operatio
 
 - **Wallet Operations**: Check balances, transfer tokens
 - **Contract Interactions**: Call read/write functions on any Starknet contract
-- **DeFi Operations**: Execute swaps via AVNU aggregator with best-price routing
+- **DeFi Operations**: Execute swaps via avnu aggregator with best-price routing
 - **Fee Estimation**: Estimate transaction costs before execution
 - **Multi-token Support**: ETH, STRK, USDC, USDT, and custom ERC20 tokens
 
@@ -26,7 +26,10 @@ Create a `.env` file with your Starknet credentials:
 STARKNET_RPC_URL=https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY
 STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_PRIVATE_KEY=0x...
-AVNU_BASE_URL=https://starknet.api.avnu.fi  # Optional
+
+# avnu URLs (optional -- defaults shown)
+AVNU_BASE_URL=https://starknet.api.avnu.fi
+AVNU_PAYMASTER_URL=https://starknet.paymaster.avnu.fi
 ```
 
 ## Usage
@@ -108,7 +111,7 @@ Invoke a state-changing contract function.
 
 ### `starknet_swap`
 
-Execute a token swap using AVNU aggregator.
+Execute a token swap using avnu aggregator.
 
 ```typescript
 {

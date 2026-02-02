@@ -11,7 +11,7 @@
  * - starknet_transfer: Send tokens
  * - starknet_call_contract: Read contract state
  * - starknet_invoke_contract: Write to contracts
- * - starknet_swap: Execute swaps via AVNU
+ * - starknet_swap: Execute swaps via avnu
  * - starknet_get_quote: Get swap quotes
  * - starknet_register_agent: Register agent identity (ERC-8004)
  *
@@ -30,25 +30,20 @@ import {
   Account,
   RpcProvider,
   Contract,
-  constants,
   CallData,
-  uint256,
   cairo,
+  uint256,
+  PaymasterRpc,
+  ETransactionVersion,
 } from "starknet";
 import {
+  getQuotes,
   executeSwap,
-  QuoteRequest,
-  fetchPrices,
+  type Quote,
+  type QuoteRequest,
+  type Route,
 } from "@avnu/avnu-sdk";
 import { z } from "zod";
-
-// Stub for getQuotes - AVNU SDK API changed
-// TODO: Update to use the new AVNU SDK API
-async function getQuotes(request: QuoteRequest, options?: { baseUrl?: string }): Promise<any[]> {
-  // For now, return empty array - this needs to be updated with the new AVNU API
-  console.warn("getQuotes is a stub implementation - needs update to new AVNU SDK API");
-  return [];
-}
 
 // Environment validation
 const envSchema = z.object({
@@ -56,6 +51,7 @@ const envSchema = z.object({
   STARKNET_ACCOUNT_ADDRESS: z.string().startsWith("0x"),
   STARKNET_PRIVATE_KEY: z.string().startsWith("0x"),
   AVNU_BASE_URL: z.string().url().optional(),
+  AVNU_PAYMASTER_URL: z.string().url().optional(),
 });
 
 const env = envSchema.parse({
@@ -63,6 +59,7 @@ const env = envSchema.parse({
   STARKNET_ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS,
   STARKNET_PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY,
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || "https://starknet.api.avnu.fi",
+  AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
 });
 
 // Token addresses (Mainnet)
@@ -100,15 +97,14 @@ const ERC20_ABI = [
   },
 ];
 
-// Initialize Starknet provider and account
+// Initialize Starknet provider and account (starknet.js v8 uses options object)
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL });
-const account = new Account(
+const account = new Account({
   provider,
-  env.STARKNET_ACCOUNT_ADDRESS,
-  env.STARKNET_PRIVATE_KEY,
-  undefined,
-  constants.TRANSACTION_VERSION.V3
-);
+  address: env.STARKNET_ACCOUNT_ADDRESS,
+  signer: env.STARKNET_PRIVATE_KEY,
+  transactionVersion: ETransactionVersion.V3,
+});
 
 // MCP Server setup
 const server = new Server(
@@ -217,7 +213,7 @@ const tools: Tool[] = [
   {
     name: "starknet_swap",
     description:
-      "Execute a token swap on Starknet using AVNU aggregator for best prices",
+      "Execute a token swap on Starknet using avnu aggregator for best prices. Supports gasless mode where gas is paid in the sell token.",
     inputSchema: {
       type: "object",
       properties: {
@@ -237,6 +233,11 @@ const tools: Tool[] = [
           type: "number",
           description: "Maximum slippage tolerance (0.01 = 1%)",
           default: 0.01,
+        },
+        gasless: {
+          type: "boolean",
+          description: "Pay gas in sell token instead of ETH/STRK",
+          default: false,
         },
       },
       required: ["sellToken", "buyToken", "amount"],
@@ -307,7 +308,7 @@ async function parseAmount(
   amount: string,
   tokenAddress: string
 ): Promise<bigint> {
-  const contract = new Contract(ERC20_ABI, tokenAddress, provider);
+  const contract = new Contract({ abi: ERC20_ABI, address: tokenAddress, providerOrAccount: provider });
   const decimals = await contract.decimals();
   const decimalsBigInt = BigInt(decimals.toString());
 
@@ -344,7 +345,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const tokenAddress = resolveTokenAddress(token);
-        const contract = new Contract(ERC20_ABI, tokenAddress, provider);
+        const contract = new Contract({ abi: ERC20_ABI, address: tokenAddress, providerOrAccount: provider });
 
         const balance = await contract.balanceOf(address);
         const decimals = await contract.decimals();
@@ -383,7 +384,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           entrypoint: "transfer",
           calldata: CallData.compile({
             recipient,
-            amount: uint256.bnToUint256(amountWei),
+            amount: cairo.uint256(amountWei),
           }),
         });
 
@@ -463,39 +464,60 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_swap": {
-        const { sellToken, buyToken, amount, slippage = 0.01 } = args as {
+        const { sellToken, buyToken, amount, slippage = 0.01, gasless = false } = args as {
           sellToken: string;
           buyToken: string;
           amount: string;
           slippage?: number;
+          gasless?: boolean;
         };
 
         const sellTokenAddress = resolveTokenAddress(sellToken);
         const buyTokenAddress = resolveTokenAddress(buyToken);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
-        const quoteRequest: QuoteRequest = {
+        // SDK v4: getQuotes takes QuoteRequest object
+        const quoteParams: QuoteRequest = {
           sellTokenAddress,
           buyTokenAddress,
           sellAmount,
           takerAddress: account.address,
         };
 
-        const quotes = await getQuotes(quoteRequest, {
-          baseUrl: env.AVNU_BASE_URL,
-        });
+        const quotes = await getQuotes(quoteParams, { baseUrl: env.AVNU_BASE_URL });
 
-        if (quotes.length === 0) {
+        if (!quotes || quotes.length === 0) {
           throw new Error("No quotes available for this swap");
         }
 
         const bestQuote = quotes[0];
 
-        const result = await executeSwap(
-          account,
-          bestQuote,
-          { slippage, executeApprove: true }
-        );
+        // SDK v4: executeSwap takes single object param
+        const swapParams: Parameters<typeof executeSwap>[0] = {
+          provider: account,
+          quote: bestQuote,
+          slippage,
+          executeApprove: true,
+        };
+
+        // Gasless mode using PaymasterRpc
+        if (gasless) {
+          const paymaster = new PaymasterRpc({ nodeUrl: env.AVNU_PAYMASTER_URL });
+          swapParams.paymaster = {
+            active: true,
+            provider: paymaster,
+            params: {
+              version: "0x1" as const,
+              feeMode: { mode: "default", gasToken: sellTokenAddress },
+            },
+          };
+        }
+
+        const result = await executeSwap(swapParams);
+
+        // Get buyToken decimals for proper formatting
+        const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
+        const buyDecimals = await buyTokenContract.decimals();
 
         return {
           content: [
@@ -507,11 +529,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 sellToken,
                 buyToken,
                 sellAmount: amount,
-                buyAmount: formatAmount(
-                  BigInt(bestQuote.buyAmount),
-                  18
-                ),
+                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), Number(buyDecimals)),
+                buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
+                priceImpact: bestQuote.priceImpact
+                  ? `${(bestQuote.priceImpact / 100).toFixed(2)}%`
+                  : undefined,
+                gasFeesUsd: bestQuote.gasFeesInUsd?.toFixed(4),
+                routes: bestQuote.routes?.map((r: Route) => ({
+                  name: r.name,
+                  percent: `${(r.percent * 100).toFixed(1)}%`,
+                })),
                 slippage,
+                gasless,
               }, null, 2),
             },
           ],
@@ -529,22 +558,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const buyTokenAddress = resolveTokenAddress(buyToken);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
-        const quoteRequest: QuoteRequest = {
+        // SDK v4: getQuotes takes QuoteRequest object
+        const quoteParams: QuoteRequest = {
           sellTokenAddress,
           buyTokenAddress,
           sellAmount,
           takerAddress: account.address,
         };
 
-        const quotes = await getQuotes(quoteRequest, {
-          baseUrl: env.AVNU_BASE_URL,
-        });
+        const quotes = await getQuotes(quoteParams, { baseUrl: env.AVNU_BASE_URL });
 
-        if (quotes.length === 0) {
+        if (!quotes || quotes.length === 0) {
           throw new Error("No quotes available");
         }
 
         const bestQuote = quotes[0];
+
+        // Get buyToken decimals for proper formatting
+        const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
+        const buyDecimals = await buyTokenContract.decimals();
 
         return {
           content: [
@@ -554,9 +586,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 sellToken,
                 buyToken,
                 sellAmount: amount,
-                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), 18),
-                priceImpact: bestQuote.priceRatioUsd,
-                gasEstimate: bestQuote.gasEstimate,
+                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), Number(buyDecimals)),
+                sellAmountInUsd: bestQuote.sellAmountInUsd?.toFixed(2),
+                buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
+                priceImpact: bestQuote.priceImpact
+                  ? `${(bestQuote.priceImpact / 100).toFixed(2)}%`
+                  : undefined,
+                gasFeesUsd: bestQuote.gasFeesInUsd?.toFixed(4),
+                routes: bestQuote.routes?.map((r: Route) => ({
+                  name: r.name,
+                  percent: `${(r.percent * 100).toFixed(1)}%`,
+                })),
+                quoteId: bestQuote.quoteId,
               }, null, 2),
             },
           ],
@@ -576,6 +617,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           calldata,
         });
 
+        // starknet.js v8: EstimateFeeResponseOverhead has overall_fee, resourceBounds, unit
         return {
           content: [
             {
@@ -585,9 +627,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   BigInt(fee.overall_fee.toString()),
                   18
                 ),
-                gasPrice: fee.gas_price?.toString(),
-                gasUsed: fee.gas_consumed?.toString(),
-                unit: "STRK",
+                resourceBounds: fee.resourceBounds,
+                unit: fee.unit || "STRK",
               }, null, 2),
             },
           ],
@@ -599,13 +640,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // avnu-specific error handling with user-friendly messages
+    let userMessage = errorMessage;
+    if (errorMessage.includes("INSUFFICIENT_LIQUIDITY") || errorMessage.includes("insufficient liquidity")) {
+      userMessage = "Insufficient liquidity for this swap. Try a smaller amount or different token pair.";
+    } else if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage") || errorMessage.includes("Insufficient tokens received")) {
+      userMessage = "Slippage exceeded. Try increasing slippage tolerance.";
+    } else if (errorMessage.includes("QUOTE_EXPIRED") || errorMessage.includes("quote expired")) {
+      userMessage = "Quote expired. Please retry the operation.";
+    } else if (errorMessage.includes("INSUFFICIENT_BALANCE") || errorMessage.includes("insufficient balance")) {
+      userMessage = "Insufficient token balance for this operation.";
+    } else if (errorMessage.includes("No quotes available")) {
+      userMessage = "No swap routes available for this token pair. The pair may not have liquidity.";
+    }
+
     return {
       content: [
         {
           type: "text",
           text: JSON.stringify({
             error: true,
-            message: errorMessage,
+            message: userMessage,
+            originalError: errorMessage !== userMessage ? errorMessage : undefined,
             tool: name,
           }, null, 2),
         },

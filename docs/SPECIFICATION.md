@@ -127,7 +127,7 @@ Each tool follows the MCP tool schema:
 ```typescript
 {
   name: "starknet_swap",
-  description: "Execute a token swap on Starknet using AVNU aggregator",
+  description: "Execute a token swap on Starknet using avnu aggregator",
   inputSchema: {
     type: "object",
     properties: {
@@ -239,7 +239,7 @@ user-invocable: boolean # Can users explicitly invoke
 
 Follows the Daydreams extension pattern (`extension()` helper):
 
-- **Services:** StarknetProvider (RPC + account), AvnuService (DeFi)
+- **Services:** StarknetProvider (RPC + account), avnuService (DeFi)
 - **Contexts:** `starknet-wallet` (balance, tx history), `starknet-agent` (identity, reputation)
 - **Actions:** transfer, swap, stake, registerAgent, giveFeedback
 - **Inputs:** on-chain event subscription via Torii/polling

@@ -67,7 +67,7 @@ npx skills add starknet-agentic/skills/starknet-identity
 | Skill | Description | Status |
 |-------|-------------|--------|
 | **starknet-wallet** | Create and manage agent wallets, session keys, transfers, balances | Planned |
-| **starknet-defi** | Token swaps (AVNU), staking, lending, LP management | Planned |
+| **starknet-defi** | Token swaps (avnu), staking, lending, LP management | Planned |
 | **starknet-identity** | On-chain agent registration, reputation, validation (ERC-8004) | Planned |
 
 ## Smart Contracts
@@ -100,7 +100,7 @@ An [MCP](https://modelcontextprotocol.io/) server that exposes Starknet operatio
 - `starknet_transfer` -- Send tokens
 - `starknet_deploy_contract` -- Deploy Cairo contracts
 - `starknet_call_contract` -- Read contract state
-- `starknet_swap` -- Execute swaps via AVNU aggregator
+- `starknet_swap` -- Execute swaps via avnu aggregator
 - `starknet_register_agent` -- Register agent on-chain (ERC-8004)
 
 ### Starknet A2A Adapter (`packages/starknet-a2a/`)
@@ -143,7 +143,7 @@ These projects provide foundational components that this repository builds upon:
 |---------|-----------------|------|
 | **Daydreams** | Agent framework with `StarknetChain` class | [GitHub](https://github.com/daydreamsai/daydreams) |
 | **Lucid Agents** | Commerce SDK (wallet connectors, x402 payments, A2A) | [GitHub](https://github.com/daydreamsai/lucid-agents) |
-| **AVNU Skill** | Claude Code skill for Starknet DeFi (swaps, DCA, staking) | [GitHub](https://github.com/avnu-labs/avnu-skill) |
+| **avnu Skill** | Claude Code skill for Starknet DeFi (swaps, DCA, staking) | [GitHub](https://github.com/avnu-labs/avnu-skill) |
 | **ERC-8004 Cairo** | Agent identity/reputation/validation contracts | [GitHub](https://github.com/Akashneelesh/erc8004-cairo) |
 | **Snak** | MCP-native Starknet agent toolkit | [GitHub](https://github.com/KasarLabs/snak) |
 | **Cartridge Controller** | Smart wallet with session keys | [Docs](https://docs.cartridge.gg/controller/getting-started) |
@@ -185,7 +185,7 @@ pnpm --filter starknet-mcp-server dev
 - [ ] Starknet wallet skill for Claude Code / OpenClaw
 
 ### Phase 2: DeFi Integration
-- [ ] AVNU swap integration in MCP server
+- [ ] avnu swap integration in MCP server
 - [ ] Staking actions (STRK, liquid staking)
 - [ ] Lending protocol actions (zkLend, Nostra)
 - [ ] DeFi skill for Claude Code / OpenClaw

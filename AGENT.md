@@ -46,7 +46,7 @@ Starknet Agentic implements all three layers with Starknet as the settlement and
 | Asset | Where | What We Use |
 |-------|-------|-------------|
 | ERC-8004 Cairo contracts | [erc8004-cairo](https://github.com/Akashneelesh/erc8004-cairo) | Identity, Reputation, Validation registries. 74 unit tests + 47 E2E tests. Production-ready on Sepolia. |
-| AVNU Skill | [avnu-skill](https://github.com/avnu-labs/avnu-skill) | Swap, DCA, staking, gasless/gasfree patterns. Documentation + scripts. |
+| avnu Skill | [avnu-skill](https://github.com/avnu-labs/avnu-skill) | Swap, DCA, staking, gasless/gasfree patterns. Documentation + scripts. |
 | Daydreams StarknetChain | [daydreams/defai](https://github.com/daydreamsai/daydreams) | Minimal IChain (read/write) using starknet.js v6. We extend this. |
 | Lucid Agents Extension System | [lucid-agents](https://github.com/daydreamsai/lucid-agents) | WalletConnector, PaymentsRuntime, EntrypointDef interfaces. We implement for Starknet. |
 | Snak Agent Kit | [snak](https://github.com/KasarLabs/snak) | MCP-native toolkit with plugin architecture. We can contribute plugins. |
@@ -109,7 +109,7 @@ The Starknet MCP server exposes these tools to any MCP-compatible agent:
 - `starknet_get_events` -- Query on-chain events
 
 ### DeFi Tools
-- `starknet_swap` -- Execute token swaps via AVNU aggregator
+- `starknet_swap` -- Execute token swaps via avnu aggregator
 - `starknet_get_quote` -- Get swap quotes without executing
 - `starknet_stake` -- Stake STRK or liquid staking tokens
 - `starknet_create_dca` -- Create Dollar Cost Averaging orders
@@ -209,9 +209,10 @@ export function starknetWallet(config: StarknetConfig): Extension {
 - USDT: `0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8`
 
 ### API Endpoints
-- AVNU Mainnet: `https://starknet.api.avnu.fi`
-- AVNU Sepolia: `https://sepolia.api.avnu.fi`
-- AVNU Paymaster: `https://starknet.api.avnu.fi/paymaster/v1`
+- avnu Mainnet: `https://starknet.api.avnu.fi`
+- avnu Sepolia: `https://sepolia.api.avnu.fi`
+- avnu Paymaster Mainnet: `https://starknet.paymaster.avnu.fi`
+- avnu Paymaster Sepolia: `https://sepolia.paymaster.avnu.fi`
 
 ## Decision Log
 
@@ -220,6 +221,6 @@ export function starknetWallet(config: StarknetConfig): Extension {
 | Cairo for contracts, not Solidity | Native to Starknet, leverages AA and ZK natively |
 | MCP as primary integration protocol | Most portable -- works with Claude, ChatGPT, Cursor, OpenClaw |
 | ERC-8004 for identity | Only standardized on-chain agent identity; Cairo impl exists |
-| AVNU for DeFi aggregation | Best Starknet DEX aggregator; SDK well-documented |
+| avnu for DeFi aggregation | Best Starknet DEX aggregator; SDK well-documented |
 | Skills marketplace in-repo | Lower friction than separate registry; grow with ecosystem |
 | pnpm workspaces for TS packages | Standard monorepo management; matches Daydreams/Lucid |

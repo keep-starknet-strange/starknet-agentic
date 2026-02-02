@@ -253,7 +253,7 @@ Combine on-chain identity with A2A Agent Cards for discoverability:
     {
       "id": "starknet-swap",
       "name": "Token Swap",
-      "description": "Execute token swaps on Starknet via AVNU"
+      "description": "Execute token swaps on Starknet via avnu"
     }
   ],
   "defaultInputModes": ["text/plain"],

@@ -92,7 +92,7 @@ NOTE: The `contracts/` directory is currently empty. All production Cairo contra
 - YAML frontmatter: `name`, `description`, `keywords`, `allowed-tools`, `user-invocable`
 - Name format: lowercase, hyphens only, 1-64 chars
 - Include code examples with starknet.js patterns
-- Reference AVNU SDK for all DeFi operations
+- Reference avnu SDK for all DeFi operations
 - List error codes with recovery steps
 
 ### Git
@@ -118,7 +118,7 @@ This project implements three converging agent standards:
 
 - **Native Account Abstraction**: Every account is a smart contract. Custom validation, session keys, fee abstraction, nonce abstraction are all first-class.
 - **Session Keys**: Temporary keys with limited permissions (allowed methods, time bounds, spending limits). Critical for agent autonomy. Cartridge Controller is the reference implementation.
-- **Paymaster**: Gas fees paid in any token or sponsored by third party. AVNU paymaster supports USDC/USDT/STRK/ETH. "Gasfree" mode = dApp sponsors all gas.
+- **Paymaster**: Gas fees paid in any token or sponsored by third party. avnu paymaster supports USDC/USDT/STRK/ETH. "Gasfree" mode = dApp sponsors all gas.
 - **V3 Transactions**: Current transaction version. Fees paid in STRK (not ETH).
 
 </starknet_concepts>
@@ -148,9 +148,10 @@ Metadata schema keys: `agentName`, `agentType`, `version`, `model`, `status`, `f
 - USDT: `0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8`
 
 ### API Endpoints
-- AVNU Mainnet: `https://starknet.api.avnu.fi`
-- AVNU Sepolia: `https://sepolia.api.avnu.fi`
-- AVNU Paymaster: `https://starknet.api.avnu.fi/paymaster/v1`
+- avnu Mainnet: `https://starknet.api.avnu.fi`
+- avnu Sepolia: `https://sepolia.api.avnu.fi`
+- avnu Paymaster Mainnet: `https://starknet.paymaster.avnu.fi`
+- avnu Paymaster Sepolia: `https://sepolia.paymaster.avnu.fi`
 
 </key_addresses>
 
@@ -164,7 +165,7 @@ Metadata schema keys: `agentName`, `agentType`, `version`, `model`, `status`, `f
 
 ### Adding a new MCP tool
 1. Define tool schema with Zod in `packages/starknet-mcp-server/src/tools/`
-2. Implement handler using starknet.js or AVNU SDK
+2. Implement handler using starknet.js or avnu SDK
 3. Register in the server's tool list
 4. Add Vitest tests
 5. Document in AGENT.md tool list
