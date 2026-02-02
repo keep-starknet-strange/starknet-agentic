@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   mockQuote,
   mockSwapResult,
+  mockQuoteToCalls,
   createMockAvnu,
   createMockAvnuNoQuotes,
   createMockAvnuWithError,
@@ -11,6 +12,7 @@ import {
 // Mock the @avnu/avnu-sdk module
 vi.mock("@avnu/avnu-sdk", () => ({
   getQuotes: vi.fn(),
+  quoteToCalls: vi.fn(),
   executeSwap: vi.fn(),
 }));
 
@@ -42,7 +44,7 @@ vi.mock("starknet", () => ({
   PaymasterRpc: vi.fn().mockImplementation(() => ({})),
 }));
 
-import { getQuotes, executeSwap } from "@avnu/avnu-sdk";
+import { getQuotes, quoteToCalls, executeSwap } from "@avnu/avnu-sdk";
 
 describe("avnu SDK v4 Integration", () => {
   beforeEach(() => {
@@ -181,6 +183,125 @@ describe("avnu SDK v4 Integration", () => {
       };
 
       await expect(executeSwap(swapParams)).rejects.toThrow("QUOTE_EXPIRED");
+    });
+  });
+
+  describe("quoteToCalls", () => {
+    it("should return calls array from quote", async () => {
+      const mock = createMockAvnu();
+      vi.mocked(quoteToCalls).mockImplementation(mock.quoteToCalls);
+
+      const params = {
+        quoteId: mockQuote.quoteId,
+        takerAddress: "0x1234567890abcdef",
+        slippage: 0.01,
+        executeApprove: true,
+      };
+
+      const result = await quoteToCalls(params);
+
+      expect(result.calls).toHaveLength(2);
+      expect(result.calls[0].entrypoint).toBe("approve");
+      expect(result.calls[1].entrypoint).toBe("multi_route_swap");
+      expect(result.chainId).toBe("SN_MAIN");
+    });
+
+    it("should work with account.execute pattern", async () => {
+      const mock = createMockAvnu();
+      vi.mocked(quoteToCalls).mockImplementation(mock.quoteToCalls);
+
+      const params = {
+        quoteId: mockQuote.quoteId,
+        takerAddress: "0x1234567890abcdef",
+        slippage: 0.01,
+        executeApprove: true,
+      };
+
+      const { calls } = await quoteToCalls(params);
+
+      // Simulate account.execute call
+      const mockAccount = {
+        execute: vi.fn().mockResolvedValue({ transaction_hash: "0xabc123" }),
+      };
+
+      const result = await mockAccount.execute(calls);
+      expect(result.transaction_hash).toBe("0xabc123");
+      expect(mockAccount.execute).toHaveBeenCalledWith(calls);
+    });
+
+    it("should support gasfree mode with executePaymasterTransaction", async () => {
+      const mock = createMockAvnu();
+      vi.mocked(quoteToCalls).mockImplementation(mock.quoteToCalls);
+
+      const params = {
+        quoteId: mockQuote.quoteId,
+        takerAddress: "0x1234567890abcdef",
+        slippage: 0.01,
+        executeApprove: true,
+      };
+
+      const { calls } = await quoteToCalls(params);
+
+      // Simulate paymaster execution
+      const mockAccount = {
+        estimatePaymasterTransactionFee: vi.fn().mockResolvedValue({
+          suggested_max_fee_in_gas_token: "1000000",
+        }),
+        executePaymasterTransaction: vi.fn().mockResolvedValue({
+          transaction_hash: "0xpaymaster123",
+        }),
+      };
+
+      const feeDetails = {
+        feeMode: { mode: "default" as const, gasToken: TOKENS.USDC },
+      };
+
+      const estimation = await mockAccount.estimatePaymasterTransactionFee(calls, feeDetails);
+      const result = await mockAccount.executePaymasterTransaction(
+        calls,
+        feeDetails,
+        estimation.suggested_max_fee_in_gas_token
+      );
+
+      expect(result.transaction_hash).toBe("0xpaymaster123");
+      expect(mockAccount.estimatePaymasterTransactionFee).toHaveBeenCalledWith(calls, feeDetails);
+    });
+
+    it("should support sponsored mode (gasfree with API key)", async () => {
+      const mock = createMockAvnu();
+      vi.mocked(quoteToCalls).mockImplementation(mock.quoteToCalls);
+
+      const params = {
+        quoteId: mockQuote.quoteId,
+        takerAddress: "0x1234567890abcdef",
+        slippage: 0.01,
+        executeApprove: true,
+      };
+
+      const { calls } = await quoteToCalls(params);
+
+      // Simulate sponsored mode execution
+      const mockAccount = {
+        estimatePaymasterTransactionFee: vi.fn().mockResolvedValue({
+          suggested_max_fee_in_gas_token: "0", // Sponsored = no fee for user
+        }),
+        executePaymasterTransaction: vi.fn().mockResolvedValue({
+          transaction_hash: "0xsponsored456",
+        }),
+      };
+
+      const sponsoredFeeDetails = {
+        feeMode: { mode: "sponsored" as const },
+      };
+
+      const estimation = await mockAccount.estimatePaymasterTransactionFee(calls, sponsoredFeeDetails);
+      const result = await mockAccount.executePaymasterTransaction(
+        calls,
+        sponsoredFeeDetails,
+        estimation.suggested_max_fee_in_gas_token
+      );
+
+      expect(result.transaction_hash).toBe("0xsponsored456");
     });
   });
 

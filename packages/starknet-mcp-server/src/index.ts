@@ -35,10 +35,12 @@ import {
   uint256,
   PaymasterRpc,
   ETransactionVersion,
+  type Call,
+  type PaymasterDetails,
 } from "starknet";
 import {
   getQuotes,
-  executeSwap,
+  quoteToCalls,
   type Quote,
   type QuoteRequest,
   type Route,
@@ -52,6 +54,7 @@ const envSchema = z.object({
   STARKNET_PRIVATE_KEY: z.string().startsWith("0x"),
   AVNU_BASE_URL: z.string().url().optional(),
   AVNU_PAYMASTER_URL: z.string().url().optional(),
+  AVNU_PAYMASTER_API_KEY: z.string().optional(),
 });
 
 const env = envSchema.parse({
@@ -60,6 +63,7 @@ const env = envSchema.parse({
   STARKNET_PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY,
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || "https://starknet.api.avnu.fi",
   AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
+  AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
 });
 
 // Token addresses (Mainnet)
@@ -106,6 +110,52 @@ const account = new Account({
   transactionVersion: ETransactionVersion.V3,
 });
 
+// Global Paymaster configuration
+// - If AVNU_PAYMASTER_API_KEY is set, use sponsored (gasfree) mode where dApp pays gas
+// - Otherwise, use default mode where user pays gas in the specified token
+const paymasterRpc = new PaymasterRpc({
+  nodeUrl: env.AVNU_PAYMASTER_URL,
+  ...(env.AVNU_PAYMASTER_API_KEY && {
+    headers: { "x-paymaster-api-key": env.AVNU_PAYMASTER_API_KEY },
+  }),
+});
+
+// Fee mode: sponsored (gasfree, dApp pays) vs default (user pays in gasToken)
+const isSponsored = !!env.AVNU_PAYMASTER_API_KEY;
+
+// Gasfree execution options
+interface GasfreeOptions {
+  gasToken?: string; // Token address for fee payment (only used in default mode)
+}
+
+/**
+ * Execute calls with paymaster (gasfree mode).
+ * - In sponsored mode: dApp pays all gas fees (requires AVNU_PAYMASTER_API_KEY)
+ * - In default mode: user pays gas in the specified token
+ */
+async function executeWithPaymaster(
+  calls: Call | Call[],
+  options: GasfreeOptions = {}
+): Promise<{ transaction_hash: string }> {
+  const callsArray = Array.isArray(calls) ? calls : [calls];
+
+  const feeDetails: PaymasterDetails = isSponsored
+    ? { feeMode: { mode: "sponsored" } }
+    : { feeMode: { mode: "default", gasToken: options.gasToken || TOKENS.STRK } };
+
+  // Estimate fees
+  const estimation = await account.estimatePaymasterTransactionFee(callsArray, feeDetails);
+
+  // Execute with paymaster
+  const result = await account.executePaymasterTransaction(
+    callsArray,
+    feeDetails,
+    estimation.suggested_max_fee_in_gas_token
+  );
+
+  return { transaction_hash: result.transaction_hash };
+}
+
 // MCP Server setup
 const server = new Server(
   {
@@ -142,7 +192,7 @@ const tools: Tool[] = [
   },
   {
     name: "starknet_transfer",
-    description: "Transfer tokens to another address on Starknet",
+    description: "Transfer tokens to another address on Starknet. Supports gasfree mode where gas is paid in an ERC-20 token instead of ETH/STRK.",
     inputSchema: {
       type: "object",
       properties: {
@@ -157,6 +207,15 @@ const tools: Tool[] = [
         amount: {
           type: "string",
           description: "Amount to transfer in human-readable format (e.g., '1.5' for 1.5 tokens)",
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
+          default: false,
+        },
+        gasToken: {
+          type: "string",
+          description: "Token to pay gas fees in (symbol or address). Only used when gasfree=true and no API key is set.",
         },
       },
       required: ["recipient", "token", "amount"],
@@ -188,7 +247,7 @@ const tools: Tool[] = [
   },
   {
     name: "starknet_invoke_contract",
-    description: "Invoke a state-changing contract function on Starknet",
+    description: "Invoke a state-changing contract function on Starknet. Supports gasfree mode where gas is paid in an ERC-20 token instead of ETH/STRK.",
     inputSchema: {
       type: "object",
       properties: {
@@ -206,6 +265,15 @@ const tools: Tool[] = [
           description: "Function arguments as array of strings",
           default: [],
         },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
+          default: false,
+        },
+        gasToken: {
+          type: "string",
+          description: "Token to pay gas fees in (symbol or address). Only used when gasfree=true and no API key is set.",
+        },
       },
       required: ["contractAddress", "entrypoint"],
     },
@@ -213,7 +281,7 @@ const tools: Tool[] = [
   {
     name: "starknet_swap",
     description:
-      "Execute a token swap on Starknet using avnu aggregator for best prices. Supports gasless mode where gas is paid in the sell token.",
+      "Execute a token swap on Starknet using avnu aggregator for best prices. Supports gasfree mode where gas is paid via paymaster.",
     inputSchema: {
       type: "object",
       properties: {
@@ -234,10 +302,14 @@ const tools: Tool[] = [
           description: "Maximum slippage tolerance (0.01 = 1%)",
           default: 0.01,
         },
-        gasless: {
+        gasfree: {
           type: "boolean",
-          description: "Pay gas in sell token instead of ETH/STRK",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
           default: false,
+        },
+        gasToken: {
+          type: "string",
+          description: "Token to pay gas fees in (symbol or address). Defaults to sellToken. Only used when gasfree=true and no API key is set.",
         },
       },
       required: ["sellToken", "buyToken", "amount"],
@@ -370,23 +442,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_transfer": {
-        const { recipient, token, amount } = args as {
+        const { recipient, token, amount, gasfree = false, gasToken } = args as {
           recipient: string;
           token: string;
           amount: string;
+          gasfree?: boolean;
+          gasToken?: string;
         };
 
         const tokenAddress = resolveTokenAddress(token);
         const amountWei = await parseAmount(amount, tokenAddress);
 
-        const { transaction_hash } = await account.execute({
+        const transferCall: Call = {
           contractAddress: tokenAddress,
           entrypoint: "transfer",
           calldata: CallData.compile({
             recipient,
             amount: cairo.uint256(amountWei),
           }),
-        });
+        };
+
+        let transaction_hash: string;
+        if (gasfree) {
+          const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
+          const result = await executeWithPaymaster(transferCall, { gasToken: gasTokenAddress });
+          transaction_hash = result.transaction_hash;
+        } else {
+          const result = await account.execute(transferCall);
+          transaction_hash = result.transaction_hash;
+        }
 
         await provider.waitForTransaction(transaction_hash);
 
@@ -400,6 +484,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 recipient,
                 token,
                 amount,
+                gasfree,
               }, null, 2),
             },
           ],
@@ -434,17 +519,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_invoke_contract": {
-        const { contractAddress, entrypoint, calldata = [] } = args as {
+        const { contractAddress, entrypoint, calldata = [], gasfree = false, gasToken } = args as {
           contractAddress: string;
           entrypoint: string;
           calldata?: string[];
+          gasfree?: boolean;
+          gasToken?: string;
         };
 
-        const { transaction_hash } = await account.execute({
+        const invokeCall: Call = {
           contractAddress,
           entrypoint,
           calldata,
-        });
+        };
+
+        let transaction_hash: string;
+        if (gasfree) {
+          const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
+          const result = await executeWithPaymaster(invokeCall, { gasToken: gasTokenAddress });
+          transaction_hash = result.transaction_hash;
+        } else {
+          const result = await account.execute(invokeCall);
+          transaction_hash = result.transaction_hash;
+        }
 
         await provider.waitForTransaction(transaction_hash);
 
@@ -457,6 +554,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 transactionHash: transaction_hash,
                 contractAddress,
                 entrypoint,
+                gasfree,
               }, null, 2),
             },
           ],
@@ -464,12 +562,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_swap": {
-        const { sellToken, buyToken, amount, slippage = 0.01, gasless = false } = args as {
+        const { sellToken, buyToken, amount, slippage = 0.01, gasfree = false, gasToken } = args as {
           sellToken: string;
           buyToken: string;
           amount: string;
           slippage?: number;
-          gasless?: boolean;
+          gasfree?: boolean;
+          gasToken?: string;
         };
 
         const sellTokenAddress = resolveTokenAddress(sellToken);
@@ -492,28 +591,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const bestQuote = quotes[0];
 
-        // SDK v4: executeSwap takes single object param
-        const swapParams: Parameters<typeof executeSwap>[0] = {
-          provider: account,
-          quote: bestQuote,
+        // Build calls from quote (includes approve + swap calls)
+        const { calls } = await quoteToCalls({
+          quoteId: bestQuote.quoteId,
+          takerAddress: account.address,
           slippage,
           executeApprove: true,
-        };
+        }, { baseUrl: env.AVNU_BASE_URL });
 
-        // Gasless mode using PaymasterRpc
-        if (gasless) {
-          const paymaster = new PaymasterRpc({ nodeUrl: env.AVNU_PAYMASTER_URL });
-          swapParams.paymaster = {
-            active: true,
-            provider: paymaster,
-            params: {
-              version: "0x1" as const,
-              feeMode: { mode: "default", gasToken: sellTokenAddress },
-            },
-          };
+        // Execute: gasfree mode uses paymaster, otherwise regular execute
+        let transaction_hash: string;
+        if (gasfree) {
+          const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : sellTokenAddress;
+          const result = await executeWithPaymaster(calls, { gasToken: gasTokenAddress });
+          transaction_hash = result.transaction_hash;
+        } else {
+          const result = await account.execute(calls);
+          transaction_hash = result.transaction_hash;
         }
 
-        const result = await executeSwap(swapParams);
+        await provider.waitForTransaction(transaction_hash);
 
         // Get buyToken decimals for proper formatting
         const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
@@ -525,7 +622,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify({
                 success: true,
-                transactionHash: result.transactionHash,
+                transactionHash: transaction_hash,
                 sellToken,
                 buyToken,
                 sellAmount: amount,
@@ -540,7 +637,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   percent: `${(r.percent * 100).toFixed(1)}%`,
                 })),
                 slippage,
-                gasless,
+                gasfree,
               }, null, 2),
             },
           ],

@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { Quote } from "@avnu/avnu-sdk";
+import type { Quote, AvnuCalls } from "@avnu/avnu-sdk";
 
 // Token addresses for testing
 export const TOKENS = {
@@ -45,10 +45,28 @@ export const mockSwapResult = {
   transactionHash: "0x123abc456def789",
 };
 
+// Mock quoteToCalls result - returns calls array for use with account.execute()
+export const mockQuoteToCalls: AvnuCalls = {
+  calls: [
+    {
+      contractAddress: TOKENS.ETH,
+      entrypoint: "approve",
+      calldata: ["0xavnu_router", "1000000000000000000", "0"],
+    },
+    {
+      contractAddress: "0xavnu_router",
+      entrypoint: "multi_route_swap",
+      calldata: ["0x123", "0x456"],
+    },
+  ],
+  chainId: "SN_MAIN",
+};
+
 // Create mock avnu SDK functions
 export function createMockAvnu() {
   return {
     getQuotes: vi.fn().mockResolvedValue([mockQuote]),
+    quoteToCalls: vi.fn().mockResolvedValue(mockQuoteToCalls),
     executeSwap: vi.fn().mockResolvedValue(mockSwapResult),
   };
 }
@@ -57,6 +75,7 @@ export function createMockAvnu() {
 export function createMockAvnuNoQuotes() {
   return {
     getQuotes: vi.fn().mockResolvedValue([]),
+    quoteToCalls: vi.fn().mockRejectedValue(new Error("No quotes available")),
     executeSwap: vi.fn().mockRejectedValue(new Error("No quotes available")),
   };
 }
@@ -65,6 +84,7 @@ export function createMockAvnuNoQuotes() {
 export function createMockAvnuWithError(errorMessage: string) {
   return {
     getQuotes: vi.fn().mockRejectedValue(new Error(errorMessage)),
+    quoteToCalls: vi.fn().mockRejectedValue(new Error(errorMessage)),
     executeSwap: vi.fn().mockRejectedValue(new Error(errorMessage)),
   };
 }
