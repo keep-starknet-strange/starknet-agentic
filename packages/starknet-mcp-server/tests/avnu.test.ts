@@ -33,7 +33,9 @@ vi.mock("starknet", () => ({
   CallData: {
     compile: vi.fn((data) => data),
   },
-  uint256: {},
+  uint256: {
+    uint256ToBN: vi.fn((val: { low: bigint; high: bigint }) => val.low + (val.high << 128n)),
+  },
   cairo: {
     uint256: vi.fn((n) => ({ low: n, high: BigInt(0) })),
   },
@@ -135,7 +137,8 @@ describe("AVNU SDK v4 Integration", () => {
           active: true,
           provider: {} as any,
           params: {
-            feeMode: { mode: "default", gasToken: TOKENS.USDC },
+            version: "0x1" as const,
+            feeMode: { mode: "default" as const, gasToken: TOKENS.USDC },
           },
         },
       };

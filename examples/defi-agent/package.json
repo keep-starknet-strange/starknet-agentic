@@ -12,7 +12,6 @@
   "dependencies": {
     "starknet": "^8.9.1",
     "@avnu/avnu-sdk": "^4.0.0",
-    "ethers": "^6.15.0",
     "dotenv": "^16.0.0"
   },
   "devDependencies": {
