@@ -215,7 +215,7 @@ describe("Error message handling", () => {
   const formatErrorMessage = (errorMessage: string): string => {
     if (errorMessage.includes("INSUFFICIENT_LIQUIDITY") || errorMessage.includes("insufficient liquidity")) {
       return "Insufficient liquidity for this swap. Try a smaller amount or different token pair.";
-    } else if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage")) {
+    } else if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage") || errorMessage.includes("Insufficient tokens received")) {
       return "Slippage exceeded. Try increasing slippage tolerance.";
     } else if (errorMessage.includes("QUOTE_EXPIRED") || errorMessage.includes("quote expired")) {
       return "Quote expired. Please retry the operation.";
@@ -234,6 +234,11 @@ describe("Error message handling", () => {
 
   it("should return user-friendly message for SLIPPAGE", () => {
     const result = formatErrorMessage("SLIPPAGE exceeded maximum");
+    expect(result).toBe("Slippage exceeded. Try increasing slippage tolerance.");
+  });
+
+  it("should return user-friendly message for Insufficient tokens received", () => {
+    const result = formatErrorMessage("Insufficient tokens received");
     expect(result).toBe("Slippage exceeded. Try increasing slippage tolerance.");
   });
 
