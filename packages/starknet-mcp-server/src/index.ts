@@ -515,6 +515,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const result = await executeSwap(swapParams);
 
+        // Get buyToken decimals for proper formatting
+        const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
+        const buyDecimals = await buyTokenContract.decimals();
+
         return {
           content: [
             {
@@ -525,7 +529,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 sellToken,
                 buyToken,
                 sellAmount: amount,
-                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), 18),
+                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), Number(buyDecimals)),
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
                 priceImpact: bestQuote.priceImpact
                   ? `${(bestQuote.priceImpact / 100).toFixed(2)}%`
@@ -570,6 +574,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const bestQuote = quotes[0];
 
+        // Get buyToken decimals for proper formatting
+        const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
+        const buyDecimals = await buyTokenContract.decimals();
+
         return {
           content: [
             {
@@ -578,7 +586,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 sellToken,
                 buyToken,
                 sellAmount: amount,
-                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), 18),
+                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), Number(buyDecimals)),
                 sellAmountInUsd: bestQuote.sellAmountInUsd?.toFixed(2),
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
                 priceImpact: bestQuote.priceImpact
