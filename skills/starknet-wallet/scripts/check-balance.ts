@@ -2,10 +2,12 @@
 /**
  * Check Token Balance
  *
- * Usage: STARKNET_RPC_URL=... STARKNET_ACCOUNT_ADDRESS=... tsx check-balance.ts
+ * Usage: tsx check-balance.ts
+ * Requires .env with STARKNET_RPC_URL and STARKNET_ACCOUNT_ADDRESS
  * Optional: TOKEN_ADDRESS=0x... (defaults to ETH)
  */
 
+import 'dotenv/config';
 import { RpcProvider, Contract, uint256 } from 'starknet';
 
 const ETH = '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7';

@@ -33,7 +33,6 @@ import {
   Contract,
   CallData,
   cairo,
-  uint256,
   PaymasterRpc,
   ETransactionVersion,
 } from "starknet";
@@ -74,8 +73,24 @@ const env = envSchema.parse({
 // BalanceChecker contract (batch balance queries in single RPC call)
 const BALANCE_CHECKER_ADDRESS = "0x031ce64a666fbf9a2b1b2ca51c2af60d9a76d3b85e5fbfb9d5a8dbd3fedc9716";
 
-// BalanceChecker ABI
+// BalanceChecker ABI (with struct definitions for proper parsing)
 const BALANCE_CHECKER_ABI = [
+  {
+    type: "struct",
+    name: "core::integer::u256",
+    members: [
+      { name: "low", type: "core::integer::u128" },
+      { name: "high", type: "core::integer::u128" },
+    ],
+  },
+  {
+    type: "struct",
+    name: "governance::balance_checker::NonZeroBalance",
+    members: [
+      { name: "token", type: "core::starknet::contract_address::ContractAddress" },
+      { name: "balance", type: "core::integer::u256" },
+    ],
+  },
   {
     type: "function",
     name: "get_balances",
@@ -380,8 +395,10 @@ async function fetchTokenBalance(
     cached !== undefined ? Promise.resolve(cached) : contract.decimals(),
   ]);
 
+  // starknet.js v6+ returns { balance: bigint } from balanceOf
+  const balance = typeof balanceResult === 'bigint' ? balanceResult : balanceResult.balance;
   return {
-    balance: uint256.uint256ToBN(balanceResult),
+    balance,
     decimals: Number(decimalsResult),
   };
 }
@@ -421,10 +438,11 @@ async function fetchTokenBalancesViaBalanceChecker(
   const result = await balanceChecker.get_balances(walletAddress, tokenAddresses);
 
   // Parse non-zero balances from contract response
+  // With proper ABI struct definitions, starknet.js converts u256 to bigint automatically
   const balanceMap = new Map<string, bigint>();
   for (const item of result) {
     const addr = normalizeAddress("0x" + BigInt(item.token).toString(16));
-    balanceMap.set(addr, uint256.uint256ToBN(item.balance));
+    balanceMap.set(addr, BigInt(item.balance));
   }
 
   // Fetch decimals (cached or via batch RPC)

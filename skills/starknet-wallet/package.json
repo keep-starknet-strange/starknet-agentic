@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check-balance": "tsx scripts/check-balance.ts"
+    "check-balance": "tsx scripts/check-balance.ts",
+    "check-balances": "tsx scripts/check-balances.ts"
   },
   "dependencies": {
     "starknet": "^6.24.1",
