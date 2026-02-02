@@ -349,6 +349,118 @@ async function parseAmount(
   return BigInt(amountStr);
 }
 
+// Token balance result type
+type TokenBalanceResult = {
+  token: string;
+  tokenAddress: string;
+  balance: bigint;
+  decimals: number;
+};
+
+type BatchBalanceResult = {
+  balances: TokenBalanceResult[];
+  method: "balance_checker" | "batch_rpc";
+};
+
+// Helper: Fetch single token balance
+async function fetchTokenBalance(
+  walletAddress: string,
+  tokenAddress: string,
+  rpcProvider: RpcProvider = provider
+): Promise<{ balance: bigint; decimals: number }> {
+  const contract = new Contract({
+    abi: ERC20_ABI,
+    address: tokenAddress,
+    providerOrAccount: rpcProvider,
+  });
+
+  const cached = getCachedDecimals(tokenAddress);
+  const [balanceResult, decimalsResult] = await Promise.all([
+    contract.balanceOf(walletAddress),
+    cached !== undefined ? Promise.resolve(cached) : contract.decimals(),
+  ]);
+
+  return {
+    balance: uint256.uint256ToBN(balanceResult),
+    decimals: Number(decimalsResult),
+  };
+}
+
+// Helper: Fetch multiple token balances via batch RPC
+async function fetchTokenBalancesViaBatchRpc(
+  walletAddress: string,
+  tokens: string[],
+  tokenAddresses: string[]
+): Promise<TokenBalanceResult[]> {
+  const batchProvider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
+
+  const results = await Promise.all(
+    tokenAddresses.map((addr) => fetchTokenBalance(walletAddress, addr, batchProvider))
+  );
+
+  return tokens.map((token, i) => ({
+    token,
+    tokenAddress: tokenAddresses[i],
+    balance: results[i].balance,
+    decimals: results[i].decimals,
+  }));
+}
+
+// Helper: Fetch multiple token balances via BalanceChecker contract
+async function fetchTokenBalancesViaBalanceChecker(
+  walletAddress: string,
+  tokens: string[],
+  tokenAddresses: string[]
+): Promise<TokenBalanceResult[]> {
+  const balanceChecker = new Contract({
+    abi: BALANCE_CHECKER_ABI,
+    address: BALANCE_CHECKER_ADDRESS,
+    providerOrAccount: provider,
+  });
+
+  const result = await balanceChecker.get_balances(walletAddress, tokenAddresses);
+
+  // Parse non-zero balances from contract response
+  const balanceMap = new Map<string, bigint>();
+  for (const item of result) {
+    const addr = normalizeAddress("0x" + BigInt(item.token).toString(16));
+    balanceMap.set(addr, uint256.uint256ToBN(item.balance));
+  }
+
+  // Fetch decimals (cached or via batch RPC)
+  const batchProvider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
+  const decimalsResults = await Promise.all(
+    tokenAddresses.map(async (addr) => {
+      const cached = getCachedDecimals(addr);
+      if (cached !== undefined) return cached;
+      const contract = new Contract({ abi: ERC20_ABI, address: addr, providerOrAccount: batchProvider });
+      return Number(await contract.decimals());
+    })
+  );
+
+  return tokens.map((token, i) => ({
+    token,
+    tokenAddress: tokenAddresses[i],
+    balance: balanceMap.get(normalizeAddress(tokenAddresses[i])) ?? BigInt(0),
+    decimals: decimalsResults[i],
+  }));
+}
+
+// Helper: Fetch multiple token balances (tries BalanceChecker, falls back to batch RPC)
+async function fetchTokenBalances(
+  walletAddress: string,
+  tokens: string[],
+  tokenAddresses: string[]
+): Promise<BatchBalanceResult> {
+  try {
+    const balances = await fetchTokenBalancesViaBalanceChecker(walletAddress, tokens, tokenAddresses);
+    return { balances, method: "balance_checker" };
+  } catch {
+    const balances = await fetchTokenBalancesViaBatchRpc(walletAddress, tokens, tokenAddresses);
+    return { balances, method: "batch_rpc" };
+  }
+}
+
 
 // Tool handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -367,13 +479,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const tokenAddress = resolveTokenAddress(token);
-        const contract = new Contract({ abi: ERC20_ABI, address: tokenAddress, providerOrAccount: provider });
-
-        const balance = await contract.balanceOf(address);
-        const decimals = await contract.decimals();
-
-        const balanceBigInt = uint256.uint256ToBN(balance);
-        const formattedBalance = formatAmount(balanceBigInt, Number(decimals));
+        const { balance, decimals } = await fetchTokenBalance(address, tokenAddress);
 
         return {
           content: [
@@ -382,9 +488,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               text: JSON.stringify({
                 address,
                 token,
-                balance: formattedBalance,
-                raw: balanceBigInt.toString(),
-                decimals: Number(decimals),
+                tokenAddress,
+                balance: formatAmount(balance, decimals),
+                raw: balance.toString(),
+                decimals,
               }, null, 2),
             },
           ],
@@ -405,91 +512,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Maximum ${MAX_BATCH_TOKENS} tokens per request`);
         }
 
-        // Resolve and normalize all token addresses
         const tokenAddresses = tokens.map(resolveTokenAddress);
-        const normalizedAddresses = tokenAddresses.map(normalizeAddress);
-
-        // Helper to fetch balances using batch RPC (fallback method)
-        async function fetchBalancesViaBatchRpc(): Promise<Map<string, bigint>> {
-          const batchProvider = new RpcProvider({
-            nodeUrl: env.STARKNET_RPC_URL,
-            batch: 0, // Batch all concurrent calls into single HTTP request
-          });
-
-          const balanceResults = await Promise.all(
-            tokenAddresses.map(async (tokenAddr) => {
-              const contract = new Contract({
-                abi: ERC20_ABI,
-                address: tokenAddr,
-                providerOrAccount: batchProvider,
-              });
-              const balance = await contract.balanceOf(address);
-              return { tokenAddr, balance: uint256.uint256ToBN(balance) };
-            })
-          );
-
-          const balanceMap = new Map<string, bigint>();
-          for (const { tokenAddr, balance } of balanceResults) {
-            balanceMap.set(normalizeAddress(tokenAddr), balance);
-          }
-          return balanceMap;
-        }
-
-        // Try BalanceChecker contract first (single RPC call), fallback to batch RPC
-        let balanceMap: Map<string, bigint>;
-        let method: "balance_checker" | "batch_rpc";
-
-        try {
-          const balanceChecker = new Contract({
-            abi: BALANCE_CHECKER_ABI,
-            address: BALANCE_CHECKER_ADDRESS,
-            providerOrAccount: provider,
-          });
-
-          const result = await balanceChecker.get_balances(address, tokenAddresses);
-
-          // Parse results - contract returns NonZeroBalance[] with token and balance
-          balanceMap = new Map<string, bigint>();
-          for (const item of result) {
-            const tokenAddr = normalizeAddress("0x" + BigInt(item.token).toString(16));
-            const balance = uint256.uint256ToBN(item.balance);
-            balanceMap.set(tokenAddr, balance);
-          }
-          method = "balance_checker";
-        } catch (balanceCheckerError) {
-          // BalanceChecker failed (not deployed on this network, RPC error, etc.)
-          // Fall back to batch RPC mode
-          balanceMap = await fetchBalancesViaBatchRpc();
-          method = "batch_rpc";
-        }
-
-        // Build response with all requested tokens (including zero balances)
-        const balances = await Promise.all(
-          tokens.map(async (token, index) => {
-            const tokenAddress = tokenAddresses[index];
-            const normalized = normalizedAddresses[index];
-            const balance = balanceMap.get(normalized) ?? BigInt(0);
-
-            // Get decimals (use cached value for known tokens, fetch otherwise)
-            let decimals = getCachedDecimals(tokenAddress);
-            if (decimals === undefined) {
-              const contract = new Contract({
-                abi: ERC20_ABI,
-                address: tokenAddress,
-                providerOrAccount: provider,
-              });
-              decimals = Number(await contract.decimals());
-            }
-
-            return {
-              token,
-              tokenAddress,
-              balance: formatAmount(balance, decimals),
-              raw: balance.toString(),
-              decimals,
-            };
-          })
-        );
+        const { balances, method } = await fetchTokenBalances(address, tokens, tokenAddresses);
 
         return {
           content: [
@@ -497,7 +521,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify({
                 address,
-                balances,
+                balances: balances.map((b) => ({
+                  token: b.token,
+                  tokenAddress: b.tokenAddress,
+                  balance: formatAmount(b.balance, b.decimals),
+                  raw: b.balance.toString(),
+                  decimals: b.decimals,
+                })),
                 tokensQueried: tokens.length,
                 method,
               }, null, 2),
