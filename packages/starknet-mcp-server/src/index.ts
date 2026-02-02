@@ -343,7 +343,7 @@ const tools: Tool[] = [
 function resolveTokenAddress(token: string): string {
   const upperToken = token.toUpperCase();
   if (upperToken in TOKENS) {
-    return TOKENS[upperToken as keyof typeof TOKENS];
+    return TOKENS[upperToken];
   }
   if (token.startsWith("0x")) {
     return token;
