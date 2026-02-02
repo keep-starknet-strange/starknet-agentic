@@ -6,7 +6,7 @@ import {
   createMockAvnuNoQuotes,
   createMockAvnuWithError,
   TOKENS,
-} from "./mocks/avnu.mock";
+} from "./avnu.mock";
 
 // Mock the @avnu/avnu-sdk module
 vi.mock("@avnu/avnu-sdk", () => ({
