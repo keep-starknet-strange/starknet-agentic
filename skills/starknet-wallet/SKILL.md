@@ -33,7 +33,7 @@ Manage Starknet wallets for AI agents with native Account Abstraction support.
 ## Prerequisites
 
 ```bash
-npm install starknet @avnu/avnu-sdk ethers
+npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.0 ethers@^6.15.0
 ```
 
 Environment variables:
@@ -48,38 +48,48 @@ STARKNET_PRIVATE_KEY=0x...
 ### Check Balance
 
 ```typescript
-import { RpcProvider, Contract, uint256 } from "starknet";
+import { RpcProvider, Contract } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
 
-// ETH balance
+// ETH balance (starknet.js v8 uses options object for Contract)
 const ethAddress = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-const ethContract = new Contract(erc20Abi, ethAddress, provider);
+const ethContract = new Contract({
+  abi: erc20Abi,
+  address: ethAddress,
+  providerOrAccount: provider,
+});
 const balance = await ethContract.balanceOf(accountAddress);
-// balance is a uint256 -- use ethers.formatUnits(balance, 18)
+
+// starknet.js v8: Convert uint256 to bigint
+const balanceBigInt = BigInt(balance.low) + (BigInt(balance.high) << 128n);
+// Format with ethers.formatUnits(balanceBigInt, 18)
 ```
 
 ### Transfer Tokens
 
 ```typescript
-import { Account, RpcProvider, constants, CallData } from "starknet";
+import { Account, RpcProvider, CallData, cairo, ETransactionVersion } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
-const account = new Account(
+
+// starknet.js v8: Account uses options object
+const account = new Account({
   provider,
-  process.env.STARKNET_ACCOUNT_ADDRESS,
-  process.env.STARKNET_PRIVATE_KEY,
-  undefined,
-  constants.TRANSACTION_VERSION.V3
-);
+  address: process.env.STARKNET_ACCOUNT_ADDRESS,
+  signer: process.env.STARKNET_PRIVATE_KEY,
+  transactionVersion: ETransactionVersion.V3,
+});
 
 const tokenAddress = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"; // STRK
+
+// starknet.js v8: Use cairo.uint256() instead of uint256.bnToUint256()
 const { transaction_hash } = await account.execute({
   contractAddress: tokenAddress,
   entrypoint: "transfer",
   calldata: CallData.compile({
     recipient: recipientAddress,
-    amount: uint256.bnToUint256(amountInWei),
+    amount: cairo.uint256(amountInWei),
   }),
 });
 await account.waitForTransaction(transaction_hash);
@@ -93,7 +103,7 @@ const estimatedFee = await account.estimateInvokeFee({
   entrypoint: "transfer",
   calldata: CallData.compile({
     recipient: recipientAddress,
-    amount: uint256.bnToUint256(amountInWei),
+    amount: cairo.uint256(amountInWei),
   }),
 });
 // estimatedFee.overall_fee -- total fee in STRK (V3 transactions)
@@ -107,7 +117,10 @@ const { transaction_hash } = await account.execute([
   {
     contractAddress: tokenA,
     entrypoint: "approve",
-    calldata: CallData.compile({ spender: routerAddress, amount: uint256.bnToUint256(amount) }),
+    calldata: CallData.compile({
+      spender: routerAddress,
+      amount: cairo.uint256(amount),
+    }),
   },
   {
     contractAddress: routerAddress,
@@ -117,20 +130,33 @@ const { transaction_hash } = await account.execute([
 ]);
 ```
 
-### Gasless Transfer (User Pays in Token)
+### Gasless Transfer (Pay Gas in Token) - SDK v4 + PaymasterRpc
 
 ```typescript
-import { executeSwap, getQuotes } from "@avnu/avnu-sdk";
+import { getQuotes, executeSwap } from "@avnu/avnu-sdk";
+import { PaymasterRpc } from "starknet";
 
-// Any swap or transfer can be made gasless by adding paymaster option
+// SDK v4: Use PaymasterRpc from starknet.js
+const paymaster = new PaymasterRpc({
+  nodeUrl: "https://starknet.paymaster.avnu.fi",  // Mainnet
+  // nodeUrl: "https://sepolia.paymaster.avnu.fi", // Testnet
+});
+
+// Any swap can be made gasless by adding paymaster option
 const result = await executeSwap({
   provider: account,
   quote: bestQuote,
   slippage: 0.01,
   executeApprove: true,
   paymaster: {
-    apiBaseUrl: "https://starknet.api.avnu.fi/paymaster/v1",
-    gasTokenAddress: usdcAddress, // Pay gas in USDC instead of ETH
+    active: true,
+    provider: paymaster,
+    params: {
+      feeMode: {
+        mode: "default",
+        gasToken: usdcAddress, // Pay gas in USDC instead of ETH/STRK
+      },
+    },
   },
 });
 ```

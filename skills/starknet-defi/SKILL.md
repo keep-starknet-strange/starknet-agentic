@@ -35,35 +35,40 @@ Execute DeFi operations on Starknet using AVNU aggregator and native protocols.
 ## Prerequisites
 
 ```bash
-npm install starknet @avnu/avnu-sdk ethers
+npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.0 ethers@^6.15.0
 ```
 
-## Token Swaps (AVNU)
+## Token Swaps (AVNU SDK v4)
 
 ### Get Quote and Execute Swap
 
 ```typescript
-import { getQuotes, executeSwap, QuoteRequest } from "@avnu/avnu-sdk";
-import { Account, RpcProvider, constants } from "starknet";
+import { getQuotes, executeSwap, type QuoteRequest } from "@avnu/avnu-sdk";
+import { Account, RpcProvider, ETransactionVersion } from "starknet";
 import { parseUnits } from "ethers";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
-const account = new Account(provider, address, privateKey, undefined, constants.TRANSACTION_VERSION.V3);
 
-const AVNU_BASE_URL = "https://starknet.api.avnu.fi";
+// starknet.js v8: Account uses options object
+const account = new Account({
+  provider,
+  address,
+  signer: privateKey,
+  transactionVersion: ETransactionVersion.V3,
+});
 
-// Get best quote
-const quoteRequest: QuoteRequest = {
+// SDK v4: getQuotes takes QuoteRequest object directly
+const quoteParams: QuoteRequest = {
   sellTokenAddress: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7", // ETH
   buyTokenAddress: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",  // STRK
   sellAmount: parseUnits("0.1", 18),
   takerAddress: account.address,
 };
 
-const quotes = await getQuotes(quoteRequest, { baseUrl: AVNU_BASE_URL });
+const quotes = await getQuotes(quoteParams);
 const bestQuote = quotes[0];
 
-// Execute swap
+// SDK v4: executeSwap takes single object param
 const result = await executeSwap({
   provider: account,
   quote: bestQuote,
@@ -71,6 +76,30 @@ const result = await executeSwap({
   executeApprove: true,
 });
 console.log("Tx:", result.transactionHash);
+```
+
+### Quote Response Fields (SDK v4)
+
+```typescript
+interface Quote {
+  quoteId: string;
+  sellTokenAddress: string;
+  buyTokenAddress: string;
+  sellAmount: bigint;
+  buyAmount: bigint;
+  sellAmountInUsd: number;
+  buyAmountInUsd: number;
+  priceImpact: number;        // In basis points (15 = 0.15%)
+  gasFeesInUsd: number;
+  routes: Array<{
+    name: string;             // e.g., "Ekubo", "JediSwap"
+    percent: number;          // e.g., 0.8 = 80%
+  }>;
+  fee: {
+    avnuFees: bigint;
+    integratorFees: bigint;
+  };
+}
 ```
 
 ### Build Swap Calls (for multicall composition)
@@ -87,17 +116,35 @@ const calls = await quoteToCalls({
 // `calls` can be combined with other calls in account.execute([...calls, ...otherCalls])
 ```
 
-### Gasless Swap (Pay Gas in Token)
+### Gasless Swap (Pay Gas in Token) - SDK v4 + PaymasterRpc
 
 ```typescript
+import { getQuotes, executeSwap } from "@avnu/avnu-sdk";
+import { PaymasterRpc } from "starknet";
+
+const quotes = await getQuotes(quoteParams);
+const bestQuote = quotes[0];
+
+// SDK v4: Use PaymasterRpc from starknet.js
+const paymaster = new PaymasterRpc({
+  nodeUrl: "https://starknet.paymaster.avnu.fi",  // Mainnet
+  // nodeUrl: "https://sepolia.paymaster.avnu.fi", // Testnet
+});
+
 const result = await executeSwap({
   provider: account,
   quote: bestQuote,
   slippage: 0.01,
   executeApprove: true,
   paymaster: {
-    apiBaseUrl: "https://starknet.api.avnu.fi/paymaster/v1",
-    gasTokenAddress: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", // USDC
+    active: true,
+    provider: paymaster,
+    params: {
+      feeMode: {
+        mode: "default",
+        gasToken: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", // USDC
+      },
+    },
   },
 });
 ```
@@ -115,7 +162,7 @@ const dcaOrder = {
   buyTokenAddress: strkAddress,
   totalAmount: parseUnits("100", 6),   // Total 100 USDC
   numberOfOrders: 10,                   // Split into 10 orders
-  frequency: moment.duration(1, "day").asSeconds(), // Daily
+  frequency: moment.duration(1, "day"), // moment.Duration object, not string
   startAt: Math.floor(Date.now() / 1000),
 };
 
@@ -128,11 +175,11 @@ const result = await executeCreateDca({
 ### Check and Cancel DCA
 
 ```typescript
-import { getDcaOrders, executeCancelDca } from "@avnu/avnu-sdk";
+import { getDcaOrders, executeCancelDca, DcaOrderStatus } from "@avnu/avnu-sdk";
 
 const orders = await getDcaOrders({
   traderAddress: account.address,
-  status: "OPEN",
+  status: DcaOrderStatus.OPEN,  // Use enum, not string
 });
 
 // Cancel an order
@@ -158,6 +205,16 @@ const result = await executeStake({
   poolAddress: stakingInfo.pools[0].address,
   amount: parseUnits("100", 18), // 100 STRK
 });
+```
+
+### Get User Staking Info
+
+```typescript
+import { getUserStakingInfo } from "@avnu/avnu-sdk";
+
+const userInfo = await getUserStakingInfo(TOKENS.STRK, account.address);
+console.log("Staked:", userInfo.amount);
+console.log("Unclaimed rewards:", userInfo.unclaimedRewards);
 ```
 
 ### Claim Rewards
@@ -228,21 +285,36 @@ const tokens = await fetchTokens({ page: 0, size: 20, tags: ["verified"] });
 | `STARKNET_ACCOUNT_ADDRESS` | Agent's account address | Required |
 | `STARKNET_PRIVATE_KEY` | Agent's signing key | Required |
 | `AVNU_API_KEY` | Optional AVNU integrator key | None |
-| `AVNU_BASE_URL` | API base URL | `https://starknet.api.avnu.fi` |
 
 ## Error Handling
 
 ```typescript
 async function safeSwap(account, quote, slippage = 0.01) {
   try {
-    return await executeSwap({ provider: account, quote, slippage, executeApprove: true });
+    return await executeSwap({
+      provider: account,
+      quote,
+      slippage,
+      executeApprove: true,
+    });
   } catch (error) {
     if (error.message?.includes("INSUFFICIENT_BALANCE")) {
       throw new Error("Not enough tokens for swap");
     }
     if (error.message?.includes("SLIPPAGE")) {
       // Retry with higher slippage
-      return await executeSwap({ provider: account, quote, slippage: slippage * 2, executeApprove: true });
+      return await executeSwap({
+        provider: account,
+        quote,
+        slippage: slippage * 2,
+        executeApprove: true,
+      });
+    }
+    if (error.message?.includes("QUOTE_EXPIRED")) {
+      throw new Error("Quote expired. Please retry the operation.");
+    }
+    if (error.message?.includes("INSUFFICIENT_LIQUIDITY")) {
+      throw new Error("Insufficient liquidity. Try a smaller amount.");
     }
     throw error;
   }
