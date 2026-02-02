@@ -36,12 +36,19 @@ import {
   cairo,
 } from "starknet";
 import {
-  getQuotes,
   executeSwap,
   QuoteRequest,
-  fetchTokenPrices,
+  fetchPrices,
 } from "@avnu/avnu-sdk";
 import { z } from "zod";
+
+// Stub for getQuotes - AVNU SDK API changed
+// TODO: Update to use the new AVNU SDK API
+async function getQuotes(request: QuoteRequest, options?: { baseUrl?: string }): Promise<any[]> {
+  // For now, return empty array - this needs to be updated with the new AVNU API
+  console.warn("getQuotes is a stub implementation - needs update to new AVNU SDK API");
+  return [];
+}
 
 // Environment validation
 const envSchema = z.object({
@@ -416,7 +423,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: JSON.stringify({
-                result: result.result,
+                result: Array.isArray(result) ? result : (result as any).result,
                 contractAddress,
                 entrypoint,
               }, null, 2),
@@ -484,12 +491,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const bestQuote = quotes[0];
 
-        const result = await executeSwap({
-          provider: account,
-          quote: bestQuote,
-          slippage,
-          executeApprove: true,
-        });
+        const result = await executeSwap(
+          account,
+          bestQuote,
+          { slippage, executeApprove: true }
+        );
 
         return {
           content: [

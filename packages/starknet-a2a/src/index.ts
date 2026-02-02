@@ -333,10 +333,11 @@ export class StarknetA2AAdapter {
     try {
       const receipt = await this.provider.getTransactionReceipt(taskId);
 
+      const executionStatus = (receipt as any).execution_status;
       const state =
-        receipt.execution_status === "SUCCEEDED"
+        executionStatus === "SUCCEEDED"
           ? TaskState.Completed
-          : receipt.execution_status === "REVERTED"
+          : executionStatus === "REVERTED"
           ? TaskState.Failed
           : TaskState.Working;
 
@@ -351,7 +352,7 @@ export class StarknetA2AAdapter {
             : undefined,
         error:
           state === TaskState.Failed
-            ? receipt.revert_reason || "Transaction reverted"
+            ? (receipt as any).revert_reason || "Transaction reverted"
             : undefined,
         createdAt: 0,
         updatedAt: Date.now(),
