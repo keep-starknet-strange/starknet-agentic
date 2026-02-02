@@ -40,11 +40,10 @@ import {
 import {
   getQuotes,
   quoteToCalls,
-  type Quote,
   type QuoteRequest,
-  type Route,
 } from "@avnu/avnu-sdk";
 import { z } from "zod";
+import { formatAmount, formatQuoteFields, formatErrorMessage } from "./utils/formatter.js";
 
 // Environment validation
 const envSchema = z.object({
@@ -100,7 +99,7 @@ const ERC20_ABI = [
   },
 ];
 
-// Initialize Starknet provider and account (starknet.js v8 uses options object)
+// Initialize Starknet provider and account
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL });
 const account = new Account({
   provider,
@@ -379,54 +378,6 @@ async function parseAmount(
   return BigInt(amountStr);
 }
 
-// Helper: Format amount with decimals
-function formatAmount(amount: bigint, decimals: number): string {
-  const amountStr = amount.toString().padStart(decimals + 1, "0");
-  const whole = amountStr.slice(0, -decimals) || "0";
-  const fraction = amountStr.slice(-decimals);
-  return `${whole}.${fraction}`.replace(/\.?0+$/, "");
-}
-
-// Helper: Format quote response fields
-function formatQuoteFields(quote: Quote, buyDecimals: number): {
-  buyAmount: string;
-  priceImpact: string | undefined;
-  gasFeesUsd: string | undefined;
-  routes: Array<{ name: string; percent: string }> | undefined;
-} {
-  return {
-    buyAmount: formatAmount(BigInt(quote.buyAmount), buyDecimals),
-    priceImpact: quote.priceImpact
-      ? `${(quote.priceImpact / 100).toFixed(2)}%`
-      : undefined,
-    gasFeesUsd: quote.gasFeesInUsd?.toFixed(4),
-    routes: quote.routes?.map((r: Route) => ({
-      name: r.name,
-      percent: `${(r.percent * 100).toFixed(1)}%`,
-    })),
-  };
-}
-
-// Helper: Convert error message to user-friendly format
-function formatErrorMessage(errorMessage: string): string {
-  if (errorMessage.includes("INSUFFICIENT_LIQUIDITY") || errorMessage.includes("insufficient liquidity")) {
-    return "Insufficient liquidity for this swap. Try a smaller amount or different token pair.";
-  }
-  if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage") || errorMessage.includes("Insufficient tokens received")) {
-    return "Slippage exceeded. Try increasing slippage tolerance.";
-  }
-  if (errorMessage.includes("QUOTE_EXPIRED") || errorMessage.includes("quote expired")) {
-    return "Quote expired. Please retry the operation.";
-  }
-  if (errorMessage.includes("INSUFFICIENT_BALANCE") || errorMessage.includes("insufficient balance")) {
-    return "Insufficient token balance for this operation.";
-  }
-  if (errorMessage.includes("No quotes available")) {
-    return "No swap routes available for this token pair. The pair may not have liquidity.";
-  }
-  return errorMessage;
-}
-
 // Tool handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools,
@@ -691,7 +642,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           calldata,
         });
 
-        // starknet.js v8: EstimateFeeResponseOverhead has overall_fee, resourceBounds, unit
         return {
           content: [
             {
