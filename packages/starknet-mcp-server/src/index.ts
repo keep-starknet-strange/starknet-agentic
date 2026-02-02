@@ -32,6 +32,7 @@ import {
   Contract,
   CallData,
   cairo,
+  uint256,
   PaymasterRpc,
   ETransactionVersion,
 } from "starknet";
@@ -40,6 +41,7 @@ import {
   executeSwap,
   type Quote,
   type QuoteRequest,
+  type Route,
 } from "@avnu/avnu-sdk";
 import { z } from "zod";
 
@@ -49,6 +51,7 @@ const envSchema = z.object({
   STARKNET_ACCOUNT_ADDRESS: z.string().startsWith("0x"),
   STARKNET_PRIVATE_KEY: z.string().startsWith("0x"),
   AVNU_BASE_URL: z.string().url().optional(),
+  AVNU_PAYMASTER_URL: z.string().url().optional(),
 });
 
 const env = envSchema.parse({
@@ -56,6 +59,7 @@ const env = envSchema.parse({
   STARKNET_ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS,
   STARKNET_PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY,
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || "https://starknet.api.avnu.fi",
+  AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
 });
 
 // Token addresses (Mainnet)
@@ -346,8 +350,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const balance = await contract.balanceOf(address);
         const decimals = await contract.decimals();
 
-        // starknet.js v8: uint256ToBN removed, use direct BigInt conversion
-        const balanceBigInt = BigInt(balance.low) + (BigInt(balance.high) << 128n);
+        const balanceBigInt = uint256.uint256ToBN(balance);
         const formattedBalance = formatAmount(balanceBigInt, Number(decimals));
 
         return {
@@ -481,7 +484,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           takerAddress: account.address,
         };
 
-        const quotes = await getQuotes(quoteParams);
+        const quotes = await getQuotes(quoteParams, { baseUrl: env.AVNU_BASE_URL });
 
         if (!quotes || quotes.length === 0) {
           throw new Error("No quotes available for this swap");
@@ -499,10 +502,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         // Gasless mode using PaymasterRpc
         if (gasless) {
-          const paymasterUrl = env.AVNU_BASE_URL?.includes("sepolia")
-            ? "https://sepolia.paymaster.avnu.fi"
-            : "https://starknet.paymaster.avnu.fi";
-          const paymaster = new PaymasterRpc({ nodeUrl: paymasterUrl });
+          const paymaster = new PaymasterRpc({ nodeUrl: env.AVNU_PAYMASTER_URL });
           swapParams.paymaster = {
             active: true,
             provider: paymaster,
@@ -531,7 +531,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   ? `${(bestQuote.priceImpact / 100).toFixed(2)}%`
                   : undefined,
                 gasFeesUsd: bestQuote.gasFeesInUsd?.toFixed(4),
-                routes: bestQuote.routes?.map((r: { name: string; percent: number }) => ({
+                routes: bestQuote.routes?.map((r: Route) => ({
                   name: r.name,
                   percent: `${(r.percent * 100).toFixed(1)}%`,
                 })),
@@ -562,7 +562,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           takerAddress: account.address,
         };
 
-        const quotes = await getQuotes(quoteParams);
+        const quotes = await getQuotes(quoteParams, { baseUrl: env.AVNU_BASE_URL });
 
         if (!quotes || quotes.length === 0) {
           throw new Error("No quotes available");
@@ -585,7 +585,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   ? `${(bestQuote.priceImpact / 100).toFixed(2)}%`
                   : undefined,
                 gasFeesUsd: bestQuote.gasFeesInUsd?.toFixed(4),
-                routes: bestQuote.routes?.map((r: { name: string; percent: number }) => ({
+                routes: bestQuote.routes?.map((r: Route) => ({
                   name: r.name,
                   percent: `${(r.percent * 100).toFixed(1)}%`,
                 })),
