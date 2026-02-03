@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   mockQuote,
   mockSwapResult,
+  mockQuoteToCalls,
   createMockAvnu,
   createMockAvnuNoQuotes,
   createMockAvnuWithError,
@@ -11,6 +12,7 @@ import {
 // Mock the @avnu/avnu-sdk module
 vi.mock("@avnu/avnu-sdk", () => ({
   getQuotes: vi.fn(),
+  quoteToCalls: vi.fn(),
   executeSwap: vi.fn(),
 }));
 
@@ -42,7 +44,7 @@ vi.mock("starknet", () => ({
   PaymasterRpc: vi.fn().mockImplementation(() => ({})),
 }));
 
-import { getQuotes, executeSwap } from "@avnu/avnu-sdk";
+import { getQuotes, quoteToCalls, executeSwap } from "@avnu/avnu-sdk";
 
 describe("avnu SDK v4 Integration", () => {
   beforeEach(() => {
@@ -184,6 +186,125 @@ describe("avnu SDK v4 Integration", () => {
     });
   });
 
+  describe("quoteToCalls", () => {
+    it("should return calls array from quote", async () => {
+      const mock = createMockAvnu();
+      vi.mocked(quoteToCalls).mockImplementation(mock.quoteToCalls);
+
+      const params = {
+        quoteId: mockQuote.quoteId,
+        takerAddress: "0x1234567890abcdef",
+        slippage: 0.01,
+        executeApprove: true,
+      };
+
+      const result = await quoteToCalls(params);
+
+      expect(result.calls).toHaveLength(2);
+      expect(result.calls[0].entrypoint).toBe("approve");
+      expect(result.calls[1].entrypoint).toBe("multi_route_swap");
+      expect(result.chainId).toBe("SN_MAIN");
+    });
+
+    it("should work with account.execute pattern", async () => {
+      const mock = createMockAvnu();
+      vi.mocked(quoteToCalls).mockImplementation(mock.quoteToCalls);
+
+      const params = {
+        quoteId: mockQuote.quoteId,
+        takerAddress: "0x1234567890abcdef",
+        slippage: 0.01,
+        executeApprove: true,
+      };
+
+      const { calls } = await quoteToCalls(params);
+
+      // Simulate account.execute call
+      const mockAccount = {
+        execute: vi.fn().mockResolvedValue({ transaction_hash: "0xabc123" }),
+      };
+
+      const result = await mockAccount.execute(calls);
+      expect(result.transaction_hash).toBe("0xabc123");
+      expect(mockAccount.execute).toHaveBeenCalledWith(calls);
+    });
+
+    it("should support gasfree mode with executePaymasterTransaction", async () => {
+      const mock = createMockAvnu();
+      vi.mocked(quoteToCalls).mockImplementation(mock.quoteToCalls);
+
+      const params = {
+        quoteId: mockQuote.quoteId,
+        takerAddress: "0x1234567890abcdef",
+        slippage: 0.01,
+        executeApprove: true,
+      };
+
+      const { calls } = await quoteToCalls(params);
+
+      // Simulate paymaster execution
+      const mockAccount = {
+        estimatePaymasterTransactionFee: vi.fn().mockResolvedValue({
+          suggested_max_fee_in_gas_token: "1000000",
+        }),
+        executePaymasterTransaction: vi.fn().mockResolvedValue({
+          transaction_hash: "0xpaymaster123",
+        }),
+      };
+
+      const feeDetails = {
+        feeMode: { mode: "default" as const, gasToken: TOKENS.USDC },
+      };
+
+      const estimation = await mockAccount.estimatePaymasterTransactionFee(calls, feeDetails);
+      const result = await mockAccount.executePaymasterTransaction(
+        calls,
+        feeDetails,
+        estimation.suggested_max_fee_in_gas_token
+      );
+
+      expect(result.transaction_hash).toBe("0xpaymaster123");
+      expect(mockAccount.estimatePaymasterTransactionFee).toHaveBeenCalledWith(calls, feeDetails);
+    });
+
+    it("should support sponsored mode (gasfree with API key)", async () => {
+      const mock = createMockAvnu();
+      vi.mocked(quoteToCalls).mockImplementation(mock.quoteToCalls);
+
+      const params = {
+        quoteId: mockQuote.quoteId,
+        takerAddress: "0x1234567890abcdef",
+        slippage: 0.01,
+        executeApprove: true,
+      };
+
+      const { calls } = await quoteToCalls(params);
+
+      // Simulate sponsored mode execution
+      const mockAccount = {
+        estimatePaymasterTransactionFee: vi.fn().mockResolvedValue({
+          suggested_max_fee_in_gas_token: "0", // Sponsored = no fee for user
+        }),
+        executePaymasterTransaction: vi.fn().mockResolvedValue({
+          transaction_hash: "0xsponsored456",
+        }),
+      };
+
+      const sponsoredFeeDetails = {
+        feeMode: { mode: "sponsored" as const },
+      };
+
+      const estimation = await mockAccount.estimatePaymasterTransactionFee(calls, sponsoredFeeDetails);
+      const result = await mockAccount.executePaymasterTransaction(
+        calls,
+        sponsoredFeeDetails,
+        estimation.suggested_max_fee_in_gas_token
+      );
+
+      expect(result.transaction_hash).toBe("0xsponsored456");
+    });
+  });
+
   describe("Quote response fields (SDK v4)", () => {
     it("should have correct field structure", () => {
       expect(mockQuote).toHaveProperty("quoteId");
@@ -208,57 +329,5 @@ describe("avnu SDK v4 Integration", () => {
       const priceImpactPercent = mockQuote.priceImpact! / 100;
       expect(priceImpactPercent).toBe(0.15);
     });
-  });
-});
-
-describe("Error message handling", () => {
-  const formatErrorMessage = (errorMessage: string): string => {
-    if (errorMessage.includes("INSUFFICIENT_LIQUIDITY") || errorMessage.includes("insufficient liquidity")) {
-      return "Insufficient liquidity for this swap. Try a smaller amount or different token pair.";
-    } else if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage") || errorMessage.includes("Insufficient tokens received")) {
-      return "Slippage exceeded. Try increasing slippage tolerance.";
-    } else if (errorMessage.includes("QUOTE_EXPIRED") || errorMessage.includes("quote expired")) {
-      return "Quote expired. Please retry the operation.";
-    } else if (errorMessage.includes("INSUFFICIENT_BALANCE") || errorMessage.includes("insufficient balance")) {
-      return "Insufficient token balance for this operation.";
-    } else if (errorMessage.includes("No quotes available")) {
-      return "No swap routes available for this token pair. The pair may not have liquidity.";
-    }
-    return errorMessage;
-  };
-
-  it("should return user-friendly message for INSUFFICIENT_LIQUIDITY", () => {
-    const result = formatErrorMessage("INSUFFICIENT_LIQUIDITY");
-    expect(result).toBe("Insufficient liquidity for this swap. Try a smaller amount or different token pair.");
-  });
-
-  it("should return user-friendly message for SLIPPAGE", () => {
-    const result = formatErrorMessage("SLIPPAGE exceeded maximum");
-    expect(result).toBe("Slippage exceeded. Try increasing slippage tolerance.");
-  });
-
-  it("should return user-friendly message for Insufficient tokens received", () => {
-    const result = formatErrorMessage("Insufficient tokens received");
-    expect(result).toBe("Slippage exceeded. Try increasing slippage tolerance.");
-  });
-
-  it("should return user-friendly message for QUOTE_EXPIRED", () => {
-    const result = formatErrorMessage("QUOTE_EXPIRED");
-    expect(result).toBe("Quote expired. Please retry the operation.");
-  });
-
-  it("should return user-friendly message for INSUFFICIENT_BALANCE", () => {
-    const result = formatErrorMessage("INSUFFICIENT_BALANCE");
-    expect(result).toBe("Insufficient token balance for this operation.");
-  });
-
-  it("should return user-friendly message for no quotes", () => {
-    const result = formatErrorMessage("No quotes available");
-    expect(result).toBe("No swap routes available for this token pair. The pair may not have liquidity.");
-  });
-
-  it("should return original message for unknown errors", () => {
-    const result = formatErrorMessage("Unknown error occurred");
-    expect(result).toBe("Unknown error occurred");
   });
 });
