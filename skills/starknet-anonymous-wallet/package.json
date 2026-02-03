@@ -1,0 +1,14 @@
+{
+  "name": "typhoon-starknet-account-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for typhoon-starknet-account skill",
+  "type": "module",
+  "scripts": {
+    "create": "node create-account.js",
+    "deploy": "node deploy.js"
+  },
+  "dependencies": {
+    "starknet": "^9.2.1",
+    "typhoon-sdk": "^1.1.12"
+  }
+}
