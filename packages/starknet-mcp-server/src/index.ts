@@ -33,24 +33,24 @@ import {
   Contract,
   CallData,
   cairo,
-  PaymasterRpc,
   ETransactionVersion,
+  type Call,
+  type PaymasterDetails,
 } from "starknet";
 import {
   TOKENS,
   MAX_BATCH_TOKENS,
   resolveTokenAddress,
-  formatAmount,
   normalizeAddress,
   getCachedDecimals,
 } from "./utils.js";
 import {
   getQuotes,
-  executeSwap,
+  quoteToCalls,
   type QuoteRequest,
-  type Route,
 } from "@avnu/avnu-sdk";
 import { z } from "zod";
+import { formatAmount, formatQuoteFields, formatErrorMessage } from "./utils/formatter.js";
 
 // Environment validation
 const envSchema = z.object({
@@ -59,6 +59,7 @@ const envSchema = z.object({
   STARKNET_PRIVATE_KEY: z.string().startsWith("0x"),
   AVNU_BASE_URL: z.string().url().optional(),
   AVNU_PAYMASTER_URL: z.string().url().optional(),
+  AVNU_PAYMASTER_API_KEY: z.string().optional(),
 });
 
 const env = envSchema.parse({
@@ -67,6 +68,7 @@ const env = envSchema.parse({
   STARKNET_PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY,
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || "https://starknet.api.avnu.fi",
   AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
+  AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
 });
 
 
@@ -132,7 +134,7 @@ const ERC20_ABI = [
   },
 ];
 
-// Initialize Starknet provider and account (starknet.js v8 uses options object)
+// Initialize Starknet provider and account
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL });
 const account = new Account({
   provider,
@@ -140,6 +142,40 @@ const account = new Account({
   signer: env.STARKNET_PRIVATE_KEY,
   transactionVersion: ETransactionVersion.V3,
 });
+
+// Fee mode: sponsored (gasfree, dApp pays) vs default (user pays in gasToken)
+const isSponsored = !!env.AVNU_PAYMASTER_API_KEY;
+
+/**
+ * Execute transaction with optional gasfree mode.
+ * - gasfree=false: standard account.execute
+ * - gasfree=true + API key: sponsored mode (dApp pays all gas)
+ * - gasfree=true + no API key: user pays gas in gasToken
+ */
+async function executeTransaction(
+  calls: Call | Call[],
+  gasfree: boolean,
+  gasToken: string = TOKENS.STRK
+): Promise<string> {
+  if (!gasfree) {
+    const result = await account.execute(calls);
+    return result.transaction_hash;
+  }
+
+  const callsArray = Array.isArray(calls) ? calls : [calls];
+  const feeDetails: PaymasterDetails = isSponsored
+    ? { feeMode: { mode: "sponsored" } }
+    : { feeMode: { mode: "default", gasToken } };
+
+  const estimation = await account.estimatePaymasterTransactionFee(callsArray, feeDetails);
+  const result = await account.executePaymasterTransaction(
+    callsArray,
+    feeDetails,
+    estimation.suggested_max_fee_in_gas_token
+  );
+
+  return result.transaction_hash;
+}
 
 // MCP Server setup
 const server = new Server(
@@ -197,7 +233,7 @@ const tools: Tool[] = [
   },
   {
     name: "starknet_transfer",
-    description: "Transfer tokens to another address on Starknet",
+    description: "Transfer tokens to another address on Starknet. Supports gasfree mode where gas is paid in an ERC-20 token instead of ETH/STRK.",
     inputSchema: {
       type: "object",
       properties: {
@@ -212,6 +248,15 @@ const tools: Tool[] = [
         amount: {
           type: "string",
           description: "Amount to transfer in human-readable format (e.g., '1.5' for 1.5 tokens)",
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
+          default: false,
+        },
+        gasToken: {
+          type: "string",
+          description: "Token to pay gas fees in (symbol or address). Only used when gasfree=true and no API key is set.",
         },
       },
       required: ["recipient", "token", "amount"],
@@ -243,7 +288,7 @@ const tools: Tool[] = [
   },
   {
     name: "starknet_invoke_contract",
-    description: "Invoke a state-changing contract function on Starknet",
+    description: "Invoke a state-changing contract function on Starknet. Supports gasfree mode where gas is paid in an ERC-20 token instead of ETH/STRK.",
     inputSchema: {
       type: "object",
       properties: {
@@ -261,6 +306,15 @@ const tools: Tool[] = [
           description: "Function arguments as array of strings",
           default: [],
         },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
+          default: false,
+        },
+        gasToken: {
+          type: "string",
+          description: "Token to pay gas fees in (symbol or address). Only used when gasfree=true and no API key is set.",
+        },
       },
       required: ["contractAddress", "entrypoint"],
     },
@@ -268,7 +322,7 @@ const tools: Tool[] = [
   {
     name: "starknet_swap",
     description:
-      "Execute a token swap on Starknet using avnu aggregator for best prices. Supports gasless mode where gas is paid in the sell token.",
+      "Execute a token swap on Starknet using avnu aggregator for best prices. Supports gasfree mode where gas is paid via paymaster.",
     inputSchema: {
       type: "object",
       properties: {
@@ -289,10 +343,14 @@ const tools: Tool[] = [
           description: "Maximum slippage tolerance (0.01 = 1%)",
           default: 0.01,
         },
-        gasless: {
+        gasfree: {
           type: "boolean",
-          description: "Pay gas in sell token instead of ETH/STRK",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
           default: false,
+        },
+        gasToken: {
+          type: "string",
+          description: "Token to pay gas fees in (symbol or address). Defaults to sellToken. Only used when gasfree=true and no API key is set.",
         },
       },
       required: ["sellToken", "buyToken", "amount"],
@@ -480,7 +538,6 @@ async function fetchTokenBalances(
   }
 }
 
-
 // Tool handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools,
@@ -556,25 +613,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_transfer": {
-        const { recipient, token, amount } = args as {
+        const { recipient, token, amount, gasfree = false, gasToken } = args as {
           recipient: string;
           token: string;
           amount: string;
+          gasfree?: boolean;
+          gasToken?: string;
         };
 
         const tokenAddress = resolveTokenAddress(token);
         const amountWei = await parseAmount(amount, tokenAddress);
+        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
 
-        const { transaction_hash } = await account.execute({
+        const transferCall: Call = {
           contractAddress: tokenAddress,
           entrypoint: "transfer",
           calldata: CallData.compile({
             recipient,
             amount: cairo.uint256(amountWei),
           }),
-        });
+        };
 
-        await provider.waitForTransaction(transaction_hash);
+        const transactionHash = await executeTransaction(transferCall, gasfree, gasTokenAddress);
+        await provider.waitForTransaction(transactionHash);
 
         return {
           content: [
@@ -582,10 +643,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify({
                 success: true,
-                transactionHash: transaction_hash,
+                transactionHash,
                 recipient,
                 token,
                 amount,
+                gasfree,
               }, null, 2),
             },
           ],
@@ -620,19 +682,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_invoke_contract": {
-        const { contractAddress, entrypoint, calldata = [] } = args as {
+        const { contractAddress, entrypoint, calldata = [], gasfree = false, gasToken } = args as {
           contractAddress: string;
           entrypoint: string;
           calldata?: string[];
+          gasfree?: boolean;
+          gasToken?: string;
         };
 
-        const { transaction_hash } = await account.execute({
-          contractAddress,
-          entrypoint,
-          calldata,
-        });
+        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
+        const invokeCall: Call = { contractAddress, entrypoint, calldata };
 
-        await provider.waitForTransaction(transaction_hash);
+        const transactionHash = await executeTransaction(invokeCall, gasfree, gasTokenAddress);
+        await provider.waitForTransaction(transactionHash);
 
         return {
           content: [
@@ -640,9 +702,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify({
                 success: true,
-                transactionHash: transaction_hash,
+                transactionHash,
                 contractAddress,
                 entrypoint,
+                gasfree,
               }, null, 2),
             },
           ],
@@ -650,19 +713,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_swap": {
-        const { sellToken, buyToken, amount, slippage = 0.01, gasless = false } = args as {
+        const { sellToken, buyToken, amount, slippage = 0.01, gasfree = false, gasToken } = args as {
           sellToken: string;
           buyToken: string;
           amount: string;
           slippage?: number;
-          gasless?: boolean;
+          gasfree?: boolean;
+          gasToken?: string;
         };
 
         const sellTokenAddress = resolveTokenAddress(sellToken);
         const buyTokenAddress = resolveTokenAddress(buyToken);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
-        // SDK v4: getQuotes takes QuoteRequest object
         const quoteParams: QuoteRequest = {
           sellTokenAddress,
           buyTokenAddress,
@@ -671,39 +734,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const quotes = await getQuotes(quoteParams, { baseUrl: env.AVNU_BASE_URL });
-
         if (!quotes || quotes.length === 0) {
           throw new Error("No quotes available for this swap");
         }
 
         const bestQuote = quotes[0];
 
-        // SDK v4: executeSwap takes single object param
-        const swapParams: Parameters<typeof executeSwap>[0] = {
-          provider: account,
-          quote: bestQuote,
+        const { calls } = await quoteToCalls({
+          quoteId: bestQuote.quoteId,
+          takerAddress: account.address,
           slippage,
           executeApprove: true,
-        };
+        }, { baseUrl: env.AVNU_BASE_URL });
 
-        // Gasless mode using PaymasterRpc
-        if (gasless) {
-          const paymaster = new PaymasterRpc({ nodeUrl: env.AVNU_PAYMASTER_URL });
-          swapParams.paymaster = {
-            active: true,
-            provider: paymaster,
-            params: {
-              version: "0x1" as const,
-              feeMode: { mode: "default", gasToken: sellTokenAddress },
-            },
-          };
-        }
+        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : sellTokenAddress;
+        const transactionHash = await executeTransaction(calls, gasfree, gasTokenAddress);
+        await provider.waitForTransaction(transactionHash);
 
-        const result = await executeSwap(swapParams);
-
-        // Get buyToken decimals for proper formatting
         const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
-        const buyDecimals = await buyTokenContract.decimals();
+        const buyDecimals = Number(await buyTokenContract.decimals());
+        const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
 
         return {
           content: [
@@ -711,22 +761,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify({
                 success: true,
-                transactionHash: result.transactionHash,
+                transactionHash,
                 sellToken,
                 buyToken,
                 sellAmount: amount,
-                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), Number(buyDecimals)),
+                ...quoteFields,
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
-                priceImpact: bestQuote.priceImpact
-                  ? `${(bestQuote.priceImpact / 100).toFixed(2)}%`
-                  : undefined,
-                gasFeesUsd: bestQuote.gasFeesInUsd?.toFixed(4),
-                routes: bestQuote.routes?.map((r: Route) => ({
-                  name: r.name,
-                  percent: `${(r.percent * 100).toFixed(1)}%`,
-                })),
                 slippage,
-                gasless,
+                gasfree,
               }, null, 2),
             },
           ],
@@ -744,7 +786,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const buyTokenAddress = resolveTokenAddress(buyToken);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
-        // SDK v4: getQuotes takes QuoteRequest object
         const quoteParams: QuoteRequest = {
           sellTokenAddress,
           buyTokenAddress,
@@ -753,16 +794,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const quotes = await getQuotes(quoteParams, { baseUrl: env.AVNU_BASE_URL });
-
         if (!quotes || quotes.length === 0) {
           throw new Error("No quotes available");
         }
 
         const bestQuote = quotes[0];
 
-        // Get buyToken decimals for proper formatting
         const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
-        const buyDecimals = await buyTokenContract.decimals();
+        const buyDecimals = Number(await buyTokenContract.decimals());
+        const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
 
         return {
           content: [
@@ -772,17 +812,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 sellToken,
                 buyToken,
                 sellAmount: amount,
-                buyAmount: formatAmount(BigInt(bestQuote.buyAmount), Number(buyDecimals)),
+                ...quoteFields,
                 sellAmountInUsd: bestQuote.sellAmountInUsd?.toFixed(2),
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
-                priceImpact: bestQuote.priceImpact
-                  ? `${(bestQuote.priceImpact / 100).toFixed(2)}%`
-                  : undefined,
-                gasFeesUsd: bestQuote.gasFeesInUsd?.toFixed(4),
-                routes: bestQuote.routes?.map((r: Route) => ({
-                  name: r.name,
-                  percent: `${(r.percent * 100).toFixed(1)}%`,
-                })),
                 quoteId: bestQuote.quoteId,
               }, null, 2),
             },
@@ -803,7 +835,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           calldata,
         });
 
-        // starknet.js v8: EstimateFeeResponseOverhead has overall_fee, resourceBounds, unit
         return {
           content: [
             {
@@ -826,20 +857,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-
-    // avnu-specific error handling with user-friendly messages
-    let userMessage = errorMessage;
-    if (errorMessage.includes("INSUFFICIENT_LIQUIDITY") || errorMessage.includes("insufficient liquidity")) {
-      userMessage = "Insufficient liquidity for this swap. Try a smaller amount or different token pair.";
-    } else if (errorMessage.includes("SLIPPAGE") || errorMessage.includes("slippage") || errorMessage.includes("Insufficient tokens received")) {
-      userMessage = "Slippage exceeded. Try increasing slippage tolerance.";
-    } else if (errorMessage.includes("QUOTE_EXPIRED") || errorMessage.includes("quote expired")) {
-      userMessage = "Quote expired. Please retry the operation.";
-    } else if (errorMessage.includes("INSUFFICIENT_BALANCE") || errorMessage.includes("insufficient balance")) {
-      userMessage = "Insufficient token balance for this operation.";
-    } else if (errorMessage.includes("No quotes available")) {
-      userMessage = "No swap routes available for this token pair. The pair may not have liquidity.";
-    }
+    const userMessage = formatErrorMessage(errorMessage);
 
     return {
       content: [
