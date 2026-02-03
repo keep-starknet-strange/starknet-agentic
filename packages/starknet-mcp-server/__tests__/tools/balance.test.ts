@@ -2,13 +2,12 @@ import { describe, it, expect } from "vitest";
 import { uint256 } from "starknet";
 import {
   TOKENS,
-  TOKEN_DECIMALS,
   MAX_BATCH_TOKENS,
   resolveTokenAddress,
-  formatAmount,
   normalizeAddress,
   getCachedDecimals,
 } from "../../src/utils.js";
+import { formatAmount } from "../../src/utils/formatter.js";
 
 describe("resolveTokenAddress", () => {
   it("resolves known token symbols to addresses", () => {
@@ -31,38 +30,6 @@ describe("resolveTokenAddress", () => {
   it("throws for unknown token symbols", () => {
     expect(() => resolveTokenAddress("UNKNOWN")).toThrow("Unknown token: UNKNOWN");
     expect(() => resolveTokenAddress("invalid")).toThrow("Unknown token: invalid");
-  });
-});
-
-describe("formatAmount", () => {
-  it("formats whole token amounts", () => {
-    expect(formatAmount(BigInt("1000000000000000000"), 18)).toBe("1");
-    expect(formatAmount(BigInt("1000000"), 6)).toBe("1");
-  });
-
-  it("formats fractional amounts", () => {
-    expect(formatAmount(BigInt("500000000000000000"), 18)).toBe("0.5");
-    expect(formatAmount(BigInt("2500000000000000000"), 18)).toBe("2.5");
-  });
-
-  it("formats large balances", () => {
-    expect(formatAmount(BigInt("123456789000000000000000"), 18)).toBe("123456.789");
-  });
-
-  it("handles zero balance", () => {
-    expect(formatAmount(BigInt(0), 18)).toBe("0");
-    expect(formatAmount(BigInt(0), 6)).toBe("0");
-  });
-
-  it("trims trailing zeros", () => {
-    const oneEth = BigInt("1000000000000000000");
-    const result = formatAmount(oneEth, 18);
-    expect(result).toBe("1");
-    expect(result).not.toContain(".");
-  });
-
-  it("handles zero decimals", () => {
-    expect(formatAmount(BigInt(12345), 0)).toBe("12345");
   });
 });
 

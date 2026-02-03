@@ -39,20 +39,6 @@ export function resolveTokenAddress(token: string): string {
 }
 
 /**
- * Format raw token amount with decimals to human-readable string.
- * Trims trailing zeros.
- */
-export function formatAmount(amount: bigint, decimals: number): string {
-  if (decimals === 0) {
-    return amount.toString();
-  }
-  const amountStr = amount.toString().padStart(decimals + 1, "0");
-  const whole = amountStr.slice(0, -decimals) || "0";
-  const fraction = amountStr.slice(-decimals);
-  return `${whole}.${fraction}`.replace(/\.?0+$/, "");
-}
-
-/**
  * Normalize a Starknet address to 0x prefix and 64 hex chars.
  * Uses starknet.js validateAndParseAddress which also validates the address.
  */
