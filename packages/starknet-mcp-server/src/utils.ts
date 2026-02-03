@@ -99,3 +99,33 @@ export function getCachedDecimals(tokenAddress: string): number | undefined {
   // Check both normalized and original address
   return TOKEN_DECIMALS[tokenAddress] ?? TOKEN_DECIMALS[normalized];
 }
+
+/**
+ * Validate and resolve tokens input for batch balance queries.
+ * Checks for empty array, max tokens limit, and duplicates.
+ *
+ * @param tokens - Array of token symbols or addresses
+ * @returns Array of resolved token addresses
+ * @throws Error if validation fails
+ *
+ * @example
+ * ```typescript
+ * validateTokensInput(["ETH", "USDC"])  // → ["0x049d...", "0x053c..."]
+ * validateTokensInput([])               // → throws "At least one token is required"
+ * validateTokensInput(["ETH", "ETH"])   // → throws "Duplicate tokens in request"
+ * ```
+ */
+export function validateTokensInput(tokens: string[] | undefined): string[] {
+  if (!tokens || tokens.length === 0) {
+    throw new Error("At least one token is required");
+  }
+  if (tokens.length > MAX_BATCH_TOKENS) {
+    throw new Error(`Maximum ${MAX_BATCH_TOKENS} tokens per request`);
+  }
+  const tokenAddresses = tokens.map(resolveTokenAddress);
+  const normalizedSet = new Set(tokenAddresses.map(normalizeAddress));
+  if (normalizedSet.size !== tokens.length) {
+    throw new Error("Duplicate tokens in request");
+  }
+  return tokenAddresses;
+}

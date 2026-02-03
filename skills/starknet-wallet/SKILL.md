@@ -43,6 +43,55 @@ STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_PRIVATE_KEY=0x...
 ```
 
+## MCP Tools
+
+The Starknet MCP Server exposes balance operations as tools for AI agents.
+
+### starknet_get_balance (Single Token)
+
+Query balance for one token. Use for simple cases.
+
+**Input:**
+- `token` (required): Token symbol (ETH, STRK, USDC, USDT) or contract address
+- `address` (optional): Wallet address (defaults to agent's address)
+
+**Response:**
+```json
+{
+  "address": "0x...",
+  "token": "ETH",
+  "tokenAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+  "balance": "1.5",
+  "raw": "1500000000000000000",
+  "decimals": 18
+}
+```
+
+### starknet_get_balances (Multiple Tokens)
+
+Query balances for multiple tokens in a single RPC call. More efficient for portfolio views.
+
+**Input:**
+- `tokens` (required): Array of token symbols or addresses (max 200)
+- `address` (optional): Wallet address
+
+**Response:**
+```json
+{
+  "address": "0x...",
+  "balances": [
+    { "token": "ETH", "tokenAddress": "0x...", "balance": "1.5", "raw": "...", "decimals": 18 },
+    { "token": "USDC", "tokenAddress": "0x...", "balance": "100", "raw": "...", "decimals": 6 }
+  ],
+  "tokensQueried": 2,
+  "method": "balance_checker"
+}
+```
+
+**When to use:**
+- **starknet_get_balance**: Quick single-token check
+- **starknet_get_balances**: Portfolio overview, multi-token operations
+
 ## Core Operations
 
 ### Check Balance
@@ -64,6 +113,69 @@ const balance = await ethContract.balanceOf(accountAddress);
 // starknet.js v8: Convert uint256 to bigint
 const balanceBigInt = BigInt(balance.low) + (BigInt(balance.high) << 128n);
 // Format: (balanceBigInt / 10n ** 18n).toString() for whole units
+```
+
+### Check Balances (Batch)
+
+Query multiple token balances in a single RPC call using the BalanceChecker contract.
+
+```typescript
+import { RpcProvider, Contract } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
+
+// BalanceChecker contract (returns non-zero balances only)
+const BALANCE_CHECKER_ADDRESS = "0x031ce64a666fbf9a2b1b2ca51c2af60d9a76d3b85e5fbfb9d5a8dbd3fedc9716";
+const BALANCE_CHECKER_ABI = [
+  {
+    type: "struct",
+    name: "core::integer::u256",
+    members: [
+      { name: "low", type: "core::integer::u128" },
+      { name: "high", type: "core::integer::u128" },
+    ],
+  },
+  {
+    type: "struct",
+    name: "governance::balance_checker::NonZeroBalance",
+    members: [
+      { name: "token", type: "core::starknet::contract_address::ContractAddress" },
+      { name: "balance", type: "core::integer::u256" },
+    ],
+  },
+  {
+    type: "function",
+    name: "get_balances",
+    inputs: [
+      { name: "address", type: "core::starknet::contract_address::ContractAddress" },
+      { name: "tokens", type: "core::array::Span::<core::starknet::contract_address::ContractAddress>" },
+    ],
+    outputs: [{ type: "core::array::Span::<governance::balance_checker::NonZeroBalance>" }],
+    state_mutability: "view",
+  },
+];
+
+const balanceChecker = new Contract({
+  abi: BALANCE_CHECKER_ABI,
+  address: BALANCE_CHECKER_ADDRESS,
+  providerOrAccount: provider,
+});
+
+// Query multiple tokens at once
+const tokens = [
+  "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7", // ETH
+  "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d", // STRK
+  "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", // USDC
+];
+
+const result = await balanceChecker.get_balances(accountAddress, tokens);
+
+// Parse response (only non-zero balances returned)
+for (const item of result) {
+  const tokenAddr = "0x" + BigInt(item.token).toString(16).padStart(64, "0");
+  const balance = BigInt(item.balance); // starknet.js converts u256 to bigint
+  console.log(`${tokenAddr}: ${balance}`);
+}
 ```
 
 ### Transfer Tokens

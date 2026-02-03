@@ -43,6 +43,7 @@ import {
   resolveTokenAddress,
   normalizeAddress,
   getCachedDecimals,
+  validateTokensInput,
 } from "./utils.js";
 import {
   getQuotes,
@@ -532,7 +533,11 @@ async function fetchTokenBalances(
   try {
     const balances = await fetchTokenBalancesViaBalanceChecker(walletAddress, tokens, tokenAddresses);
     return { balances, method: "balance_checker" };
-  } catch {
+  } catch (error) {
+    console.error(
+      "BalanceChecker contract unavailable, falling back to batch RPC:",
+      error instanceof Error ? error.message : error
+    );
     const balances = await fetchTokenBalancesViaBatchRpc(walletAddress, tokens, tokenAddresses);
     return { balances, method: "batch_rpc" };
   }
@@ -580,15 +585,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           tokens: string[];
         };
 
-        if (!tokens || tokens.length === 0) {
-          throw new Error("At least one token is required");
-        }
-
-        if (tokens.length > MAX_BATCH_TOKENS) {
-          throw new Error(`Maximum ${MAX_BATCH_TOKENS} tokens per request`);
-        }
-
-        const tokenAddresses = tokens.map(resolveTokenAddress);
+        const tokenAddresses = validateTokensInput(tokens);
         const { balances, method } = await fetchTokenBalances(address, tokens, tokenAddresses);
 
         return {
