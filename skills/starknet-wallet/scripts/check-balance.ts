@@ -8,10 +8,9 @@
  */
 
 import 'dotenv/config';
-import { RpcProvider, Contract, uint256 } from 'starknet';
+import { RpcProvider, Contract } from 'starknet';
 
 const ETH = '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7';
-const STRK = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
 
 const ERC20_ABI = [{
   name: 'balanceOf',
@@ -40,15 +39,16 @@ async function main() {
   try {
     console.log('🔍 Checking balance...');
     const provider = new RpcProvider({ nodeUrl: rpcUrl });
-    const contract = new Contract(ERC20_ABI, token, provider);
+    const contract = new Contract({ abi: ERC20_ABI, address: token, providerOrAccount: provider });
 
-    const [balance, decimals] = await Promise.all([
+    const [balanceResult, decimalsResult] = await Promise.all([
       contract.balanceOf(address),
       contract.decimals(),
     ]);
 
-    const balanceBigInt = uint256.uint256ToBN(balance);
-    const formatted = Number(balanceBigInt) / (10 ** Number(decimals));
+    const balance = balanceResult?.balance ?? balanceResult;
+    const decimals = decimalsResult?.decimals ?? decimalsResult;
+    const formatted = Number(balance) / (10 ** Number(decimals));
 
     console.log(`✅ Balance: ${formatted.toFixed(4)} tokens`);
     console.log(`   Address: ${address}`);

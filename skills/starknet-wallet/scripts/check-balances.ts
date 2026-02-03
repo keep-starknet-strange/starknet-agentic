@@ -71,10 +71,10 @@ function normalizeAddress(addr: string): string {
 }
 
 function formatAmount(amount: bigint, decimals: number): string {
-  const str = amount.toString().padStart(decimals + 1, '0');
-  const intPart = str.slice(0, -decimals) || '0';
-  const decPart = str.slice(-decimals);
-  return `${intPart}.${decPart.slice(0, 6)}`;
+  const amountStr = amount.toString().padStart(decimals + 1, '0');
+  const whole = amountStr.slice(0, -decimals) || '0';
+  const fraction = amountStr.slice(-decimals).slice(0, 6); // max 6 decimal places
+  return `${whole}.${fraction}`;
 }
 
 type TokenBalanceResult = {
@@ -90,7 +90,7 @@ async function fetchViaBalanceChecker(
   tokens: string[],
   tokenAddresses: string[]
 ): Promise<TokenBalanceResult[]> {
-  const balanceChecker = new Contract(BALANCE_CHECKER_ABI, BALANCE_CHECKER_ADDRESS, provider);
+  const balanceChecker = new Contract({ abi: BALANCE_CHECKER_ABI, address: BALANCE_CHECKER_ADDRESS, providerOrAccount: provider });
   const result = await balanceChecker.get_balances(walletAddress, tokenAddresses);
 
   // BalanceChecker returns array of NonZeroBalance { token, balance }
@@ -105,8 +105,9 @@ async function fetchViaBalanceChecker(
   const batchProvider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL!, batch: 0 });
   const decimalsResults = await Promise.all(
     tokenAddresses.map(async (addr) => {
-      const contract = new Contract(ERC20_ABI, addr, batchProvider);
-      return Number(await contract.decimals());
+      const contract = new Contract({ abi: ERC20_ABI, address: addr, providerOrAccount: batchProvider });
+      const result = await contract.decimals();
+      return Number(result?.decimals ?? result);
     })
   );
 
@@ -127,13 +128,13 @@ async function fetchViaBatchRpc(
 
   const results = await Promise.all(
     tokenAddresses.map(async (addr) => {
-      const contract = new Contract(ERC20_ABI, addr, batchProvider);
-      const [balanceResult, decimals] = await Promise.all([
+      const contract = new Contract({ abi: ERC20_ABI, address: addr, providerOrAccount: batchProvider });
+      const [balanceResult, decimalsResult] = await Promise.all([
         contract.balanceOf(walletAddress),
         contract.decimals(),
       ]);
-      // starknet.js v6 returns { balance: bigint }
-      const balance = typeof balanceResult === 'bigint' ? balanceResult : balanceResult.balance;
+      const balance = balanceResult?.balance ?? balanceResult;
+      const decimals = decimalsResult?.decimals ?? decimalsResult;
       return {
         balance,
         decimals: Number(decimals),

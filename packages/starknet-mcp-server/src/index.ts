@@ -353,8 +353,8 @@ async function parseAmount(
   tokenAddress: string
 ): Promise<bigint> {
   const contract = new Contract({ abi: ERC20_ABI, address: tokenAddress, providerOrAccount: provider });
-  const decimals = await contract.decimals();
-  const decimalsBigInt = BigInt(decimals.toString());
+  const decimalsResult = await contract.decimals();
+  const decimalsBigInt = BigInt(decimalsResult?.decimals ?? decimalsResult);
 
   // Handle decimal amounts
   const [whole, fraction = ""] = amount.split(".");
@@ -395,11 +395,11 @@ async function fetchTokenBalance(
     cached !== undefined ? Promise.resolve(cached) : contract.decimals(),
   ]);
 
-  // starknet.js v6+ returns { balance: bigint } from balanceOf
-  const balance = typeof balanceResult === 'bigint' ? balanceResult : balanceResult.balance;
+  const balance = balanceResult?.balance ?? balanceResult;
+  const decimals = Number(decimalsResult?.decimals ?? decimalsResult);
   return {
     balance,
-    decimals: Number(decimalsResult),
+    decimals,
   };
 }
 
@@ -452,7 +452,8 @@ async function fetchTokenBalancesViaBalanceChecker(
       const cached = getCachedDecimals(addr);
       if (cached !== undefined) return cached;
       const contract = new Contract({ abi: ERC20_ABI, address: addr, providerOrAccount: batchProvider });
-      return Number(await contract.decimals());
+      const result = await contract.decimals();
+      return Number(result?.decimals ?? result);
     })
   );
 

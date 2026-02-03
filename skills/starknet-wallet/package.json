@@ -7,7 +7,7 @@
     "check-balances": "tsx scripts/check-balances.ts"
   },
   "dependencies": {
-    "starknet": "^6.24.1",
+    "starknet": "^8.9.1",
     "dotenv": "^16.0.0"
   },
   "devDependencies": {
