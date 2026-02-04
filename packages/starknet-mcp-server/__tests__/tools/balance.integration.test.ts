@@ -1,12 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { TOKENS, normalizeAddress } from "../../src/utils.js";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { TOKENS } from "../../src/utils.js";
 
-/**
- * Integration tests for starknet_get_balances tool
- * Tests the full flow including fallback mechanism
- */
+const BALANCE_CHECKER_ADDRESS = "0x031ce64a666fbf9a2b1b2ca51c2af60d9a76d3b85e5fbfb9d5a8dbd3fedc9716";
 
-// Mock starknet.js Contract class
+// Mock starknet.js Contract and RpcProvider
 const mockBalanceCheckerCall = vi.fn();
 const mockErc20BalanceOf = vi.fn();
 const mockErc20Decimals = vi.fn();
@@ -16,213 +13,228 @@ vi.mock("starknet", async (importOriginal) => {
   return {
     ...actual,
     Contract: vi.fn().mockImplementation(({ address }: { address: string }) => {
-      // BalanceChecker contract
-      if (address === "0x031ce64a666fbf9a2b1b2ca51c2af60d9a76d3b85e5fbfb9d5a8dbd3fedc9716") {
-        return {
-          get_balances: mockBalanceCheckerCall,
-        };
+      if (address === BALANCE_CHECKER_ADDRESS) {
+        return { get_balances: mockBalanceCheckerCall };
       }
-      // ERC20 contracts
       return {
         balanceOf: mockErc20BalanceOf,
         decimals: mockErc20Decimals,
       };
     }),
-    RpcProvider: vi.fn().mockImplementation(() => ({
-      getChainId: vi.fn().mockResolvedValue("0x534e5f4d41494e"),
-    })),
+    RpcProvider: vi.fn().mockImplementation(() => ({})),
   };
 });
 
-describe("fetchTokenBalances integration", () => {
+// Import AFTER mocking starknet
+const { fetchTokenBalance, fetchTokenBalances } = await import("../../src/helpers/balance.js");
+const { RpcProvider } = await import("starknet");
+
+// Create mock provider (with batch: 0 like production)
+const mockProvider = new RpcProvider({ nodeUrl: "http://localhost", batch: 0 });
+
+describe("fetchTokenBalance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it("returns balance as bigint when contract returns bigint", async () => {
+    mockErc20BalanceOf.mockResolvedValue(BigInt("1000000000000000000"));
+    mockErc20Decimals.mockResolvedValue(18);
+
+    const result = await fetchTokenBalance("0x123", TOKENS.ETH, mockProvider);
+
+    expect(result.balance).toBe(BigInt("1000000000000000000"));
+    expect(result.decimals).toBe(18);
   });
 
-  describe("BalanceChecker success path", () => {
-    it("uses BalanceChecker contract and returns balance_checker method", async () => {
-      // Mock BalanceChecker to return balances
-      const mockResponse = [
-        {
-          token: BigInt(TOKENS.ETH),
-          balance: BigInt("1000000000000000000"), // 1 ETH
-        },
-        {
-          token: BigInt(TOKENS.USDC),
-          balance: BigInt("100000000"), // 100 USDC
-        },
-      ];
-      mockBalanceCheckerCall.mockResolvedValue(mockResponse);
-      mockErc20Decimals.mockResolvedValue(18);
-
-      // Simulate fetchTokenBalancesViaBalanceChecker behavior
-      const walletAddress = "0x123";
-      const tokens = ["ETH", "USDC"];
-      const tokenAddresses = [TOKENS.ETH, TOKENS.USDC];
-
-      // Call mock
-      const result = await mockBalanceCheckerCall(walletAddress, tokenAddresses);
-
-      expect(result).toHaveLength(2);
-      expect(mockBalanceCheckerCall).toHaveBeenCalledWith(walletAddress, tokenAddresses);
-
-      // Verify we can parse the response correctly
-      const balanceMap = new Map<string, bigint>();
-      for (const item of result) {
-        const addr = normalizeAddress("0x" + BigInt(item.token).toString(16));
-        balanceMap.set(addr, BigInt(item.balance));
-      }
-
-      expect(balanceMap.get(normalizeAddress(TOKENS.ETH))).toBe(BigInt("1000000000000000000"));
-      expect(balanceMap.get(normalizeAddress(TOKENS.USDC))).toBe(BigInt("100000000"));
+  it("converts u256 {low, high} to bigint", async () => {
+    mockErc20BalanceOf.mockResolvedValue({
+      balance: { low: BigInt("1000000000000000000"), high: BigInt(0) },
     });
+    mockErc20Decimals.mockResolvedValue(18);
+
+    const result = await fetchTokenBalance("0x123", TOKENS.ETH, mockProvider);
+
+    expect(result.balance).toBe(BigInt("1000000000000000000"));
+    expect(result.decimals).toBe(18);
   });
 
-  describe("BalanceChecker fallback path", () => {
-    it("falls back to batch RPC when BalanceChecker throws", async () => {
-      // Mock BalanceChecker to throw
-      mockBalanceCheckerCall.mockRejectedValue(new Error("Contract not found"));
+  it("uses cached decimals for known tokens", async () => {
+    mockErc20BalanceOf.mockResolvedValue(BigInt("1000000"));
 
-      // Mock ERC20 calls for fallback
-      mockErc20BalanceOf.mockResolvedValue({ balance: BigInt("1000000000000000000") });
-      mockErc20Decimals.mockResolvedValue(18);
+    const result = await fetchTokenBalance("0x123", TOKENS.USDC, mockProvider);
 
-      // Simulate the fallback logic from fetchTokenBalances
-      let method: "balance_checker" | "batch_rpc";
-      try {
-        await mockBalanceCheckerCall("0x123", [TOKENS.ETH]);
-        method = "balance_checker";
-      } catch {
-        // Fallback to batch RPC
-        await mockErc20BalanceOf("0x123");
-        method = "batch_rpc";
-      }
-
-      expect(method).toBe("batch_rpc");
-      expect(mockBalanceCheckerCall).toHaveBeenCalled();
-      expect(mockErc20BalanceOf).toHaveBeenCalled();
-    });
-
-    it("logs error message when falling back", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-      mockBalanceCheckerCall.mockRejectedValue(new Error("RPC timeout"));
-
-      try {
-        await mockBalanceCheckerCall("0x123", [TOKENS.ETH]);
-      } catch (error) {
-        // Simulate the logging from fetchTokenBalances
-        console.error(
-          "BalanceChecker contract unavailable, falling back to batch RPC:",
-          error instanceof Error ? error.message : error
-        );
-      }
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "BalanceChecker contract unavailable, falling back to batch RPC:",
-        "RPC timeout"
-      );
-
-      consoleSpy.mockRestore();
-    });
+    expect(result.decimals).toBe(6);
+    expect(mockErc20Decimals).not.toHaveBeenCalled();
   });
 
-  describe("batch RPC behavior", () => {
-    it("queries each token individually via ERC20 contract", async () => {
-      const tokens = [TOKENS.ETH, TOKENS.STRK, TOKENS.USDC];
-
-      // Mock individual ERC20 calls
-      mockErc20BalanceOf
-        .mockResolvedValueOnce({ balance: BigInt("1000000000000000000") }) // ETH
-        .mockResolvedValueOnce({ balance: BigInt("2000000000000000000") }) // STRK
-        .mockResolvedValueOnce({ balance: BigInt("100000000") }); // USDC
-
-      // Simulate batch RPC calls
-      const results = await Promise.all(
-        tokens.map(() => mockErc20BalanceOf("0x123"))
-      );
-
-      expect(results).toHaveLength(3);
-      expect(mockErc20BalanceOf).toHaveBeenCalledTimes(3);
+  it("handles very large u256 values with high part", async () => {
+    mockErc20BalanceOf.mockResolvedValue({
+      balance: { low: BigInt(100), high: BigInt(2) },
     });
+    mockErc20Decimals.mockResolvedValue(18);
+
+    const result = await fetchTokenBalance("0x123", TOKENS.ETH, mockProvider);
+
+    // 2 * 2^128 + 100
+    const expected = BigInt(2) * (BigInt(1) << 128n) + BigInt(100);
+    expect(result.balance).toBe(expected);
+  });
+});
+
+describe("fetchTokenBalances", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe("response format", () => {
-    it("includes all required fields in balance response", () => {
-      const balanceResponse = {
-        token: "ETH",
-        tokenAddress: TOKENS.ETH,
-        balance: "1.5",
-        raw: "1500000000000000000",
-        decimals: 18,
-      };
+  it("uses BalanceChecker when available and returns balance_checker method", async () => {
+    mockBalanceCheckerCall.mockResolvedValue([
+      { token: BigInt(TOKENS.ETH), balance: BigInt("1000000000000000000") },
+    ]);
 
-      expect(balanceResponse).toHaveProperty("token");
-      expect(balanceResponse).toHaveProperty("tokenAddress");
-      expect(balanceResponse).toHaveProperty("balance");
-      expect(balanceResponse).toHaveProperty("raw");
-      expect(balanceResponse).toHaveProperty("decimals");
-    });
+    const result = await fetchTokenBalances(
+      "0x123",
+      ["ETH"],
+      [TOKENS.ETH],
+      mockProvider
+    );
 
-    it("includes method field in batch response", () => {
-      const batchResponse = {
-        address: "0x123",
-        balances: [],
-        tokensQueried: 0,
-        method: "balance_checker" as const,
-      };
-
-      expect(batchResponse).toHaveProperty("method");
-      expect(["balance_checker", "batch_rpc"]).toContain(batchResponse.method);
-    });
+    expect(result.method).toBe("balance_checker");
+    expect(result.balances).toHaveLength(1);
+    expect(result.balances[0].balance).toBe(BigInt("1000000000000000000"));
+    expect(mockBalanceCheckerCall).toHaveBeenCalled();
   });
 
-  describe("error scenarios", () => {
-    it("propagates error when both BalanceChecker and batch RPC fail", async () => {
-      mockBalanceCheckerCall.mockRejectedValue(new Error("BalanceChecker failed"));
-      mockErc20BalanceOf.mockRejectedValue(new Error("RPC failed"));
+  it("falls back to batch RPC when BalanceChecker throws", async () => {
+    mockBalanceCheckerCall.mockRejectedValue(new Error("Contract not found"));
+    mockErc20BalanceOf.mockResolvedValue(BigInt("1000000000000000000"));
+    mockErc20Decimals.mockResolvedValue(18);
 
-      let error: Error | null = null;
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      try {
-        await mockBalanceCheckerCall("0x123", [TOKENS.ETH]);
-      } catch {
-        try {
-          await mockErc20BalanceOf("0x123");
-        } catch (e) {
-          error = e as Error;
-        }
-      }
+    const result = await fetchTokenBalances(
+      "0x123",
+      ["ETH"],
+      [TOKENS.ETH],
+      mockProvider
+    );
 
-      expect(error).not.toBeNull();
-      expect(error?.message).toBe("RPC failed");
-    });
+    expect(result.method).toBe("batch_rpc");
+    expect(result.balances).toHaveLength(1);
+    expect(mockBalanceCheckerCall).toHaveBeenCalled();
+    expect(mockErc20BalanceOf).toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "BalanceChecker contract unavailable, falling back to batch RPC:",
+      "Contract not found"
+    );
 
-    it("handles empty response from BalanceChecker (all zero balances)", async () => {
-      // BalanceChecker only returns non-zero balances
-      mockBalanceCheckerCall.mockResolvedValue([]);
+    consoleSpy.mockRestore();
+  });
 
-      const result = await mockBalanceCheckerCall("0x123", [TOKENS.ETH, TOKENS.USDC]);
+  it("propagates error when both methods fail", async () => {
+    mockBalanceCheckerCall.mockRejectedValue(new Error("BalanceChecker failed"));
+    mockErc20BalanceOf.mockRejectedValue(new Error("RPC failed"));
 
-      expect(result).toEqual([]);
+    vi.spyOn(console, "error").mockImplementation(() => {});
 
-      // Verify that missing tokens should be treated as zero
-      const requestedTokens = [TOKENS.ETH, TOKENS.USDC];
-      const balanceMap = new Map<string, bigint>();
-      for (const item of result) {
-        const addr = normalizeAddress("0x" + BigInt(item.token).toString(16));
-        balanceMap.set(addr, BigInt(item.balance));
-      }
+    await expect(
+      fetchTokenBalances("0x123", ["ETH"], [TOKENS.ETH], mockProvider)
+    ).rejects.toThrow("RPC failed");
+  });
 
-      // All tokens should have zero balance
-      for (const token of requestedTokens) {
-        const balance = balanceMap.get(normalizeAddress(token)) ?? BigInt(0);
-        expect(balance).toBe(BigInt(0));
-      }
-    });
+  it("handles u256 {low, high} format from BalanceChecker", async () => {
+    mockBalanceCheckerCall.mockResolvedValue([
+      {
+        token: BigInt(TOKENS.ETH),
+        balance: { low: BigInt("1000000000000000000"), high: BigInt(0) },
+      },
+    ]);
+
+    const result = await fetchTokenBalances(
+      "0x123",
+      ["ETH"],
+      [TOKENS.ETH],
+      mockProvider
+    );
+
+    expect(result.balances[0].balance).toBe(BigInt("1000000000000000000"));
+  });
+
+  it("returns zero balance for tokens not in BalanceChecker response", async () => {
+    mockBalanceCheckerCall.mockResolvedValue([
+      { token: BigInt(TOKENS.ETH), balance: BigInt("1000000000000000000") },
+    ]);
+
+    const result = await fetchTokenBalances(
+      "0x123",
+      ["ETH", "STRK"],
+      [TOKENS.ETH, TOKENS.STRK],
+      mockProvider
+    );
+
+    expect(result.balances).toHaveLength(2);
+    expect(result.balances[0].balance).toBe(BigInt("1000000000000000000"));
+    expect(result.balances[1].balance).toBe(BigInt(0));
+  });
+
+  it("queries multiple tokens via batch RPC fallback", async () => {
+    mockBalanceCheckerCall.mockRejectedValue(new Error("unavailable"));
+    mockErc20BalanceOf
+      .mockResolvedValueOnce(BigInt("1000000000000000000"))
+      .mockResolvedValueOnce(BigInt("2000000000000000000"));
+    mockErc20Decimals.mockResolvedValue(18);
+
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await fetchTokenBalances(
+      "0x123",
+      ["ETH", "STRK"],
+      [TOKENS.ETH, TOKENS.STRK],
+      mockProvider
+    );
+
+    expect(result.method).toBe("batch_rpc");
+    expect(result.balances).toHaveLength(2);
+    expect(result.balances[0].balance).toBe(BigInt("1000000000000000000"));
+    expect(result.balances[1].balance).toBe(BigInt("2000000000000000000"));
+  });
+});
+
+describe("response format", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("fetchTokenBalance returns balance and decimals", async () => {
+    mockErc20BalanceOf.mockResolvedValue(BigInt("1500000000000000000"));
+    mockErc20Decimals.mockResolvedValue(18);
+
+    const result = await fetchTokenBalance("0x123", TOKENS.ETH, mockProvider);
+
+    expect(result).toHaveProperty("balance", BigInt("1500000000000000000"));
+    expect(result).toHaveProperty("decimals", 18);
+  });
+
+  it("fetchTokenBalances returns all required fields", async () => {
+    mockBalanceCheckerCall.mockResolvedValue([
+      { token: BigInt(TOKENS.ETH), balance: BigInt("1500000000000000000") },
+    ]);
+
+    const result = await fetchTokenBalances(
+      "0x123",
+      ["ETH"],
+      [TOKENS.ETH],
+      mockProvider
+    );
+
+    expect(result).toHaveProperty("method");
+    expect(result).toHaveProperty("balances");
+    expect(["balance_checker", "batch_rpc"]).toContain(result.method);
+
+    const balance = result.balances[0];
+    expect(balance).toHaveProperty("token", "ETH");
+    expect(balance).toHaveProperty("tokenAddress", TOKENS.ETH);
+    expect(balance).toHaveProperty("balance", BigInt("1500000000000000000"));
+    expect(balance).toHaveProperty("decimals", 18);
   });
 });
