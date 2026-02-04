@@ -7,7 +7,8 @@
  * Works with any MCP-compatible client: Claude, ChatGPT, Cursor, OpenClaw.
  *
  * Tools:
- * - starknet_get_balance: Check token balances
+ * - starknet_get_balance: Check single token balance
+ * - starknet_get_balances: Check multiple token balances (batch, single RPC call)
  * - starknet_transfer: Send tokens
  * - starknet_call_contract: Read contract state
  * - starknet_invoke_contract: Write to contracts
@@ -32,11 +33,20 @@ import {
   Contract,
   CallData,
   cairo,
-  uint256,
   ETransactionVersion,
   type Call,
   type PaymasterDetails,
 } from "starknet";
+import {
+  TOKENS,
+  resolveTokenAddress,
+  validateTokensInput,
+} from "./utils.js";
+import {
+  fetchTokenBalance,
+  fetchTokenBalances,
+  ERC20_ABI,
+} from "./helpers/balance.js";
 import {
   getQuotes,
   quoteToCalls,
@@ -64,43 +74,8 @@ const env = envSchema.parse({
   AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
 });
 
-// Token addresses (Mainnet)
-const TOKENS = {
-  ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-  STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-  USDC: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
-  USDT: "0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8",
-};
-
-// ERC20 ABI (minimal)
-const ERC20_ABI = [
-  {
-    name: "balanceOf",
-    type: "function",
-    inputs: [{ name: "account", type: "felt" }],
-    outputs: [{ name: "balance", type: "Uint256" }],
-    stateMutability: "view",
-  },
-  {
-    name: "transfer",
-    type: "function",
-    inputs: [
-      { name: "recipient", type: "felt" },
-      { name: "amount", type: "Uint256" },
-    ],
-    outputs: [{ name: "success", type: "felt" }],
-  },
-  {
-    name: "decimals",
-    type: "function",
-    inputs: [],
-    outputs: [{ name: "decimals", type: "felt" }],
-    stateMutability: "view",
-  },
-];
-
 // Initialize Starknet provider and account
-const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL });
+const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
 const account = new Account({
   provider,
   address: env.STARKNET_ACCOUNT_ADDRESS,
@@ -160,7 +135,7 @@ const tools: Tool[] = [
   {
     name: "starknet_get_balance",
     description:
-      "Get token balance for an address on Starknet. Supports ETH, STRK, USDC, USDT, or any token address.",
+      "Get token balance for an address on Starknet. Supports ETH, STRK, USDC, USDT, or any token address. For multiple tokens, use starknet_get_balances instead.",
     inputSchema: {
       type: "object",
       properties: {
@@ -174,6 +149,26 @@ const tools: Tool[] = [
         },
       },
       required: ["token"],
+    },
+  },
+  {
+    name: "starknet_get_balances",
+    description:
+      "Get multiple token balances for an address in a single RPC call. More efficient than calling starknet_get_balance multiple times. Supports ETH, STRK, USDC, USDT, or any token addresses.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        address: {
+          type: "string",
+          description: "The address to check balances for (defaults to agent's address)",
+        },
+        tokens: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of token symbols (ETH, STRK, USDC, USDT) or contract addresses",
+        },
+      },
+      required: ["tokens"],
     },
   },
   {
@@ -349,17 +344,6 @@ const tools: Tool[] = [
   },
 ];
 
-// Helper: Resolve token address from symbol
-function resolveTokenAddress(token: string): string {
-  const upperToken = token.toUpperCase();
-  if (upperToken in TOKENS) {
-    return TOKENS[upperToken as keyof typeof TOKENS];
-  }
-  if (token.startsWith("0x")) {
-    return token;
-  }
-  throw new Error(`Unknown token: ${token}`);
-}
 
 // Helper: Parse amount with decimals
 async function parseAmount(
@@ -367,8 +351,8 @@ async function parseAmount(
   tokenAddress: string
 ): Promise<bigint> {
   const contract = new Contract({ abi: ERC20_ABI, address: tokenAddress, providerOrAccount: provider });
-  const decimals = await contract.decimals();
-  const decimalsBigInt = BigInt(decimals.toString());
+  const decimalsResult = await contract.decimals();
+  const decimalsBigInt = BigInt(decimalsResult?.decimals ?? decimalsResult);
 
   // Handle decimal amounts
   const [whole, fraction = ""] = amount.split(".");
@@ -395,13 +379,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const tokenAddress = resolveTokenAddress(token);
-        const contract = new Contract({ abi: ERC20_ABI, address: tokenAddress, providerOrAccount: provider });
-
-        const balance = await contract.balanceOf(address);
-        const decimals = await contract.decimals();
-
-        const balanceBigInt = uint256.uint256ToBN(balance);
-        const formattedBalance = formatAmount(balanceBigInt, Number(decimals));
+        const { balance, decimals } = await fetchTokenBalance(address, tokenAddress, provider);
 
         return {
           content: [
@@ -410,9 +388,40 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               text: JSON.stringify({
                 address,
                 token,
-                balance: formattedBalance,
-                raw: balanceBigInt.toString(),
-                decimals: Number(decimals),
+                tokenAddress,
+                balance: formatAmount(balance, decimals),
+                raw: balance.toString(),
+                decimals,
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "starknet_get_balances": {
+        const { address = env.STARKNET_ACCOUNT_ADDRESS, tokens } = args as {
+          address?: string;
+          tokens: string[];
+        };
+
+        const tokenAddresses = validateTokensInput(tokens);
+        const { balances, method } = await fetchTokenBalances(address, tokens, tokenAddresses, provider);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                address,
+                balances: balances.map((b) => ({
+                  token: b.token,
+                  tokenAddress: b.tokenAddress,
+                  balance: formatAmount(b.balance, b.decimals),
+                  raw: b.balance.toString(),
+                  decimals: b.decimals,
+                })),
+                tokensQueried: tokens.length,
+                method,
               }, null, 2),
             },
           ],
