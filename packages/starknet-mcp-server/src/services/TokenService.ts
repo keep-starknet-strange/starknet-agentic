@@ -251,25 +251,23 @@ export class TokenService {
 
     const symbol = this.decodeStringResult(symbolResult, address);
     const name = this.decodeStringResult(nameResult, "Unknown Token");
-    const decimals = decimalsResult ? Number(decimalsResult?.decimals ?? decimalsResult) : 18;
+    const rawDecimals = Number(decimalsResult?.decimals ?? decimalsResult ?? 18);
+    const decimals = Number.isNaN(rawDecimals) ? 18 : rawDecimals;
 
-    const cached: CachedToken = {
-      address,
-      symbol,
-      name,
-      decimals,
-      logoUri: null,
-      lastDailyVolumeUsd: 0,
-      tags: [],
-      extensions: {},
-      isStatic: false,
-      lastUpdated: Date.now(),
-    };
-
-    this.cache.set(address, cached);
-    this.symbolIndex.set(symbol.toUpperCase(), address);
-
-    return cached;
+    // Route through addToCache to preserve static token precedence
+    return this.addToCache(
+      {
+        address,
+        symbol,
+        name,
+        decimals,
+        logoUri: null,
+        lastDailyVolumeUsd: 0,
+        tags: [],
+        extensions: {},
+      },
+      false
+    );
   }
 
   /**
@@ -293,44 +291,25 @@ export class TokenService {
     if (!result) return fallback;
 
     try {
-      // Handle wrapped responses { symbol: ... } or { name: ... }
+      // Unwrap { symbol: ... } or { name: ... } responses, unless it's a direct ByteArray
       let value = result;
-      if (typeof result === "object" && result !== null && !Array.isArray(result)) {
+      if (typeof result === "object" && result !== null && !Array.isArray(result) && !this.isByteArray(result)) {
         const record = result as Record<string, unknown>;
-        // Extract the inner value if wrapped
-        if ("symbol" in record && !this.isByteArray(record)) {
-          value = record.symbol;
-        } else if ("name" in record && !this.isByteArray(record)) {
-          value = record.name;
-        }
+        if ("symbol" in record) value = record.symbol;
+        else if ("name" in record) value = record.name;
       }
 
-      // Try ByteArray decoding first (Cairo 1 long strings)
+      // ByteArray (Cairo 1 long strings)
       if (this.isByteArray(value)) {
-        const decoded = byteArray.stringFromByteArray(value as Parameters<typeof byteArray.stringFromByteArray>[0]);
-        return decoded || fallback;
+        return byteArray.stringFromByteArray(value as Parameters<typeof byteArray.stringFromByteArray>[0]) || fallback;
       }
 
-      // Also check if the wrapped value contains a ByteArray
-      if (typeof value === "object" && value !== null) {
-        const innerRecord = value as Record<string, unknown>;
-        if (this.isByteArray(innerRecord.symbol)) {
-          const decoded = byteArray.stringFromByteArray(innerRecord.symbol as Parameters<typeof byteArray.stringFromByteArray>[0]);
-          return decoded || fallback;
-        }
-        if (this.isByteArray(innerRecord.name)) {
-          const decoded = byteArray.stringFromByteArray(innerRecord.name as Parameters<typeof byteArray.stringFromByteArray>[0]);
-          return decoded || fallback;
-        }
-      }
-
-      // Fall back to short string decoding (felt252)
+      // Short string (felt252)
       if (typeof value === "bigint" || typeof value === "string") {
-        const decoded = shortString.decodeShortString(value.toString());
-        return decoded || fallback;
+        return shortString.decodeShortString(value.toString()) || fallback;
       }
     } catch {
-      // Decoding failed, use fallback
+      // Decoding failed
     }
 
     return fallback;
