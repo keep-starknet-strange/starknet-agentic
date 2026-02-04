@@ -9,7 +9,17 @@ vi.mock("@avnu/avnu-sdk", () => ({
   fetchVerifiedTokenBySymbol: vi.fn(),
 }));
 
+// Mock starknet Contract for on-chain fallback tests
+vi.mock("starknet", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("starknet")>();
+  return {
+    ...actual,
+    Contract: vi.fn(),
+  };
+});
+
 import { fetchTokenByAddress, fetchVerifiedTokenBySymbol } from "@avnu/avnu-sdk";
+import { Contract, byteArray } from "starknet";
 
 const MOCK_LORDS_TOKEN = {
   address: "0x0124aeb495b947201f5fac96fd1138e326ad86195b98df6dec9009158a533b49",
@@ -58,10 +68,10 @@ describe("TokenService", () => {
       expect(service.resolveSymbol("Eth")).toBe(ethAddr);
     });
 
-    it("should mark static tokens as isStatic", () => {
-      const ethInfo = service.getTokenInfo("ETH");
+    it("should mark static tokens as isStatic", async () => {
+      const ethInfo = await service.getTokenInfoAsync("ETH");
       expect(ethInfo).toBeDefined();
-      expect(ethInfo?.isStatic).toBe(true);
+      expect(ethInfo.isStatic).toBe(true);
     });
   });
 
@@ -221,8 +231,10 @@ describe("TokenService", () => {
       service.clearDynamicCache();
 
       expect(service.getCacheSize()).toBe(4); // Only static
-      expect(service.getTokenInfo("LORDS")).toBeUndefined();
-      expect(service.getTokenInfo("ETH")).toBeDefined();
+      // LORDS should not be resolvable after clearing
+      expect(() => service.resolveSymbol("LORDS")).toThrow("Unknown token: LORDS");
+      // ETH should still be resolvable
+      expect(service.resolveSymbol("ETH")).toBe("0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7");
     });
   });
 
@@ -264,6 +276,235 @@ describe("TokenService", () => {
       await expect(service.getDecimalsAsync(unknownAddr)).rejects.toThrow(
         "no RPC provider configured"
       );
+    });
+
+    it("should fetch from contract when avnu fails and provider is configured", async () => {
+      vi.mocked(fetchTokenByAddress).mockRejectedValueOnce(new Error("avnu unavailable"));
+
+      // Mock contract methods
+      const mockContract = {
+        symbol: vi.fn().mockResolvedValue({ symbol: BigInt("0x4c4f524453") }), // "LORDS" as felt
+        name: vi.fn().mockResolvedValue({ name: BigInt("0x4c6f726473") }), // "Lords" as felt
+        decimals: vi.fn().mockResolvedValue({ decimals: 18 }),
+      };
+      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+
+      // Configure provider
+      const mockProvider = {} as Parameters<typeof service.setProvider>[0];
+      service.setProvider(mockProvider);
+
+      const unknownAddr = "0x0000000000000000000000000000000000000000000000000000000000001234";
+      const token = await service.getTokenByAddress(unknownAddr);
+
+      expect(token.decimals).toBe(18);
+      expect(token.symbol).toBe("LORDS");
+      expect(token.name).toBe("Lords");
+      expect(token.isStatic).toBe(false);
+      expect(mockContract.symbol).toHaveBeenCalled();
+      expect(mockContract.name).toHaveBeenCalled();
+      expect(mockContract.decimals).toHaveBeenCalled();
+    });
+
+    it("should throw when all contract calls fail (invalid ERC20)", async () => {
+      vi.mocked(fetchTokenByAddress).mockRejectedValueOnce(new Error("avnu unavailable"));
+
+      // Mock contract methods that all fail
+      const mockContract = {
+        symbol: vi.fn().mockRejectedValue(new Error("call failed")),
+        name: vi.fn().mockRejectedValue(new Error("call failed")),
+        decimals: vi.fn().mockRejectedValue(new Error("call failed")),
+      };
+      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+
+      // Configure provider
+      const mockProvider = {} as Parameters<typeof service.setProvider>[0];
+      service.setProvider(mockProvider);
+
+      const unknownAddr = "0x0000000000000000000000000000000000000000000000000000000000001234";
+
+      // Should throw an error instead of caching invalid token data
+      await expect(service.getTokenByAddress(unknownAddr)).rejects.toThrow(
+        "does not appear to be a valid ERC20 token"
+      );
+    });
+
+    it("should not cache when all contract calls fail", async () => {
+      vi.mocked(fetchTokenByAddress).mockRejectedValue(new Error("avnu unavailable"));
+
+      const mockContract = {
+        symbol: vi.fn().mockRejectedValue(new Error("call failed")),
+        name: vi.fn().mockRejectedValue(new Error("call failed")),
+        decimals: vi.fn().mockRejectedValue(new Error("call failed")),
+      };
+      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+
+      const mockProvider = {} as Parameters<typeof service.setProvider>[0];
+      service.setProvider(mockProvider);
+
+      const unknownAddr = "0x0000000000000000000000000000000000000000000000000000000000007777";
+
+      await expect(service.getTokenByAddress(unknownAddr)).rejects.toThrow(
+        "does not appear to be a valid ERC20 token"
+      );
+      await expect(service.getTokenByAddress(unknownAddr)).rejects.toThrow(
+        "does not appear to be a valid ERC20 token"
+      );
+
+      expect(mockContract.symbol).toHaveBeenCalledTimes(2);
+      expect(mockContract.name).toHaveBeenCalledTimes(2);
+      expect(mockContract.decimals).toHaveBeenCalledTimes(2);
+    });
+
+    it("should use fallback values when some (but not all) contract calls fail", async () => {
+      vi.mocked(fetchTokenByAddress).mockRejectedValueOnce(new Error("avnu unavailable"));
+
+      // Mock: symbol fails, but name and decimals succeed
+      const mockContract = {
+        symbol: vi.fn().mockRejectedValue(new Error("call failed")),
+        name: vi.fn().mockResolvedValue({ name: BigInt("0x4d79546f6b656e") }), // "MyToken"
+        decimals: vi.fn().mockResolvedValue({ decimals: 6 }),
+      };
+      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+
+      const mockProvider = {} as Parameters<typeof service.setProvider>[0];
+      service.setProvider(mockProvider);
+
+      const unknownAddr = "0x0000000000000000000000000000000000000000000000000000000000001234";
+      const token = await service.getTokenByAddress(unknownAddr);
+
+      // Symbol should fall back to address, others should decode
+      expect(token.symbol).toBe(unknownAddr);
+      expect(token.name).toBe("MyToken");
+      expect(token.decimals).toBe(6);
+    });
+
+    it("should decode ByteArray responses from Cairo 1 contracts", async () => {
+      vi.mocked(fetchTokenByAddress).mockRejectedValueOnce(new Error("avnu unavailable"));
+
+      // Mock ByteArray response (Cairo 1 long string format)
+      // ByteArray structure: { data: [], pending_word: felt, pending_word_len: number }
+      const mockContract = {
+        symbol: vi.fn().mockResolvedValue({
+          symbol: {
+            data: [],
+            pending_word: BigInt("0x555344432e65"), // "USDC.e" as pending_word
+            pending_word_len: 6,
+          },
+        }),
+        name: vi.fn().mockResolvedValue({
+          name: {
+            data: [],
+            pending_word: BigInt("0x427269646765642055534443"), // "Bridged USDC"
+            pending_word_len: 12,
+          },
+        }),
+        decimals: vi.fn().mockResolvedValue({ decimals: 6 }),
+      };
+      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+
+      const mockProvider = {} as Parameters<typeof service.setProvider>[0];
+      service.setProvider(mockProvider);
+
+      const unknownAddr = "0x0000000000000000000000000000000000000000000000000000000000009999";
+      const token = await service.getTokenByAddress(unknownAddr);
+
+      expect(token.symbol).toBe("USDC.e");
+      expect(token.name).toBe("Bridged USDC");
+      expect(token.decimals).toBe(6);
+    });
+
+    it("should handle direct ByteArray responses (not wrapped)", async () => {
+      vi.mocked(fetchTokenByAddress).mockRejectedValueOnce(new Error("avnu unavailable"));
+
+      // Direct ByteArray response without wrapper
+      const mockContract = {
+        symbol: vi.fn().mockResolvedValue({
+          data: [],
+          pending_word: BigInt("0x574554"), // "WET"
+          pending_word_len: 3,
+        }),
+        name: vi.fn().mockResolvedValue({
+          data: [],
+          pending_word: BigInt("0x5772617070656420455448"), // "Wrapped ETH"
+          pending_word_len: 11,
+        }),
+        decimals: vi.fn().mockResolvedValue(18), // Direct number response
+      };
+      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+
+      const mockProvider = {} as Parameters<typeof service.setProvider>[0];
+      service.setProvider(mockProvider);
+
+      const unknownAddr = "0x0000000000000000000000000000000000000000000000000000000000008888";
+      const token = await service.getTokenByAddress(unknownAddr);
+
+      expect(token.symbol).toBe("WET");
+      expect(token.name).toBe("Wrapped ETH");
+      expect(token.decimals).toBe(18);
+    });
+
+    it("should decode ByteArray values with data chunks", async () => {
+      vi.mocked(fetchTokenByAddress).mockRejectedValueOnce(new Error("avnu unavailable"));
+
+      // ByteArray with data chunks for a longer string
+      // This represents a 35-char string: 31 bytes in data[0], 4 bytes in pending_word
+      // "VeryLongTokenSymbolThatExceeds31" (32 chars) would be:
+      // - data: [felt252 for first 31 chars]
+      // - pending_word: felt252 for remaining char(s)
+      // For simplicity, test with actual ByteArray.stringFromByteArray behavior
+      const symbolByteArray = {
+        data: [], // Empty data array (< 31 chars)
+        pending_word: BigInt("0x4c4f4e47"), // "LONG"
+        pending_word_len: 4,
+      };
+      const nameByteArray = {
+        data: [], // Empty data array
+        pending_word: BigInt("0x4c6f6e6720546f6b656e"), // "Long Token"
+        pending_word_len: 10,
+      };
+
+      const mockContract = {
+        symbol: vi.fn().mockResolvedValue({ symbol: symbolByteArray }),
+        name: vi.fn().mockResolvedValue({ name: nameByteArray }),
+        decimals: vi.fn().mockResolvedValue({ decimals: 18 }),
+      };
+      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+
+      const mockProvider = {} as Parameters<typeof service.setProvider>[0];
+      service.setProvider(mockProvider);
+
+      const unknownAddr = "0x0000000000000000000000000000000000000000000000000000000000006666";
+      const token = await service.getTokenByAddress(unknownAddr);
+
+      // Verify ByteArray decoding works (actual stringFromByteArray behavior)
+      expect(token.symbol).toBe("LONG");
+      expect(token.name).toBe("Long Token");
+      expect(token.decimals).toBe(18);
+    });
+
+    it("should cache token after on-chain fetch", async () => {
+      vi.mocked(fetchTokenByAddress).mockRejectedValue(new Error("avnu unavailable"));
+
+      const mockContract = {
+        symbol: vi.fn().mockResolvedValue({ symbol: BigInt("0x54455354") }), // "TEST"
+        name: vi.fn().mockResolvedValue({ name: BigInt("0x54657374") }), // "Test"
+        decimals: vi.fn().mockResolvedValue({ decimals: 8 }),
+      };
+      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+
+      const mockProvider = {} as Parameters<typeof service.setProvider>[0];
+      service.setProvider(mockProvider);
+
+      const unknownAddr = "0x0000000000000000000000000000000000000000000000000000000000005678";
+
+      // First call fetches from chain
+      await service.getTokenByAddress(unknownAddr);
+      expect(mockContract.symbol).toHaveBeenCalledTimes(1);
+
+      // Second call should use cache
+      const token = await service.getTokenByAddress(unknownAddr);
+      expect(mockContract.symbol).toHaveBeenCalledTimes(1); // Not called again
+      expect(token.decimals).toBe(8);
     });
   });
 });

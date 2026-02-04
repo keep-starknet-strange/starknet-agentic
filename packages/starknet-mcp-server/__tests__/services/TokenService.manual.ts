@@ -40,11 +40,11 @@ async function main() {
 
   // Test 3: Second fetch should use cache
   console.log("3. Second fetch (should use cache, no network):");
-  const cachedLords = service.getTokenInfo("LORDS");
-  if (cachedLords) {
+  try {
+    const cachedLords = await service.getTokenInfoAsync("LORDS");
     console.log(`   Cached: ${cachedLords.symbol} @ ${cachedLords.address}`);
     console.log(`   lastUpdated: ${new Date(cachedLords.lastUpdated).toISOString()}\n`);
-  } else {
+  } catch {
     console.log("   ERROR: LORDS not in cache!\n");
   }
 

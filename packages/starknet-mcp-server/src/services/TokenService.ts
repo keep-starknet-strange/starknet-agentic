@@ -8,11 +8,25 @@ import {
   fetchVerifiedTokenBySymbol,
   type Token,
 } from "@avnu/avnu-sdk";
-import { Contract, type RpcProvider } from "starknet";
+import { Contract, shortString, byteArray, type RpcProvider } from "starknet";
 import { type CachedToken, TOKEN_TTL_MS } from "../types/token.js";
 import { normalizeAddress } from "../utils.js";
 
-const ERC20_DECIMALS_ABI = [
+const ERC20_METADATA_ABI = [
+  {
+    name: "symbol",
+    type: "function",
+    inputs: [],
+    outputs: [{ name: "symbol", type: "felt" }],
+    stateMutability: "view",
+  },
+  {
+    name: "name",
+    type: "function",
+    inputs: [],
+    outputs: [{ name: "name", type: "felt" }],
+    stateMutability: "view",
+  },
   {
     name: "decimals",
     type: "function",
@@ -179,34 +193,13 @@ export class TokenService {
     return cached.decimals;
   }
 
-  /**
-   * Get cached token info.
-   * Returns undefined if not in cache or expired.
-   */
-  getTokenInfo(addressOrSymbol: string): CachedToken | undefined {
-    let normalized: string;
-
-    if (addressOrSymbol.startsWith("0x")) {
-      normalized = normalizeAddress(addressOrSymbol);
-    } else {
-      const addr = this.symbolIndex.get(addressOrSymbol.toUpperCase());
-      if (!addr) return undefined;
-      normalized = addr;
-    }
-
-    const cached = this.cache.get(normalized);
-    if (!cached || isExpired(cached)) {
-      return undefined;
-    }
-    return cached;
-  }
-
   // ============================================
   // ASYNCHRONOUS METHODS (with avnu fetch)
   // ============================================
 
   /**
    * Get token by address, fetching from avnu if not cached or expired.
+   * Falls back to on-chain contract calls if avnu is unavailable.
    */
   async getTokenByAddress(address: string): Promise<CachedToken> {
     const normalized = normalizeAddress(address);
@@ -221,10 +214,126 @@ export class TokenService {
     try {
       const token = await fetchTokenByAddress(address, { baseUrl: this.baseUrl });
       return this.addToCache(token, false);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to fetch token by address ${address}: ${msg}`);
+    } catch {
+      // Fall back to on-chain if provider available
+      if (!this.provider) {
+        throw new Error(`Token ${address} not found and no RPC provider configured for on-chain fallback`);
+      }
+
+      return this.fetchTokenFromChain(normalized);
     }
+  }
+
+  /**
+   * Fetch token metadata directly from the contract.
+   * @throws Error if all contract calls fail (not a valid ERC20 token)
+   */
+  private async fetchTokenFromChain(address: string): Promise<CachedToken> {
+    const contract = new Contract({
+      abi: ERC20_METADATA_ABI,
+      address,
+      providerOrAccount: this.provider!,
+    });
+
+    const [symbolResult, nameResult, decimalsResult] = await Promise.all([
+      contract.symbol().catch(() => null),
+      contract.name().catch(() => null),
+      contract.decimals().catch(() => null),
+    ]);
+
+    // If all contract calls failed, this is likely not a valid ERC20 token
+    // Don't cache invalid data that could silently treat non-tokens as tokens
+    if (symbolResult === null && nameResult === null && decimalsResult === null) {
+      throw new Error(
+        `Address ${address} does not appear to be a valid ERC20 token: all metadata calls failed`
+      );
+    }
+
+    const symbol = this.decodeStringResult(symbolResult, address);
+    const name = this.decodeStringResult(nameResult, "Unknown Token");
+    const decimals = decimalsResult ? Number(decimalsResult?.decimals ?? decimalsResult) : 18;
+
+    const cached: CachedToken = {
+      address,
+      symbol,
+      name,
+      decimals,
+      logoUri: null,
+      lastDailyVolumeUsd: 0,
+      tags: [],
+      extensions: {},
+      isStatic: false,
+      lastUpdated: Date.now(),
+    };
+
+    this.cache.set(address, cached);
+    this.symbolIndex.set(symbol.toUpperCase(), address);
+
+    return cached;
+  }
+
+  /**
+   * Check if an object is a Cairo ByteArray structure.
+   * ByteArray has: data (array of felts), pending_word, pending_word_len
+   */
+  private isByteArray(obj: unknown): obj is { data: unknown[]; pending_word: unknown; pending_word_len: unknown } {
+    if (typeof obj !== "object" || obj === null) return false;
+    const record = obj as Record<string, unknown>;
+    return "data" in record && "pending_word" in record && "pending_word_len" in record;
+  }
+
+  /**
+   * Decode a felt252 short string or ByteArray result from contract call.
+   * Handles:
+   * - Direct felt252 values (bigint or string)
+   * - Wrapped responses like { symbol: felt } or { name: felt }
+   * - Cairo 1 ByteArray structures { data, pending_word, pending_word_len }
+   */
+  private decodeStringResult(result: unknown, fallback: string): string {
+    if (!result) return fallback;
+
+    try {
+      // Handle wrapped responses { symbol: ... } or { name: ... }
+      let value = result;
+      if (typeof result === "object" && result !== null && !Array.isArray(result)) {
+        const record = result as Record<string, unknown>;
+        // Extract the inner value if wrapped
+        if ("symbol" in record && !this.isByteArray(record)) {
+          value = record.symbol;
+        } else if ("name" in record && !this.isByteArray(record)) {
+          value = record.name;
+        }
+      }
+
+      // Try ByteArray decoding first (Cairo 1 long strings)
+      if (this.isByteArray(value)) {
+        const decoded = byteArray.stringFromByteArray(value as Parameters<typeof byteArray.stringFromByteArray>[0]);
+        return decoded || fallback;
+      }
+
+      // Also check if the wrapped value contains a ByteArray
+      if (typeof value === "object" && value !== null) {
+        const innerRecord = value as Record<string, unknown>;
+        if (this.isByteArray(innerRecord.symbol)) {
+          const decoded = byteArray.stringFromByteArray(innerRecord.symbol as Parameters<typeof byteArray.stringFromByteArray>[0]);
+          return decoded || fallback;
+        }
+        if (this.isByteArray(innerRecord.name)) {
+          const decoded = byteArray.stringFromByteArray(innerRecord.name as Parameters<typeof byteArray.stringFromByteArray>[0]);
+          return decoded || fallback;
+        }
+      }
+
+      // Fall back to short string decoding (felt252)
+      if (typeof value === "bigint" || typeof value === "string") {
+        const decoded = shortString.decodeShortString(value.toString());
+        return decoded || fallback;
+      }
+    } catch {
+      // Decoding failed, use fallback
+    }
+
+    return fallback;
   }
 
   /**
@@ -281,53 +390,9 @@ export class TokenService {
       return cached;
     }
 
-    // Try avnu first
-    try {
-      const token = await this.getTokenByAddress(address);
-      return token.decimals;
-    } catch {
-      // Fall back to on-chain if provider available
-      if (!this.provider) {
-        throw new Error(`Token ${address} not found and no RPC provider configured for on-chain fallback`);
-      }
-
-      const contract = new Contract({
-        abi: ERC20_DECIMALS_ABI,
-        address,
-        providerOrAccount: this.provider,
-      });
-      const result = await contract.decimals();
-      const decimals = Number(result?.decimals ?? result);
-
-      this.cacheOnChainDecimals(address, decimals);
-      return decimals;
-    }
-  }
-
-  /**
-   * Cache decimals fetched from on-chain call.
-   * Creates a minimal token entry for unknown tokens.
-   */
-  private cacheOnChainDecimals(address: string, decimals: number): void {
-    const normalized = normalizeAddress(address);
-
-    // Don't overwrite existing cache entries
-    if (this.cache.has(normalized)) return;
-
-    const shortAddr = `${normalized.slice(0, 10)}...${normalized.slice(-6)}`;
-    const cached: CachedToken = {
-      address: normalized,
-      symbol: shortAddr,
-      name: "Unknown Token",
-      decimals,
-      logoUri: null,
-      lastDailyVolumeUsd: 0,
-      tags: [],
-      extensions: {},
-      isStatic: false,
-      lastUpdated: Date.now(),
-    };
-    this.cache.set(normalized, cached);
+    // getTokenByAddress handles avnu → on-chain fallback
+    const token = await this.getTokenByAddress(address);
+    return token.decimals;
   }
 
   /**

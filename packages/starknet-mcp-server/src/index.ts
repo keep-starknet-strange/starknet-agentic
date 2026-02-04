@@ -37,8 +37,8 @@ import {
   type PaymasterDetails,
 } from "starknet";
 import {
-  resolveTokenAddress,
-  validateTokensInput,
+  resolveTokenAddressAsync,
+  validateTokensInputAsync,
 } from "./utils.js";
 import { getTokenService, configureTokenServiceProvider, TOKENS } from "./services/index.js";
 import {
@@ -378,7 +378,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           token: string;
         };
 
-        const tokenAddress = resolveTokenAddress(token);
+        const tokenAddress = await resolveTokenAddressAsync(token);
         const { balance, decimals } = await fetchTokenBalance(address, tokenAddress, provider);
 
         return {
@@ -404,7 +404,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           tokens: string[];
         };
 
-        const tokenAddresses = validateTokensInput(tokens);
+        const tokenAddresses = await validateTokensInputAsync(tokens);
         const { balances, method } = await fetchTokenBalances(address, tokens, tokenAddresses, provider);
 
         return {
@@ -437,9 +437,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           gasToken?: string;
         };
 
-        const tokenAddress = resolveTokenAddress(token);
+        const tokenAddress = await resolveTokenAddressAsync(token);
         const amountWei = await parseAmount(amount, tokenAddress);
-        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
+        const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : TOKENS.STRK;
 
         const transferCall: Call = {
           contractAddress: tokenAddress,
@@ -506,7 +506,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           gasToken?: string;
         };
 
-        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
+        const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : TOKENS.STRK;
         const invokeCall: Call = { contractAddress, entrypoint, calldata };
 
         const transactionHash = await executeTransaction(invokeCall, gasfree, gasTokenAddress);
@@ -538,8 +538,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           gasToken?: string;
         };
 
-        const sellTokenAddress = resolveTokenAddress(sellToken);
-        const buyTokenAddress = resolveTokenAddress(buyToken);
+        const [sellTokenAddress, buyTokenAddress] = await Promise.all([
+          resolveTokenAddressAsync(sellToken),
+          resolveTokenAddressAsync(buyToken),
+        ]);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
         const quoteParams: QuoteRequest = {
@@ -563,7 +565,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           executeApprove: true,
         }, { baseUrl: env.AVNU_BASE_URL });
 
-        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : sellTokenAddress;
+        const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : sellTokenAddress;
         const transactionHash = await executeTransaction(calls, gasfree, gasTokenAddress);
         await provider.waitForTransaction(transactionHash);
 
@@ -598,8 +600,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           amount: string;
         };
 
-        const sellTokenAddress = resolveTokenAddress(sellToken);
-        const buyTokenAddress = resolveTokenAddress(buyToken);
+        const [sellTokenAddress, buyTokenAddress] = await Promise.all([
+          resolveTokenAddressAsync(sellToken),
+          resolveTokenAddressAsync(buyToken),
+        ]);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
         const quoteParams: QuoteRequest = {

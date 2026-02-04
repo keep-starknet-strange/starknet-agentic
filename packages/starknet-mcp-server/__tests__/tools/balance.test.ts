@@ -2,13 +2,12 @@ import { describe, it, expect } from "vitest";
 import { uint256 } from "starknet";
 import {
   MAX_BATCH_TOKENS,
-  resolveTokenAddress,
+  resolveTokenAddressAsync,
   normalizeAddress,
-  getCachedDecimals,
-  validateTokensInput,
+  validateTokensInputAsync,
 } from "../../src/utils.js";
 import { formatAmount } from "../../src/utils/formatter.js";
-import { TOKENS } from "../../src/services/index.js";
+import { TOKENS, getTokenService } from "../../src/services/index.js";
 
 describe("formatAmount", () => {
   it("formats standard ETH amounts (18 decimals)", () => {
@@ -52,30 +51,31 @@ describe("formatAmount", () => {
   });
 });
 
-describe("resolveTokenAddress", () => {
-  it("resolves known token symbols to addresses", () => {
-    expect(resolveTokenAddress("ETH")).toBe(TOKENS.ETH);
-    expect(resolveTokenAddress("STRK")).toBe(TOKENS.STRK);
-    expect(resolveTokenAddress("USDC")).toBe(TOKENS.USDC);
-    expect(resolveTokenAddress("USDT")).toBe(TOKENS.USDT);
+describe("resolveTokenAddressAsync", () => {
+  it("resolves known token symbols to addresses", async () => {
+    expect(await resolveTokenAddressAsync("ETH")).toBe(TOKENS.ETH);
+    expect(await resolveTokenAddressAsync("STRK")).toBe(TOKENS.STRK);
+    expect(await resolveTokenAddressAsync("USDC")).toBe(TOKENS.USDC);
+    expect(await resolveTokenAddressAsync("USDT")).toBe(TOKENS.USDT);
   });
 
-  it("handles case-insensitive token symbols", () => {
-    expect(resolveTokenAddress("eth")).toBe(TOKENS.ETH);
-    expect(resolveTokenAddress("Strk")).toBe(TOKENS.STRK);
+  it("handles case-insensitive token symbols", async () => {
+    expect(await resolveTokenAddressAsync("eth")).toBe(TOKENS.ETH);
+    expect(await resolveTokenAddressAsync("Strk")).toBe(TOKENS.STRK);
   });
 
-  it("normalizes hex addresses to 64 chars", () => {
+  it("normalizes hex addresses to 64 chars", async () => {
     const customToken = "0x123abc456def";
-    const result = resolveTokenAddress(customToken);
+    const result = await resolveTokenAddressAsync(customToken);
     // TokenService normalizes all addresses to 0x + 64 hex chars
     expect(result).toBe("0x0000000000000000000000000000000000000000000000000000123abc456def");
     expect(result.length).toBe(66);
   });
 
-  it("throws for unknown token symbols", () => {
-    expect(() => resolveTokenAddress("UNKNOWN")).toThrow("Unknown token: UNKNOWN");
-    expect(() => resolveTokenAddress("invalid")).toThrow("Unknown token: invalid");
+  it("throws for unknown token symbols", async () => {
+    // Async version tries avnu first, so error message is different
+    await expect(resolveTokenAddressAsync("UNKNOWN")).rejects.toThrow("Failed to fetch token by symbol");
+    await expect(resolveTokenAddressAsync("invalid")).rejects.toThrow("Failed to fetch token by symbol");
   });
 });
 
@@ -124,19 +124,6 @@ describe("normalizeAddress", () => {
   });
 });
 
-describe("getCachedDecimals", () => {
-  it("returns cached decimals for known tokens", () => {
-    expect(getCachedDecimals(TOKENS.ETH)).toBe(18);
-    expect(getCachedDecimals(TOKENS.STRK)).toBe(18);
-    expect(getCachedDecimals(TOKENS.USDC)).toBe(6);
-    expect(getCachedDecimals(TOKENS.USDT)).toBe(6);
-  });
-
-  it("returns undefined for unknown tokens", () => {
-    expect(getCachedDecimals("0x123456")).toBeUndefined();
-  });
-});
-
 describe("MAX_BATCH_TOKENS", () => {
   it("is set to 200", () => {
     expect(MAX_BATCH_TOKENS).toBe(200);
@@ -144,17 +131,17 @@ describe("MAX_BATCH_TOKENS", () => {
 });
 
 describe("starknet_get_balances (batch)", () => {
-  it("resolves multiple token symbols", () => {
+  it("resolves multiple token symbols", async () => {
     const tokens = ["ETH", "STRK", "USDC", "USDT"];
-    const addresses = tokens.map(resolveTokenAddress);
+    const addresses = await Promise.all(tokens.map(resolveTokenAddressAsync));
     expect(addresses).toEqual([TOKENS.ETH, TOKENS.STRK, TOKENS.USDC, TOKENS.USDT]);
   });
 
-  it("handles mixed symbols and addresses (normalized)", () => {
+  it("handles mixed symbols and addresses (normalized)", async () => {
     const customAddress = "0x123abc456def";
     const normalizedCustomAddress = "0x0000000000000000000000000000000000000000000000000000123abc456def";
     const tokens = ["ETH", customAddress, "USDC"];
-    const addresses = tokens.map(resolveTokenAddress);
+    const addresses = await Promise.all(tokens.map(resolveTokenAddressAsync));
     expect(addresses).toEqual([TOKENS.ETH, normalizedCustomAddress, TOKENS.USDC]);
   });
 
@@ -182,9 +169,9 @@ describe("starknet_get_balances (batch)", () => {
     expect(nonZeroBalances.get(normalizeAddress(TOKENS.USDC))).toBe(BigInt("1000000000"));
   });
 
-  it("includes zero balances for tokens not in response", () => {
+  it("includes zero balances for tokens not in response", async () => {
     const requestedTokens = ["ETH", "STRK", "USDC"];
-    const tokenAddresses = requestedTokens.map(resolveTokenAddress);
+    const tokenAddresses = await Promise.all(requestedTokens.map(resolveTokenAddressAsync));
     const normalizedAddresses = tokenAddresses.map(normalizeAddress);
 
     // Contract only returns non-zero balances
@@ -206,7 +193,7 @@ describe("starknet_get_balances (batch)", () => {
       const tokenAddress = tokenAddresses[index];
       const normalized = normalizedAddresses[index];
       const balance = nonZeroBalances.get(normalized) ?? BigInt(0);
-      const decimals = getCachedDecimals(tokenAddress) ?? 18;
+      const decimals = getTokenService().getDecimals(tokenAddress) ?? 18;
 
       return {
         token,
@@ -241,57 +228,57 @@ describe("starknet_get_balances (batch)", () => {
     });
   });
 
-  it("throws for unknown tokens in batch", () => {
+  it("throws for unknown tokens in batch", async () => {
     const tokens = ["ETH", "UNKNOWN_TOKEN", "USDC"];
-    expect(() => tokens.map(resolveTokenAddress)).toThrow("Unknown token: UNKNOWN_TOKEN");
+    await expect(Promise.all(tokens.map(resolveTokenAddressAsync))).rejects.toThrow("Failed to fetch token by symbol");
   });
 });
 
 describe("starknet_get_balances validation", () => {
-  it("throws for empty token array", () => {
-    expect(() => validateTokensInput([])).toThrow("At least one token is required");
+  it("throws for empty token array", async () => {
+    await expect(validateTokensInputAsync([])).rejects.toThrow("At least one token is required");
   });
 
-  it("throws for undefined tokens", () => {
-    expect(() => validateTokensInput(undefined)).toThrow("At least one token is required");
+  it("throws for undefined tokens", async () => {
+    await expect(validateTokensInputAsync(undefined)).rejects.toThrow("At least one token is required");
   });
 
-  it("throws for exceeding max tokens", () => {
+  it("throws for exceeding max tokens", async () => {
     const tooManyTokens = Array(201).fill("ETH");
-    expect(() => validateTokensInput(tooManyTokens)).toThrow("Maximum 200 tokens per request");
+    await expect(validateTokensInputAsync(tooManyTokens)).rejects.toThrow("Maximum 200 tokens per request");
   });
 
-  it("throws for duplicate tokens (same symbol)", () => {
-    expect(() => validateTokensInput(["ETH", "ETH"])).toThrow("Duplicate tokens in request");
+  it("throws for duplicate tokens (same symbol)", async () => {
+    await expect(validateTokensInputAsync(["ETH", "ETH"])).rejects.toThrow("Duplicate tokens in request");
   });
 
-  it("throws for duplicate tokens (symbol and address)", () => {
-    expect(() => validateTokensInput(["ETH", TOKENS.ETH])).toThrow("Duplicate tokens in request");
+  it("throws for duplicate tokens (symbol and address)", async () => {
+    await expect(validateTokensInputAsync(["ETH", TOKENS.ETH])).rejects.toThrow("Duplicate tokens in request");
   });
 
-  it("throws for duplicate tokens (case variants)", () => {
-    expect(() => validateTokensInput(["eth", "ETH"])).toThrow("Duplicate tokens in request");
+  it("throws for duplicate tokens (case variants)", async () => {
+    await expect(validateTokensInputAsync(["eth", "ETH"])).rejects.toThrow("Duplicate tokens in request");
   });
 
-  it("allows unique tokens", () => {
+  it("allows unique tokens", async () => {
     const tokens = ["ETH", "STRK", "USDC", "USDT"];
-    const result = validateTokensInput(tokens);
+    const result = await validateTokensInputAsync(tokens);
     expect(result).toEqual([TOKENS.ETH, TOKENS.STRK, TOKENS.USDC, TOKENS.USDT]);
   });
 
-  it("allows mix of symbols and different addresses", () => {
+  it("allows mix of symbols and different addresses", async () => {
     const customAddress = "0x1234567890abcdef1234567890abcdef12345678";
     const tokens = ["ETH", customAddress, "USDC"];
-    const result = validateTokensInput(tokens);
+    const result = await validateTokensInputAsync(tokens);
     expect(result).toHaveLength(3);
   });
 
-  it("allows max tokens (200)", () => {
+  it("allows max tokens (200)", async () => {
     // Create 200 unique addresses
     const tokens = Array.from({ length: 200 }, (_, i) =>
       "0x" + (i + 1).toString(16).padStart(64, "0")
     );
-    expect(() => validateTokensInput(tokens)).not.toThrow();
+    await expect(validateTokensInputAsync(tokens)).resolves.toBeDefined();
   });
 });
 

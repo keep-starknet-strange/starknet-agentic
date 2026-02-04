@@ -12,35 +12,20 @@ import { getTokenService } from "./services/index.js";
 export const MAX_BATCH_TOKENS = 200;
 
 /**
- * Resolve token symbol to contract address.
- * Accepts well-known symbols (ETH, STRK, USDC, USDT) case-insensitively,
- * or any hex address string.
- *
- * Delegates to TokenService internally.
- *
- * @param token - Token symbol (case-insensitive) or contract address (0x...)
- * @returns Normalized contract address
- * @throws Error if token symbol is unknown and not a valid hex address
- *
- * @example
- * ```typescript
- * resolveTokenAddress("ETH")    // → "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
- * resolveTokenAddress("eth")    // → "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
- * resolveTokenAddress("0x123")  // → "0x0...0123" (normalized)
- * resolveTokenAddress("UNKNOWN") // → throws Error
- * ```
- */
-export function resolveTokenAddress(token: string): string {
-  return getTokenService().resolveSymbol(token);
-}
-
-/**
  * Resolve token symbol to contract address asynchronously.
  * For unknown symbols, fetches from avnu SDK.
  *
  * @param token - Token symbol (case-insensitive) or contract address (0x...)
  * @returns Normalized contract address
  * @throws Error if token cannot be resolved
+ *
+ * @example
+ * ```typescript
+ * await resolveTokenAddressAsync("ETH")    // → "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+ * await resolveTokenAddressAsync("eth")    // → "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+ * await resolveTokenAddressAsync("0x123")  // → "0x0...0123" (normalized)
+ * await resolveTokenAddressAsync("WETH")   // → fetches from avnu SDK
+ * ```
  */
 export async function resolveTokenAddressAsync(token: string): Promise<string> {
   return getTokenService().resolveSymbolAsync(token);
@@ -65,39 +50,8 @@ export function normalizeAddress(address: string): string {
 }
 
 /**
- * Get cached decimal value for a known token address.
- * Returns undefined for unknown tokens - caller should use getDecimalsAsync.
- *
- * Delegates to TokenService internally.
- *
- * @param tokenAddress - Token contract address
- * @returns Token decimals (e.g., 18 for ETH) or undefined if not cached
- *
- * @example
- * ```typescript
- * getCachedDecimals(TOKENS.ETH)     // → 18
- * getCachedDecimals(TOKENS.USDC)    // → 6
- * getCachedDecimals("0xunknown")    // → undefined
- * ```
- */
-export function getCachedDecimals(tokenAddress: string): number | undefined {
-  return getTokenService().getDecimals(tokenAddress);
-}
-
-/**
- * Get decimals for a token address asynchronously.
- * For unknown tokens, fetches from avnu SDK.
- *
- * @param tokenAddress - Token contract address
- * @returns Token decimals
- */
-export async function getDecimalsAsync(tokenAddress: string): Promise<number> {
-  return getTokenService().getDecimalsAsync(tokenAddress);
-}
-
-/**
- * Validate and resolve tokens input for batch balance queries.
- * Checks for empty array, max tokens limit, and duplicates.
+ * Validate and resolve tokens input asynchronously.
+ * For unknown symbols, fetches from avnu SDK.
  *
  * @param tokens - Array of token symbols or addresses
  * @returns Array of resolved token addresses
@@ -105,20 +59,19 @@ export async function getDecimalsAsync(tokenAddress: string): Promise<number> {
  *
  * @example
  * ```typescript
- * validateTokensInput(["ETH", "USDC"])  // → ["0x049d...", "0x053c..."]
- * validateTokensInput([])               // → throws "At least one token is required"
- * validateTokensInput(["ETH", "ETH"])   // → throws "Duplicate tokens in request"
+ * await validateTokensInputAsync(["ETH", "USDC"])  // → ["0x049d...", "0x053c..."]
+ * await validateTokensInputAsync([])               // → throws "At least one token is required"
+ * await validateTokensInputAsync(["ETH", "ETH"])   // → throws "Duplicate tokens in request"
  * ```
  */
-export function validateTokensInput(tokens: string[] | undefined): string[] {
+export async function validateTokensInputAsync(tokens: string[] | undefined): Promise<string[]> {
   if (!tokens || tokens.length === 0) {
     throw new Error("At least one token is required");
   }
   if (tokens.length > MAX_BATCH_TOKENS) {
     throw new Error(`Maximum ${MAX_BATCH_TOKENS} tokens per request`);
   }
-  const tokenAddresses = tokens.map(resolveTokenAddress);
-  // resolveTokenAddress already returns normalized addresses, so we can check directly
+  const tokenAddresses = await Promise.all(tokens.map(resolveTokenAddressAsync));
   if (new Set(tokenAddresses).size !== tokens.length) {
     throw new Error("Duplicate tokens in request");
   }
