@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions / discussion
+    url: https://t.me/
+    about: Use Telegram for fast iteration, then open an issue with an acceptance test.
