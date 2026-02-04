@@ -33,6 +33,12 @@ Starknet has structural advantages that make it uniquely suited as the financial
 └─────────────────────────────────────────────────────────┘
 ```
 
+## Contributing
+
+- Start here: `CONTRIBUTING.md`
+- Quick tasks: `docs/GOOD_FIRST_ISSUES.md`
+- Direction: `docs/ROADMAP.md`
+
 ## Repository Structure
 
 ```
