@@ -30,7 +30,6 @@ import {
 import {
   Account,
   RpcProvider,
-  Contract,
   CallData,
   cairo,
   ETransactionVersion,
@@ -38,14 +37,13 @@ import {
   type PaymasterDetails,
 } from "starknet";
 import {
-  TOKENS,
-  resolveTokenAddress,
-  validateTokensInput,
+  resolveTokenAddressAsync,
+  validateTokensInputAsync,
 } from "./utils.js";
+import { getTokenService, configureTokenServiceProvider, TOKENS } from "./services/index.js";
 import {
   fetchTokenBalance,
   fetchTokenBalances,
-  ERC20_ABI,
 } from "./helpers/balance.js";
 import {
   getQuotes,
@@ -86,6 +84,10 @@ const account = new Account({
 
 // Fee mode: sponsored (gasfree, dApp pays) vs default (user pays in gasToken)
 const isSponsored = !!env.AVNU_PAYMASTER_API_KEY;
+
+// Initialize TokenService with avnu base URL and RPC provider for on-chain fallback
+getTokenService(env.AVNU_BASE_URL);
+configureTokenServiceProvider(provider);
 
 /**
  * Execute transaction with optional gasfree mode.
@@ -374,19 +376,17 @@ const tools: Tool[] = [
 ];
 
 
-// Helper: Parse amount with decimals
 async function parseAmount(
   amount: string,
   tokenAddress: string
 ): Promise<bigint> {
-  const contract = new Contract({ abi: ERC20_ABI, address: tokenAddress, providerOrAccount: provider });
-  const decimalsResult = await contract.decimals();
-  const decimalsBigInt = BigInt(decimalsResult?.decimals ?? decimalsResult);
+  const tokenService = getTokenService();
+  const decimals = await tokenService.getDecimalsAsync(tokenAddress);
 
   // Handle decimal amounts
   const [whole, fraction = ""] = amount.split(".");
-  const paddedFraction = fraction.padEnd(Number(decimalsBigInt), "0");
-  const amountStr = whole + paddedFraction.slice(0, Number(decimalsBigInt));
+  const paddedFraction = fraction.padEnd(decimals, "0");
+  const amountStr = whole + paddedFraction.slice(0, decimals);
 
   return BigInt(amountStr);
 }
@@ -407,7 +407,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           token: string;
         };
 
-        const tokenAddress = resolveTokenAddress(token);
+        const tokenAddress = await resolveTokenAddressAsync(token);
         const { balance, decimals } = await fetchTokenBalance(address, tokenAddress, provider);
 
         return {
@@ -433,7 +433,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           tokens: string[];
         };
 
-        const tokenAddresses = validateTokensInput(tokens);
+        const tokenAddresses = await validateTokensInputAsync(tokens);
         const { balances, method } = await fetchTokenBalances(address, tokens, tokenAddresses, provider);
 
         return {
@@ -466,9 +466,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           gasToken?: string;
         };
 
-        const tokenAddress = resolveTokenAddress(token);
+        const tokenAddress = await resolveTokenAddressAsync(token);
         const amountWei = await parseAmount(amount, tokenAddress);
-        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
+        const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : TOKENS.STRK;
 
         const transferCall: Call = {
           contractAddress: tokenAddress,
@@ -535,7 +535,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           gasToken?: string;
         };
 
-        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : TOKENS.STRK;
+        const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : TOKENS.STRK;
         const invokeCall: Call = { contractAddress, entrypoint, calldata };
 
         const transactionHash = await executeTransaction(invokeCall, gasfree, gasTokenAddress);
@@ -567,8 +567,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           gasToken?: string;
         };
 
-        const sellTokenAddress = resolveTokenAddress(sellToken);
-        const buyTokenAddress = resolveTokenAddress(buyToken);
+        const [sellTokenAddress, buyTokenAddress] = await Promise.all([
+          resolveTokenAddressAsync(sellToken),
+          resolveTokenAddressAsync(buyToken),
+        ]);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
         const quoteParams: QuoteRequest = {
@@ -592,12 +594,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           executeApprove: true,
         }, { baseUrl: env.AVNU_BASE_URL });
 
-        const gasTokenAddress = gasToken ? resolveTokenAddress(gasToken) : sellTokenAddress;
+        const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : sellTokenAddress;
         const transactionHash = await executeTransaction(calls, gasfree, gasTokenAddress);
         await provider.waitForTransaction(transactionHash);
 
-        const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
-        const buyDecimals = Number(await buyTokenContract.decimals());
+        const tokenService = getTokenService();
+        const buyDecimals = await tokenService.getDecimalsAsync(buyTokenAddress);
         const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
 
         return {
@@ -627,8 +629,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           amount: string;
         };
 
-        const sellTokenAddress = resolveTokenAddress(sellToken);
-        const buyTokenAddress = resolveTokenAddress(buyToken);
+        const [sellTokenAddress, buyTokenAddress] = await Promise.all([
+          resolveTokenAddressAsync(sellToken),
+          resolveTokenAddressAsync(buyToken),
+        ]);
         const sellAmount = await parseAmount(amount, sellTokenAddress);
 
         const quoteParams: QuoteRequest = {
@@ -645,8 +649,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const bestQuote = quotes[0];
 
-        const buyTokenContract = new Contract({ abi: ERC20_ABI, address: buyTokenAddress, providerOrAccount: provider });
-        const buyDecimals = Number(await buyTokenContract.decimals());
+        const tokenService = getTokenService();
+        const buyDecimals = await tokenService.getDecimalsAsync(buyTokenAddress);
         const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
 
         return {

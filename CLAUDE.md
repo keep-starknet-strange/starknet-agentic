@@ -13,7 +13,7 @@ Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (
 | TypeScript packages | pnpm workspaces, tsup | Node 18+ |
 | MCP server | `@modelcontextprotocol/sdk` | ^1.0.0 |
 | Starknet interaction | starknet.js | ^6.24.1 |
-| DeFi aggregation | `@avnu/avnu-sdk` | ^2.0.0 |
+| DeFi aggregation | `@avnu/avnu-sdk` | ^4.0.1 |
 | Schema validation | zod | ^3.23.0 |
 | TS testing | Vitest | -- |
 | Cairo testing | snforge | 0.51.2 |

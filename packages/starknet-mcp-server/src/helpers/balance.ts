@@ -1,5 +1,12 @@
-import { Contract, RpcProvider, uint256, type Uint256 } from "starknet";
-import { normalizeAddress, getCachedDecimals } from "../utils.js";
+import { Contract, RpcProvider, uint256 } from "starknet";
+import { normalizeAddress } from "../utils.js";
+import { getTokenService } from "../services/index.js";
+
+/** Convert a balance result (bigint or Uint256) to bigint */
+function toBigInt(value: unknown): bigint {
+  if (typeof value === "bigint") return value;
+  return uint256.uint256ToBN(value as { low: bigint; high: bigint });
+}
 
 export const BALANCE_CHECKER_ADDRESS = "0x031ce64a666fbf9a2b1b2ca51c2af60d9a76d3b85e5fbfb9d5a8dbd3fedc9716";
 
@@ -51,13 +58,6 @@ export const ERC20_ABI = [
     ],
     outputs: [{ name: "success", type: "felt" }],
   },
-  {
-    name: "decimals",
-    type: "function",
-    inputs: [],
-    outputs: [{ name: "decimals", type: "felt" }],
-    stateMutability: "view",
-  },
 ];
 
 export type TokenBalanceResult = {
@@ -74,7 +74,7 @@ export type BatchBalanceResult = {
 
 type NonZeroBalanceResponse = {
   token: bigint;
-  balance: bigint | Uint256;
+  balance: unknown;
 };
 
 /**
@@ -91,17 +91,13 @@ export async function fetchTokenBalance(
     providerOrAccount: provider,
   });
 
-  const cached = getCachedDecimals(tokenAddress);
-  const [balanceResult, decimalsResult] = await Promise.all([
+  const tokenService = getTokenService();
+  const [balanceResult, decimals] = await Promise.all([
     contract.balanceOf(walletAddress),
-    cached !== undefined ? Promise.resolve(cached) : contract.decimals(),
+    tokenService.getDecimalsAsync(tokenAddress),
   ]);
 
-  const rawBalance = balanceResult?.balance ?? balanceResult;
-  const balance = typeof rawBalance === "bigint"
-    ? rawBalance
-    : uint256.uint256ToBN(rawBalance);
-  const decimals = Number(decimalsResult?.decimals ?? decimalsResult);
+  const balance = toBigInt(balanceResult?.balance ?? balanceResult);
   return { balance, decimals };
 }
 
@@ -142,20 +138,12 @@ async function fetchBalancesViaBalanceChecker(
   const balanceMap = new Map<string, bigint>();
   for (const item of result) {
     const addr = normalizeAddress("0x" + BigInt(item.token).toString(16));
-    const balance = typeof item.balance === "bigint"
-      ? item.balance
-      : uint256.uint256ToBN(item.balance);
-    balanceMap.set(addr, balance);
+    balanceMap.set(addr, toBigInt(item.balance));
   }
 
+  const tokenService = getTokenService();
   const decimalsResults = await Promise.all(
-    tokenAddresses.map(async (addr) => {
-      const cached = getCachedDecimals(addr);
-      if (cached !== undefined) return cached;
-      const contract = new Contract({ abi: ERC20_ABI, address: addr, providerOrAccount: provider });
-      const result = await contract.decimals();
-      return Number(result?.decimals ?? result);
-    })
+    tokenAddresses.map((addr) => tokenService.getDecimalsAsync(addr))
   );
 
   return tokens.map((token, i) => ({

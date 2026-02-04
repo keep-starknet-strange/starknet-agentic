@@ -3,29 +3,7 @@
  */
 
 import { validateAndParseAddress } from "starknet";
-
-/**
- * Well-known token addresses on Starknet Mainnet.
- * Used for symbol-to-address resolution in MCP tools.
- */
-export const TOKENS: Record<string, string> = {
-  ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-  STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-  USDC: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
-  USDT: "0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8",
-};
-
-/**
- * Cached decimal values for common tokens.
- * Avoids on-chain queries for frequently used tokens.
- * Unknown tokens should fetch decimals from contract.
- */
-export const TOKEN_DECIMALS: Record<string, number> = {
-  [TOKENS.ETH]: 18,
-  [TOKENS.STRK]: 18,
-  [TOKENS.USDC]: 6,
-  [TOKENS.USDT]: 6,
-};
+import { getTokenService } from "./services/index.js";
 
 /**
  * Maximum number of tokens that can be queried in a single batch balance request.
@@ -34,31 +12,23 @@ export const TOKEN_DECIMALS: Record<string, number> = {
 export const MAX_BATCH_TOKENS = 200;
 
 /**
- * Resolve token symbol to contract address.
- * Accepts well-known symbols (ETH, STRK, USDC, USDT) case-insensitively,
- * or any hex address string.
+ * Resolve token symbol to contract address asynchronously.
+ * For unknown symbols, fetches from avnu SDK.
  *
  * @param token - Token symbol (case-insensitive) or contract address (0x...)
  * @returns Normalized contract address
- * @throws Error if token symbol is unknown and not a valid hex address
+ * @throws Error if token cannot be resolved
  *
  * @example
  * ```typescript
- * resolveTokenAddress("ETH")    // → "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
- * resolveTokenAddress("eth")    // → "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
- * resolveTokenAddress("0x123")  // → "0x123" (passthrough)
- * resolveTokenAddress("UNKNOWN") // → throws Error
+ * await resolveTokenAddressAsync("ETH")    // → "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+ * await resolveTokenAddressAsync("eth")    // → "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+ * await resolveTokenAddressAsync("0x123")  // → "0x0...0123" (normalized)
+ * await resolveTokenAddressAsync("WETH")   // → fetches from avnu SDK
  * ```
  */
-export function resolveTokenAddress(token: string): string {
-  const upperToken = token.toUpperCase();
-  if (upperToken in TOKENS) {
-    return TOKENS[upperToken];
-  }
-  if (token.startsWith("0x")) {
-    return token;
-  }
-  throw new Error(`Unknown token: ${token}`);
+export async function resolveTokenAddressAsync(token: string): Promise<string> {
+  return getTokenService().resolveSymbolAsync(token);
 }
 
 /**
@@ -80,29 +50,8 @@ export function normalizeAddress(address: string): string {
 }
 
 /**
- * Get cached decimal value for a known token address.
- * Returns undefined for unknown tokens - caller should fetch from contract.
- * Checks both the original and normalized address for maximum compatibility.
- *
- * @param tokenAddress - Token contract address
- * @returns Token decimals (e.g., 18 for ETH) or undefined if not cached
- *
- * @example
- * ```typescript
- * getCachedDecimals(TOKENS.ETH)     // → 18
- * getCachedDecimals(TOKENS.USDC)    // → 6
- * getCachedDecimals("0xunknown")    // → undefined
- * ```
- */
-export function getCachedDecimals(tokenAddress: string): number | undefined {
-  const normalized = normalizeAddress(tokenAddress);
-  // Check both normalized and original address
-  return TOKEN_DECIMALS[tokenAddress] ?? TOKEN_DECIMALS[normalized];
-}
-
-/**
- * Validate and resolve tokens input for batch balance queries.
- * Checks for empty array, max tokens limit, and duplicates.
+ * Validate and resolve tokens input asynchronously.
+ * For unknown symbols, fetches from avnu SDK.
  *
  * @param tokens - Array of token symbols or addresses
  * @returns Array of resolved token addresses
@@ -110,21 +59,20 @@ export function getCachedDecimals(tokenAddress: string): number | undefined {
  *
  * @example
  * ```typescript
- * validateTokensInput(["ETH", "USDC"])  // → ["0x049d...", "0x053c..."]
- * validateTokensInput([])               // → throws "At least one token is required"
- * validateTokensInput(["ETH", "ETH"])   // → throws "Duplicate tokens in request"
+ * await validateTokensInputAsync(["ETH", "USDC"])  // → ["0x049d...", "0x053c..."]
+ * await validateTokensInputAsync([])               // → throws "At least one token is required"
+ * await validateTokensInputAsync(["ETH", "ETH"])   // → throws "Duplicate tokens in request"
  * ```
  */
-export function validateTokensInput(tokens: string[] | undefined): string[] {
+export async function validateTokensInputAsync(tokens: string[] | undefined): Promise<string[]> {
   if (!tokens || tokens.length === 0) {
     throw new Error("At least one token is required");
   }
   if (tokens.length > MAX_BATCH_TOKENS) {
     throw new Error(`Maximum ${MAX_BATCH_TOKENS} tokens per request`);
   }
-  const tokenAddresses = tokens.map(resolveTokenAddress);
-  const normalizedSet = new Set(tokenAddresses.map(normalizeAddress));
-  if (normalizedSet.size !== tokens.length) {
+  const tokenAddresses = await Promise.all(tokens.map(resolveTokenAddressAsync));
+  if (new Set(tokenAddresses).size !== tokens.length) {
     throw new Error("Duplicate tokens in request");
   }
   return tokenAddresses;

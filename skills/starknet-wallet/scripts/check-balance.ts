@@ -4,13 +4,12 @@
  *
  * Usage: tsx check-balance.ts
  * Requires .env with STARKNET_RPC_URL and STARKNET_ACCOUNT_ADDRESS
- * Optional: TOKEN_ADDRESS=0x... (defaults to ETH)
+ * Optional: TOKEN=ETH|STRK|USDC|USDT or TOKEN_ADDRESS=0x...
  */
 
 import 'dotenv/config';
 import { RpcProvider, Contract, uint256 } from 'starknet';
-
-const ETH = '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7';
+import { fetchTokenByAddress, fetchVerifiedTokenBySymbol } from '@avnu/avnu-sdk';
 
 const ERC20_ABI = [{
   name: 'balanceOf',
@@ -18,46 +17,59 @@ const ERC20_ABI = [{
   inputs: [{ name: 'account', type: 'felt' }],
   outputs: [{ name: 'balance', type: 'Uint256' }],
   stateMutability: 'view',
-}, {
-  name: 'decimals',
-  type: 'function',
-  inputs: [],
-  outputs: [{ name: 'decimals', type: 'felt' }],
-  stateMutability: 'view',
 }];
+
+type TokenInfo = {
+  address: string;
+  symbol: string;
+  decimals: number;
+};
+
+async function resolveToken(tokenSymbolOrAddress?: string): Promise<TokenInfo> {
+  if (!tokenSymbolOrAddress || tokenSymbolOrAddress.toUpperCase() === 'ETH') {
+    const token = await fetchVerifiedTokenBySymbol('ETH');
+    return { address: token.address, symbol: token.symbol, decimals: token.decimals };
+  }
+
+  if (tokenSymbolOrAddress.startsWith('0x')) {
+    const token = await fetchTokenByAddress(tokenSymbolOrAddress);
+    return { address: token.address, symbol: token.symbol, decimals: token.decimals };
+  }
+
+  const token = await fetchVerifiedTokenBySymbol(tokenSymbolOrAddress);
+  return { address: token.address, symbol: token.symbol, decimals: token.decimals };
+}
 
 async function main() {
   const rpcUrl = process.env.STARKNET_RPC_URL;
   const address = process.env.STARKNET_ACCOUNT_ADDRESS;
-  const token = process.env.TOKEN_ADDRESS || ETH;
+  const tokenInput = process.env.TOKEN || process.env.TOKEN_ADDRESS;
 
   if (!rpcUrl || !address) {
-    console.error('❌ Missing STARKNET_RPC_URL or STARKNET_ACCOUNT_ADDRESS');
+    console.error('Missing STARKNET_RPC_URL or STARKNET_ACCOUNT_ADDRESS');
     process.exit(1);
   }
 
   try {
-    console.log('🔍 Checking balance...');
+    console.log('Resolving token via avnu...');
+    const tokenInfo = await resolveToken(tokenInput);
+
+    console.log('Checking balance...');
     const provider = new RpcProvider({ nodeUrl: rpcUrl });
-    const contract = new Contract({ abi: ERC20_ABI, address: token, providerOrAccount: provider });
+    const contract = new Contract({ abi: ERC20_ABI, address: tokenInfo.address, providerOrAccount: provider });
 
-    const [balanceResult, decimalsResult] = await Promise.all([
-      contract.balanceOf(address),
-      contract.decimals(),
-    ]);
-
+    const balanceResult = await contract.balanceOf(address);
     const balanceRaw = balanceResult?.balance ?? balanceResult;
     const balance = typeof balanceRaw === 'bigint'
       ? balanceRaw
       : uint256.uint256ToBN(balanceRaw);
-    const decimals = Number(decimalsResult?.decimals ?? decimalsResult);
-    const formatted = Number(balance) / (10 ** decimals);
+    const formatted = Number(balance) / (10 ** tokenInfo.decimals);
 
-    console.log(`✅ Balance: ${formatted.toFixed(4)} tokens`);
-    console.log(`   Address: ${address}`);
-    console.log(`   Token: ${token}`);
+    console.log(`Balance: ${formatted.toFixed(4)} ${tokenInfo.symbol}`);
+    console.log(`Address: ${address}`);
+    console.log(`Token: ${tokenInfo.address}`);
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('Error:', error);
     process.exit(1);
   }
 }

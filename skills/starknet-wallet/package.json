@@ -7,6 +7,7 @@
     "check-balances": "tsx scripts/check-balances.ts"
   },
   "dependencies": {
+    "@avnu/avnu-sdk": "^4.0.1",
     "starknet": "^8.9.1",
     "dotenv": "^16.0.0"
   },

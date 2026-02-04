@@ -56,10 +56,16 @@ const account = new Account({
   transactionVersion: ETransactionVersion.V3,
 });
 
+// Resolve token addresses via avnu SDK (or use MCP server's TokenService)
+import { fetchVerifiedTokenBySymbol } from '@avnu/avnu-sdk';
+
+const eth = await fetchVerifiedTokenBySymbol('ETH');
+const strk = await fetchVerifiedTokenBySymbol('STRK');
+
 // SDK v4: getQuotes takes QuoteRequest object directly
 const quoteParams: QuoteRequest = {
-  sellTokenAddress: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7", // ETH
-  buyTokenAddress: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",  // STRK
+  sellTokenAddress: eth.address,
+  buyTokenAddress: strk.address,
   sellAmount: BigInt(10 ** 17), // 0.1 ETH
   takerAddress: account.address,
 };
