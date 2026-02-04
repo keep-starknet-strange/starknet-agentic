@@ -11,6 +11,11 @@ import DesignPreview10 from "./previews/SwissDesign";
 import DesignPreview11 from "./previews/MemphisDesign";
 import DesignPreview12 from "./previews/RetroFuturism";
 import DesignPreview13 from "./previews/Claymorphism";
+import DesignPreview14 from "./previews/CyberpunkNetStyle";
+import DesignPreview15 from "./previews/OpenClawStyle";
+import DesignPreview16 from "./previews/StarknetOfficialStyle";
+import DesignPreview17 from "./previews/GitHubStyle";
+import DesignPreview18 from "./previews/AITechCyberpunk";
 
 const designs = [
   {
@@ -104,6 +109,41 @@ const designs = [
       "Soft 3D clay aesthetic. Puffy shapes, pastels, toy-like feel.",
     component: DesignPreview13,
   },
+  {
+    id: 14,
+    name: "Cyberpunk.net Style",
+    description:
+      "CD Projekt RED inspired. Neon yellow on deep black, stark contrast, cinematic minimalism.",
+    component: DesignPreview14,
+  },
+  {
+    id: 15,
+    name: "OpenClaw Style",
+    description:
+      "Deep navy with coral/cyan glows. Futuristic yet approachable, asymmetric cards.",
+    component: DesignPreview15,
+  },
+  {
+    id: 16,
+    name: "Starknet Official Style",
+    description:
+      "Light minimalist, monospace code, pill buttons. Professional and premium.",
+    component: DesignPreview16,
+  },
+  {
+    id: 17,
+    name: "GitHub Style",
+    description:
+      "Clean light background, green CTAs, card-based. Developer-friendly, trustworthy.",
+    component: DesignPreview17,
+  },
+  {
+    id: 18,
+    name: "AI Tech Cyberpunk",
+    description:
+      "Neural network patterns, gradient glows. Futuristic AI aesthetic, intelligent vibe.",
+    component: DesignPreview18,
+  },
 ];
 
 export default function DesignShowcase() {
@@ -119,7 +159,7 @@ export default function DesignShowcase() {
             Design Direction Showcase
           </h1>
           <p className="text-neutral-500 max-w-lg mx-auto">
-            13 design directions for the website. Review each preview and share
+            18 design directions for the website. Review each preview and share
             your feedback with the community.
           </p>
         </div>
