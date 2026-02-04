@@ -7,13 +7,29 @@ settings:
 importers:
 
   .:
+    dependencies:
+      ethers:
+        specifier: ^6.16.0
+        version: 6.16.0
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.19.0
+        version: 9.39.2
+      '@types/node':
+        specifier: ^22.13.0
+        version: 22.19.7
+      eslint:
+        specifier: ^9.19.0
+        version: 9.39.2(jiti@1.21.7)
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@1.21.7)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.19.7)
 
   examples/defi-agent:
     dependencies:
@@ -92,6 +108,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.25.3(hono@4.11.7)(zod@3.25.76)
+      '@starknet-agentic/x402-starknet':
+        specifier: workspace:*
+        version: link:../x402-starknet
       starknet:
         specifier: ^8.9.1
         version: 8.9.2
@@ -110,6 +129,31 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.19.7)
+
+  packages/x402-starknet:
+    dependencies:
+      starknet:
+        specifier: ^7.6.2
+        version: 7.6.4
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.19.0
+        version: 9.39.2
+      '@types/node':
+        specifier: ^22.13.0
+        version: 22.19.7
+      eslint:
+        specifier: ^9.19.0
+        version: 9.39.2(jiti@1.21.7)
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.6)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
         version: 2.1.9(@types/node@22.19.7)
 
   website:
@@ -2772,6 +2816,10 @@ packages:
 
   starknet@6.24.1:
     resolution: {integrity: sha512-g7tiCt73berhcNi41otlN3T3kxZnIvZhMi8WdC21Y6GC6zoQgbI2z1t7JAZF9c4xZiomlanwVnurcpyfEdyMpg==}
+
+  starknet@7.6.4:
+    resolution: {integrity: sha512-FB20IaLCDbh/XomkB+19f5jmNxG+RzNdRO7QUhm7nfH81UPIt2C/MyWAlHCYkbv2wznSEb73wpxbp9tytokTgQ==}
+    engines: {node: '>=22'}
 
   starknet@8.9.2:
     resolution: {integrity: sha512-+dp+o2w67fV6JyVOVkYeM1Ec71aORHc/JrF4VHLlfeGee0nLilooCQLE2u6hUcSGQG2x2/fvzkxYpIN+k1JBvA==}
@@ -5871,6 +5919,19 @@ snapshots:
       ts-mixer: 6.0.4
     transitivePeerDependencies:
       - encoding
+
+  starknet@7.6.4:
+    dependencies:
+      '@noble/curves': 1.7.0
+      '@noble/hashes': 1.6.0
+      '@scure/base': 1.2.1
+      '@scure/starknet': 1.1.0
+      '@starknet-io/starknet-types-07': '@starknet-io/types-js@0.7.10'
+      '@starknet-io/starknet-types-08': '@starknet-io/types-js@0.8.4'
+      abi-wan-kanabi: 2.2.4
+      lossless-json: 4.3.0
+      pako: 2.1.0
+      ts-mixer: 6.0.4
 
   starknet@8.9.2:
     dependencies:
