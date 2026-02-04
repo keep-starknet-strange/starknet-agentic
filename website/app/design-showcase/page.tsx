@@ -6,6 +6,11 @@ import DesignPreview5 from "./previews/OrganicFlow";
 import DesignPreview6 from "./previews/BentoGrid";
 import DesignPreview7 from "./previews/TerminalHacker";
 import DesignPreview8 from "./previews/GradientMesh";
+import DesignPreview9 from "./previews/Neumorphism";
+import DesignPreview10 from "./previews/SwissDesign";
+import DesignPreview11 from "./previews/MemphisDesign";
+import DesignPreview12 from "./previews/RetroFuturism";
+import DesignPreview13 from "./previews/Claymorphism";
 
 const designs = [
   {
@@ -64,6 +69,41 @@ const designs = [
       "Soft pastels and fluid shapes. Dreamy and artistic.",
     component: DesignPreview8,
   },
+  {
+    id: 9,
+    name: "Neumorphism",
+    description:
+      "Soft UI with extruded and inset shadows. Soothing, minimal contrast.",
+    component: DesignPreview9,
+  },
+  {
+    id: 10,
+    name: "Swiss Design",
+    description:
+      "Grid-based, bold typography, mathematical precision. Helvetica vibes.",
+    component: DesignPreview10,
+  },
+  {
+    id: 11,
+    name: "Memphis Design",
+    description:
+      "80s geometric chaos. Squiggles, bold colors, playful maximalism.",
+    component: DesignPreview11,
+  },
+  {
+    id: 12,
+    name: "Retro Futurism",
+    description:
+      "70s/80s sci-fi aesthetic. Synthwave sunsets, chrome, perspective grids.",
+    component: DesignPreview12,
+  },
+  {
+    id: 13,
+    name: "Claymorphism",
+    description:
+      "Soft 3D clay aesthetic. Puffy shapes, pastels, toy-like feel.",
+    component: DesignPreview13,
+  },
 ];
 
 export default function DesignShowcase() {
@@ -79,7 +119,7 @@ export default function DesignShowcase() {
             Design Direction Showcase
           </h1>
           <p className="text-neutral-500 max-w-lg mx-auto">
-            8 design directions for the website. Review each preview and share
+            13 design directions for the website. Review each preview and share
             your feedback with the community.
           </p>
         </div>
