@@ -33,6 +33,7 @@ import {
   Contract,
   CallData,
   cairo,
+  uint256,
   ETransactionVersion,
   type Call,
   type PaymasterDetails,
@@ -497,11 +498,14 @@ async function fetchTokenBalancesViaBalanceChecker(
   const result = await balanceChecker.get_balances(walletAddress, tokenAddresses);
 
   // Parse non-zero balances from contract response
-  // With proper ABI struct definitions, starknet.js converts u256 to bigint automatically
+  // Handle both bigint (some starknet.js configs) and {low, high} u256 shapes
   const balanceMap = new Map<string, bigint>();
   for (const item of result) {
     const addr = normalizeAddress("0x" + BigInt(item.token).toString(16));
-    balanceMap.set(addr, BigInt(item.balance));
+    const balance = typeof item.balance === "bigint"
+      ? item.balance
+      : uint256.uint256ToBN(item.balance);
+    balanceMap.set(addr, balance);
   }
 
   // Fetch decimals (cached or via batch RPC)

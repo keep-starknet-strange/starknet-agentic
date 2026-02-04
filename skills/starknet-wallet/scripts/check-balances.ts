@@ -10,7 +10,7 @@
  */
 
 import 'dotenv/config';
-import { RpcProvider, Contract } from 'starknet';
+import { RpcProvider, Contract, uint256 } from 'starknet';
 
 const TOKENS = {
   ETH: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7',
@@ -71,6 +71,9 @@ function normalizeAddress(addr: string): string {
 }
 
 function formatAmount(amount: bigint, decimals: number): string {
+  if (decimals === 0) {
+    return amount.toString();
+  }
   const amountStr = amount.toString().padStart(decimals + 1, '0');
   const whole = amountStr.slice(0, -decimals) || '0';
   const fraction = amountStr.slice(-decimals).slice(0, 6); // max 6 decimal places
@@ -99,7 +102,10 @@ async function fetchViaBalanceChecker(
   const balanceMap = new Map<string, bigint>();
   for (const item of result) {
     const addr = normalizeAddress('0x' + BigInt(item.token).toString(16));
-    balanceMap.set(addr, BigInt(item.balance));
+    const balance = typeof item.balance === 'bigint'
+      ? item.balance
+      : uint256.uint256ToBN(item.balance);
+    balanceMap.set(addr, balance);
   }
 
   const batchProvider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL!, batch: 0 });

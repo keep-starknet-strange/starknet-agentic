@@ -8,7 +8,7 @@
  */
 
 import 'dotenv/config';
-import { RpcProvider, Contract } from 'starknet';
+import { RpcProvider, Contract, uint256 } from 'starknet';
 
 const ETH = '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7';
 
@@ -46,9 +46,12 @@ async function main() {
       contract.decimals(),
     ]);
 
-    const balance = balanceResult?.balance ?? balanceResult;
-    const decimals = decimalsResult?.decimals ?? decimalsResult;
-    const formatted = Number(balance) / (10 ** Number(decimals));
+    const balanceRaw = balanceResult?.balance ?? balanceResult;
+    const balance = typeof balanceRaw === 'bigint'
+      ? balanceRaw
+      : uint256.uint256ToBN(balanceRaw);
+    const decimals = Number(decimalsResult?.decimals ?? decimalsResult);
+    const formatted = Number(balance) / (10 ** decimals);
 
     console.log(`✅ Balance: ${formatted.toFixed(4)} tokens`);
     console.log(`   Address: ${address}`);

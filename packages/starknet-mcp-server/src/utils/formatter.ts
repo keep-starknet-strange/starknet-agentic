@@ -17,6 +17,9 @@ import type { Quote, Route } from "@avnu/avnu-sdk";
  * ```
  */
 export function formatAmount(amount: bigint, decimals: number): string {
+  if (decimals === 0) {
+    return amount.toString();
+  }
   const amountStr = amount.toString().padStart(decimals + 1, "0");
   const whole = amountStr.slice(0, -decimals) || "0";
   const fraction = amountStr.slice(-decimals);
