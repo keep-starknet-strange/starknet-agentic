@@ -37,6 +37,7 @@ import {
   ETransactionVersion,
   type Call,
   type PaymasterDetails,
+  type Uint256,
 } from "starknet";
 import {
   TOKENS,
@@ -437,6 +438,12 @@ type BatchBalanceResult = {
   method: "balance_checker" | "batch_rpc";
 };
 
+// BalanceChecker contract response type
+type NonZeroBalanceResponse = {
+  token: bigint;
+  balance: bigint | Uint256;
+};
+
 // Helper: Fetch single token balance
 async function fetchTokenBalance(
   walletAddress: string,
@@ -470,10 +477,9 @@ async function fetchTokenBalance(
 async function fetchTokenBalancesViaBatchRpc(
   walletAddress: string,
   tokens: string[],
-  tokenAddresses: string[]
+  tokenAddresses: string[],
+  batchProvider: RpcProvider
 ): Promise<TokenBalanceResult[]> {
-  const batchProvider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
-
   const results = await Promise.all(
     tokenAddresses.map((addr) => fetchTokenBalance(walletAddress, addr, batchProvider))
   );
@@ -490,7 +496,8 @@ async function fetchTokenBalancesViaBatchRpc(
 async function fetchTokenBalancesViaBalanceChecker(
   walletAddress: string,
   tokens: string[],
-  tokenAddresses: string[]
+  tokenAddresses: string[],
+  batchProvider: RpcProvider
 ): Promise<TokenBalanceResult[]> {
   const balanceChecker = new Contract({
     abi: BALANCE_CHECKER_ABI,
@@ -498,7 +505,7 @@ async function fetchTokenBalancesViaBalanceChecker(
     providerOrAccount: provider,
   });
 
-  const result = await balanceChecker.get_balances(walletAddress, tokenAddresses);
+  const result: NonZeroBalanceResponse[] = await balanceChecker.get_balances(walletAddress, tokenAddresses);
 
   // Parse non-zero balances from contract response
   // Handle both bigint (some starknet.js configs) and {low, high} u256 shapes
@@ -512,7 +519,6 @@ async function fetchTokenBalancesViaBalanceChecker(
   }
 
   // Fetch decimals (cached or via batch RPC)
-  const batchProvider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
   const decimalsResults = await Promise.all(
     tokenAddresses.map(async (addr) => {
       const cached = getCachedDecimals(addr);
@@ -537,15 +543,18 @@ async function fetchTokenBalances(
   tokens: string[],
   tokenAddresses: string[]
 ): Promise<BatchBalanceResult> {
+  // Create batch provider once for reuse across both methods
+  const batchProvider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
+
   try {
-    const balances = await fetchTokenBalancesViaBalanceChecker(walletAddress, tokens, tokenAddresses);
+    const balances = await fetchTokenBalancesViaBalanceChecker(walletAddress, tokens, tokenAddresses, batchProvider);
     return { balances, method: "balance_checker" };
   } catch (error) {
     console.error(
       "BalanceChecker contract unavailable, falling back to batch RPC:",
       error instanceof Error ? error.message : error
     );
-    const balances = await fetchTokenBalancesViaBatchRpc(walletAddress, tokens, tokenAddresses);
+    const balances = await fetchTokenBalancesViaBatchRpc(walletAddress, tokens, tokenAddresses, batchProvider);
     return { balances, method: "batch_rpc" };
   }
 }

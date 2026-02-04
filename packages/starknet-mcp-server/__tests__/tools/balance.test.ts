@@ -10,6 +10,48 @@ import {
 } from "../../src/utils.js";
 import { formatAmount } from "../../src/utils/formatter.js";
 
+describe("formatAmount", () => {
+  it("formats standard ETH amounts (18 decimals)", () => {
+    expect(formatAmount(BigInt("1000000000000000000"), 18)).toBe("1");
+    expect(formatAmount(BigInt("1500000000000000000"), 18)).toBe("1.5");
+    expect(formatAmount(BigInt("100000000000000000"), 18)).toBe("0.1");
+  });
+
+  it("formats USDC amounts (6 decimals)", () => {
+    expect(formatAmount(BigInt("1000000"), 6)).toBe("1");
+    expect(formatAmount(BigInt("100000000"), 6)).toBe("100");
+    expect(formatAmount(BigInt("123456789"), 6)).toBe("123.456789");
+  });
+
+  it("handles zero amount", () => {
+    expect(formatAmount(BigInt(0), 18)).toBe("0");
+    expect(formatAmount(BigInt(0), 6)).toBe("0");
+    expect(formatAmount(BigInt(0), 0)).toBe("0");
+  });
+
+  it("handles decimals === 0 (no decimal places)", () => {
+    expect(formatAmount(BigInt(100), 0)).toBe("100");
+    expect(formatAmount(BigInt(12345), 0)).toBe("12345");
+    expect(formatAmount(BigInt(1), 0)).toBe("1");
+  });
+
+  it("removes trailing zeros", () => {
+    expect(formatAmount(BigInt("1000000000000000000"), 18)).toBe("1");
+    expect(formatAmount(BigInt("1100000000000000000"), 18)).toBe("1.1");
+    expect(formatAmount(BigInt("1010000000000000000"), 18)).toBe("1.01");
+  });
+
+  it("handles very small amounts", () => {
+    expect(formatAmount(BigInt(1), 18)).toBe("0.000000000000000001");
+    expect(formatAmount(BigInt(1), 6)).toBe("0.000001");
+  });
+
+  it("handles very large amounts", () => {
+    const largeAmount = BigInt("1000000000000000000000000"); // 1 million ETH
+    expect(formatAmount(largeAmount, 18)).toBe("1000000");
+  });
+});
+
 describe("resolveTokenAddress", () => {
   it("resolves known token symbols to addresses", () => {
     expect(resolveTokenAddress("ETH")).toBe(TOKENS.ETH);
