@@ -48,7 +48,8 @@ starknet-agentic/
 │   └── agent-registry/           # On-chain agent identity & reputation (ERC-8004 on Starknet)
 ├── packages/
 │   ├── starknet-mcp-server/      # MCP server for Starknet tools
-│   └── starknet-a2a/             # A2A protocol adapter for Starknet agents
+│   ├── starknet-a2a/             # A2A protocol adapter for Starknet agents
+│   └── prediction-arb-scanner/   # Signals-only prediction arb scanner (Polymarket/Limitless/Raize)
 ├── examples/
 │   └── scaffold-stark-agentic/   # Reference app plan: Scaffold-Stark frontend for Agentic primitives
 ├── skills/                       # Starknet Skills Marketplace

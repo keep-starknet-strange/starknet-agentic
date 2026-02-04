@@ -1,5 +1,9 @@
 # Starknet Agentic -- Technical Specification
 
+## Planned package: prediction-arb-scanner (MVP0)
+Signals-only scanner for cross-venue prediction market pricing deltas, with Starknet-native hedge/collateral recipe strings (Ekubo/Re7/fallback). See issue #27.
+
+
 ## 1. Problem Statement
 
 AI agents are emerging as autonomous economic actors, but they lack standardized infrastructure for:
