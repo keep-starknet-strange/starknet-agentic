@@ -139,7 +139,10 @@ async function fetchViaBatchRpc(
         contract.balanceOf(walletAddress),
         contract.decimals(),
       ]);
-      const balance = balanceResult?.balance ?? balanceResult;
+      const rawBalance = balanceResult?.balance ?? balanceResult;
+      const balance = typeof rawBalance === 'bigint'
+        ? rawBalance
+        : uint256.uint256ToBN(rawBalance);
       const decimals = decimalsResult?.decimals ?? decimalsResult;
       return {
         balance,

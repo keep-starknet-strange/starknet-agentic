@@ -455,7 +455,10 @@ async function fetchTokenBalance(
     cached !== undefined ? Promise.resolve(cached) : contract.decimals(),
   ]);
 
-  const balance = balanceResult?.balance ?? balanceResult;
+  const rawBalance = balanceResult?.balance ?? balanceResult;
+  const balance = typeof rawBalance === "bigint"
+    ? rawBalance
+    : uint256.uint256ToBN(rawBalance);
   const decimals = Number(decimalsResult?.decimals ?? decimalsResult);
   return {
     balance,
