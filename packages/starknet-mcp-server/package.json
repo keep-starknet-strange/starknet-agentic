@@ -13,6 +13,7 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "starknet": "^8.9.1",
     "@avnu/avnu-sdk": "^4.0.1",
+    "@starknet-agentic/x402-starknet": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {
