@@ -46,5 +46,5 @@ A minimal "Agent Console" that proves the full agent stack:
 
 ## References
 - Scaffold-Stark repo: https://github.com/Scaffold-Stark/scaffold-stark-2
-- Release v2.1.0 notes: notes/starknet/scaffold-stark-release-log.md
-- AVNU docs digest: notes/avnu/avnu-docs-digest.md
+- Scaffold-Stark releases: https://github.com/Scaffold-Stark/scaffold-stark-2/releases
+- AVNU docs: https://docs.avnu.fi/
