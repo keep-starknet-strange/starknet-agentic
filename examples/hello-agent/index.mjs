@@ -5,6 +5,7 @@ const env = {
   STARKNET_RPC_URL: process.env.STARKNET_RPC_URL,
   STARKNET_ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS,
   STARKNET_PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY,
+  TOKEN_ADDRESS: process.env.TOKEN_ADDRESS,
 };
 
 for (const k of Object.keys(env)) {
@@ -14,9 +15,7 @@ for (const k of Object.keys(env)) {
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL });
 const account = new Account({ provider, address: env.STARKNET_ACCOUNT_ADDRESS, signer: env.STARKNET_PRIVATE_KEY });
 
-// STRK (mainnet address). For Sepolia, STRK may differ; but 0-value transfer is used only as a tx exercise.
-// If STRK is not deployed on your network, set TOKEN_ADDRESS explicitly.
-const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS || '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
+const TOKEN_ADDRESS = env.TOKEN_ADDRESS;
 
 const ERC20_ABI = [
   {

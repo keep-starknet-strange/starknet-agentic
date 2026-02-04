@@ -22,11 +22,13 @@ Create `examples/hello-agent/.env`:
 STARKNET_RPC_URL=https://starknet-sepolia.public.blastapi.io
 STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_PRIVATE_KEY=0x...
+TOKEN_ADDRESS=0x...
 ```
 
 Notes:
 - Use Sepolia for safety.
-- The demo sends a 0-value STRK self-transfer, it should be harmless but still proves tx plumbing.
+- The demo sends a 0-value self-transfer, it should be harmless but still proves tx plumbing.
+- `TOKEN_ADDRESS` must be a token deployed on your network (on Sepolia this is often not mainnet STRK).
 
 ## Run
 
