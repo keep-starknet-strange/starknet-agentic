@@ -29,6 +29,16 @@ This skill provides **agent-facing scripts** for:
 npm install starknet@^9.2.1 typhoon-sdk@^1.1.13
 ```
 
+### RPC setup (required for onchain reads/writes)
+
+These scripts talk to Starknet via JSON-RPC. Configure one of:
+
+- Set `STARKNET_RPC_URL` in your environment (recommended), OR
+- Pass `rpcUrl` in the JSON input for scripts that support it.
+
+If neither is provided, scripts fall back to the public Lava mainnet RPC:
+- `https://rpc.starknet.lava.build:443`
+
 ## CRITICAL: Account Creation Flow
 
 When the user asks to create a anonymous Starknet account (in any form like "create an anonymous account", "create a Starknet anonymous account for my agent", "I need a anonymous wallet", etc.), **ALWAYS follow this flow**:

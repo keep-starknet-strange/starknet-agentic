@@ -15,7 +15,7 @@
 
 import { Provider } from 'starknet';
 
-const RPC_URL = process.env.STARKNET_RPC_URL;
+import { resolveRpcUrl } from './_rpc.js';
 
 function fail(message) {
   console.error(JSON.stringify({ error: message }));
@@ -108,7 +108,8 @@ async function main() {
 
   if (!input.contractAddress) fail('Missing "contractAddress".');
 
-  const provider = new Provider({ nodeUrl: RPC_URL });
+  const rpcUrl = resolveRpcUrl(input);
+  const provider = new Provider({ nodeUrl: rpcUrl });
   const classHash = await provider.getClassHashAt(input.contractAddress);
   const classResponse = await provider.getClassAt(input.contractAddress);
 

@@ -17,7 +17,7 @@ import { TyphoonSDK } from 'typhoon-sdk';
 
 const ARGENTX_CLASS_HASH = '0x036078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f';
 const SECRETS_DIR = path.join(os.homedir(), '.openclaw', 'secrets', 'starknet');
-const RPC_URL = process.env.STARKNET_RPC_URL;
+import { resolveRpcUrl } from './_rpc.js';
 
 function fail(message, stack) {
   console.error(JSON.stringify({ error: message, stack }));
@@ -139,7 +139,8 @@ async function main() {
   // Capture latest block AFTER deployment (best-effort provenance)
   let latestBlock = null;
   try {
-    const provider = new Provider({ nodeUrl: RPC_URL });
+    const rpcUrl = resolveRpcUrl({});
+  const provider = new Provider({ nodeUrl: rpcUrl });
     const b = await provider.getBlock('latest');
     latestBlock = {
       blockNumber: b.block_number,

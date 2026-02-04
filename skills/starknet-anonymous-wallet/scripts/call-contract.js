@@ -9,8 +9,7 @@
  */
 
 import { Provider, Contract, shortString } from 'starknet';
-
-const RPC_URL = process.env.STARKNET_RPC_URL;
+import { resolveRpcUrl } from './_rpc.js';
 
 function fail(message) {
   console.error(JSON.stringify({ error: message }));
@@ -31,7 +30,8 @@ async function main() {
   if (!input.contractAddress) fail('Missing "contractAddress".');
   if (!input.method) fail('Missing "method".');
 
-  const provider = new Provider({ nodeUrl: RPC_URL });
+  const rpcUrl = resolveRpcUrl(input);
+  const provider = new Provider({ nodeUrl: rpcUrl });
   
   const classResponse = await provider.getClassAt(input.contractAddress);
   if (!classResponse.abi) fail('Contract has no ABI on chain.');

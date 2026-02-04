@@ -4,7 +4,7 @@
   "description": "packages for starknet-anonymous-wallet skill",
   "type": "module",
   "scripts": {
-    "create": "node create-account.js"
+    "create": "node scripts/create-account.js"
   },
   "dependencies": {
     "starknet": "^9.2.1",

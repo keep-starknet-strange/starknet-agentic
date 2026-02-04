@@ -27,7 +27,7 @@
 
 import { Provider, Contract } from 'starknet';
 
-const RPC_URL = process.env.STARKNET_RPC_URL;
+import { resolveRpcUrl } from './_rpc.js';
 
 function fail(message) {
   console.error(JSON.stringify({ error: message }));
@@ -96,7 +96,8 @@ async function main() {
     fail('Provide only one: "requiredAmount" OR "requiredAmountHuman".');
   }
 
-  const provider = new Provider({ nodeUrl: RPC_URL });
+  const rpcUrl = resolveRpcUrl(input);
+  const provider = new Provider({ nodeUrl: rpcUrl });
 
   const classResponse = await provider.getClassAt(input.tokenAddress);
   if (!classResponse.abi) fail('Token has no ABI on chain.');

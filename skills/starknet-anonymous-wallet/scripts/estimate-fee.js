@@ -19,7 +19,7 @@
 import { Provider, Account, Contract } from 'starknet';
 import fs from 'fs';
 
-const RPC_URL = process.env.STARKNET_RPC_URL;
+import { resolveRpcUrl } from './_rpc.js';
 
 function jsonStringifySafe(obj) {
   return JSON.stringify(obj, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
@@ -72,7 +72,8 @@ async function main() {
   if (!fs.existsSync(input.privateKeyPath)) fail(`Key not found: ${input.privateKeyPath}`);
   const privateKey = fs.readFileSync(input.privateKeyPath, 'utf-8').trim();
 
-  const provider = new Provider({ nodeUrl: RPC_URL });
+  const rpcUrl = resolveRpcUrl(input);
+  const provider = new Provider({ nodeUrl: rpcUrl });
   const account = new Account({ provider, address: input.accountAddress, signer: privateKey });
 
   const populatedCalls = await buildPopulatedCalls(provider, input.calls);
