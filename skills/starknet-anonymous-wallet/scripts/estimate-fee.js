@@ -19,7 +19,7 @@
 import { Provider, Account, Contract } from 'starknet';
 import fs from 'fs';
 
-const RPC_URL = 'https://rpc.starknet.lava.build:443';
+const RPC_URL = process.env.STARKNET_RPC_URL;
 
 function jsonStringifySafe(obj) {
   return JSON.stringify(obj, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));

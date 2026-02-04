@@ -1,12 +1,23 @@
 ---
 name: starknet-anonymous-wallet
-description: Create an anonymous Starknet wallet to your agent through Typhoon anonymous deployer and interact with Starknet contracts (read/write + preflight).
+description: Create a anonymous Starknet account to your agent through Typhoon anonymous deployer and interact with Starknet contracts (read/write + preflight).
+keywords:
+  - starknet
+  - wallet
+  - anonymous
+  - transfer
+  - balance
+  - anonymous-agent-wallet
+  - strk
+  - eth
+allowed-tools: read exec process
+user-invocable: true
 ---
 
 # starknet-anonymous-wallet
 
 This skill provides **agent-facing scripts** for:
-- Creating/loading a anonymous Starknet wallet (Typhoon flow)
+- Creating/loading a Starknet account (Typhoon flow)
 - Discovering ABI / functions
 - Reading & writing to contracts
 - Preflight (simulate + fee estimate)
@@ -15,12 +26,12 @@ This skill provides **agent-facing scripts** for:
 ## Prerequisites
 
 ```bash
-npm install starknet@^9.2.1 typhoon-sdk@^1.1.12
+npm install starknet@^9.2.1 typhoon-sdk@^1.1.13
 ```
 
 ## CRITICAL: Account Creation Flow
 
-When the user asks to create a anonymous Starknet wallet (in any form like "create an account", "create a Starknet account for my agent", "I need a wallet", etc.), **ALWAYS follow this flow**:
+When the user asks to create a anonymous Starknet account (in any form like "create an anonymous account", "create a Starknet anonymous account for my agent", "I need a anonymous wallet", etc.), **ALWAYS follow this flow**:
 
 ### Step 1: Check if account already exists
 
@@ -37,7 +48,7 @@ Tell the user:
 
 ---
 
-**To create your anonymous Starknet wallet, you need to fund it through Typhoon:**
+**To create your Starknet account, you need to fund it through Typhoon:**
 
 1. Go to the Typhoon website: https://www.typhoon-finance.com/app
 2. Make a deposit and download your deposit note
@@ -49,6 +60,8 @@ Tell the user:
 Then **wait for the user to paste the note content**.
 
 ### Step 3: Create the account
+
+> Note: **Account creation can take a few minutes**. Typhoon proof generation + Starknet deployment/finality are not instant; tell the user to wait and avoid retrying unless it fails.
 
 Once the user pastes the note JSON, run:
 
@@ -112,7 +125,6 @@ node scripts/show-address.js 0
 | `sign-invoke-tx.js` | Sign an INVOKE transaction (one or more calls) without broadcasting |
 
 ---
-, "argent"
 ## Core Agent Workflow (no hardcoding)
 
 ### 1) Address & docs discovery (agent planning)
@@ -247,7 +259,3 @@ Approve + action in one tx:
 node scripts/multicall.js '{"privateKeyPath":"...","accountAddress":"0x...","calls":[{"contractAddress":"0x...","method":"approve","args":["0xspender","123"]},{"contractAddress":"0x...","method":"...","args":[...]}]}'
 ```
 
-## Setup
-```bash
-cd scripts && npm install
-```

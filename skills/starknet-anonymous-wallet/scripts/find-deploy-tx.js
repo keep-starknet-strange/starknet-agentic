@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Provider } from 'starknet';
 
-const rpcUrl = process.env.STARKNET_RPC_URL || 'https://rpc.starknet.lava.build:443';
+const rpcUrl = process.env.STARKNET_RPC_URL;
 const address = process.argv[2];
 const deployedAtIso = process.argv[3];
 

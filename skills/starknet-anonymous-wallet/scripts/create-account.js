@@ -17,7 +17,7 @@ import { TyphoonSDK } from 'typhoon-sdk';
 
 const ARGENTX_CLASS_HASH = '0x036078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f';
 const SECRETS_DIR = path.join(os.homedir(), '.openclaw', 'secrets', 'starknet');
-const RPC_URL = 'https://rpc.starknet.lava.build:443';
+const RPC_URL = process.env.STARKNET_RPC_URL;
 
 function fail(message, stack) {
   console.error(JSON.stringify({ error: message, stack }));

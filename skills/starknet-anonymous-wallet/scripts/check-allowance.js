@@ -27,7 +27,7 @@
 
 import { Provider, Contract } from 'starknet';
 
-const RPC_URL = 'https://rpc.starknet.lava.build:443';
+const RPC_URL = process.env.STARKNET_RPC_URL;
 
 function fail(message) {
   console.error(JSON.stringify({ error: message }));
