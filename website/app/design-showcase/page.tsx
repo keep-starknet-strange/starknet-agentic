@@ -1,0 +1,130 @@
+import DesignPreview1 from "./previews/NeoBrutalist";
+import DesignPreview2 from "./previews/MinimalDark";
+import DesignPreview3 from "./previews/Glassmorphism";
+import DesignPreview4 from "./previews/CyberpunkNeon";
+import DesignPreview5 from "./previews/OrganicFlow";
+import DesignPreview6 from "./previews/BentoGrid";
+import DesignPreview7 from "./previews/TerminalHacker";
+import DesignPreview8 from "./previews/GradientMesh";
+
+const designs = [
+  {
+    id: 1,
+    name: "Neo-Brutalist",
+    description:
+      "Bold borders, offset shadows, vibrant colors. High-energy, unapologetic aesthetic.",
+    component: DesignPreview1,
+  },
+  {
+    id: 2,
+    name: "Minimal Dark",
+    description:
+      "Clean dark mode with subtle gradients. Sophisticated and professional.",
+    component: DesignPreview2,
+  },
+  {
+    id: 3,
+    name: "Glassmorphism",
+    description:
+      "Frosted glass effects and translucent layers. Modern depth through blur.",
+    component: DesignPreview3,
+  },
+  {
+    id: 4,
+    name: "Cyberpunk Neon",
+    description:
+      "Neon glows on dark backgrounds. Futuristic with glitch effects.",
+    component: DesignPreview4,
+  },
+  {
+    id: 5,
+    name: "Organic Flow",
+    description:
+      "Curved shapes and gradient blobs. Friendly and approachable.",
+    component: DesignPreview5,
+  },
+  {
+    id: 6,
+    name: "Bento Grid",
+    description:
+      "Apple-style asymmetric grid. Structured yet dynamic.",
+    component: DesignPreview6,
+  },
+  {
+    id: 7,
+    name: "Terminal Hacker",
+    description:
+      "Monospace fonts, green-on-black. Developer-focused aesthetic.",
+    component: DesignPreview7,
+  },
+  {
+    id: 8,
+    name: "Gradient Mesh",
+    description:
+      "Soft pastels and fluid shapes. Dreamy and artistic.",
+    component: DesignPreview8,
+  },
+];
+
+export default function DesignShowcase() {
+  return (
+    <main className="min-h-screen bg-neutral-100">
+      {/* Header */}
+      <header className="bg-white border-b border-neutral-200 px-6 py-12 md:px-12">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-sm text-neutral-500 uppercase tracking-wider mb-3">
+            Starknet Agentic
+          </p>
+          <h1 className="text-3xl md:text-4xl font-light text-neutral-900 mb-4">
+            Design Direction Showcase
+          </h1>
+          <p className="text-neutral-500 max-w-lg mx-auto">
+            8 design directions for the website. Review each preview and share
+            your feedback with the community.
+          </p>
+        </div>
+      </header>
+
+      {/* Design Previews */}
+      <div className="py-12 md:py-16 space-y-12 md:space-y-16">
+        {designs.map((design) => (
+          <section key={design.id} className="px-6 md:px-12">
+            <div className="max-w-6xl mx-auto">
+              {/* Design Label */}
+              <div className="flex items-baseline gap-4 mb-4">
+                <span className="text-sm text-neutral-400 tabular-nums">
+                  {String(design.id).padStart(2, "0")}
+                </span>
+                <h2 className="text-lg font-medium text-neutral-900">
+                  {design.name}
+                </h2>
+                <span className="text-sm text-neutral-400">
+                  {design.description}
+                </span>
+              </div>
+
+              {/* Preview Container */}
+              <div className="rounded-lg overflow-hidden shadow-sm ring-1 ring-neutral-200">
+                <div className="h-[350px] md:h-[400px] overflow-hidden">
+                  <design.component />
+                </div>
+              </div>
+            </div>
+          </section>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-neutral-200 px-6 py-10 md:px-12">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-neutral-600 mb-2">
+            Which direction resonates with you?
+          </p>
+          <p className="text-sm text-neutral-400">
+            Share your thoughts in the community discussion.
+          </p>
+        </div>
+      </footer>
+    </main>
+  );
+}
