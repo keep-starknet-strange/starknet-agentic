@@ -49,6 +49,8 @@ starknet-agentic/
 ├── packages/
 │   ├── starknet-mcp-server/      # MCP server for Starknet tools
 │   └── starknet-a2a/             # A2A protocol adapter for Starknet agents
+├── examples/
+│   └── scaffold-stark-agentic/   # Reference app plan: Scaffold-Stark frontend for Agentic primitives
 ├── skills/                       # Starknet Skills Marketplace
 │   ├── starknet-wallet/          # Wallet management skill
 │   ├── starknet-defi/            # DeFi operations skill
