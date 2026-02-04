@@ -53,6 +53,7 @@ import {
   type QuoteRequest,
 } from "@avnu/avnu-sdk";
 import { z } from "zod";
+import { createStarknetPaymentSignatureHeader } from "@starknet-agentic/x402-starknet";
 import { formatAmount, formatQuoteFields, formatErrorMessage } from "./utils/formatter.js";
 
 // Environment validation
@@ -340,6 +341,34 @@ const tools: Tool[] = [
         },
       },
       required: ["contractAddress", "entrypoint"],
+    },
+  },
+  {
+    name: "x402_starknet_sign_payment_required",
+    description:
+      "Sign a base64 PAYMENT-REQUIRED header containing Starknet typedData, return a base64 PAYMENT-SIGNATURE header value.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        paymentRequiredHeader: {
+          type: "string",
+          description: "Base64 JSON from PAYMENT-REQUIRED header",
+        },
+        rpcUrl: {
+          type: "string",
+          description: "Starknet RPC URL (defaults to STARKNET_RPC_URL env var)",
+        },
+        accountAddress: {
+          type: "string",
+          description:
+            "Starknet account address (defaults to STARKNET_ACCOUNT_ADDRESS env var)",
+        },
+        privateKey: {
+          type: "string",
+          description: "Starknet private key (defaults to STARKNET_PRIVATE_KEY env var)",
+        },
+      },
+      required: ["paymentRequiredHeader"],
     },
   },
 ];
@@ -656,13 +685,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: JSON.stringify({
-                overallFee: formatAmount(
-                  BigInt(fee.overall_fee.toString()),
-                  18
-                ),
+                overallFee: formatAmount(BigInt(fee.overall_fee.toString()), 18),
                 resourceBounds: fee.resourceBounds,
                 unit: fee.unit || "STRK",
               }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "x402_starknet_sign_payment_required": {
+        const {
+          paymentRequiredHeader,
+          rpcUrl = env.STARKNET_RPC_URL,
+          accountAddress = env.STARKNET_ACCOUNT_ADDRESS,
+          privateKey = env.STARKNET_PRIVATE_KEY,
+        } = args as {
+          paymentRequiredHeader: string;
+          rpcUrl?: string;
+          accountAddress?: string;
+          privateKey?: string;
+        };
+
+        const { headerValue, payload } = await createStarknetPaymentSignatureHeader({
+          paymentRequiredHeader,
+          rpcUrl,
+          accountAddress,
+          privateKey,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  paymentSignatureHeader: headerValue,
+                  payload,
+                },
+                null,
+                2
+              ),
             },
           ],
         };
