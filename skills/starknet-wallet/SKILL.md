@@ -41,13 +41,29 @@ Environment variables:
 STARKNET_RPC_URL=https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY
 STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_PRIVATE_KEY=0x...
+AVNU_BASE_URL=https://starknet.api.avnu.fi (optional)
+AVNU_PAYMASTER_URL=https://starknet.paymaster.avnu.fi (optional)
+AVNU_PAYMASTER_API_KEY=your_key (optional, for free gas)
 ```
 
-## MCP Tools
+## Available MCP Tools
 
-The Starknet MCP Server exposes balance operations as tools for AI agents.
+The Starknet MCP Server provides these tools for wallet operations:
 
-### starknet_get_balance (Single Token)
+| Tool | Purpose | Key Features |
+|------|---------|--------------|
+| `starknet_get_balance` | Check single token balance | Simple, fast queries |
+| `starknet_get_balances` | Check multiple token balances | Batch queries (up to 200 tokens), single RPC call |
+| `starknet_transfer` | Send tokens | Supports gasless mode (paymaster) |
+| `starknet_call_contract` | Read contract state | Call view functions |
+| `starknet_invoke_contract` | Execute contract functions | Write operations, supports gasless |
+| `starknet_swap` | Execute token swaps | AVNU integration, best price routing |
+| `starknet_get_quote` | Get swap quotes | Price estimation before swap |
+| `starknet_register_agent` | Register agent identity | ERC-8004 on-chain identity |
+
+### Balance Tools Detail
+
+#### starknet_get_balance (Single Token)
 
 Query balance for one token. Use for simple cases.
 
@@ -67,7 +83,7 @@ Query balance for one token. Use for simple cases.
 }
 ```
 
-### starknet_get_balances (Multiple Tokens)
+#### starknet_get_balances (Multiple Tokens)
 
 Query balances for multiple tokens in a single RPC call. More efficient for portfolio views.
 
@@ -94,7 +110,23 @@ Query balances for multiple tokens in a single RPC call. More efficient for port
 
 ## Core Operations
 
-### Check Balance
+### Check Balance (Single Token)
+
+Use the `starknet_get_balance` MCP tool for simple single-token queries:
+
+```typescript
+// Via MCP tool (recommended)
+const result = await mcpClient.callTool({
+  name: "starknet_get_balance",
+  arguments: {
+    address: "0x...",  // Account address
+    token: "ETH",      // Symbol (ETH, STRK, USDC, USDT) or contract address
+  }
+});
+// Returns: { address, token, tokenAddress, balance, raw, decimals }
+```
+
+**Direct starknet.js usage:**
 
 ```typescript
 import { RpcProvider, Contract } from "starknet";
@@ -115,9 +147,34 @@ const balanceBigInt = BigInt(balance.low) + (BigInt(balance.high) << 128n);
 // Format: (balanceBigInt / 10n ** 18n).toString() for whole units
 ```
 
-### Check Balances (Batch)
+### Check Multiple Balances (Batch)
 
-Query multiple token balances in a single RPC call using the BalanceChecker contract.
+Use `starknet_get_balances` for efficient multi-token queries (single RPC call):
+
+```typescript
+// Via MCP tool (recommended for multiple tokens)
+const result = await mcpClient.callTool({
+  name: "starknet_get_balances",
+  arguments: {
+    address: "0x...",
+    tokens: ["ETH", "STRK", "USDC", "USDT"],  // Up to 200 tokens
+  }
+});
+
+// Returns:
+// {
+//   address: "0x...",
+//   balances: [
+//     { token: "ETH", tokenAddress: "0x...", balance: "1.5", raw: "1500000000000000000", decimals: 18 },
+//     { token: "STRK", tokenAddress: "0x...", balance: "100", raw: "100000000000000000000", decimals: 18 },
+//     ...
+//   ],
+//   tokensQueried: 4,
+//   method: "balance_checker"  // Uses BalanceChecker contract for efficiency
+// }
+```
+
+**Direct starknet.js usage with BalanceChecker contract:**
 
 ```typescript
 import { RpcProvider, Contract } from "starknet";
@@ -178,7 +235,46 @@ for (const item of result) {
 }
 ```
 
+**When to use which:**
+- `starknet_get_balance`: Single token, simple use case
+- `starknet_get_balances`: Multiple tokens, portfolio view, more efficient
+
+
 ### Transfer Tokens
+
+Use the `starknet_transfer` MCP tool with optional gasless mode:
+
+```typescript
+// Via MCP tool (recommended)
+const result = await mcpClient.callTool({
+  name: "starknet_transfer",
+  arguments: {
+    recipient: "0x...",
+    token: "STRK",        // Symbol or contract address
+    amount: "10.5",       // Human-readable amount
+    gasfree: false,       // Optional: use paymaster
+  }
+});
+// Returns: { transactionHash, recipient, token, amount, gasfree }
+```
+
+**Gasless Transfer (Pay gas in token instead of ETH/STRK):**
+
+```typescript
+// Pay gas in USDC instead of ETH/STRK
+const result = await mcpClient.callTool({
+  name: "starknet_transfer",
+  arguments: {
+    recipient: "0x...",
+    token: "STRK",
+    amount: "100",
+    gasfree: true,
+    gasToken: "USDC",    // Gas paid in USDC
+  }
+});
+```
+
+**Direct starknet.js usage:**
 
 ```typescript
 import { Account, RpcProvider, CallData, cairo, ETransactionVersion } from "starknet";
@@ -219,6 +315,38 @@ const estimatedFee = await account.estimateInvokeFee({
   }),
 });
 // estimatedFee.overall_fee -- total fee in STRK (V3 transactions)
+```
+
+### Contract Interactions
+
+**Read contract state (view functions):**
+
+```typescript
+// Via MCP tool
+const result = await mcpClient.callTool({
+  name: "starknet_call_contract",
+  arguments: {
+    contractAddress: "0x...",
+    entrypoint: "balanceOf",
+    calldata: [accountAddress],
+  }
+});
+```
+
+**Write to contracts (state-changing functions):**
+
+```typescript
+// Via MCP tool with gasless option
+const result = await mcpClient.callTool({
+  name: "starknet_invoke_contract",
+  arguments: {
+    contractAddress: "0x...",
+    entrypoint: "approve",
+    calldata: [spenderAddress, ...uint256Amount],
+    gasfree: true,         // Optional: use paymaster
+    gasToken: "USDC",      // Optional: pay gas in token
+  }
+});
 ```
 
 ### Multi-Call (Batch Transactions)

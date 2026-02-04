@@ -15,7 +15,8 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "demo:hello-agent": "node examples/hello-agent/index.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.0",
