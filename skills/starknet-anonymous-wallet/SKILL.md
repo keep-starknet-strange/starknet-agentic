@@ -1,17 +1,17 @@
 ---
 name: starknet-anonymous-wallet
-description: Create a anonymous Starknet account to your agent through Typhoon anonymous deployer and interact with Starknet contracts (read/write + preflight).
-keywords:
-  - starknet
-  - wallet
-  - anonymous
-  - transfer
-  - balance
-  - anonymous-agent-wallet
-  - strk
-  - eth
+description: Create an anonymous Starknet wallet for the agent via Typhoon and interact with Starknet contracts (read/write + preflight).
 allowed-tools: read exec process
-user-invocable: true
+metadata:
+  keywords:
+    - starknet
+    - wallet
+    - anonymous
+    - transfer
+    - balance
+    - anonymous-agent-wallet
+    - strk
+    - eth
 ---
 
 # starknet-anonymous-wallet
