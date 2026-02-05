@@ -8,6 +8,7 @@
     "url": "https://github.com/your-org/starknet-agentic"
   },
   "license": "MIT",
+  "packageManager": "pnpm@10.28.2",
   "workspaces": [
     "packages/*",
     "examples/*",
