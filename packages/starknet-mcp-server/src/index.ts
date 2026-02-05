@@ -36,6 +36,7 @@ import {
   num,
   byteArray,
   hash,
+  type BigNumberish,
   type Call,
   type PaymasterDetails,
 } from "starknet";
@@ -891,6 +892,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const events = (receipt as { events?: unknown[] }).events || [];
         const accountDeployedKey = hash.getSelectorFromName("AccountDeployed");
         const factoryHex = num.toHex(factory);
+        const toHexSafe = (value: unknown): string | null => {
+          try {
+            return num.toHex(value as BigNumberish);
+          } catch {
+            return null;
+          }
+        };
+
         const deployedEvent = events.find((event) => {
           const typedEvent = event as {
             from_address?: unknown;
@@ -901,14 +910,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           if (!fromAddress) {
             return false;
           }
-          if (num.toHex(fromAddress) !== factoryHex) {
+          const fromAddressHex = toHexSafe(fromAddress);
+          if (!fromAddressHex || fromAddressHex !== factoryHex) {
             return false;
           }
           const keys = typedEvent.keys || [];
           if (keys.length === 0) {
             return false;
           }
-          return num.toHex(keys[0] as string) === accountDeployedKey;
+          const keyHex = toHexSafe(keys[0]);
+          if (!keyHex) {
+            return false;
+          }
+          return keyHex === accountDeployedKey;
         });
 
         let accountAddress: string | null = null;
