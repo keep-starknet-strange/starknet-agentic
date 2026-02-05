@@ -134,48 +134,6 @@ pub mod AgentAccount {
         self.executing.write(false);
     }
 
-    // ─── Custom __validate_deploy__ ────────────────────────────────────
-    // Our constructor is (public_key, factory), so we provide our own
-    // __validate_deploy__ implementation.
-    // ──────────────────────────────────────────────────────────────────
-
-    #[abi(per_item)]
-    #[generate_trait]
-    impl CustomDeployableImpl of CustomDeployableTrait {
-        #[external(v0)]
-        fn __validate_deploy__(
-            self: @ContractState,
-            class_hash: felt252,
-            contract_address_salt: felt252,
-            public_key: felt252,
-            factory: ContractAddress,
-        ) -> felt252 {
-            let _ = class_hash;
-            let _ = contract_address_salt;
-            let _ = factory;
-
-            let tx_info = get_tx_info().unbox();
-            let tx_hash = tx_info.transaction_hash;
-            let signature = tx_info.signature;
-
-            if signature.len() != 2 {
-                return 0;
-            }
-
-            if public_key == 0 {
-                return 0;
-            }
-
-            let r = *signature.at(0);
-            let s = *signature.at(1);
-            if check_ecdsa_signature(tx_hash, public_key, r, s) {
-                starknet::VALIDATED
-            } else {
-                0
-            }
-        }
-    }
-
     // ─── Agent Account Interface ──────────────────────────────────────
 
     #[abi(embed_v0)]
@@ -223,6 +181,7 @@ pub mod AgentAccount {
             class_hash: felt252,
             contract_address_salt: felt252,
             public_key: felt252,
+            factory: ContractAddress,
         ) -> felt252 {
             let zero: ContractAddress = 0.try_into().unwrap();
             assert(get_caller_address() == zero, 'Account: invalid caller');
@@ -231,6 +190,7 @@ pub mod AgentAccount {
             let _ = class_hash;
             let _ = contract_address_salt;
             let _ = public_key;
+            let _ = factory;
 
             let tx_info = get_tx_info().unbox();
             let tx_hash = tx_info.transaction_hash;
@@ -371,11 +331,18 @@ pub mod AgentAccount {
             agent_id: u256,
         ) {
             // Only the factory that deployed this account may call this.
-            let factory = self.factory.read();
-            assert(get_caller_address() == factory, 'Only factory');
+            let caller = get_caller_address();
+            assert(caller == self.factory.read(), 'Only factory');
+
             // Only allow initialization once (agent_id defaults to 0).
             let zero: ContractAddress = 0.try_into().unwrap();
             assert(self.agent_registry.read() == zero, 'Already initialized');
+            assert(registry != zero, 'Invalid registry');
+
+            // Verify this account owns the NFT
+            let registry_dispatcher = IERC721OwnerOfDispatcher { contract_address: registry };
+            let owner = registry_dispatcher.owner_of(agent_id);
+            assert(owner == get_contract_address(), 'Agent ID not owned');
 
             self.agent_registry.write(registry);
             self.agent_id.write(agent_id);

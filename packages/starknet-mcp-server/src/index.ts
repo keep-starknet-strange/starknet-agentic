@@ -14,7 +14,7 @@
  * - starknet_invoke_contract: Write to contracts
  * - starknet_swap: Execute swaps via avnu
  * - starknet_get_quote: Get swap quotes
- * - starknet_register_agent: Register agent identity (ERC-8004)
+ * - starknet_deploy_agent_account: Deploy agent account via factory (ERC-8004 linked)
  *
  * Usage:
  *   STARKNET_RPC_URL=... STARKNET_ACCOUNT_ADDRESS=... STARKNET_PRIVATE_KEY=... node dist/index.js
@@ -33,6 +33,9 @@ import {
   CallData,
   cairo,
   ETransactionVersion,
+  num,
+  byteArray,
+  hash,
   type Call,
   type PaymasterDetails,
 } from "starknet";
@@ -53,12 +56,17 @@ import {
 import { z } from "zod";
 import { createStarknetPaymentSignatureHeader } from "@starknet-agentic/x402-starknet";
 import { formatAmount, formatQuoteFields, formatErrorMessage } from "./utils/formatter.js";
+import { SessionKeySigner } from "./helpers/sessionKeySigner.js";
 
 // Environment validation
 const envSchema = z.object({
   STARKNET_RPC_URL: z.string().url(),
   STARKNET_ACCOUNT_ADDRESS: z.string().startsWith("0x"),
   STARKNET_PRIVATE_KEY: z.string().startsWith("0x"),
+  STARKNET_SESSION_PRIVATE_KEY: z.string().startsWith("0x").optional(),
+  STARKNET_SESSION_PUBLIC_KEY: z.string().startsWith("0x").optional(),
+  STARKNET_SIGNER: z.enum(["owner", "session"]).optional(),
+  STARKNET_AGENT_ACCOUNT_FACTORY: z.string().startsWith("0x").optional(),
   AVNU_BASE_URL: z.string().url().optional(),
   AVNU_PAYMASTER_URL: z.string().url().optional(),
   AVNU_PAYMASTER_API_KEY: z.string().optional(),
@@ -68,6 +76,10 @@ const env = envSchema.parse({
   STARKNET_RPC_URL: process.env.STARKNET_RPC_URL,
   STARKNET_ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS,
   STARKNET_PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY,
+  STARKNET_SESSION_PRIVATE_KEY: process.env.STARKNET_SESSION_PRIVATE_KEY,
+  STARKNET_SESSION_PUBLIC_KEY: process.env.STARKNET_SESSION_PUBLIC_KEY,
+  STARKNET_SIGNER: process.env.STARKNET_SIGNER as "owner" | "session" | undefined,
+  STARKNET_AGENT_ACCOUNT_FACTORY: process.env.STARKNET_AGENT_ACCOUNT_FACTORY,
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || "https://starknet.api.avnu.fi",
   AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
   AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
@@ -81,6 +93,37 @@ const account = new Account({
   signer: env.STARKNET_PRIVATE_KEY,
   transactionVersion: ETransactionVersion.V3,
 });
+
+const hasSessionSigner =
+  !!env.STARKNET_SESSION_PRIVATE_KEY && !!env.STARKNET_SESSION_PUBLIC_KEY;
+const sessionPublicKey = hasSessionSigner
+  ? num.toHex(env.STARKNET_SESSION_PUBLIC_KEY as string)
+  : null;
+const sessionAccount = hasSessionSigner
+  ? new Account({
+      provider,
+      address: env.STARKNET_ACCOUNT_ADDRESS,
+      signer: new SessionKeySigner(
+        env.STARKNET_SESSION_PRIVATE_KEY as string,
+        sessionPublicKey as string
+      ),
+      transactionVersion: ETransactionVersion.V3,
+    })
+  : null;
+
+const defaultSignerMode =
+  env.STARKNET_SIGNER || (sessionAccount ? "session" : "owner");
+
+function getAccount(signerMode?: "owner" | "session"): Account {
+  const mode = signerMode || (defaultSignerMode as "owner" | "session");
+  if (mode === "session") {
+    if (!sessionAccount) {
+      throw new Error("Session signer not configured");
+    }
+    return sessionAccount;
+  }
+  return account;
+}
 
 // Fee mode: sponsored (gasfree, dApp pays) vs default (user pays in gasToken)
 const isSponsored = !!env.AVNU_PAYMASTER_API_KEY;
@@ -98,10 +141,12 @@ configureTokenServiceProvider(provider);
 async function executeTransaction(
   calls: Call | Call[],
   gasfree: boolean,
-  gasToken: string = TOKENS.STRK
+  gasToken: string = TOKENS.STRK,
+  signerMode?: "owner" | "session"
 ): Promise<string> {
+  const txAccount = getAccount(signerMode);
   if (!gasfree) {
-    const result = await account.execute(calls);
+    const result = await txAccount.execute(calls);
     return result.transaction_hash;
   }
 
@@ -110,8 +155,8 @@ async function executeTransaction(
     ? { feeMode: { mode: "sponsored" } }
     : { feeMode: { mode: "default", gasToken } };
 
-  const estimation = await account.estimatePaymasterTransactionFee(callsArray, feeDetails);
-  const result = await account.executePaymasterTransaction(
+  const estimation = await txAccount.estimatePaymasterTransactionFee(callsArray, feeDetails);
+  const result = await txAccount.executePaymasterTransaction(
     callsArray,
     feeDetails,
     estimation.suggested_max_fee_in_gas_token
@@ -197,6 +242,11 @@ const tools: Tool[] = [
           description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
           default: false,
         },
+        signer: {
+          type: "string",
+          enum: ["owner", "session"],
+          description: "Signer to use (defaults to STARKNET_SIGNER or session if configured)",
+        },
         gasToken: {
           type: "string",
           description: "Token to pay gas fees in (symbol or address). Only used when gasfree=true and no API key is set.",
@@ -254,6 +304,11 @@ const tools: Tool[] = [
           description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
           default: false,
         },
+        signer: {
+          type: "string",
+          enum: ["owner", "session"],
+          description: "Signer to use (defaults to STARKNET_SIGNER or session if configured)",
+        },
         gasToken: {
           type: "string",
           description: "Token to pay gas fees in (symbol or address). Only used when gasfree=true and no API key is set.",
@@ -290,6 +345,11 @@ const tools: Tool[] = [
           type: "boolean",
           description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
           default: false,
+        },
+        signer: {
+          type: "string",
+          enum: ["owner", "session"],
+          description: "Signer to use (defaults to STARKNET_SIGNER or session if configured)",
         },
         gasToken: {
           type: "string",
@@ -341,8 +401,54 @@ const tools: Tool[] = [
           description: "Function arguments",
           default: [],
         },
+        signer: {
+          type: "string",
+          enum: ["owner", "session"],
+          description: "Signer to use (defaults to STARKNET_SIGNER or session if configured)",
+        },
       },
       required: ["contractAddress", "entrypoint"],
+    },
+  },
+  {
+    name: "starknet_deploy_agent_account",
+    description:
+      "Deploy an AgentAccount via the factory and register an ERC-8004 identity token. Defaults to STARKNET_AGENT_ACCOUNT_FACTORY.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        publicKey: {
+          type: "string",
+          description: "Owner public key for the new account (felt252 hex)",
+        },
+        salt: {
+          type: "string",
+          description: "Salt for deterministic deployment (felt252 hex). Defaults to 0.",
+        },
+        tokenUri: {
+          type: "string",
+          description: "ERC-8004 token URI (string). Defaults to empty string.",
+        },
+        factoryAddress: {
+          type: "string",
+          description: "AgentAccountFactory address (defaults to STARKNET_AGENT_ACCOUNT_FACTORY)",
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
+          default: false,
+        },
+        signer: {
+          type: "string",
+          enum: ["owner", "session"],
+          description: "Signer to use (defaults to STARKNET_SIGNER or session if configured)",
+        },
+        gasToken: {
+          type: "string",
+          description: "Token to pay gas fees in (symbol or address). Only used when gasfree=true and no API key is set.",
+        },
+      },
+      required: ["publicKey"],
     },
   },
   {
@@ -458,12 +564,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_transfer": {
-        const { recipient, token, amount, gasfree = false, gasToken } = args as {
+        const { recipient, token, amount, gasfree = false, gasToken, signer } = args as {
           recipient: string;
           token: string;
           amount: string;
           gasfree?: boolean;
           gasToken?: string;
+          signer?: "owner" | "session";
         };
 
         const tokenAddress = await resolveTokenAddressAsync(token);
@@ -479,7 +586,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }),
         };
 
-        const transactionHash = await executeTransaction(transferCall, gasfree, gasTokenAddress);
+        const transactionHash = await executeTransaction(
+          transferCall,
+          gasfree,
+          gasTokenAddress,
+          signer
+        );
         await provider.waitForTransaction(transactionHash);
 
         return {
@@ -527,18 +639,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_invoke_contract": {
-        const { contractAddress, entrypoint, calldata = [], gasfree = false, gasToken } = args as {
+        const {
+          contractAddress,
+          entrypoint,
+          calldata = [],
+          gasfree = false,
+          gasToken,
+          signer,
+        } = args as {
           contractAddress: string;
           entrypoint: string;
           calldata?: string[];
           gasfree?: boolean;
           gasToken?: string;
+          signer?: "owner" | "session";
         };
 
         const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : TOKENS.STRK;
         const invokeCall: Call = { contractAddress, entrypoint, calldata };
 
-        const transactionHash = await executeTransaction(invokeCall, gasfree, gasTokenAddress);
+        const transactionHash = await executeTransaction(
+          invokeCall,
+          gasfree,
+          gasTokenAddress,
+          signer
+        );
         await provider.waitForTransaction(transactionHash);
 
         return {
@@ -558,13 +683,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_swap": {
-        const { sellToken, buyToken, amount, slippage = 0.01, gasfree = false, gasToken } = args as {
+        const {
+          sellToken,
+          buyToken,
+          amount,
+          slippage = 0.01,
+          gasfree = false,
+          gasToken,
+          signer,
+        } = args as {
           sellToken: string;
           buyToken: string;
           amount: string;
           slippage?: number;
           gasfree?: boolean;
           gasToken?: string;
+          signer?: "owner" | "session";
         };
 
         // Validate slippage is within reasonable bounds
@@ -572,6 +706,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error("Slippage must be between 0 and 0.5 (50%). Recommended: 0.005-0.03.");
         }
 
+        const txAccount = getAccount(signer);
         const [sellTokenAddress, buyTokenAddress] = await Promise.all([
           resolveTokenAddressAsync(sellToken),
           resolveTokenAddressAsync(buyToken),
@@ -582,7 +717,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           sellTokenAddress,
           buyTokenAddress,
           sellAmount,
-          takerAddress: account.address,
+          takerAddress: txAccount.address,
         };
 
         const quotes = await getQuotes(quoteParams, { baseUrl: env.AVNU_BASE_URL });
@@ -594,13 +729,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const { calls } = await quoteToCalls({
           quoteId: bestQuote.quoteId,
-          takerAddress: account.address,
+          takerAddress: txAccount.address,
           slippage,
           executeApprove: true,
         }, { baseUrl: env.AVNU_BASE_URL });
 
         const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : sellTokenAddress;
-        const transactionHash = await executeTransaction(calls, gasfree, gasTokenAddress);
+        const transactionHash = await executeTransaction(
+          calls,
+          gasfree,
+          gasTokenAddress,
+          signer
+        );
         await provider.waitForTransaction(transactionHash);
 
         const tokenService = getTokenService();
@@ -677,13 +817,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_estimate_fee": {
-        const { contractAddress, entrypoint, calldata = [] } = args as {
+        const { contractAddress, entrypoint, calldata = [], signer } = args as {
           contractAddress: string;
           entrypoint: string;
           calldata?: string[];
+          signer?: "owner" | "session";
         };
 
-        const fee = await account.estimateInvokeFee({
+        const feeAccount = getAccount(signer);
+        const fee = await feeAccount.estimateInvokeFee({
           contractAddress,
           entrypoint,
           calldata,
@@ -697,6 +839,109 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 overallFee: formatAmount(BigInt(fee.overall_fee.toString()), 18),
                 resourceBounds: fee.resourceBounds,
                 unit: fee.unit || "STRK",
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "starknet_deploy_agent_account": {
+        const {
+          publicKey,
+          salt,
+          tokenUri = "",
+          factoryAddress,
+          gasfree = false,
+          gasToken,
+          signer,
+        } = args as {
+          publicKey: string;
+          salt?: string;
+          tokenUri?: string;
+          factoryAddress?: string;
+          gasfree?: boolean;
+          gasToken?: string;
+          signer?: "owner" | "session";
+        };
+
+        const factory = factoryAddress || env.STARKNET_AGENT_ACCOUNT_FACTORY;
+        if (!factory) {
+          throw new Error(
+            "AgentAccount factory not configured. Set STARKNET_AGENT_ACCOUNT_FACTORY or pass factoryAddress."
+          );
+        }
+
+        const publicKeyHex = num.toHex(publicKey);
+        const saltHex = num.toHex(salt || "0x0");
+        const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : TOKENS.STRK;
+
+        const deployCall: Call = {
+          contractAddress: factory,
+          entrypoint: "deploy_account",
+          calldata: CallData.compile({
+            public_key: publicKeyHex,
+            salt: saltHex,
+            token_uri: byteArray.byteArrayFromString(tokenUri),
+          }),
+        };
+
+        const transactionHash = await executeTransaction(
+          deployCall,
+          gasfree,
+          gasTokenAddress,
+          signer
+        );
+        const receipt = await provider.waitForTransaction(transactionHash);
+
+        const events = (receipt as { events?: unknown[] }).events || [];
+        const accountDeployedKey = hash.getSelectorFromName("AccountDeployed");
+        const factoryHex = num.toHex(factory);
+        const deployedEvent = events.find((event) => {
+          const typedEvent = event as {
+            from_address?: unknown;
+            fromAddress?: unknown;
+            keys?: unknown[];
+          };
+          const fromAddress = typedEvent.from_address ?? typedEvent.fromAddress;
+          if (!fromAddress) {
+            return false;
+          }
+          if (num.toHex(fromAddress) !== factoryHex) {
+            return false;
+          }
+          const keys = typedEvent.keys || [];
+          if (keys.length === 0) {
+            return false;
+          }
+          return num.toHex(keys[0] as string) === accountDeployedKey;
+        });
+
+        let accountAddress: string | null = null;
+        let agentId: string | null = null;
+        if (deployedEvent) {
+          const data = (deployedEvent as { data?: unknown[] }).data || [];
+          if (data.length >= 5) {
+            accountAddress = num.toHex(data[0] as string);
+            const low = BigInt(data[2] as string);
+            const high = BigInt(data[3] as string);
+            agentId = (low + (high << 128n)).toString();
+          }
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: true,
+                transactionHash,
+                accountAddress,
+                agentId,
+                factory,
+                publicKey: publicKeyHex,
+                salt: saltHex,
+                tokenUri,
+                gasfree,
               }, null, 2),
             },
           ],

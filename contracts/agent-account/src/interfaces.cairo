@@ -30,7 +30,8 @@ pub trait IAgentAccount<TContractState> {
         ref self: TContractState,
         class_hash: felt252,
         contract_address_salt: felt252,
-        public_key: felt252
+        public_key: felt252,
+        factory: ContractAddress
     ) -> felt252;
 
     // Session key management
