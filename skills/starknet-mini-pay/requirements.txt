@@ -1,0 +1,24 @@
+# Starknet Mini-Pay Dependencies
+
+# Core Starknet SDK
+starknet-py>=0.6.0
+
+# QR Code generation
+qrcode[pil]>=7.4.2
+Pillow>=9.5.0
+
+# Telegram Bot
+python-telegram-bot>=20.0
+httpx>=0.24.0
+
+# Database
+aiosqlite>=0.18.0
+
+# Utilities
+python-dotenv>=1.0.0
+rich>=13.0.0
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
