@@ -205,6 +205,100 @@ fn test_validate_rejects_external_caller() {
 }
 
 #[test]
+fn test_validate_declare_accepts_owner_sig() {
+    let owner_key = StarkCurveKeyPairImpl::from_secret_key(0x321);
+    let (account, account_address) = deploy_account(owner_key.public_key);
+    let class_hash: felt252 = 0xabc;
+
+    let tx_hash: felt252 = 0xabc123;
+    let (r, s) = owner_key.sign(tx_hash).unwrap();
+    let signature = array![r, s];
+
+    start_cheat_signature_global(signature.span());
+    start_cheat_transaction_hash_global(tx_hash);
+    start_cheat_transaction_version_global(1);
+    start_protocol_call(account_address);
+
+    let result = account.__validate_declare__(class_hash);
+    stop_protocol_call(account_address);
+    assert(result == 1, 'Declare validated');
+
+    stop_cheat_signature_global();
+    stop_cheat_transaction_hash_global();
+}
+
+#[test]
+fn test_validate_declare_rejects_invalid_signature() {
+    let owner_key = StarkCurveKeyPairImpl::from_secret_key(0x322);
+    let bad_key = StarkCurveKeyPairImpl::from_secret_key(0x323);
+    let (account, account_address) = deploy_account(owner_key.public_key);
+    let class_hash: felt252 = 0xdef;
+
+    let tx_hash: felt252 = 0xabc124;
+    let (r, s) = bad_key.sign(tx_hash).unwrap();
+    let signature = array![r, s];
+
+    start_cheat_signature_global(signature.span());
+    start_cheat_transaction_hash_global(tx_hash);
+    start_cheat_transaction_version_global(1);
+    start_protocol_call(account_address);
+
+    let result = account.__validate_declare__(class_hash);
+    stop_protocol_call(account_address);
+    assert(result == 0, 'Declare rejected');
+
+    stop_cheat_signature_global();
+    stop_cheat_transaction_hash_global();
+}
+
+#[test]
+#[should_panic(expected: 'Account: invalid caller')]
+fn test_validate_declare_rejects_external_caller() {
+    let (account, account_address) = deploy_account(0x123);
+    let class_hash: felt252 = 0x456;
+
+    start_cheat_caller_address(account_address, other());
+
+    let _ = account.__validate_declare__(class_hash);
+}
+
+#[test]
+fn test_validate_deploy_accepts_owner_sig() {
+    let owner_key = StarkCurveKeyPairImpl::from_secret_key(0x324);
+    let (account, account_address) = deploy_account(owner_key.public_key);
+    let class_hash: felt252 = 0xabc555;
+    let salt: felt252 = 0x444;
+
+    let tx_hash: felt252 = 0xabc125;
+    let (r, s) = owner_key.sign(tx_hash).unwrap();
+    let signature = array![r, s];
+
+    start_cheat_signature_global(signature.span());
+    start_cheat_transaction_hash_global(tx_hash);
+    start_cheat_transaction_version_global(1);
+    start_protocol_call(account_address);
+
+    let result = account.__validate_deploy__(class_hash, salt, owner_key.public_key);
+    stop_protocol_call(account_address);
+    assert(result == 1, 'Deploy validated');
+
+    stop_cheat_signature_global();
+    stop_cheat_transaction_hash_global();
+}
+
+#[test]
+#[should_panic(expected: 'Account: invalid caller')]
+fn test_validate_deploy_rejects_external_caller() {
+    let (account, account_address) = deploy_account(0x123);
+    let class_hash: felt252 = 0x789;
+    let salt: felt252 = 0x555;
+
+    start_cheat_caller_address(account_address, other());
+
+    let _ = account.__validate_deploy__(class_hash, salt, 0x123);
+}
+
+#[test]
 #[should_panic(expected: 'Account: invalid tx version')]
 fn test_execute_rejects_v0_transaction() {
     let (account, account_address) = deploy_account(0x123);

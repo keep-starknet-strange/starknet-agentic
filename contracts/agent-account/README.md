@@ -67,7 +67,7 @@ account.execute_upgrade();
 - Emergency revoke for all keys
 - Timelocked upgrades (configurable delay)
 - Hard multicall cap enforced in `__execute__` (MAX_MULTICALL_SIZE = 20)
-- `__validate_declare__` / `__validate_deploy__` are not implemented yet (declare/deploy unsupported)
+- `__validate_declare__` / `__validate_deploy__` supported (owner signature only, protocol-only caller, v1+ tx)
 - Public key updates require a signature from the new key (lockout protection)
 
 ## Integration

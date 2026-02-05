@@ -141,6 +141,49 @@ pub mod AgentAccount {
             INVALID
         }
 
+        fn __validate_declare__(ref self: ContractState, class_hash: felt252) -> felt252 {
+            let zero: ContractAddress = 0.try_into().unwrap();
+            assert(get_caller_address() == zero, 'Account: invalid caller');
+            assert(is_tx_version_valid(), 'Account: invalid tx version');
+
+            let _ = class_hash;
+
+            let tx_info = get_tx_info().unbox();
+            let tx_hash = tx_info.transaction_hash;
+            let signature = tx_info.signature;
+
+            if self._is_valid_owner_signature(tx_hash, signature) {
+                return VALIDATED;
+            }
+
+            INVALID
+        }
+
+        fn __validate_deploy__(
+            ref self: ContractState,
+            class_hash: felt252,
+            contract_address_salt: felt252,
+            public_key: felt252,
+        ) -> felt252 {
+            let zero: ContractAddress = 0.try_into().unwrap();
+            assert(get_caller_address() == zero, 'Account: invalid caller');
+            assert(is_tx_version_valid(), 'Account: invalid tx version');
+
+            let _ = class_hash;
+            let _ = contract_address_salt;
+            let _ = public_key;
+
+            let tx_info = get_tx_info().unbox();
+            let tx_hash = tx_info.transaction_hash;
+            let signature = tx_info.signature;
+
+            if self._is_valid_owner_signature(tx_hash, signature) {
+                return VALIDATED;
+            }
+
+            INVALID
+        }
+
         fn __execute__(ref self: ContractState, calls: Array<Call>) -> Array<Span<felt252>> {
             let tx_info = get_tx_info().unbox();
             let signature = tx_info.signature;
