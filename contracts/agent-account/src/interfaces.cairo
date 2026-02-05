@@ -1,6 +1,13 @@
 use starknet::{ClassHash, ContractAddress};
 use core::byte_array::ByteArray;
 
+#[derive(Copy, Drop, Serde)]
+pub struct Call {
+    pub to: ContractAddress,
+    pub selector: felt252,
+    pub calldata: Span<felt252>,
+}
+
 #[derive(Drop, Serde, Copy, starknet::Store)]
 pub struct SessionPolicy {
     pub valid_after: u64,
@@ -8,10 +15,17 @@ pub struct SessionPolicy {
     pub spending_limit: u256,
     pub spending_token: ContractAddress,
     pub allowed_contract: ContractAddress,
+    pub max_calls_per_tx: u32,
+    pub spending_period_secs: u64,
 }
 
 #[starknet::interface]
 pub trait IAgentAccount<TContractState> {
+    // Account interface
+    fn __validate__(ref self: TContractState, calls: Array<Call>) -> felt252;
+    fn __execute__(ref self: TContractState, calls: Array<Call>) -> Array<Span<felt252>>;
+    fn is_valid_signature(self: @TContractState, hash: felt252, signature: Array<felt252>) -> felt252;
+
     // Session key management
     fn register_session_key(ref self: TContractState, key: felt252, policy: SessionPolicy);
     fn revoke_session_key(ref self: TContractState, key: felt252);

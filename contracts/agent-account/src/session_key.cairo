@@ -40,8 +40,14 @@ pub mod SessionKeyComponent {
             policy: SessionPolicy
         );
         fn revoke(ref self: ComponentState<TContractState>, key: felt252);
+        fn update_policy(
+            ref self: ComponentState<TContractState>,
+            key: felt252,
+            policy: SessionPolicy
+        );
         fn get_policy(self: @ComponentState<TContractState>, key: felt252) -> SessionPolicy;
         fn is_valid(self: @ComponentState<TContractState>, key: felt252) -> bool;
+        fn is_active(self: @ComponentState<TContractState>, key: felt252) -> bool;
         fn validate_call(
             self: @ComponentState<TContractState>,
             key: felt252,
@@ -63,6 +69,7 @@ pub mod SessionKeyComponent {
             key: felt252,
             policy: SessionPolicy
         ) {
+            assert(!self.session_key_active.read(key), 'Session key already active');
             assert(policy.valid_until > policy.valid_after, 'Invalid time range');
             assert(policy.valid_until > get_block_timestamp(), 'Already expired');
 
@@ -85,6 +92,14 @@ pub mod SessionKeyComponent {
             self.emit(SessionKeyRevoked { key });
         }
 
+        fn update_policy(
+            ref self: ComponentState<TContractState>,
+            key: felt252,
+            policy: SessionPolicy
+        ) {
+            self.session_keys.write(key, policy);
+        }
+
         fn get_policy(self: @ComponentState<TContractState>, key: felt252) -> SessionPolicy {
             self.session_keys.entry(key).read()
         }
@@ -98,6 +113,10 @@ pub mod SessionKeyComponent {
             let now = get_block_timestamp();
 
             now >= policy.valid_after && now <= policy.valid_until
+        }
+
+        fn is_active(self: @ComponentState<TContractState>, key: felt252) -> bool {
+            self.session_key_active.entry(key).read()
         }
 
         /// Validates that a session key is active, within its time window,
@@ -126,7 +145,7 @@ pub mod SessionKeyComponent {
 
         /// Debits the session key's spending allowance.
         /// Enforces: key validity (active + time window), token match, and
-        /// cumulative spend within the 24h period limit.
+        /// cumulative spend within the period limit.
         fn check_and_update_spending(
             ref self: ComponentState<TContractState>,
             key: felt252,
@@ -142,12 +161,17 @@ pub mod SessionKeyComponent {
             assert(token == policy.spending_token, 'Wrong spending token');
 
             let now = get_block_timestamp();
+            let period_secs = if policy.spending_period_secs == 0 {
+                86400
+            } else {
+                policy.spending_period_secs
+            };
 
-            // Reset if 24h period has elapsed.
+            // Reset if period has elapsed.
             // Uses addition instead of `period_start == 0` guard to avoid
             // perpetual resets when now == 0.
             let period_start = self.spending_period_start.entry((key, token)).read();
-            if period_start + 86400 <= now {
+            if period_start + period_secs <= now {
                 self.spending_used.entry((key, token)).write(0);
                 self.spending_period_start.entry((key, token)).write(now);
             }
