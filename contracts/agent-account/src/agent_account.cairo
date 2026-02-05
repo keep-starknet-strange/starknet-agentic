@@ -183,6 +183,7 @@ pub mod AgentAccount {
         fn __validate__(ref self: ContractState, calls: Array<Call>) -> felt252 {
             let zero: ContractAddress = 0.try_into().unwrap();
             assert(get_caller_address() == zero, 'Account: invalid caller');
+            assert(is_tx_version_valid(), 'Account: invalid tx version');
 
             let tx_info = get_tx_info().unbox();
             let tx_hash = tx_info.transaction_hash;

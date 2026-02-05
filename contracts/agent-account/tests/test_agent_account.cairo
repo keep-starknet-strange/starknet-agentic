@@ -946,6 +946,18 @@ fn test_validate_rejects_external_caller() {
 }
 
 #[test]
+#[should_panic(expected: 'Account: invalid tx version')]
+fn test_validate_rejects_v0_transaction() {
+    let (account, account_address) = deploy_account(0x123);
+    let calls: Array<Call> = ArrayTrait::new();
+
+    start_protocol_call(account_address);
+    start_cheat_transaction_version_global(0);
+
+    let _ = account.__validate__(calls);
+}
+
+#[test]
 fn test_validate_declare_accepts_owner_sig() {
     let owner_key = StarkCurveKeyPairImpl::from_secret_key(0x321);
     let (account, account_address) = deploy_account(owner_key.public_key);
