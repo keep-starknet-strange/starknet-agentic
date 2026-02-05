@@ -1,8 +1,6 @@
 {
-  "rootDirectory": "website",
-  "buildCommand": "pnpm build",
+  "buildCommand": "pnpm --filter starknet-agentic-website build",
   "installCommand": "corepack enable && pnpm install --frozen-lockfile",
-  "outputDirectory": ".next",
-  "framework": "nextjs",
-  "nodeVersion": "20.x"
+  "outputDirectory": "website/.next",
+  "framework": "nextjs"
 }
