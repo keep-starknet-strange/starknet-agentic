@@ -99,7 +99,7 @@ Works with MCP Server (#4) for autonomous operations.
 
 ## Migration Notes
 
-- Added `session_key_index`, `session_key_in_list`, and `executing` as new storage fields (appended at the end of storage for upgrade safety).
+- Added `session_key_index`, `session_key_in_list`, `executing`, and `factory` as new storage fields (appended at the end of storage for upgrade safety).
 - Upgrades from older deployments are supported: the first revoke/remove will fall back to a linear scan of `active_session_keys` to backfill the index.
 
 ## Related
