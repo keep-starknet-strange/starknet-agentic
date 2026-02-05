@@ -6,7 +6,6 @@ import {
   num,
   Signer,
   SignerInterface,
-  signatureToHexArray,
   Signature,
   TypedData,
 } from "starknet";
@@ -34,8 +33,10 @@ export class SessionKeySigner extends SignerInterface {
     transactionsDetail: InvocationsSignerDetails
   ): Promise<Signature> {
     const signature = await this.inner.signTransaction(transactions, transactionsDetail);
-    const [r, s] = signatureToHexArray(signature);
-    return [this.sessionPublicKey, r, s];
+    const [r, s] = Array.isArray(signature)
+      ? signature
+      : [signature.r, signature.s];
+    return [this.sessionPublicKey, num.toHex(r), num.toHex(s)];
   }
 
   async signDeployAccountTransaction(
