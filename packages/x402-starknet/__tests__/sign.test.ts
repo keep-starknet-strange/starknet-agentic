@@ -33,6 +33,9 @@ describe("x402-starknet", () => {
     // Ensure we accept classic base64 too.
     const classic = Buffer.from(JSON.stringify({ a: 2 }), "utf8").toString("base64")
     expect(decodeBase64Json(classic)).toEqual({ a: 2 })
+
+    // Guard invalid base64/base64url length.
+    expect(() => decodeBase64Json("a")).toThrow(/Invalid base64\/base64url string length/)
   })
 
   it("creates a PAYMENT-SIGNATURE header from PAYMENT-REQUIRED and preserves metadata", async () => {

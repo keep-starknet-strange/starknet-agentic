@@ -23,6 +23,13 @@ function base64ToBuffer(input: string): Buffer {
   // Accept both base64 and base64url.
   // base64url uses -_ and often omits padding.
   const normalized = input.replace(/-/g, "+").replace(/_/g, "/").trim()
+
+  // Length mod 4 === 1 is not a valid base64/base64url length.
+  // Guard to avoid silently decoding garbage.
+  if (normalized.length % 4 === 1) {
+    throw new Error("Invalid base64/base64url string length")
+  }
+
   const padLen = (4 - (normalized.length % 4)) % 4
   const padded = normalized + "=".repeat(padLen)
   return Buffer.from(padded, "base64")
