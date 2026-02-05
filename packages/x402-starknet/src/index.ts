@@ -19,12 +19,33 @@ export type X402PaymentSignature = {
   [k: string]: unknown
 }
 
-export function decodeBase64Json<T = unknown>(v: string): T {
-  return JSON.parse(Buffer.from(v, "base64").toString("utf8")) as T
+function base64ToBuffer(input: string): Buffer {
+  // Accept both base64 and base64url.
+  // base64url uses -_ and often omits padding.
+  const normalized = input.replace(/-/g, "+").replace(/_/g, "/").trim()
+  const padLen = (4 - (normalized.length % 4)) % 4
+  const padded = normalized + "=".repeat(padLen)
+  return Buffer.from(padded, "base64")
 }
 
+function bufferToBase64Url(buf: Buffer): string {
+  return buf
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "")
+}
+
+export function decodeBase64Json<T = unknown>(v: string): T {
+  return JSON.parse(base64ToBuffer(v).toString("utf8")) as T
+}
+
+/**
+ * Encodes as base64url (RFC 4648) without padding.
+ * This is generally safer for HTTP header values.
+ */
 export function encodeBase64Json(value: unknown): string {
-  return Buffer.from(JSON.stringify(value), "utf8").toString("base64")
+  return bufferToBase64Url(Buffer.from(JSON.stringify(value), "utf8"))
 }
 
 /**
@@ -68,11 +89,14 @@ export async function createStarknetPaymentSignatureHeader(args: {
   // starknet.js signs typedData per SNIP-12.
   const signature = await account.signMessage(paymentRequired.typedData)
 
+  // Preserve any additional metadata from PAYMENT-REQUIRED (facilitator, extensions, etc).
+  // Explicit keys win, so we don't let unknown fields override scheme/typedData/signature/address.
   const payload: X402PaymentSignature = {
+    ...(paymentRequired as Record<string, unknown>),
     scheme: paymentRequired.scheme,
     typedData: paymentRequired.typedData,
     signature,
-    address: args.accountAddress
+    address: args.accountAddress,
   }
 
   return { headerValue: encodeBase64Json(payload), payload }
