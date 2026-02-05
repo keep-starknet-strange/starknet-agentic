@@ -4,6 +4,10 @@
   "description": "Passport layer on top of ERC-8004 IdentityRegistry: capability metadata conventions + client helpers",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "dev": "tsup src/index.ts --format esm --watch",
