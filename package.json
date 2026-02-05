@@ -8,6 +8,7 @@
     "url": "https://github.com/your-org/starknet-agentic"
   },
   "license": "MIT",
+  "packageManager": "pnpm@10.28.2",
   "workspaces": [
     "packages/*",
     "examples/*",
@@ -29,5 +30,8 @@
   },
   "dependencies": {
     "ethers": "^6.16.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

@@ -1,6 +1,6 @@
 {
-  "buildCommand": "pnpm --filter starknet-agentic-website build",
+  "buildCommand": "pnpm build",
   "installCommand": "npm i -g pnpm@10.28.2 && pnpm install --frozen-lockfile",
-  "outputDirectory": "website/.next",
+  "outputDirectory": ".next",
   "framework": "nextjs"
 }
