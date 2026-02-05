@@ -230,11 +230,11 @@ Always consult `references/` before relying on training data for Starknet-specif
 | Skills (wallet, defi, identity) | Complete | `skills/` |
 | Docs & specs | Complete | `docs/` |
 | Website | Scaffolded | `website/` |
-| MCP server | **TODO** (placeholder) | `packages/starknet-mcp-server/` |
-| A2A adapter | **TODO** (placeholder) | `packages/starknet-a2a/` |
+| MCP server | Implemented | `packages/starknet-mcp-server/` |
+| A2A adapter | Implemented | `packages/starknet-a2a/` |
 | Agent Account contract | **TODO** (designed in spec) | Not yet created |
 | Framework extensions | **TODO** | Not yet created |
-| CI/CD | **TODO** | No `.github/workflows/` yet |
+| CI/CD | Implemented | `.github/workflows/ci.yml`, `.github/workflows/publish.yml` |
 
 </implementation_status>
 
