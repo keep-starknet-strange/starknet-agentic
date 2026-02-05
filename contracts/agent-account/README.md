@@ -29,8 +29,10 @@ scarb test
 ```bash
 starkli account oz init --keystore keystore.json
 starkli declare target/dev/agent_account_AgentAccount.contract_class.json
-starkli deploy <class_hash> <public_key>
+starkli deploy <class_hash> <public_key> <factory_address>
 ```
+
+Pass `0x0` as the factory address for direct deployments without a factory.
 
 ### Register Session Key
 
@@ -69,6 +71,13 @@ account.execute_upgrade();
 - Hard multicall cap enforced in `__execute__` (MAX_MULTICALL_SIZE = 20)
 - `__validate_declare__` / `__validate_deploy__` supported (owner signature only, protocol-only caller, v1+ tx)
 - Public key updates require a signature from the new key (lockout protection)
+
+## Factory Integration
+
+AgentAccount supports factory-based deployment and identity binding:
+
+- Constructor now takes `public_key` and `factory` (pass `0` for direct deployments).
+- Factory can call `init_agent_id_from_factory` once to link ERC-8004 identity.
 
 ## Integration
 

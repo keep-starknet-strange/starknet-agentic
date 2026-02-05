@@ -1,4 +1,5 @@
 use starknet::{ClassHash, ContractAddress};
+use core::byte_array::ByteArray;
 
 #[derive(Copy, Drop, Serde)]
 pub struct Call {
@@ -29,7 +30,8 @@ pub trait IAgentAccount<TContractState> {
         ref self: TContractState,
         class_hash: felt252,
         contract_address_salt: felt252,
-        public_key: felt252
+        public_key: felt252,
+        factory: ContractAddress
     ) -> felt252;
 
     // Session key management
@@ -49,6 +51,11 @@ pub trait IAgentAccount<TContractState> {
 
     // Agent identity
     fn set_agent_id(ref self: TContractState, registry: ContractAddress, agent_id: u256);
+    fn init_agent_id_from_factory(
+        ref self: TContractState,
+        registry: ContractAddress,
+        agent_id: u256
+    );
     fn get_agent_id(self: @TContractState) -> (ContractAddress, u256);
 
     // Upgradability (timelocked)
@@ -57,4 +64,18 @@ pub trait IAgentAccount<TContractState> {
     fn cancel_upgrade(ref self: TContractState);
     fn get_upgrade_info(self: @TContractState) -> (ClassHash, u64, u64, u64);
     fn set_upgrade_delay(ref self: TContractState, new_delay: u64);
+}
+
+#[starknet::interface]
+pub trait IAgentAccountFactory<TContractState> {
+    fn deploy_account(
+        ref self: TContractState,
+        public_key: felt252,
+        salt: felt252,
+        token_uri: ByteArray
+    ) -> (ContractAddress, u256);
+    fn get_account_class_hash(self: @TContractState) -> ClassHash;
+    fn set_account_class_hash(ref self: TContractState, new_class_hash: ClassHash);
+    fn get_identity_registry(self: @TContractState) -> ContractAddress;
+    fn set_identity_registry(ref self: TContractState, new_registry: ContractAddress);
 }

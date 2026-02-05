@@ -27,6 +27,14 @@ STARKNET_RPC_URL=https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY
 STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_PRIVATE_KEY=0x...
 
+# Optional session-key signer (limited permissions)
+STARKNET_SESSION_PRIVATE_KEY=0x...
+STARKNET_SESSION_PUBLIC_KEY=0x...
+STARKNET_SIGNER=session
+
+# Optional AgentAccountFactory for account+identity deployment
+STARKNET_AGENT_ACCOUNT_FACTORY=0x...
+
 # avnu URLs (optional -- defaults shown)
 AVNU_BASE_URL=https://starknet.api.avnu.fi
 AVNU_PAYMASTER_URL=https://starknet.paymaster.avnu.fi
@@ -49,7 +57,11 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
       "env": {
         "STARKNET_RPC_URL": "https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY",
         "STARKNET_ACCOUNT_ADDRESS": "0x...",
-        "STARKNET_PRIVATE_KEY": "0x..."
+        "STARKNET_PRIVATE_KEY": "0x...",
+        "STARKNET_SESSION_PRIVATE_KEY": "0x...",
+        "STARKNET_SESSION_PUBLIC_KEY": "0x...",
+        "STARKNET_SIGNER": "session",
+        "STARKNET_AGENT_ACCOUNT_FACTORY": "0x..."
       }
     }
   }
@@ -81,7 +93,8 @@ Transfer tokens to another address.
 {
   "recipient": "0x...",
   "token": "STRK",
-  "amount": "10.5"  // human-readable format
+  "amount": "10.5",  // human-readable format
+  "signer": "session"  // optional: "owner" or "session"
 }
 ```
 
@@ -105,7 +118,8 @@ Invoke a state-changing contract function.
 {
   "contractAddress": "0x...",
   "entrypoint": "approve",
-  "calldata": ["0x...", "1000000"]
+  "calldata": ["0x...", "1000000"],
+  "signer": "session"
 }
 ```
 
@@ -118,7 +132,8 @@ Execute a token swap using avnu aggregator.
   "sellToken": "ETH",
   "buyToken": "STRK",
   "amount": "0.1",
-  "slippage": 0.01  // optional, defaults to 1%
+  "slippage": 0.01,  // optional, defaults to 1%
+  "signer": "session"
 }
 ```
 
@@ -142,7 +157,21 @@ Estimate transaction fee.
 {
   "contractAddress": "0x...",
   "entrypoint": "transfer",
-  "calldata": ["0x...", "1000"]
+  "calldata": ["0x...", "1000"],
+  "signer": "session"
+}
+```
+
+### `starknet_deploy_agent_account`
+
+Deploy a new AgentAccount via the factory and register an ERC-8004 identity.
+
+```typescript
+{
+  "publicKey": "0x...",
+  "salt": "0x1",
+  "tokenUri": "ipfs://QmAgent/agent.json",
+  "factoryAddress": "0x..."  // optional, defaults to STARKNET_AGENT_ACCOUNT_FACTORY
 }
 ```
 

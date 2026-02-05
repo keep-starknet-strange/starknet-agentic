@@ -58,6 +58,7 @@ pub mod AgentAccount {
         session_key_index: Map<felt252, u32>,
         session_key_in_list: Map<felt252, bool>,
         executing: bool,
+        factory: ContractAddress,
     }
 
     #[event]
@@ -113,11 +114,12 @@ pub mod AgentAccount {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, public_key: felt252) {
+    fn constructor(ref self: ContractState, public_key: felt252, factory: ContractAddress) {
         self.public_key.write(public_key);
         self.upgrade_delay.write(DEFAULT_UPGRADE_DELAY_SECS);
         self.src5.register_interface(ISRC6_ID);
         self.executing.write(false);
+        self.factory.write(factory);
     }
 
     #[abi(embed_v0)]
@@ -165,6 +167,7 @@ pub mod AgentAccount {
             class_hash: felt252,
             contract_address_salt: felt252,
             public_key: felt252,
+            factory: ContractAddress,
         ) -> felt252 {
             let zero: ContractAddress = 0.try_into().unwrap();
             assert(get_caller_address() == zero, 'Account: invalid caller');
@@ -173,6 +176,7 @@ pub mod AgentAccount {
             let _ = class_hash;
             let _ = contract_address_salt;
             let _ = public_key;
+            let _ = factory;
 
             let tx_info = get_tx_info().unbox();
             let tx_hash = tx_info.transaction_hash;
@@ -322,6 +326,28 @@ pub mod AgentAccount {
 
             let zero: ContractAddress = 0.try_into().unwrap();
             assert(registry != zero, 'Invalid registry');
+            let registry_dispatcher = IERC721OwnerOfDispatcher { contract_address: registry };
+            let owner = registry_dispatcher.owner_of(agent_id);
+            assert(owner == get_contract_address(), 'Agent ID not owned');
+
+            self.agent_registry.write(registry);
+            self.agent_id.write(agent_id);
+
+            self.emit(AgentIdSet { registry, agent_id });
+        }
+
+        fn init_agent_id_from_factory(
+            ref self: ContractState,
+            registry: ContractAddress,
+            agent_id: u256,
+        ) {
+            let caller = get_caller_address();
+            assert(caller == self.factory.read(), 'Only factory');
+
+            let zero: ContractAddress = 0.try_into().unwrap();
+            assert(self.agent_registry.read() == zero, 'Agent ID already set');
+            assert(registry != zero, 'Invalid registry');
+
             let registry_dispatcher = IERC721OwnerOfDispatcher { contract_address: registry };
             let owner = registry_dispatcher.owner_of(agent_id);
             assert(owner == get_contract_address(), 'Agent ID not owned');

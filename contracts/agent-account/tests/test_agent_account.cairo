@@ -63,8 +63,15 @@ fn default_policy(spending_token: ContractAddress) -> SessionPolicy {
 }
 
 fn deploy_account(public_key: felt252) -> (IAgentAccountDispatcher, ContractAddress) {
+    deploy_account_with_factory(public_key, zero())
+}
+
+fn deploy_account_with_factory(
+    public_key: felt252,
+    factory: ContractAddress
+) -> (IAgentAccountDispatcher, ContractAddress) {
     let contract = declare("AgentAccount").unwrap().contract_class();
-    let (contract_address, _) = contract.deploy(@array![public_key]).unwrap();
+    let (contract_address, _) = contract.deploy(@array![public_key, factory.into()]).unwrap();
     (IAgentAccountDispatcher { contract_address }, contract_address)
 }
 
@@ -155,6 +162,32 @@ fn test_set_agent_id_requires_ownership() {
 
     start_cheat_caller_address(account_address, account_address);
     account.set_agent_id(registry_address, 1);
+}
+
+#[test]
+fn test_init_agent_id_from_factory() {
+    let factory = addr(0x777);
+    let (account, account_address) = deploy_account_with_factory(0x123, factory);
+    let registry_address = deploy_registry(account_address);
+
+    start_cheat_caller_address(account_address, factory);
+    account.init_agent_id_from_factory(registry_address, 1);
+    stop_cheat_caller_address(account_address);
+
+    let (registry, agent_id) = account.get_agent_id();
+    assert(registry == registry_address, 'Registry stored');
+    assert(agent_id == 1, 'Agent ID stored');
+}
+
+#[test]
+#[should_panic(expected: 'Only factory')]
+fn test_init_agent_id_from_factory_rejects_non_factory() {
+    let factory = addr(0x777);
+    let (account, account_address) = deploy_account_with_factory(0x123, factory);
+    let registry_address = deploy_registry(account_address);
+
+    start_cheat_caller_address(account_address, other());
+    account.init_agent_id_from_factory(registry_address, 1);
 }
 
 #[test]
@@ -290,7 +323,7 @@ fn test_validate_deploy_accepts_owner_sig() {
     start_cheat_transaction_version_global(1);
     start_protocol_call(account_address);
 
-    let result = account.__validate_deploy__(class_hash, salt, owner_key.public_key);
+    let result = account.__validate_deploy__(class_hash, salt, owner_key.public_key, zero());
     stop_protocol_call(account_address);
     assert(result == 1, 'Deploy validated');
 
@@ -307,7 +340,7 @@ fn test_validate_deploy_rejects_external_caller() {
 
     start_cheat_caller_address(account_address, other());
 
-    let _ = account.__validate_deploy__(class_hash, salt, 0x123);
+    let _ = account.__validate_deploy__(class_hash, salt, 0x123, zero());
 }
 
 #[test]

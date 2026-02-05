@@ -74,6 +74,18 @@ Layer 0: Starknet L2 (native AA, ZK proofs, paymaster)
 ```cairo
 #[starknet::interface]
 trait IAgentAccount<TContractState> {
+    // Account entrypoints
+    fn __validate__(ref self: TContractState, calls: Array<Call>) -> felt252;
+    fn __execute__(ref self: TContractState, calls: Array<Call>) -> Array<Span<felt252>>;
+    fn __validate_declare__(ref self: TContractState, class_hash: felt252) -> felt252;
+    fn __validate_deploy__(
+        ref self: TContractState,
+        class_hash: felt252,
+        contract_address_salt: felt252,
+        public_key: felt252,
+        factory: ContractAddress
+    ) -> felt252;
+
     // Session key management
     fn register_session_key(ref self: TContractState, key: felt252, policy: SessionPolicy);
     fn revoke_session_key(ref self: TContractState, key: felt252);
@@ -83,10 +95,10 @@ trait IAgentAccount<TContractState> {
     // Owner controls
     fn set_spending_limit(ref self: TContractState, token: ContractAddress, amount: u256, period: u64);
     fn emergency_revoke_all(ref self: TContractState);
-    fn set_allowed_contracts(ref self: TContractState, contracts: Array<ContractAddress>);
 
     // Agent identity link
     fn set_agent_id(ref self: TContractState, registry: ContractAddress, agent_id: u256);
+    fn init_agent_id_from_factory(ref self: TContractState, registry: ContractAddress, agent_id: u256);
     fn get_agent_id(self: @TContractState) -> (ContractAddress, u256);
 }
 ```
@@ -95,13 +107,13 @@ trait IAgentAccount<TContractState> {
 
 ```cairo
 struct SessionPolicy {
-    allowed_contracts: Array<ContractAddress>,
-    allowed_selectors: Array<felt252>,
-    spending_limit: u256,
-    spending_token: ContractAddress,
     valid_after: u64,
     valid_until: u64,
+    spending_limit: u256,
+    spending_token: ContractAddress,
+    allowed_contract: ContractAddress,
     max_calls_per_tx: u32,
+    spending_period_secs: u64,
 }
 ```
 
@@ -114,7 +126,25 @@ Based on ERC-8004, with Starknet-specific enhancements:
 - Integrates with Agent Account contract for automated identity binding
 - Leverages Starknet's native signature verification (SNIP-6)
 
-### 3.3 Contract Deployment Plan
+### 3.3 Agent Account Factory
+
+```cairo
+#[starknet::interface]
+trait IAgentAccountFactory<TContractState> {
+    fn deploy_account(
+        ref self: TContractState,
+        public_key: felt252,
+        salt: felt252,
+        token_uri: ByteArray
+    ) -> (ContractAddress, u256);
+    fn get_account_class_hash(self: @TContractState) -> ClassHash;
+    fn set_account_class_hash(ref self: TContractState, new_class_hash: ClassHash);
+    fn get_identity_registry(self: @TContractState) -> ContractAddress;
+    fn set_identity_registry(ref self: TContractState, new_registry: ContractAddress);
+}
+```
+
+### 3.4 Contract Deployment Plan
 
 1. Deploy IdentityRegistry (standalone)
 2. Deploy ReputationRegistry (links to IdentityRegistry)
@@ -157,6 +187,7 @@ Each tool follows the MCP tool schema:
 - Session key support (agent operates with limited permissions)
 - Transaction simulation before execution
 - Spending limit enforcement in the MCP server layer
+- Session signature format: owner signatures are `[r, s]`, session signatures are `[session_public_key, r, s]`
 
 ## 5. A2A Adapter
 
