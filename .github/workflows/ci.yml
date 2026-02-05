@@ -16,7 +16,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 8
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,7 +39,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 8
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -62,7 +62,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 8
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -107,13 +107,17 @@ jobs:
           scarb-version: "2.12.1"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/setup-snfoundry@v3
         with:
-          version: nightly
+          starknet-foundry-version: "0.54.1"
 
-      - name: Run Cairo tests
+      - name: Run Cairo tests (erc8004)
         working-directory: packages/starknet-identity/erc8004-cairo
-        run: snforge test || echo "Cairo tests configuration will be finalized in future PR"
+        run: snforge test
+
+      - name: Run Cairo tests (agent-account)
+        working-directory: contracts/agent-account
+        run: snforge test
 
   website-build:
     name: Website Build
@@ -124,7 +128,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 8
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
