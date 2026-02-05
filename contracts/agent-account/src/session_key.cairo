@@ -1,17 +1,17 @@
-use starknet::ContractAddress;
-use super::interfaces::SessionPolicy;
-
 #[starknet::component]
 pub mod SessionKeyComponent {
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use super::SessionPolicy;
+    use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::storage::{
+        StorageMapReadAccess, StorageMapWriteAccess, Map,
+    };
+    use super::super::interfaces::SessionPolicy;
 
     #[storage]
-    struct Storage {
-        session_keys: LegacyMap<felt252, SessionPolicy>,
-        session_key_active: LegacyMap<felt252, bool>,
-        spending_used: LegacyMap<(felt252, ContractAddress), u256>,
-        spending_period_start: LegacyMap<(felt252, ContractAddress), u64>,
+    pub struct Storage {
+        session_keys: Map<felt252, SessionPolicy>,
+        session_key_active: Map<felt252, bool>,
+        spending_used: Map<(felt252, ContractAddress), u256>,
+        spending_period_start: Map<(felt252, ContractAddress), u64>,
     }
 
     #[event]
@@ -40,8 +40,14 @@ pub mod SessionKeyComponent {
             policy: SessionPolicy
         );
         fn revoke(ref self: ComponentState<TContractState>, key: felt252);
+        fn update_policy(
+            ref self: ComponentState<TContractState>,
+            key: felt252,
+            policy: SessionPolicy
+        );
         fn get_policy(self: @ComponentState<TContractState>, key: felt252) -> SessionPolicy;
         fn is_valid(self: @ComponentState<TContractState>, key: felt252) -> bool;
+        fn is_active(self: @ComponentState<TContractState>, key: felt252) -> bool;
         fn check_and_update_spending(
             ref self: ComponentState<TContractState>,
             key: felt252,
@@ -51,7 +57,7 @@ pub mod SessionKeyComponent {
         fn revoke_all(ref self: ComponentState<TContractState>, keys: Span<felt252>);
     }
 
-    impl SessionKeyImpl<
+    pub impl SessionKeyImpl<
         TContractState, +HasComponent<TContractState>
     > of SessionKeyTrait<TContractState> {
         fn register(
@@ -59,6 +65,7 @@ pub mod SessionKeyComponent {
             key: felt252,
             policy: SessionPolicy
         ) {
+            assert(!self.session_key_active.read(key), 'Session key already active');
             assert(policy.valid_until > policy.valid_after, 'Invalid time range');
             assert(policy.valid_until > get_block_timestamp(), 'Already expired');
 
@@ -77,6 +84,14 @@ pub mod SessionKeyComponent {
             self.emit(SessionKeyRevoked { key });
         }
 
+        fn update_policy(
+            ref self: ComponentState<TContractState>,
+            key: felt252,
+            policy: SessionPolicy
+        ) {
+            self.session_keys.write(key, policy);
+        }
+
         fn get_policy(self: @ComponentState<TContractState>, key: felt252) -> SessionPolicy {
             self.session_keys.read(key)
         }
@@ -92,6 +107,10 @@ pub mod SessionKeyComponent {
             now >= policy.valid_after && now <= policy.valid_until
         }
 
+        fn is_active(self: @ComponentState<TContractState>, key: felt252) -> bool {
+            self.session_key_active.read(key)
+        }
+
         fn check_and_update_spending(
             ref self: ComponentState<TContractState>,
             key: felt252,
@@ -100,10 +119,15 @@ pub mod SessionKeyComponent {
         ) {
             let policy = self.session_keys.read(key);
             let now = get_block_timestamp();
+            let period_secs = if policy.spending_period_secs == 0 {
+                86400
+            } else {
+                policy.spending_period_secs
+            };
 
             // Reset if new period
             let period_start = self.spending_period_start.read((key, token));
-            if period_start == 0 || (now - period_start) >= 86400 { // 24h period
+            if period_start == 0 || (now - period_start) >= period_secs {
                 self.spending_used.write((key, token), 0);
                 self.spending_period_start.write((key, token), now);
             }
