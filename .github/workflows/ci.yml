@@ -28,7 +28,7 @@ jobs:
         run: pnpm install
 
       - name: Run linter
-        run: pnpm run lint || echo "Linting will be added in future PR"
+        run: pnpm -r run lint --if-present
 
   typecheck:
     name: Type Check
@@ -74,7 +74,7 @@ jobs:
         run: pnpm install
 
       - name: Run tests
-        run: pnpm run test || echo "Tests will be added in future PR"
+        run: pnpm -r run test --if-present
 
   cairo-check:
     name: Cairo Check
@@ -89,8 +89,12 @@ jobs:
         with:
           scarb-version: "2.12.1"
 
-      - name: Check Cairo contracts
+      - name: Check Cairo contracts (erc8004)
         working-directory: packages/starknet-identity/erc8004-cairo
+        run: scarb build
+
+      - name: Check Cairo contracts (agent-account)
+        working-directory: contracts/agent-account
         run: scarb build
 
   cairo-test:
@@ -111,9 +115,13 @@ jobs:
         with:
           starknet-foundry-version: "0.54.1"
 
-      - name: Run Cairo tests
+      - name: Run Cairo tests (erc8004)
         working-directory: packages/starknet-identity/erc8004-cairo
-        run: snforge test || echo "Cairo tests configuration will be finalized in future PR"
+        run: snforge test
+
+      - name: Run Cairo tests (agent-account)
+        working-directory: contracts/agent-account
+        run: snforge test
 
   website-build:
     name: Website Build
@@ -137,7 +145,7 @@ jobs:
 
       - name: Build website
         working-directory: website
-        run: pnpm run build || echo "Website build will be configured in future PR"
+        run: pnpm run build
 
   all-checks:
     name: All Checks Passed
