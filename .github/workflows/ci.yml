@@ -28,7 +28,7 @@ jobs:
         run: pnpm install
 
       - name: Run linter
-        run: pnpm run lint || echo "Linting will be added in future PR"
+        run: pnpm -r run lint --if-present
 
   typecheck:
     name: Type Check
@@ -77,7 +77,7 @@ jobs:
         run: pnpm run build
 
       - name: Run tests
-        run: pnpm run test
+        run: pnpm -r run test --if-present
 
   cairo-check:
     name: Cairo Check
@@ -95,15 +95,15 @@ jobs:
         with:
           scarb-version: "2.14.0"
 
-      - name: Check Cairo contracts
+      - name: Check Cairo contracts (erc8004)
         working-directory: contracts/erc8004-cairo
         run: scarb build
 
-      - name: Check agent-account contracts
+      - name: Check Cairo contracts (agent-account)
         working-directory: contracts/agent-account
         run: scarb build
 
-      - name: Check huginn-registry contracts
+      - name: Check Cairo contracts (huginn-registry)
         working-directory: contracts/huginn-registry
         run: scarb build
 
