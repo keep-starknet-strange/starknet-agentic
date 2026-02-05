@@ -1402,7 +1402,7 @@ fn test_session_key_rejects_unknown_selector_on_spending_token() {
 }
 
 #[test]
-fn test_session_key_approve_uses_correct_offset() {
+fn test_session_key_blocks_approve_on_spending_token() {
     let (account, account_address) = deploy_account(0x123);
     let session_key_pair = StarkCurveKeyPairImpl::from_secret_key(0xbb);
     let session_key = session_key_pair.public_key;
@@ -1420,6 +1420,8 @@ fn test_session_key_approve_uses_correct_offset() {
     account.register_session_key(session_key, policy);
     stop_cheat_caller_address(account_address);
 
+    // Approve on the spending token should be blocked -- approvals create
+    // open-ended allowances that bypass per-period spending limits.
     let calldata = array![other().into(), 200_u128.into(), 0_u128.into()];
     let call = Call { to: token(), selector: SELECTOR_APPROVE, calldata: calldata.span() };
     let calls = array![call];
@@ -1433,7 +1435,46 @@ fn test_session_key_approve_uses_correct_offset() {
     start_protocol_call(account_address);
     let result = account.__validate__(calls);
     stop_protocol_call(account_address);
-    assert(result == 1, 'Approve validated');
+    assert(result == 0, 'Approve on spending blocked');
+
+    stop_cheat_signature_global();
+    stop_cheat_transaction_hash_global();
+}
+
+#[test]
+fn test_session_key_allows_approve_on_non_spending_token() {
+    let (account, account_address) = deploy_account(0x123);
+    let session_key_pair = StarkCurveKeyPairImpl::from_secret_key(0xbc);
+    let session_key = session_key_pair.public_key;
+    // spending_token is zero (no spending tracking), so approve on any contract is fine
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 4_102_444_800,
+        spending_limit: u256 { low: 500, high: 0 },
+        spending_token: zero(),
+        allowed_contract: zero(),
+        max_calls_per_tx: 0,
+        spending_period_secs: 0,
+    };
+
+    start_cheat_caller_address(account_address, account_address);
+    account.register_session_key(session_key, policy);
+    stop_cheat_caller_address(account_address);
+
+    let calldata = array![other().into(), 200_u128.into(), 0_u128.into()];
+    let call = Call { to: token(), selector: SELECTOR_APPROVE, calldata: calldata.span() };
+    let calls = array![call];
+
+    let tx_hash: felt252 = 0xabc80;
+    let (r, s) = session_key_pair.sign(tx_hash).unwrap();
+    let signature = array![session_key, r, s];
+    start_cheat_signature_global(signature.span());
+    start_cheat_transaction_hash_global(tx_hash);
+
+    start_protocol_call(account_address);
+    let result = account.__validate__(calls);
+    stop_protocol_call(account_address);
+    assert(result == 1, 'Approve on non-spending OK');
 
     stop_cheat_signature_global();
     stop_cheat_transaction_hash_global();
