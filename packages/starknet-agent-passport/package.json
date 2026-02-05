@@ -1,0 +1,20 @@
+{
+  "name": "@starknet-agentic/agent-passport",
+  "version": "0.1.0",
+  "description": "Passport layer on top of ERC-8004 IdentityRegistry: capability metadata conventions + client helpers",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "tsup src/index.ts --format esm --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "starknet": "^8.9.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^2.1.9"
+  }
+}
