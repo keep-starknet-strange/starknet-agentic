@@ -224,6 +224,13 @@ fn test_transfer_ownership_rejects_zero_address() {
 // ---------------------------------------------------------------------------
 
 #[test]
+#[should_panic(expected: 'Zero public key')]
+fn test_deploy_account_rejects_zero_public_key() {
+    let (factory, _, _, _) = setup();
+    factory.deploy_account(0, 0x1, "");
+}
+
+#[test]
 #[should_panic(expected: 'Identity registry not set')]
 fn test_deploy_account_fails_without_registry() {
     let account_class = declare("AgentAccount").unwrap().contract_class();

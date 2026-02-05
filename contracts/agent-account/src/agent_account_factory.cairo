@@ -81,6 +81,8 @@ pub mod AgentAccountFactory {
             salt: felt252,
             token_uri: ByteArray,
         ) -> (ContractAddress, u256) {
+            assert(public_key != 0, 'Zero public key');
+
             let class_hash = self.account_class_hash.read();
             let zero_class: ClassHash = 0.try_into().unwrap();
             assert(class_hash != zero_class, 'Account class hash not set');
