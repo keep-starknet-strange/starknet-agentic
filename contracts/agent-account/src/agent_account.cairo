@@ -671,6 +671,9 @@ pub mod AgentAccount {
             true
         }
 
+        // NOTE: SELECTOR_APPROVE is included here so _enforce_spending can
+        // account for approve amounts. The readonly validator blocks approve
+        // on the spending token before reaching this function.
         fn _extract_amount_from_calldata(
             selector: felt252,
             calldata: Span<felt252>,
