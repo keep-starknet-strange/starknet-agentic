@@ -175,14 +175,23 @@ pub mod AgentAccount {
 
             let _ = class_hash;
             let _ = contract_address_salt;
-            let _ = public_key;
             let _ = factory;
 
             let tx_info = get_tx_info().unbox();
             let tx_hash = tx_info.transaction_hash;
             let signature = tx_info.signature;
 
-            if self._is_valid_owner_signature(tx_hash, signature) {
+            if signature.len() != 2 {
+                return INVALID;
+            }
+
+            if public_key == 0 {
+                return INVALID;
+            }
+
+            let r = *signature.at(0);
+            let s = *signature.at(1);
+            if check_ecdsa_signature(tx_hash, public_key, r, s) {
                 return VALIDATED;
             }
 
