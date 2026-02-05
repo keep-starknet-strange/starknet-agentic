@@ -78,4 +78,6 @@ pub trait IAgentAccountFactory<TContractState> {
     fn set_account_class_hash(ref self: TContractState, new_class_hash: ClassHash);
     fn get_identity_registry(self: @TContractState) -> ContractAddress;
     fn set_identity_registry(ref self: TContractState, new_registry: ContractAddress);
+    fn get_owner(self: @TContractState) -> ContractAddress;
+    fn transfer_ownership(ref self: TContractState, new_owner: ContractAddress);
 }

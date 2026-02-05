@@ -89,6 +89,7 @@ pub mod SessionKeyComponent {
             key: felt252,
             policy: SessionPolicy
         ) {
+            assert(self.session_key_active.read(key), 'Session key not active');
             self.session_keys.write(key, policy);
         }
 

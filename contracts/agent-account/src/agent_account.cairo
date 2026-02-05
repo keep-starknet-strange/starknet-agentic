@@ -657,6 +657,12 @@ pub mod AgentAccount {
                 }
 
                 if policy.spending_token != zero && call.to == policy.spending_token {
+                    // Block approve on spending token -- approvals create open-ended
+                    // allowances that bypass per-period spending limits.
+                    if call.selector == SELECTOR_APPROVE {
+                        return false;
+                    }
+
                     let maybe_amount = Self::_extract_amount_from_calldata(
                         call.selector, call.calldata
                     );

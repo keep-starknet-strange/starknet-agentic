@@ -32,6 +32,13 @@ pub mod AgentAccountFactory {
         AccountDeployed: AccountDeployed,
         AccountClassHashUpdated: AccountClassHashUpdated,
         IdentityRegistryUpdated: IdentityRegistryUpdated,
+        OwnershipTransferred: OwnershipTransferred,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct OwnershipTransferred {
+        previous_owner: ContractAddress,
+        new_owner: ContractAddress,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -135,6 +142,19 @@ pub mod AgentAccountFactory {
             let old_registry = self.identity_registry.read();
             self.identity_registry.write(new_registry);
             self.emit(IdentityRegistryUpdated { old_registry, new_registry });
+        }
+
+        fn get_owner(self: @ContractState) -> ContractAddress {
+            self.owner.read()
+        }
+
+        fn transfer_ownership(ref self: ContractState, new_owner: ContractAddress) {
+            self._assert_owner();
+            let zero: ContractAddress = 0.try_into().unwrap();
+            assert(new_owner != zero, 'New owner is zero address');
+            let previous_owner = self.owner.read();
+            self.owner.write(new_owner);
+            self.emit(OwnershipTransferred { previous_owner, new_owner });
         }
     }
 
