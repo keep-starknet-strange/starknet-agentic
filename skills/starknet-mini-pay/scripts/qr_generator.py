@@ -163,7 +163,7 @@ class QRGenerator:
         parts = [address]
         
         if amount:
-            parts.append(f"amt={amount}")
+            parts.append(f"amount={amount}")
         
         if memo:
             parts.append(f"memo={memo}")

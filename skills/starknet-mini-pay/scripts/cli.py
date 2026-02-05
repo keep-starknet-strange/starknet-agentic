@@ -19,7 +19,7 @@ import aiohttp
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mini_pay_fixed import MiniPay, MiniPayError, InvalidAddressError, InsufficientBalanceError
+from mini_pay import MiniPay
 from qr_generator import QRGenerator
 from link_builder import PaymentLinkBuilder
 from invoice import InvoiceManager
@@ -130,18 +130,18 @@ async def cmd_send(args, rpc_url: str):
     pay = MiniPay(rpc_url=rpc_url)
     
     try:
-        result = await pay.transfer(
+        tx_hash = await pay.transfer(
             from_address=from_address,
             private_key=private_key,
             to_address=args.address,
-            amount=amount_wei,
+            amount_wei=amount_wei,
             token=token
         )
         
-        print(f"⏳ Transaction submitted: {result.tx_hash[:32]}...")
+        print(f"⏳ Transaction submitted: {tx_hash[:32]}...")
         
         # Wait for confirmation
-        status = await pay.wait_for_confirmation(result.tx_hash)
+        status = await pay.wait_for_confirmation(tx_hash)
         
         if status == "CONFIRMED":
             print(f"✅ Payment confirmed!")
@@ -150,13 +150,10 @@ async def cmd_send(args, rpc_url: str):
         
         return 0
         
-    except InvalidAddressError as e:
-        print(f"❌ Address error: {e}")
+    except ValueError as e:
+        print(f"❌ Error: {e}")
         return 1
-    except InsufficientBalanceError as e:
-        print(f"❌ Balance error: {e}")
-        return 1
-    except MiniPayError as e:
+    except RuntimeError as e:
         print(f"❌ Error: {e}")
         return 1
 
@@ -176,10 +173,7 @@ async def cmd_balance(args, rpc_url: str):
         
         return 0
         
-    except InvalidAddressError as e:
-        print(f"❌ Invalid address: {e}")
-        return 1
-    except MiniPayError as e:
+    except ValueError as e:
         print(f"❌ Error: {e}")
         return 1
 
@@ -297,12 +291,10 @@ async def cmd_status(args, rpc_url: str):
     
     try:
         status = await pay.get_transaction_status(args.tx_hash)
-        tx_data = await pay.get_transaction(args.tx_hash)
         
         print(f"📊 Transaction Status:")
         print(f"   TX: {args.tx_hash[:32]}...")
         print(f"   Status: {status}")
-        print(f"   Block: {tx_data.get('block_number', 'Pending')}")
         
         return 0
         
