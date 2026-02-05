@@ -1,6 +1,8 @@
 {
-  "buildCommand": "pnpm -C website build",
-  "installCommand": "corepack enable && pnpm install --no-frozen-lockfile",
-  "outputDirectory": "website/.next",
-  "framework": "nextjs"
+  "rootDirectory": "website",
+  "buildCommand": "pnpm build",
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "nodeVersion": "20.x"
 }
