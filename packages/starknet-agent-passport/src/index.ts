@@ -26,6 +26,8 @@ export function encodeStringAsByteArray(v: string) {
 }
 
 export function decodeByteArrayAsString(v: unknown): string {
+  if (v == null) return ""
+  if (typeof v === "string") return v
   return byteArray.stringFromByteArray(v as never)
 }
 

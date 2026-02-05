@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   capabilityKey,
+  decodeByteArrayAsString,
   parseCapsList,
   stringifyCapsList,
 } from "../src/index.js"
@@ -19,6 +20,11 @@ describe("agent-passport", () => {
     expect(names).toEqual(["a", "b"])
 
     expect(stringifyCapsList(["a", "b", "a", " "])).toBe(JSON.stringify(["a", "b"]))
+  })
+
+  it("decodes byte array metadata safely", () => {
+    expect(decodeByteArrayAsString(undefined)).toBe("")
+    expect(decodeByteArrayAsString("caps")).toBe("caps")
   })
 
   it("rejects invalid caps metadata", () => {
