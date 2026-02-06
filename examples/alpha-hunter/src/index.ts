@@ -61,6 +61,8 @@ async function main() {
             // 3. ACT: Execute Trade
             try {
                 const txHash = await executor.executeAlphaBuy("100000000000000000", "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d");
+
+                // If we get here, txHash is valid (string)
                 console.log(`🚀 Trade Executed: https://voyager.online/tx/${txHash}`);
                 txLog.push({ hash: txHash, action: 'Buy 0.1 ETH -> STRK', status: 'success' });
             } catch (e) {

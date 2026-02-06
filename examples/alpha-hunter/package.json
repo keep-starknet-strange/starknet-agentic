@@ -4,7 +4,7 @@
   "description": "Starknet Agent example with Token Terminal MCP",
   "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Example tests (skipped)\" && exit 0",
+    "test": "tsc --noEmit && echo \"Typeguard passed\"",
     "build": "tsc"
   },
   "keywords": [],
@@ -12,13 +12,12 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@types/node": "^25.2.1",
+    "@types/node": "^20.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "axios": "^1.13.4",
-    "dotenv": "^17.2.4",
-    "starknet": "^9.2.1"
+    "dotenv": "^16.3.1",
+    "starknet": "^8.9.1"
   }
 }
