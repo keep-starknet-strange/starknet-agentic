@@ -96,10 +96,22 @@ trait IAgentAccount<TContractState> {
     fn get_session_key_policy(self: @TContractState, key: felt252) -> SessionPolicy;
     fn is_session_key_valid(self: @TContractState, key: felt252) -> bool;
 
+    // Policy enforcement
+    fn validate_session_key_call(
+        self: @TContractState,
+        key: felt252,
+        target: ContractAddress,
+    ) -> bool;
+    fn use_session_key_allowance(
+        ref self: TContractState,
+        key: felt252,
+        token: ContractAddress,
+        amount: u256,
+    );
+
     // Owner controls
-    fn set_spending_limit(ref self: TContractState, token: ContractAddress, amount: u256, period: u64);
     fn emergency_revoke_all(ref self: TContractState);
-    fn set_allowed_contracts(ref self: TContractState, contracts: Array<ContractAddress>);
+    fn get_active_session_key_count(self: @TContractState) -> u32;
 
     // Agent identity link
     fn set_agent_id(ref self: TContractState, registry: ContractAddress, agent_id: u256);
@@ -111,12 +123,12 @@ trait IAgentAccount<TContractState> {
 
 ```cairo
 struct SessionPolicy {
-    allowed_contracts: Array<ContractAddress>,
-    allowed_selectors: Array<felt252>,
-    spending_limit: u256,
-    spending_token: ContractAddress,
     valid_after: u64,
     valid_until: u64,
+    spending_limit: u256,
+    spending_token: ContractAddress,
+    allowed_contract: ContractAddress,
+    // Reserved for future enforcement via __execute__ override.
     max_calls_per_tx: u32,
 }
 ```
