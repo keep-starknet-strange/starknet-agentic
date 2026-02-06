@@ -1,0 +1,275 @@
+---
+title: Installation
+description: Install Starknet Agentic packages
+---
+
+import { Callout, Steps, Step } from "@/components/docs";
+
+# Installation
+
+This guide covers all installation options for Starknet Agentic, from quick repository setup to using individual packages in your own projects.
+
+## System Requirements
+
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| Node.js | 18.0+ | 20.0+ (LTS) |
+| pnpm | 8.0+ | 9.0+ |
+| Disk Space | 500 MB | 1 GB |
+| OS | macOS, Linux, Windows | macOS, Linux |
+
+## Installation Methods
+
+### Method 1: Clone Full Repository
+
+Best for exploring examples and contributing.
+
+<Steps>
+<Step number={1} title="Clone the repository">
+
+```bash
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+cd starknet-agentic
+```
+
+</Step>
+
+<Step number={2} title="Install dependencies">
+
+```bash
+pnpm install
+```
+
+This installs dependencies for all packages in the monorepo.
+
+</Step>
+
+<Step number={3} title="Build all packages">
+
+```bash
+pnpm build
+```
+
+</Step>
+
+<Step number={4} title="Verify installation">
+
+```bash
+pnpm test
+```
+
+All tests should pass.
+
+</Step>
+</Steps>
+
+### Method 2: Install Individual Packages
+
+Best for using Starknet Agentic in your own project.
+
+#### MCP Server
+
+For AI assistant integration:
+
+```bash
+npm install @starknet-agentic/mcp-server
+```
+
+#### A2A Adapter
+
+For agent-to-agent communication:
+
+```bash
+npm install @starknet-agentic/a2a
+```
+
+<Callout type="info">
+  Individual npm packages will be available after the v1.0 release. For now, use the monorepo installation method.
+</Callout>
+
+### Method 3: Use as Git Submodule
+
+For embedding in larger projects:
+
+```bash
+git submodule add https://github.com/keep-starknet-strange/starknet-agentic.git lib/starknet-agentic
+cd lib/starknet-agentic
+pnpm install && pnpm build
+```
+
+## Package Structure
+
+After installation, you'll have access to these packages:
+
+```
+starknet-agentic/
+├── packages/
+│   ├── starknet-mcp-server/     # MCP tools for AI agents
+│   │   ├── src/                 # Source code
+│   │   ├── dist/                # Built output (after pnpm build)
+│   │   └── package.json
+│   │
+│   ├── starknet-a2a/            # Agent-to-Agent protocol
+│   │   ├── src/
+│   │   ├── dist/
+│   │   └── package.json
+│   │
+│   └── starknet-identity/
+│       └── erc8004-cairo/       # Cairo smart contracts
+│           ├── src/             # Contract source
+│           ├── tests/           # Unit tests (snforge)
+│           └── Scarb.toml       # Cairo package config
+│
+├── skills/                      # Reusable agent skills
+│   ├── starknet-wallet/
+│   ├── starknet-defi/
+│   └── starknet-identity/
+│
+└── examples/                    # Example implementations
+```
+
+## Installing Cairo Contracts (Optional)
+
+If you want to work with the ERC-8004 Cairo contracts:
+
+### Prerequisites
+
+- [Scarb](https://docs.swmansion.com/scarb/) 2.12.1+
+- [Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/) 0.51.2+
+
+### Installation
+
+```bash
+# Install Scarb
+curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | sh
+
+# Install Starknet Foundry
+curl -L https://raw.githubusercontent.com/foundry-rs/starknet-foundry/master/scripts/install.sh | sh
+snfoundryup
+```
+
+### Build and Test Contracts
+
+```bash
+cd packages/starknet-identity/erc8004-cairo
+
+# Build contracts
+scarb build
+
+# Run unit tests (74 tests)
+snforge test
+
+# Run specific test
+snforge test --filter test_register_agent
+```
+
+## Verifying Installation
+
+Run these commands to verify everything is working:
+
+```bash
+# Check Node.js version
+node --version  # Should be 18+
+
+# Check pnpm version
+pnpm --version  # Should be 8+
+
+# Verify packages built correctly
+ls packages/starknet-mcp-server/dist/
+# Should see: index.js, index.d.ts, etc.
+
+# Run unit tests
+pnpm test
+
+# Check Cairo installation (optional)
+scarb --version  # Should be 2.12.1+
+snforge --version  # Should be 0.51.2+
+```
+
+## Common Installation Issues
+
+### pnpm not found
+
+Install pnpm globally:
+
+```bash
+npm install -g pnpm
+```
+
+Or use corepack (Node.js 16.10+):
+
+```bash
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
+### Node.js version too old
+
+Use [nvm](https://github.com/nvm-sh/nvm) to install the correct version:
+
+```bash
+nvm install 20
+nvm use 20
+```
+
+### Build fails with TypeScript errors
+
+Clear caches and reinstall:
+
+```bash
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+pnpm build
+```
+
+### Cairo/Scarb version mismatch
+
+Ensure you have the exact versions specified:
+
+```bash
+# Install specific Scarb version
+curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | sh -s -- -v 2.12.1
+```
+
+## Development Setup
+
+For contributing or modifying Starknet Agentic:
+
+### Install Development Dependencies
+
+```bash
+# Install with dev dependencies
+pnpm install
+
+# Set up git hooks (optional, for contributors)
+pnpm prepare
+```
+
+### Run in Watch Mode
+
+```bash
+# Watch and rebuild on changes
+pnpm dev
+
+# Or for a specific package
+cd packages/starknet-mcp-server
+pnpm dev
+```
+
+### Linting and Formatting
+
+```bash
+# Lint all packages
+pnpm lint
+
+# Format code
+pnpm format
+```
+
+## Next Steps
+
+After installation:
+
+1. **[Configuration](/docs/getting-started/configuration)** - Set up your environment variables
+2. **[Quick Start](/docs/getting-started/quick-start)** - Run your first agent operation
+3. **[MCP Server Guide](/docs/guides/mcp-server)** - Connect to Claude or other AI assistants

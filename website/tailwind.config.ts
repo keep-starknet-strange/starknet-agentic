@@ -1,7 +1,12 @@
 import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography";
 
 const config: Config = {
-  content: ["./app/**/*.{js,ts,jsx,tsx,mdx}"],
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./content/**/*.{md,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
@@ -46,8 +51,85 @@ const config: Config = {
           "50%": { transform: "translateY(-20px)" },
         },
       },
+      typography: {
+        neo: {
+          css: {
+            "--tw-prose-body": "#1a1a2e",
+            "--tw-prose-headings": "#1a1a2e",
+            "--tw-prose-links": "#A855F7",
+            "--tw-prose-bold": "#1a1a2e",
+            "--tw-prose-code": "#1a1a2e",
+            "--tw-prose-pre-bg": "#0d1117",
+            "--tw-prose-pre-code": "#e6edf3",
+            "h1": {
+              fontFamily: "var(--font-space-grotesk), system-ui, sans-serif",
+              fontWeight: "700",
+              marginBottom: "1rem",
+            },
+            "h2": {
+              fontFamily: "var(--font-space-grotesk), system-ui, sans-serif",
+              fontWeight: "700",
+              marginTop: "2rem",
+              marginBottom: "1rem",
+              scrollMarginTop: "5rem",
+            },
+            "h3": {
+              fontFamily: "var(--font-space-grotesk), system-ui, sans-serif",
+              fontWeight: "600",
+              marginTop: "1.5rem",
+              marginBottom: "0.75rem",
+              scrollMarginTop: "5rem",
+            },
+            "h4": {
+              fontFamily: "var(--font-space-grotesk), system-ui, sans-serif",
+              fontWeight: "600",
+              marginTop: "1.25rem",
+              marginBottom: "0.5rem",
+            },
+            "p": {
+              marginTop: "1rem",
+              marginBottom: "1rem",
+            },
+            "a": {
+              color: "#A855F7",
+              textDecoration: "underline",
+              textUnderlineOffset: "2px",
+              "&:hover": {
+                color: "#9333EA",
+              },
+            },
+            "strong": {
+              fontWeight: "600",
+            },
+            "code": {
+              backgroundColor: "rgba(26, 26, 46, 0.1)",
+              padding: "0.125rem 0.375rem",
+              borderRadius: "0.25rem",
+              fontSize: "0.875em",
+              fontFamily: "var(--font-jetbrains-mono), monospace",
+            },
+            "code::before": {
+              content: '""',
+            },
+            "code::after": {
+              content: '""',
+            },
+            "pre": {
+              backgroundColor: "#0d1117",
+              borderRadius: "0.5rem",
+              padding: "0",
+              margin: "1rem 0",
+            },
+            "pre code": {
+              backgroundColor: "transparent",
+              padding: "0",
+              fontSize: "0.875rem",
+            },
+          },
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [typography],
 };
 export default config;

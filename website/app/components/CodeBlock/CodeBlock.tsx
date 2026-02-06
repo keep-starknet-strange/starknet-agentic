@@ -1,12 +1,14 @@
 "use server";
 
 import { codeToHtml, type BundledLanguage } from "shiki";
+import { CopyButton } from "./CopyButton";
 
 interface CodeBlockProps {
   code: string;
   language?: string;
   filename?: string;
   showLineNumbers?: boolean;
+  showCopyButton?: boolean;
 }
 
 const languageMap: Record<string, BundledLanguage> = {
@@ -20,6 +22,7 @@ const languageMap: Record<string, BundledLanguage> = {
   bash: "bash",
   sh: "bash",
   shell: "bash",
+  env: "bash",
   cairo: "rust", // Cairo syntax is similar to Rust
   rust: "rust",
   python: "python",
@@ -42,6 +45,7 @@ export async function CodeBlock({
   language = "typescript",
   filename,
   showLineNumbers = false,
+  showCopyButton = true,
 }: CodeBlockProps) {
   const lang = languageMap[language.toLowerCase()] || "typescript";
 
@@ -51,12 +55,13 @@ export async function CodeBlock({
   });
 
   return (
-    <div className="my-4 neo-sm rounded-lg overflow-hidden">
+    <div className="my-4 neo-sm rounded-lg overflow-hidden group relative">
       {filename && (
-        <div className="bg-[#161b22] px-4 py-2 text-sm text-gray-400 border-b border-gray-700 font-mono">
-          {filename}
+        <div className="bg-[#161b22] px-4 py-2 text-sm text-gray-400 border-b border-gray-700 font-mono flex items-center justify-between">
+          <span>{filename}</span>
         </div>
       )}
+      {showCopyButton && <CopyButton code={code.trim()} />}
       <div
         className={`
           [&>pre]:!bg-[#0d1117] [&>pre]:!m-0 [&>pre]:p-4 [&>pre]:overflow-x-auto

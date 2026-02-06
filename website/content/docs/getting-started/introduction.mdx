@@ -1,0 +1,104 @@
+---
+title: Introduction
+description: Overview of Starknet Agentic and its capabilities
+---
+
+# Introduction to Starknet Agentic
+
+Starknet Agentic is the **infrastructure layer for AI agents on Starknet**. It provides everything you need to build autonomous AI agents that can hold wallets, execute transactions, build on-chain reputation, and interact with DeFi protocols.
+
+## What is Starknet Agentic?
+
+Starknet Agentic bridges the gap between AI agents and blockchain infrastructure. It enables:
+
+- **Wallet Management** - AI agents can hold and manage Starknet wallets with session keys for autonomous operation
+- **DeFi Operations** - Execute swaps, transfers, and complex DeFi strategies via the AVNU aggregator
+- **On-Chain Identity** - Register agents with ERC-8004 for verifiable identity and reputation
+- **Agent-to-Agent Communication** - Enable agents to discover and interact with each other
+
+## Why Starknet?
+
+Starknet offers unique advantages for AI agents:
+
+| Feature | Benefit for AI Agents |
+|---------|----------------------|
+| **Native Account Abstraction** | Every account is a smart contract - enabling session keys, spending limits, and custom validation |
+| **Low Gas Costs** | Transactions cost $0.01-0.20, making high-frequency agent operations economical |
+| **Paymaster Support** | Agents can pay gas in any token (USDC, STRK) or have gas sponsored |
+| **Session Keys** | Grant agents temporary, limited permissions without exposing the main private key |
+
+## Core Components
+
+### MCP Server
+
+The Model Context Protocol (MCP) server exposes Starknet operations as tools that AI assistants (Claude, ChatGPT, Cursor) can use directly. Your AI can check balances, execute swaps, and register identities through natural conversation.
+
+### Skills
+
+Reusable capability packages that agents can load on-demand:
+
+- **starknet-wallet** - Balance checks, transfers, multi-call transactions
+- **starknet-defi** - Swaps, liquidity, yield farming via AVNU
+- **starknet-identity** - ERC-8004 identity registration and reputation
+
+### ERC-8004 Contracts
+
+On-chain infrastructure for trustless agent identity:
+
+- **IdentityRegistry** - ERC-721 NFTs representing agent identities
+- **ReputationRegistry** - Feedback system for agent interactions
+- **ValidationRegistry** - Third-party validator assessments
+
+## Use Cases
+
+### Autonomous Trading Bot
+
+Build an agent that monitors prices and executes trades based on predefined strategies. Session keys allow the agent to trade autonomously within spending limits.
+
+### DeFi Portfolio Manager
+
+Create an agent that rebalances portfolios, harvests yields, and optimizes positions across Starknet DeFi protocols.
+
+### Customer Service Agent
+
+Deploy an agent that handles payments, refunds, and financial operations with verifiable on-chain reputation.
+
+### Multi-Agent Systems
+
+Build networks of specialized agents that collaborate on complex tasks, with cryptographic proof of each agent's actions.
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      AI Agents                               │
+│  (Claude, ChatGPT, Custom Agents, Multi-Agent Systems)      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Starknet Agentic                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │  MCP Server  │  │    Skills    │  │  A2A Adapter │      │
+│  │  (Tools)     │  │  (Packages)  │  │  (Protocol)  │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Starknet Blockchain                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │   ERC-8004   │  │  Agent       │  │  DeFi        │      │
+│  │   Identity   │  │  Accounts    │  │  Protocols   │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Next Steps
+
+Ready to get started? Here's your path:
+
+1. **[Quick Start](/docs/getting-started/quick-start)** - Get your first agent running in 5 minutes
+2. **[Installation](/docs/getting-started/installation)** - Detailed setup instructions
+3. **[Configuration](/docs/getting-started/configuration)** - Configure credentials and environment
+4. **[MCP Server Guide](/docs/guides/mcp-server)** - Set up AI assistant integration
