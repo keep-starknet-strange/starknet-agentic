@@ -16,7 +16,7 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.4.5",
-    "starknet": "7.6.4"
+    "starknet": "^8.9.1"
   },
   "devDependencies": {}
 }

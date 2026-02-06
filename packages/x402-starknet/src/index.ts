@@ -91,7 +91,7 @@ export async function createStarknetPaymentSignatureHeader(args: {
   if (!paymentRequired.typedData) throw new Error("paymentRequired.typedData missing")
 
   const provider = new RpcProvider({ nodeUrl: args.rpcUrl })
-  const account = new Account(provider, args.accountAddress, args.privateKey)
+  const account = new Account({ provider, address: args.accountAddress, signer: args.privateKey })
 
   // starknet.js signs typedData per SNIP-12.
   const signature = await account.signMessage(paymentRequired.typedData)

@@ -107,9 +107,9 @@ export default async function runTests() {
     const identityAbi = identityAbiFile.abi;
     const validationAbi = validationAbiFile.abi;
     
-    // Create accounts
-    const agentOwner = new Account(provider, ACCOUNT_1.address, ACCOUNT_1.privateKey);
-    const validator = new Account(provider, ACCOUNT_2.address, ACCOUNT_2.privateKey);
+    // Create accounts from environment variables
+    const agentOwner = new Account({ provider, address: ACCOUNT_1.address, signer: ACCOUNT_1.privateKey });
+    const validator = new Account({ provider, address: ACCOUNT_2.address, signer: ACCOUNT_2.privateKey });
 
     console.log(`   👤 Agent Owner: ${agentOwner.address.slice(0, 16)}...`);
     console.log(`   👤 Validator:   ${validator.address.slice(0, 16)}...`);
@@ -121,16 +121,16 @@ export default async function runTests() {
     };
     
     // Create contract instances
-    const identityRegistry = new Contract(
-      identityAbi,
-      deploymentInfo.contracts.identityRegistry.address,
-      agentOwner
-    );
-    const validationRegistry = new Contract(
-      validationAbi,
-      deploymentInfo.contracts.validationRegistry.address,
-      agentOwner
-    );
+    const identityRegistry = new Contract({
+      abi: identityAbi,
+      address: deploymentInfo.contracts.identityRegistry.address,
+      providerOrAccount: agentOwner,
+    });
+    const validationRegistry = new Contract({
+      abi: validationAbi,
+      address: deploymentInfo.contracts.validationRegistry.address,
+      providerOrAccount: agentOwner,
+    });
 
     // ===================================================================
     // Setup: Register Agent

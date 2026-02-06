@@ -61,23 +61,23 @@ const reputationAbi = loadAbi('ReputationRegistry');
 const validationAbi = loadAbi('ValidationRegistry');
 
 // Create contract instances
-export const identityRegistry = new Contract(
-  identityAbi,
-  deploymentInfo.contracts.identityRegistry.address,
-  provider
-);
+export const identityRegistry = new Contract({
+  abi: identityAbi,
+  address: deploymentInfo.contracts.identityRegistry.address,
+  providerOrAccount: provider,
+});
 
-export const reputationRegistry = new Contract(
-  reputationAbi,
-  deploymentInfo.contracts.reputationRegistry.address,
-  provider
-);
+export const reputationRegistry = new Contract({
+  abi: reputationAbi,
+  address: deploymentInfo.contracts.reputationRegistry.address,
+  providerOrAccount: provider,
+});
 
-export const validationRegistry = new Contract(
-  validationAbi,
-  deploymentInfo.contracts.validationRegistry.address,
-  provider
-);
+export const validationRegistry = new Contract({
+  abi: validationAbi,
+  address: deploymentInfo.contracts.validationRegistry.address,
+  providerOrAccount: provider,
+});
 
 // Validate required environment variables
 function validateEnvVar(name, value) {
@@ -114,7 +114,7 @@ export function createAccount(accountIndex = 0) {
   }
 
   const { address, privateKey } = PREDEPLOYED_ACCOUNTS[accountIndex];
-  const account = new Account(provider, address, privateKey);
+  const account = new Account({ provider, address, signer: privateKey });
 
   return account;
 }
