@@ -66,3 +66,29 @@ export interface NavLink {
   href: string;
   label: string;
 }
+
+// Documentation types
+export interface DocPage {
+  slug: string;
+  title: string;
+  description?: string;
+}
+
+export interface DocCategory {
+  title: string;
+  slug: string;
+  pages: DocPage[];
+}
+
+export interface TableOfContentsItem {
+  id: string;
+  title: string;
+  level: number;
+}
+
+export interface DocSearchResult {
+  slug: string;
+  title: string;
+  category: string;
+  description?: string;
+}

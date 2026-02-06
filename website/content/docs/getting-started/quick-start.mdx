@@ -1,0 +1,189 @@
+---
+title: Quick Start
+description: Get up and running in 5 minutes
+---
+
+import { QuickStartChecklist, Callout, Steps, Step } from "@/components/docs";
+
+# Quick Start
+
+Get your AI agent running on Starknet in **under 5 minutes**. This guide walks you through setup, your first balance query, and connecting to an AI assistant.
+
+<QuickStartChecklist
+  items={[
+    { id: "prerequisites", label: "Check prerequisites", description: "Node.js 18+ and pnpm installed" },
+    { id: "clone", label: "Clone the repository" },
+    { id: "env", label: "Set up environment variables" },
+    { id: "balance", label: "Check your first balance" },
+    { id: "mcp", label: "Connect to Claude (optional)" },
+  ]}
+/>
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- **Node.js 18+** installed ([download](https://nodejs.org/))
+- **pnpm** package manager (`npm install -g pnpm`)
+- A **Starknet wallet** with testnet tokens ([get tokens](https://starknet-faucet.vercel.app/))
+
+<Callout type="tip" title="New to Starknet?">
+  We recommend using [ArgentX](https://www.argent.xyz/argent-x/) browser extension. It's the easiest way to create a Starknet wallet and get testnet tokens.
+</Callout>
+
+## Step 1: Clone and Install
+
+<Steps>
+<Step number={1} title="Clone the repository">
+
+```bash
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+cd starknet-agentic
+```
+
+</Step>
+
+<Step number={2} title="Install dependencies">
+
+```bash
+pnpm install
+```
+
+</Step>
+
+<Step number={3} title="Build packages">
+
+```bash
+pnpm build
+```
+
+</Step>
+</Steps>
+
+## Step 2: Configure Environment
+
+Create a `.env` file in the repository root:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your Starknet credentials:
+
+```env
+# Starknet RPC endpoint (get a free key from Alchemy or Infura)
+STARKNET_RPC_URL=https://starknet-sepolia.g.alchemy.com/v2/YOUR_KEY
+
+# Your Starknet account address
+STARKNET_ACCOUNT_ADDRESS=0x...
+
+# Your account private key (NEVER share or commit this!)
+STARKNET_PRIVATE_KEY=0x...
+```
+
+<Callout type="warning" title="Security Warning">
+  Never commit your private key to version control. The `.env` file is already in `.gitignore`, but double-check before pushing.
+</Callout>
+
+### Getting Your Credentials
+
+**Option 1: ArgentX Wallet (Recommended)**
+
+1. Install [ArgentX browser extension](https://www.argent.xyz/argent-x/)
+2. Create a new wallet or import existing
+3. Switch to **Sepolia testnet** in settings
+4. Export private key: Settings → Account → Export Private Key
+5. Copy your account address from the wallet
+
+**Option 2: Get a Free RPC Endpoint**
+
+- [Alchemy](https://www.alchemy.com/) - Create account → New App → Starknet Sepolia
+- [Infura](https://infura.io/) - Create account → New Project → Starknet
+- [Blast API](https://blastapi.io/) - Free tier available
+
+## Step 3: Run Your First Query
+
+Check your ETH balance:
+
+```bash
+cd packages/starknet-mcp-server
+pnpm run example:balance
+```
+
+You should see output like:
+
+```
+Checking balance for 0x123...abc
+Token: ETH (0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7)
+Balance: 0.5 ETH
+Raw: 500000000000000000
+```
+
+<Callout type="success" title="Congratulations!">
+  Your setup is complete. Your agent can now interact with Starknet.
+</Callout>
+
+## Step 4: Connect to Claude (Optional)
+
+If you want to use Starknet tools directly in Claude Desktop:
+
+### Configure MCP Server
+
+Add this to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "starknet": {
+      "command": "node",
+      "args": ["/path/to/starknet-agentic/packages/starknet-mcp-server/dist/index.js"],
+      "env": {
+        "STARKNET_RPC_URL": "https://starknet-sepolia.g.alchemy.com/v2/YOUR_KEY",
+        "STARKNET_ACCOUNT_ADDRESS": "0x...",
+        "STARKNET_PRIVATE_KEY": "0x..."
+      }
+    }
+  }
+}
+```
+
+### Test the Connection
+
+Restart Claude Desktop, then try:
+
+> "Check my STRK balance"
+
+Claude will use the `starknet_get_balance` tool to fetch your balance.
+
+## What's Next?
+
+Now that you're set up, explore what you can build:
+
+| Guide | Description |
+|-------|-------------|
+| [MCP Server Setup](/docs/guides/mcp-server) | Full MCP integration guide |
+| [Wallet Management](/docs/guides/wallet-management) | Transfers, multi-call, session keys |
+| [DeFi Operations](/docs/guides/defi-operations) | Swaps, quotes, gasless transactions |
+| [Agent Identity](/docs/guides/agent-identity) | Register your agent on-chain |
+
+## Troubleshooting
+
+**"Cannot find module" error**
+
+Make sure you ran `pnpm build` after installation.
+
+**"Invalid account address" error**
+
+Check that your `STARKNET_ACCOUNT_ADDRESS` is a valid Starknet address (starts with `0x`, 64 hex characters).
+
+**"Insufficient balance" error**
+
+Get testnet tokens from the [Starknet Faucet](https://starknet-faucet.vercel.app/).
+
+**RPC connection timeout**
+
+Verify your `STARKNET_RPC_URL` is correct and your API key is valid.
+
+---
+
+Need more help? Check the [full troubleshooting guide](/docs/guides/troubleshooting) or [open an issue](https://github.com/keep-starknet-strange/starknet-agentic/issues).
