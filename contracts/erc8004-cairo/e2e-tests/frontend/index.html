@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ERC-8004 Wallet Signature Tester</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    h1 {
+      color: #64ffda;
+      margin-bottom: 10px;
+      font-size: 2rem;
+    }
+    
+    .subtitle {
+      color: #888;
+      font-size: 1rem;
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .card h2 {
+      color: #64ffda;
+      margin-bottom: 16px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .card h2 .step {
+      background: #64ffda;
+      color: #1a1a2e;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #aaa;
+      font-size: 0.9rem;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      font-family: monospace;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #64ffda;
+    }
+    
+    input::placeholder {
+      color: #666;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #64ffda 0%, #00b894 100%);
+      color: #1a1a2e;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(100, 255, 218, 0.3);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .secondary-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #64ffda;
+    }
+    
+    .status {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    
+    .status.success {
+      background: rgba(100, 255, 218, 0.1);
+      color: #64ffda;
+      border: 1px solid rgba(100, 255, 218, 0.3);
+    }
+    
+    .status.error {
+      background: rgba(255, 107, 107, 0.1);
+      color: #ff6b6b;
+      border: 1px solid rgba(255, 107, 107, 0.3);
+    }
+    
+    .status.info {
+      background: rgba(100, 181, 246, 0.1);
+      color: #64b5f6;
+      border: 1px solid rgba(100, 181, 246, 0.3);
+    }
+    
+    .connected-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(100, 255, 218, 0.1);
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .connected-info .dot {
+      width: 10px;
+      height: 10px;
+      background: #64ffda;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .log-container {
+      background: #0d1117;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+    
+    .log-entry {
+      margin-bottom: 4px;
+      display: flex;
+      gap: 8px;
+    }
+    
+    .log-time {
+      color: #666;
+    }
+    
+    .log-msg {
+      color: #e0e0e0;
+    }
+    
+    .log-entry.success .log-msg { color: #64ffda; }
+    .log-entry.error .log-msg { color: #ff6b6b; }
+    .log-entry.info .log-msg { color: #64b5f6; }
+    
+    .hash-display {
+      word-break: break-all;
+      font-family: monospace;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 0.85rem;
+    }
+    
+    .flex-row {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .flex-row > * {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>ERC-8004 Wallet Signature Tester</h1>
+      <p class="subtitle">Test SNIP-6 signature verification for setAgentWallet</p>
+    </header>
+
+    <!-- Step 1: Connect Wallet -->
+    <div class="card">
+      <h2><span class="step">1</span> Connect Wallet</h2>
+      <div id="wallet-status">
+        <button id="connect-btn" onclick="connectWallet()">Connect Starknet Wallet</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Contract Setup -->
+    <div class="card">
+      <h2><span class="step">2</span> Contract Configuration</h2>
+      <div class="form-group">
+        <label>Identity Registry Address</label>
+        <input type="text" id="contract-address" placeholder="0x..." />
+      </div>
+      <div class="form-group">
+        <label>RPC URL</label>
+        <input type="text" id="rpc-url" value="https://starknet-sepolia.public.blastapi.io/rpc/v0_7" />
+      </div>
+    </div>
+
+    <!-- Step 3: Agent Selection -->
+    <div class="card">
+      <h2><span class="step">3</span> Agent Information</h2>
+      <div class="flex-row">
+        <div class="form-group">
+          <label>Agent ID</label>
+          <input type="number" id="agent-id" placeholder="1" />
+        </div>
+        <div class="form-group">
+          <label>Agent Owner Address</label>
+          <input type="text" id="owner-address" placeholder="0x... (auto-filled)" readonly />
+        </div>
+      </div>
+      <button class="secondary-btn" onclick="fetchAgentInfo()">Fetch Agent Info</button>
+      <div id="agent-info-status"></div>
+    </div>
+
+    <!-- Step 4: New Wallet & Signature -->
+    <div class="card">
+      <h2><span class="step">4</span> Set New Wallet</h2>
+      <div class="form-group">
+        <label>New Wallet Address (must be your connected wallet for signing)</label>
+        <input type="text" id="new-wallet" placeholder="0x..." />
+      </div>
+      <div class="form-group">
+        <label>Deadline (Unix timestamp)</label>
+        <input type="number" id="deadline" placeholder="Auto-calculated: now + 4 minutes" />
+      </div>
+      <button onclick="computeHash()">Compute Message Hash</button>
+      <div id="hash-display"></div>
+    </div>
+
+    <!-- Step 5: Sign & Submit -->
+    <div class="card">
+      <h2><span class="step">5</span> Sign & Submit</h2>
+      <button id="sign-btn" onclick="signAndSubmit()" disabled>Sign Message & Call setAgentWallet</button>
+      <div id="submit-status"></div>
+    </div>
+
+    <!-- Logs -->
+    <div class="card">
+      <h2>Execution Log</h2>
+      <div class="log-container" id="log-container">
+        <div class="log-entry info">
+          <span class="log-time">[--:--:--]</span>
+          <span class="log-msg">Waiting to connect wallet...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { connect, disconnect } from 'https://esm.sh/starknetkit@1.1.9';
+    import { Contract, RpcProvider, hash, shortString } from 'https://esm.sh/starknet@6.11.0';
+    
+    // Global state
+    let wallet = null;
+    let provider = null;
+    let identityContract = null;
+    let messageHash = null;
+    
+    // Make functions globally available
+    window.connectWallet = connectWallet;
+    window.fetchAgentInfo = fetchAgentInfo;
+    window.computeHash = computeHash;
+    window.signAndSubmit = signAndSubmit;
+    
+    // Helper: Log message
+    function log(msg, type = 'info') {
+      const container = document.getElementById('log-container');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-msg">${msg}</span>`;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    }
+    
+    // Helper: Show status
+    function showStatus(elementId, msg, type) {
+      const el = document.getElementById(elementId);
+      el.innerHTML = `<div class="status ${type}">${msg}</div>`;
+    }
+    
+    // Step 1: Connect Wallet
+    async function connectWallet() {
+      try {
+        log('Connecting wallet...');
+        const result = await connect({
+          modalMode: 'alwaysAsk',
+          modalTheme: 'dark',
+        });
+        
+        if (result && result.wallet) {
+          wallet = result.wallet;
+          const address = wallet.selectedAddress;
+          
+          document.getElementById('wallet-status').innerHTML = `
+            <div class="connected-info">
+              <span class="dot"></span>
+              <span>Connected: ${address.slice(0, 10)}...${address.slice(-8)}</span>
+            </div>
+            <button class="secondary-btn" onclick="disconnectWallet()">Disconnect</button>
+          `;
+          
+          // Auto-fill new wallet field
+          document.getElementById('new-wallet').value = address;
+          
+          log(`Connected: ${address.slice(0, 16)}...`, 'success');
+          
+          // Setup provider
+          const rpcUrl = document.getElementById('rpc-url').value;
+          provider = new RpcProvider({ nodeUrl: rpcUrl });
+          log(`Provider connected to ${rpcUrl}`);
+          
+        } else {
+          log('Wallet connection cancelled', 'error');
+        }
+      } catch (error) {
+        log(`Connection failed: ${error.message}`, 'error');
+      }
+    }
+    
+    window.disconnectWallet = async function() {
+      try {
+        await disconnect();
+        wallet = null;
+        document.getElementById('wallet-status').innerHTML = `
+          <button id="connect-btn" onclick="connectWallet()">Connect Starknet Wallet</button>
+        `;
+        log('Wallet disconnected');
+      } catch (error) {
+        log(`Disconnect failed: ${error.message}`, 'error');
+      }
+    }
+    
+    // Step 3: Fetch Agent Info
+    async function fetchAgentInfo() {
+      const contractAddress = document.getElementById('contract-address').value;
+      const agentId = document.getElementById('agent-id').value;
+      
+      if (!contractAddress || !agentId) {
+        showStatus('agent-info-status', 'Please enter contract address and agent ID', 'error');
+        return;
+      }
+      
+      try {
+        log(`Fetching agent ${agentId} info...`);
+        
+        // Minimal ABI for ownerOf
+        const abi = [
+          {
+            name: 'owner_of',
+            type: 'function',
+            inputs: [{ name: 'token_id', type: 'core::integer::u256' }],
+            outputs: [{ type: 'core::starknet::contract_address::ContractAddress' }],
+            state_mutability: 'view'
+          },
+          {
+            name: 'get_agent_wallet',
+            type: 'function',
+            inputs: [{ name: 'agent_id', type: 'core::integer::u256' }],
+            outputs: [{ type: 'core::starknet::contract_address::ContractAddress' }],
+            state_mutability: 'view'
+          }
+        ];
+        
+        const rpcUrl = document.getElementById('rpc-url').value;
+        const readProvider = new RpcProvider({ nodeUrl: rpcUrl });
+        const contract = new Contract(abi, contractAddress, readProvider);
+        
+        const owner = await contract.owner_of({ low: agentId, high: '0' });
+        const currentWallet = await contract.get_agent_wallet({ low: agentId, high: '0' });
+        
+        const ownerHex = '0x' + BigInt(owner).toString(16);
+        const walletHex = '0x' + BigInt(currentWallet).toString(16);
+        
+        document.getElementById('owner-address').value = ownerHex;
+        
+        showStatus('agent-info-status', 
+          `Owner: ${ownerHex.slice(0, 16)}...<br>Current Wallet: ${walletHex.slice(0, 16)}...`, 
+          'success');
+        
+        log(`Agent ${agentId} owner: ${ownerHex.slice(0, 16)}...`, 'success');
+        log(`Current wallet: ${walletHex.slice(0, 16)}...`);
+        
+        identityContract = new Contract(abi, contractAddress, readProvider);
+        
+      } catch (error) {
+        showStatus('agent-info-status', `Failed: ${error.message}`, 'error');
+        log(`Fetch failed: ${error.message}`, 'error');
+      }
+    }
+    
+    // Step 4: Compute Hash
+    function computeHash() {
+      const agentId = document.getElementById('agent-id').value;
+      const newWallet = document.getElementById('new-wallet').value;
+      const ownerAddress = document.getElementById('owner-address').value;
+      let deadline = document.getElementById('deadline').value;
+      
+      if (!agentId || !newWallet || !ownerAddress) {
+        showStatus('hash-display', 'Please fill all required fields', 'error');
+        return;
+      }
+      
+      // Auto-calculate deadline if not provided
+      if (!deadline) {
+        deadline = Math.floor(Date.now() / 1000) + 240; // 4 minutes from now
+        document.getElementById('deadline').value = deadline;
+      }
+      
+      try {
+        log('Computing message hash...');
+        
+        // Match Cairo's hash computation:
+        // poseidon_hash_span([agent_id.low, agent_id.high, new_wallet, owner, deadline])
+        const agentIdBn = BigInt(agentId);
+        const low = agentIdBn & ((1n << 128n) - 1n);
+        const high = agentIdBn >> 128n;
+        
+        const hashInputs = [
+          low,
+          high,
+          BigInt(newWallet),
+          BigInt(ownerAddress),
+          BigInt(deadline)
+        ];
+        
+        // Use poseidonHashMany from starknet.js
+        messageHash = hash.computePoseidonHashOnElements(hashInputs);
+        
+        document.getElementById('hash-display').innerHTML = `
+          <div class="status success">
+            <strong>Message Hash (Poseidon):</strong>
+            <div class="hash-display">${messageHash}</div>
+            <br>
+            <small>
+              Inputs: [${low}, ${high}, ${newWallet.slice(0, 10)}..., ${ownerAddress.slice(0, 10)}..., ${deadline}]
+            </small>
+          </div>
+        `;
+        
+        log(`Hash computed: ${messageHash.slice(0, 20)}...`, 'success');
+        
+        // Enable sign button
+        document.getElementById('sign-btn').disabled = false;
+        
+      } catch (error) {
+        showStatus('hash-display', `Hash computation failed: ${error.message}`, 'error');
+        log(`Hash failed: ${error.message}`, 'error');
+      }
+    }
+    
+    // Step 5: Sign and Submit
+    async function signAndSubmit() {
+      if (!wallet || !messageHash) {
+        showStatus('submit-status', 'Please connect wallet and compute hash first', 'error');
+        return;
+      }
+      
+      const contractAddress = document.getElementById('contract-address').value;
+      const agentId = document.getElementById('agent-id').value;
+      const newWallet = document.getElementById('new-wallet').value;
+      const deadline = document.getElementById('deadline').value;
+      
+      try {
+        log('Requesting signature from wallet...');
+        
+        // Request signature using SNIP-12 typed data
+        // The wallet will sign with its private key
+        const signature = await wallet.account.signMessage({
+          types: {
+            StarkNetDomain: [
+              { name: 'name', type: 'felt' },
+              { name: 'version', type: 'felt' },
+              { name: 'chainId', type: 'felt' },
+            ],
+            Message: [
+              { name: 'hash', type: 'felt' },
+            ],
+          },
+          primaryType: 'Message',
+          domain: {
+            name: 'ERC8004',
+            version: '1',
+            chainId: shortString.encodeShortString('SN_SEPOLIA'),
+          },
+          message: {
+            hash: messageHash,
+          },
+        });
+        
+        log(`Signature received: r=${signature[0].slice(0, 16)}...`);
+        
+        // Call set_agent_wallet
+        log('Calling set_agent_wallet...');
+        
+        const setWalletAbi = [{
+          name: 'set_agent_wallet',
+          type: 'function',
+          inputs: [
+            { name: 'agent_id', type: 'core::integer::u256' },
+            { name: 'new_wallet', type: 'core::starknet::contract_address::ContractAddress' },
+            { name: 'deadline', type: 'core::integer::u64' },
+            { name: 'signature', type: 'core::array::Span::<core::felt252>' }
+          ],
+          outputs: [],
+          state_mutability: 'external'
+        }];
+        
+        const contract = new Contract(setWalletAbi, contractAddress, wallet.account);
+        
+        const result = await contract.set_agent_wallet(
+          { low: agentId, high: '0' },
+          newWallet,
+          deadline,
+          signature
+        );
+        
+        log(`Transaction submitted: ${result.transaction_hash.slice(0, 20)}...`);
+        showStatus('submit-status', `
+          <strong>Transaction submitted!</strong><br>
+          Hash: ${result.transaction_hash}<br>
+          <a href="https://sepolia.starkscan.co/tx/${result.transaction_hash}" target="_blank">
+            View on StarkScan
+          </a>
+        `, 'success');
+        
+        log('Waiting for confirmation...', 'info');
+        
+        // Wait for transaction
+        const rpcUrl = document.getElementById('rpc-url').value;
+        const waitProvider = new RpcProvider({ nodeUrl: rpcUrl });
+        await waitProvider.waitForTransaction(result.transaction_hash);
+        
+        log('Transaction confirmed!', 'success');
+        
+      } catch (error) {
+        showStatus('submit-status', `Failed: ${error.message}`, 'error');
+        log(`Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Try to load contract address from deployed_addresses.json
+      fetch('../deployed_addresses.json')
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('contract-address').value = data.contracts?.identityRegistry?.address || '';
+          document.getElementById('rpc-url').value = data.rpcUrl || 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7';
+          log('Loaded deployment config');
+        })
+        .catch(() => log('No deployment config found, enter manually'));
+    });
+  </script>
+</body>
+</html>
