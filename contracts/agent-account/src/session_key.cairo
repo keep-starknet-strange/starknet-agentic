@@ -1,13 +1,15 @@
-use starknet::ContractAddress;
 use super::interfaces::SessionPolicy;
 
 #[starknet::component]
 pub mod SessionKeyComponent {
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::storage::{
+        StorageMapReadAccess, StorageMapWriteAccess
+    };
     use super::SessionPolicy;
 
     #[storage]
-    struct Storage {
+    pub struct Storage {
         session_keys: LegacyMap<felt252, SessionPolicy>,
         session_key_active: LegacyMap<felt252, bool>,
         spending_used: LegacyMap<(felt252, ContractAddress), u256>,
@@ -51,7 +53,7 @@ pub mod SessionKeyComponent {
         fn revoke_all(ref self: ComponentState<TContractState>, keys: Span<felt252>);
     }
 
-    impl SessionKeyImpl<
+    pub impl SessionKeyImpl<
         TContractState, +HasComponent<TContractState>
     > of SessionKeyTrait<TContractState> {
         fn register(
