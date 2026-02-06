@@ -1,5 +1,4 @@
 use starknet::ContractAddress;
-use starknet::contract_address_const;
 use snforge_std::{declare, ContractClassTrait, DeclareResultTrait, start_cheat_caller_address, stop_cheat_caller_address};
 use huginn_registry::IHuginnRegistryDispatcher;
 use huginn_registry::IHuginnRegistryDispatcherTrait;
@@ -15,7 +14,7 @@ fn test_register_agent() {
     let contract_address = deploy_contract();
     let dispatcher = IHuginnRegistryDispatcher { contract_address };
 
-    let caller = contract_address_const::<0x1>();
+    let caller = 0x1.try_into().unwrap();
     start_cheat_caller_address(contract_address, caller);
 
     dispatcher.register_agent('alpha_agent', "ipfs://metadata");
@@ -32,7 +31,7 @@ fn test_log_thought() {
     let contract_address = deploy_contract();
     let dispatcher = IHuginnRegistryDispatcher { contract_address };
 
-    let caller = contract_address_const::<0x1>();
+    let caller = 0x1.try_into().unwrap();
     start_cheat_caller_address(contract_address, caller);
 
     dispatcher.register_agent('thinker', "ipfs://meta");
@@ -47,7 +46,7 @@ fn test_log_thought_unregistered() {
     let contract_address = deploy_contract();
     let dispatcher = IHuginnRegistryDispatcher { contract_address };
 
-    let caller = contract_address_const::<0x2>();
+    let caller = 0x2.try_into().unwrap();
     start_cheat_caller_address(contract_address, caller);
 
     dispatcher.log_thought(42_u256);
@@ -58,7 +57,7 @@ fn test_prove_thought() {
     let contract_address = deploy_contract();
     let dispatcher = IHuginnRegistryDispatcher { contract_address };
 
-    let caller = contract_address_const::<0x1>();
+    let caller = 0x1.try_into().unwrap();
     start_cheat_caller_address(contract_address, caller);
 
     dispatcher.register_agent('prover', "ipfs://meta");
@@ -74,7 +73,7 @@ fn test_prove_thought_unregistered() {
     let contract_address = deploy_contract();
     let dispatcher = IHuginnRegistryDispatcher { contract_address };
 
-    let caller = contract_address_const::<0x3>();
+    let caller = 0x3.try_into().unwrap();
     start_cheat_caller_address(contract_address, caller);
 
     let proof: Array<felt252> = array![1];
@@ -86,7 +85,7 @@ fn test_get_agent_unregistered_returns_zero() {
     let contract_address = deploy_contract();
     let dispatcher = IHuginnRegistryDispatcher { contract_address };
 
-    let unknown = contract_address_const::<0x999>();
+    let unknown = 0x999.try_into().unwrap();
     let (name, _metadata) = dispatcher.get_agent(unknown);
     assert(name == 0, 'should be zero');
 }
