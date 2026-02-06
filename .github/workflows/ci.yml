@@ -79,6 +79,9 @@ jobs:
   cairo-check:
     name: Cairo Check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: /bin/bash
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,12 +93,15 @@ jobs:
           scarb-version: "2.12.1"
 
       - name: Check Cairo contracts
-        working-directory: packages/starknet-identity/erc8004-cairo
+        working-directory: contracts/erc8004-cairo
         run: scarb build
 
   cairo-test:
     name: Cairo Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: /bin/bash
     steps:
       - uses: actions/checkout@v4
         with:
@@ -112,7 +118,7 @@ jobs:
           version: nightly
 
       - name: Run Cairo tests
-        working-directory: packages/starknet-identity/erc8004-cairo
+        working-directory: contracts/erc8004-cairo
         run: snforge test || echo "Cairo tests configuration will be finalized in future PR"
 
   website-build:
