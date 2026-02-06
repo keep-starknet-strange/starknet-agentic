@@ -2,7 +2,7 @@
 version = 1
 
 [[package]]
-name = "erc8004"
+name = "agent_account"
 version = "0.1.0"
 dependencies = [
  "openzeppelin",

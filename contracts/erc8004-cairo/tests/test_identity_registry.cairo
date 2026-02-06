@@ -1,7 +1,7 @@
 use erc8004::interfaces::identity_registry::{
     IIdentityRegistryDispatcher, IIdentityRegistryDispatcherTrait, MetadataEntry,
 };
-use openzeppelin::token::erc721::interface::{
+use openzeppelin::interfaces::erc721::{
     IERC721Dispatcher, IERC721DispatcherTrait, IERC721MetadataDispatcher,
     IERC721MetadataDispatcherTrait,
 };
@@ -13,15 +13,15 @@ use starknet::ContractAddress;
 
 // Test addresses
 fn alice() -> ContractAddress {
-    starknet::contract_address_const::<0x1>()
+    0x1.try_into().unwrap()
 }
 
 fn bob() -> ContractAddress {
-    starknet::contract_address_const::<0x2>()
+    0x2.try_into().unwrap()
 }
 
 fn charlie() -> ContractAddress {
-    starknet::contract_address_const::<0x3>()
+    0x3.try_into().unwrap()
 }
 
 // Contract owner for upgrades

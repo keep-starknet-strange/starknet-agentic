@@ -26,7 +26,7 @@ pub mod ValidationRegistry {
         ValidationResponse as ValidationResponseEvent,
     };
     use openzeppelin::access::ownable::OwnableComponent;
-    use openzeppelin::token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use openzeppelin::interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use openzeppelin::upgrades::UpgradeableComponent;
     use starknet::storage::*;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};

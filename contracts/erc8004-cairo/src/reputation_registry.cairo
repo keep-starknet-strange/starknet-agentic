@@ -30,7 +30,7 @@ pub mod ReputationRegistry {
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::security::reentrancyguard::ReentrancyGuardComponent;
     use openzeppelin::upgrades::UpgradeableComponent;
-    use openzeppelin::upgrades::interface::IUpgradeable;
+    use openzeppelin::interfaces::upgrades::IUpgradeable;
     use starknet::storage::*;
     use starknet::{ClassHash, ContractAddress, get_caller_address};
 
