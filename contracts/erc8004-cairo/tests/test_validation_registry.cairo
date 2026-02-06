@@ -4,7 +4,7 @@ use erc8004::interfaces::identity_registry::{
 use erc8004::interfaces::validation_registry::{
     IValidationRegistryDispatcher, IValidationRegistryDispatcherTrait,
 };
-use openzeppelin::token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
+use openzeppelin::interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address,
@@ -13,15 +13,15 @@ use starknet::ContractAddress;
 
 // Test addresses
 fn agent_owner() -> ContractAddress {
-    starknet::contract_address_const::<0x1>()
+    0x1.try_into().unwrap()
 }
 
 fn validator() -> ContractAddress {
-    starknet::contract_address_const::<0x2>()
+    0x2.try_into().unwrap()
 }
 
 fn validator2() -> ContractAddress {
-    starknet::contract_address_const::<0x3>()
+    0x3.try_into().unwrap()
 }
 
 // Contract owner for upgrades

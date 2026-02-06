@@ -1,9 +1,7 @@
 #[starknet::contract(account)]
 pub mod AgentAccount {
     use starknet::{ContractAddress, get_block_timestamp};
-    use starknet::storage::{
-        StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
-    };
+    use starknet::storage::*;
     use openzeppelin::account::AccountComponent;
     use openzeppelin::introspection::src5::SRC5Component;
     use super::super::interfaces::{IAgentAccount, SessionPolicy};
@@ -29,7 +27,7 @@ pub mod AgentAccount {
         session_keys: SessionKeyComponent::Storage,
         agent_registry: ContractAddress,
         agent_id: u256,
-        active_session_keys: LegacyMap<u32, felt252>,
+        active_session_keys: Map<u32, felt252>,
         session_key_count: u32,
     }
 
@@ -72,7 +70,7 @@ pub mod AgentAccount {
 
             // Track for emergency revoke
             let count = self.session_key_count.read();
-            self.active_session_keys.write(count, key);
+            self.active_session_keys.entry(count).write(key);
             self.session_key_count.write(count + 1);
         }
 
@@ -112,7 +110,7 @@ pub mod AgentAccount {
                 if i >= count {
                     break;
                 }
-                keys.append(self.active_session_keys.read(i));
+                keys.append(self.active_session_keys.entry(i).read());
                 i += 1;
             };
 

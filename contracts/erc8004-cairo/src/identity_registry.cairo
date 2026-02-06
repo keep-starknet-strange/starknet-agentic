@@ -30,7 +30,7 @@ pub mod IdentityRegistry {
     use openzeppelin::security::reentrancyguard::ReentrancyGuardComponent;
     use openzeppelin::token::erc721::ERC721Component;
     use openzeppelin::upgrades::UpgradeableComponent;
-    use openzeppelin::upgrades::interface::IUpgradeable;
+    use openzeppelin::interfaces::upgrades::IUpgradeable;
     use starknet::storage::*;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
@@ -511,7 +511,7 @@ pub mod IdentityRegistry {
     // ============ ERC721Metadata Override ============
     // Override token_uri to use our custom storage
     #[abi(embed_v0)]
-    impl ERC721MetadataImpl of openzeppelin::token::erc721::interface::IERC721Metadata<
+    impl ERC721MetadataImpl of openzeppelin::interfaces::erc721::IERC721Metadata<
         ContractState,
     > {
         fn name(self: @ContractState) -> ByteArray {
