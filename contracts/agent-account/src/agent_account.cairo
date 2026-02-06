@@ -1,8 +1,10 @@
 #[starknet::contract(account)]
 pub mod AgentAccount {
-    use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp};
+    use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::storage::{
+        StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
     use openzeppelin::account::AccountComponent;
-    use openzeppelin::account::interface::{IPublicKey, IPublicKeyCamel};
     use openzeppelin::introspection::src5::SRC5Component;
     use super::super::interfaces::{IAgentAccount, SessionPolicy};
     use super::super::session_key::SessionKeyComponent;
@@ -12,10 +14,7 @@ pub mod AgentAccount {
     component!(path: SessionKeyComponent, storage: session_keys, event: SessionKeyEvent);
 
     #[abi(embed_v0)]
-    impl AccountImpl = AccountComponent::AccountImpl<ContractState>;
-
-    #[abi(embed_v0)]
-    impl PublicKeyImpl = AccountComponent::PublicKeyImpl<ContractState>;
+    impl AccountMixinImpl = AccountComponent::AccountMixinImpl<ContractState>;
 
     impl AccountInternalImpl = AccountComponent::InternalImpl<ContractState>;
     impl SessionKeyInternalImpl = SessionKeyComponent::SessionKeyImpl<ContractState>;
@@ -60,7 +59,7 @@ pub mod AgentAccount {
 
     #[constructor]
     fn constructor(ref self: ContractState, public_key: felt252) {
-        self.account._public_key.write(public_key);
+        self.account.initializer(public_key);
     }
 
     #[abi(embed_v0)]
