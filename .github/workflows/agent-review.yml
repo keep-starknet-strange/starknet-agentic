@@ -1,0 +1,70 @@
+name: Agent Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'src/**'
+      - 'contracts/**'
+      - 'tests/**'
+
+jobs:
+  agent-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        
+      - name: Run 0xlny Agent Review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Install dependencies
+          npm install -g @anthropic-ai/claude-cli
+          
+          # Create review prompt
+          cat > review_prompt.md << 'EOF'
+          You are 0xlny, an expert code reviewer for Starknet agentic systems.
+          
+          Review the following PR changes for:
+          - Security vulnerabilities
+          - Cairo best practices
+          - Gas optimization
+          - Agent safety (simulation mode, error handling)
+          - Test coverage
+          
+          Changed files:
+          ${{ steps.changed-files.outputs.all_changed_files }}
+          
+          Provide actionable feedback in markdown format.
+          EOF
+          
+          # Run review (placeholder - integrate actual 0xlny agent)
+          echo "🤖 0xlny Agent Review" > review.md
+          echo "" >> review.md
+          echo "This PR has been automatically reviewed." >> review.md
+          
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('review.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🤖 0xlny Agent Review\n\n${review}\n\n---\n*This is an automated review by 0xlny agent. Please verify all suggestions.*`
+            });
