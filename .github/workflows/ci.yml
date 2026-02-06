@@ -77,6 +77,10 @@ jobs:
         working-directory: contracts/agent-account
         run: scarb build
 
+      - name: Check huginn-registry contracts
+        working-directory: contracts/huginn-registry
+        run: scarb build
+
   cairo-test:
     name: Cairo Tests
     runs-on: ubuntu-latest
@@ -104,6 +108,10 @@ jobs:
 
       - name: Run Cairo tests (agent-account)
         working-directory: contracts/agent-account
+        run: snforge test
+
+      - name: Run Cairo tests (huginn-registry)
+        working-directory: contracts/huginn-registry
         run: snforge test
 
   website-build:
