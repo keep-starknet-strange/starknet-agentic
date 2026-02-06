@@ -69,7 +69,11 @@ pub mod AgentAccount {
         fn register_session_key(ref self: ContractState, key: felt252, policy: SessionPolicy) {
             self.account.assert_only_self();
 
-            // Register in component
+            // Prevent double-registration: key must not already be in the active list.
+            // This avoids orphaned slots that corrupt count/index invariants.
+            assert(self.session_key_index.entry(key).read() == 0, 'Key already registered');
+
+            // Register in component (also clears stale spending state)
             self.session_keys.register(key, policy);
 
             // Track in compact active-key list
@@ -124,8 +128,10 @@ pub mod AgentAccount {
             self.session_keys.validate_call(key, target)
         }
 
-        /// Debits the session key's spending allowance. Panics if the
-        /// cumulative spend in the current 24h period exceeds the policy limit.
+        /// Debits the session key's spending allowance. Panics if:
+        /// - Key is not valid (inactive or outside time window)
+        /// - Token does not match policy.spending_token
+        /// - Cumulative spend in the current 24h period exceeds policy limit
         fn use_session_key_allowance(
             ref self: ContractState,
             key: felt252,

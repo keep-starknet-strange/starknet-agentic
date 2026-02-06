@@ -70,6 +70,10 @@ pub mod SessionKeyComponent {
             self.session_keys.entry(key).write(policy);
             self.session_key_active.entry(key).write(true);
 
+            // Clear any stale spending state from a previous lifecycle of this key
+            self.spending_used.entry((key, policy.spending_token)).write(0);
+            self.spending_period_start.entry((key, policy.spending_token)).write(0);
+
             self.emit(SessionKeyRegistered {
                 key,
                 valid_after: policy.valid_after,
@@ -121,20 +125,30 @@ pub mod SessionKeyComponent {
             true
         }
 
+        /// Debits the session key's spending allowance.
+        /// Enforces: key validity (active + time window), token match, and
+        /// cumulative spend within the 24h period limit.
         fn check_and_update_spending(
             ref self: ComponentState<TContractState>,
             key: felt252,
             token: ContractAddress,
             amount: u256
         ) {
-            assert(self.session_key_active.entry(key).read(), 'Session key not active');
+            // Full validity check: active flag AND time window
+            assert(self.is_valid(key), 'Session key not valid');
 
             let policy = self.session_keys.entry(key).read();
+
+            // Enforce token matches the policy's configured spending token
+            assert(token == policy.spending_token, 'Wrong spending token');
+
             let now = get_block_timestamp();
 
-            // Reset if new period
+            // Reset if 24h period has elapsed.
+            // Uses addition instead of `period_start == 0` guard to avoid
+            // perpetual resets when now == 0.
             let period_start = self.spending_period_start.entry((key, token)).read();
-            if period_start == 0 || (now - period_start) >= 86400 { // 24h period
+            if period_start + 86400 <= now {
                 self.spending_used.entry((key, token)).write(0);
                 self.spending_period_start.entry((key, token)).write(now);
             }
