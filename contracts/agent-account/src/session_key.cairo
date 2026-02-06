@@ -42,6 +42,11 @@ pub mod SessionKeyComponent {
         fn revoke(ref self: ComponentState<TContractState>, key: felt252);
         fn get_policy(self: @ComponentState<TContractState>, key: felt252) -> SessionPolicy;
         fn is_valid(self: @ComponentState<TContractState>, key: felt252) -> bool;
+        fn validate_call(
+            self: @ComponentState<TContractState>,
+            key: felt252,
+            target: ContractAddress,
+        ) -> bool;
         fn check_and_update_spending(
             ref self: ComponentState<TContractState>,
             key: felt252,
@@ -92,12 +97,38 @@ pub mod SessionKeyComponent {
             now >= policy.valid_after && now <= policy.valid_until
         }
 
+        /// Validates that a session key is active, within its time window,
+        /// and that the target contract is allowed by the key's policy.
+        /// Returns false if any check fails.
+        fn validate_call(
+            self: @ComponentState<TContractState>,
+            key: felt252,
+            target: ContractAddress,
+        ) -> bool {
+            // Check key is active and in time window
+            if !self.is_valid(key) {
+                return false;
+            }
+
+            let policy = self.session_keys.entry(key).read();
+
+            // allowed_contract == zero means any contract is allowed
+            let zero_addr: ContractAddress = 0.try_into().unwrap();
+            if policy.allowed_contract != zero_addr && policy.allowed_contract != target {
+                return false;
+            }
+
+            true
+        }
+
         fn check_and_update_spending(
             ref self: ComponentState<TContractState>,
             key: felt252,
             token: ContractAddress,
             amount: u256
         ) {
+            assert(self.session_key_active.entry(key).read(), 'Session key not active');
+
             let policy = self.session_keys.entry(key).read();
             let now = get_block_timestamp();
 

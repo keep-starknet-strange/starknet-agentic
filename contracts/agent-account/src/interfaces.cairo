@@ -18,14 +18,22 @@ pub trait IAgentAccount<TContractState> {
     fn get_session_key_policy(self: @TContractState, key: felt252) -> SessionPolicy;
     fn is_session_key_valid(self: @TContractState, key: felt252) -> bool;
 
-    // Owner controls
-    fn set_spending_limit(
+    // Policy enforcement
+    fn validate_session_key_call(
+        self: @TContractState,
+        key: felt252,
+        target: ContractAddress,
+    ) -> bool;
+    fn use_session_key_allowance(
         ref self: TContractState,
+        key: felt252,
         token: ContractAddress,
         amount: u256,
-        period: u64
     );
+
+    // Owner controls
     fn emergency_revoke_all(ref self: TContractState);
+    fn get_active_session_key_count(self: @TContractState) -> u32;
 
     // Agent identity
     fn set_agent_id(ref self: TContractState, registry: ContractAddress, agent_id: u256);
