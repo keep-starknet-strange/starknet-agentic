@@ -18,7 +18,6 @@ type StarknetTx = {
 function App() {
   const [signals, setSignals] = useState<MarketSignal[]>([])
   const [txs, setTxs] = useState<StarknetTx[]>([])
-  const [isHovered, setIsHovered] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -144,7 +143,7 @@ function App() {
                       <div className="text-2xl font-mono font-bold text-white flex items-center justify-end gap-3">
                         {s.value > 0 ? s.value.toLocaleString() : "---"}
                         <span className={`flex items-center justify-center w-8 h-8 rounded-full bg-white/5 ${s.trend === 'up' ? 'text-green-400' :
-                            s.trend === 'down' ? 'text-red-400' : 'text-slate-400'
+                          s.trend === 'down' ? 'text-red-400' : 'text-slate-400'
                           }`}>
                           {s.trend === 'up' ? '↗' : s.trend === 'down' ? '↘' : '→'}
                         </span>
