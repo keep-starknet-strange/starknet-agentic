@@ -27,33 +27,29 @@ jobs:
         
       - name: Run 0xlny Agent Review
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Install dependencies
-          npm install -g @anthropic-ai/claude-cli
+          # Get list of changed files for review context
+          CHANGED="${{ steps.changed-files.outputs.all_changed_files }}"
           
-          # Create review prompt
-          cat > review_prompt.md << 'EOF'
-          You are 0xlny, an expert code reviewer for Starknet agentic systems.
+          # Generate review summary
+          cat > review.md << EOF
+          ### Files Changed
+          $(echo "$CHANGED" | tr ' ' '\n' | sed 's/^/- /')
           
-          Review the following PR changes for:
-          - Security vulnerabilities
-          - Cairo best practices
-          - Gas optimization
-          - Agent safety (simulation mode, error handling)
-          - Test coverage
+          ### Automated Checks
+          - ✅ PR received for review
+          - ✅ Changed files detected: $(echo "$CHANGED" | wc -w | tr -d ' ') files
           
-          Changed files:
-          ${{ steps.changed-files.outputs.all_changed_files }}
+          ### Recommendations
+          1. Ensure Cairo contracts pass \`scarb build\`
+          2. Check for proper error handling in contract entrypoints
+          3. Verify agent safety patterns (simulation mode, rate limits)
+          4. Add tests for new functionality
           
-          Provide actionable feedback in markdown format.
+          ---
+          *To enable AI-powered reviews, add ANTHROPIC_API_KEY secret and integrate with Anthropic SDK.*
           EOF
-          
-          # Run review (placeholder - integrate actual 0xlny agent)
-          echo "🤖 0xlny Agent Review" > review.md
-          echo "" >> review.md
-          echo "This PR has been automatically reviewed." >> review.md
           
       - name: Comment on PR
         uses: actions/github-script@v7
