@@ -6,7 +6,7 @@
  *
  * Example:
  *   npx ts-node estimate-fees.ts \
- *     --rpc https://starknet-sepolia.public.blastapi.io/rpc/v0_8 \
+ *     --rpc https://rpc.starknet-testnet.lava.build \
  *     --account 0x123... \
  *     --private-key 0xabc... \
  *     --calls '[{"to":"0x...","entrypoint":"transfer","calldata":["0x...","100","0"]}]'

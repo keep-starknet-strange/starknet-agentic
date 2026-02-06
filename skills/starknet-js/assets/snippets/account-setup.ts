@@ -18,7 +18,7 @@ import {
 } from 'starknet';
 
 // Configuration
-const RPC_URL = 'https://starknet-sepolia.public.blastapi.io/rpc/v0_8';
+const RPC_URL = 'https://rpc.starknet-testnet.lava.build';
 
 // OpenZeppelin Account class hash (v0.17.0)
 const OZ_CLASS_HASH = '0x540d7f5ec7ecf317e68d48564934cb99259781b1ee3cedbbc37ec5337f8e688';

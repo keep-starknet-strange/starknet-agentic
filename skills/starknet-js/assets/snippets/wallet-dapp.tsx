@@ -14,7 +14,7 @@ import { connect, disconnect } from '@starknet-io/get-starknet';
 import { WalletAccount, Contract, cairo, type Call } from 'starknet';
 
 // Configuration
-const RPC_URL = 'https://starknet-sepolia.public.blastapi.io/rpc/v0_8';
+const RPC_URL = 'https://rpc.starknet-testnet.lava.build';
 
 // Example ERC20 ABI (minimal)
 const ERC20_ABI = [

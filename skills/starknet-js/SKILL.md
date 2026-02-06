@@ -17,7 +17,7 @@ Minimal setup to read from Starknet:
 ```typescript
 import { RpcProvider, Contract } from 'starknet';
 
-const provider = await RpcProvider.create({ nodeUrl: 'https://starknet-mainnet.public.blastapi.io/rpc/v0_8' });
+const provider = await RpcProvider.create({ nodeUrl: 'https://rpc.starknet.lava.build' });
 const contract = new Contract(abi, contractAddress, provider);
 const result = await contract.get_balance();
 ```
@@ -43,13 +43,13 @@ import { RpcProvider } from 'starknet';
 
 // Recommended: Auto-detect RPC spec version
 const provider = await RpcProvider.create({
-  nodeUrl: 'https://starknet-mainnet.public.blastapi.io/rpc/v0_8'
+  nodeUrl: 'https://rpc.starknet.lava.build'
 });
 ```
 
 **Networks:**
-- Mainnet: `https://starknet-mainnet.public.blastapi.io/rpc/v0_8`
-- Sepolia: `https://starknet-sepolia.public.blastapi.io/rpc/v0_8`
+- Mainnet: `https://rpc.starknet.lava.build`
+- Sepolia: `https://rpc.starknet-testnet.lava.build`
 
 **Key Methods:**
 ```typescript
@@ -253,7 +253,7 @@ import { WalletAccount } from 'starknet';
 
 const selectedWallet = await connect({ modalMode: 'alwaysAsk' });
 const walletAccount = await WalletAccount.connect(
-  { nodeUrl: 'https://starknet-sepolia.public.blastapi.io/rpc/v0_8' },
+  { nodeUrl: 'https://rpc.starknet.lava.build' },
   selectedWallet
 );
 

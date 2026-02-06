@@ -73,7 +73,7 @@ interface RpcProviderOptions {
 ```typescript
 // Basic setup
 const provider = await RpcProvider.create({
-  nodeUrl: 'https://starknet-mainnet.public.blastapi.io/rpc/v0_8'
+  nodeUrl: 'https://rpc.starknet.lava.build'
 });
 
 // With custom headers (API key)
@@ -284,10 +284,10 @@ const account = new Account({
 
 | Network | Provider | URL |
 |---------|----------|-----|
-| Mainnet | Blast | `https://starknet-mainnet.public.blastapi.io/rpc/v0_8` |
+| Mainnet | Lava | `https://rpc.starknet.lava.build` |
 | Mainnet | Alchemy | `https://starknet-mainnet.g.alchemy.com/v2/{API_KEY}` |
 | Mainnet | Infura | `https://starknet-mainnet.infura.io/v3/{API_KEY}` |
-| Sepolia | Blast | `https://starknet-sepolia.public.blastapi.io/rpc/v0_8` |
+| Sepolia | Lava | `https://rpc.starknet-testnet.lava.build` |
 | Sepolia | Alchemy | `https://starknet-sepolia.g.alchemy.com/v2/{API_KEY}` |
 
 ### Paymaster Endpoints

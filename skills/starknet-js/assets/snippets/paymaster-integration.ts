@@ -21,7 +21,7 @@ import {
 } from 'starknet';
 
 // Configuration
-const RPC_URL = 'https://starknet-sepolia.public.blastapi.io/rpc/v0_8';
+const RPC_URL = 'https://rpc.starknet-testnet.lava.build';
 const PAYMASTER_URL = 'https://sepolia.paymaster.avnu.fi';
 
 // Common token addresses (Sepolia)
