@@ -27,8 +27,12 @@ pub mod AgentAccount {
         session_keys: SessionKeyComponent::Storage,
         agent_registry: ContractAddress,
         agent_id: u256,
+        /// Compact list of active session keys (swap-and-remove on revoke).
         active_session_keys: Map<u32, felt252>,
+        /// Number of currently active session keys (NOT historical total).
         session_key_count: u32,
+        /// Maps key -> 1-based index in active_session_keys (0 = not tracked).
+        session_key_index: Map<felt252, u32>,
     }
 
     #[event]
@@ -68,14 +72,36 @@ pub mod AgentAccount {
             // Register in component
             self.session_keys.register(key, policy);
 
-            // Track for emergency revoke
+            // Track in compact active-key list
             let count = self.session_key_count.read();
             self.active_session_keys.entry(count).write(key);
+            self.session_key_index.entry(key).write(count + 1); // 1-based index
             self.session_key_count.write(count + 1);
         }
 
         fn revoke_session_key(ref self: ContractState, key: felt252) {
             self.account.assert_only_self();
+
+            // Swap-and-remove from active tracking
+            let idx_plus_1 = self.session_key_index.entry(key).read();
+            assert(idx_plus_1 > 0, 'Key not in active list');
+
+            let idx = idx_plus_1 - 1;
+            let count = self.session_key_count.read();
+            let last_idx = count - 1;
+
+            if idx != last_idx {
+                // Swap with last element
+                let last_key = self.active_session_keys.entry(last_idx).read();
+                self.active_session_keys.entry(idx).write(last_key);
+                self.session_key_index.entry(last_key).write(idx + 1);
+            }
+
+            // Clear removed key's tracking and decrement count
+            self.session_key_index.entry(key).write(0);
+            self.session_key_count.write(count - 1);
+
+            // Revoke in component
             self.session_keys.revoke(key);
         }
 
@@ -87,39 +113,60 @@ pub mod AgentAccount {
             self.session_keys.is_valid(key)
         }
 
-        fn set_spending_limit(
-            ref self: ContractState,
-            token: ContractAddress,
-            amount: u256,
-            period: u64
-        ) {
-            self.account.assert_only_self();
-            // Implementation: update policy for active keys if needed
-            // For now, spending limits are set per session key in policy
+        /// Validates a session key call against its policy constraints:
+        /// - Key must be active and within its time window
+        /// - Target contract must be allowed by the key's policy
+        fn validate_session_key_call(
+            self: @ContractState,
+            key: felt252,
+            target: ContractAddress,
+        ) -> bool {
+            self.session_keys.validate_call(key, target)
         }
 
+        /// Debits the session key's spending allowance. Panics if the
+        /// cumulative spend in the current 24h period exceeds the policy limit.
+        fn use_session_key_allowance(
+            ref self: ContractState,
+            key: felt252,
+            token: ContractAddress,
+            amount: u256,
+        ) {
+            self.account.assert_only_self();
+            self.session_keys.check_and_update_spending(key, token, amount);
+        }
+
+        /// Revokes ALL currently active session keys. Cost is bounded by the
+        /// number of active keys, not total historical registrations.
         fn emergency_revoke_all(ref self: ContractState) {
             self.account.assert_only_self();
 
-            // Collect all active keys
             let count = self.session_key_count.read();
-            let mut keys: Array<felt252> = ArrayTrait::new();
             let mut i: u32 = 0;
 
             loop {
                 if i >= count {
                     break;
                 }
-                keys.append(self.active_session_keys.entry(i).read());
+                let key = self.active_session_keys.entry(i).read();
+                // Revoke in component
+                self.session_keys.revoke(key);
+                // Clear index mapping
+                self.session_key_index.entry(key).write(0);
                 i += 1;
             };
 
-            // Revoke all
-            self.session_keys.revoke_all(keys.span());
+            // Reset counter — subsequent calls are O(0) until new keys registered
+            self.session_key_count.write(0);
 
             self.emit(EmergencyRevoked {
                 timestamp: get_block_timestamp()
             });
+        }
+
+        /// Returns the number of currently active session keys.
+        fn get_active_session_key_count(self: @ContractState) -> u32 {
+            self.session_key_count.read()
         }
 
         fn set_agent_id(ref self: ContractState, registry: ContractAddress, agent_id: u256) {
