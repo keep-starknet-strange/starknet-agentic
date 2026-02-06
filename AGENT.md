@@ -54,16 +54,17 @@ Starknet Agentic implements all three layers with Starknet as the settlement and
 
 ### Gaps to Fill
 
-| Gap | Priority | Approach |
-|-----|----------|----------|
-| No agent-specific account contract | HIGH | Build Agent Account with session keys, spending limits, kill switch |
-| No Starknet MCP server with DeFi | HIGH | Build on starknet.js + @avnu/avnu-sdk |
-| No Starknet wallet skill | HIGH | Create SKILL.md with wallet operations |
-| No A2A support for Starknet agents | MEDIUM | Implement Agent Card generation from on-chain identity |
-| No Lucid Agents Starknet connector | MEDIUM | Implement WalletConnector interface with starknet.js |
-| No Daydreams DeFi extension | MEDIUM | Create extension with swap, lend, stake actions |
-| No MoltBook presence | LOW | Deploy Starknet ecosystem bot |
-| No cross-chain identity bridge | LOW | Bridge ERC-8004 between EVM and Starknet |
+| Gap | Priority | Status |
+|-----|----------|--------|
+| Agent Account contract | HIGH | **EXISTS** - needs tests, see `contracts/agent-account/` |
+| Starknet MCP server with DeFi | HIGH | **DONE** - 9 tools implemented including swap, quote |
+| Starknet wallet skill | HIGH | **DONE** - complete at `skills/starknet-wallet/` |
+| A2A support for Starknet agents | MEDIUM | **DONE** - functional at `packages/starknet-a2a/` |
+| MCP identity tools | MEDIUM | **TODO** - register_agent, reputation, validation |
+| Lucid Agents Starknet connector | LOW | **TODO** - deferred to v2.0 |
+| Daydreams DeFi extension | LOW | **TODO** - deferred to v2.0 |
+| MoltBook presence | LOW | **TODO** - Deploy Starknet ecosystem bot |
+| Cross-chain identity bridge | LOW | **TODO** - Bridge ERC-8004 between EVM and Starknet |
 
 ## Agent Wallet Architecture
 
@@ -96,29 +97,33 @@ The Agent Account contract is the core primitive. It extends Starknet's native A
 
 The Starknet MCP server exposes these tools to any MCP-compatible agent:
 
-### Wallet Tools
-- `starknet_get_balance` -- Query token balances for an address
-- `starknet_transfer` -- Send tokens (ETH, STRK, USDC, etc.)
-- `starknet_get_nonce` -- Get current nonce
-- `starknet_estimate_fee` -- Estimate transaction fees
+### Implemented Tools (Production)
 
-### Contract Tools
-- `starknet_call_contract` -- Read contract state (view functions)
-- `starknet_invoke_contract` -- Write to contracts (state-changing)
-- `starknet_deploy_contract` -- Deploy new contracts
-- `starknet_get_events` -- Query on-chain events
+| Tool | Description | Status |
+|------|-------------|--------|
+| `starknet_get_balance` | Query single token balance | Implemented |
+| `starknet_get_balances` | Batch balance query (single RPC call) | Implemented |
+| `starknet_transfer` | Send tokens with gasfree option | Implemented |
+| `starknet_call_contract` | Read contract state (view functions) | Implemented |
+| `starknet_invoke_contract` | Write to contracts (state-changing) | Implemented |
+| `starknet_swap` | Execute token swaps via avnu aggregator | Implemented |
+| `starknet_get_quote` | Get swap quotes without executing | Implemented |
+| `starknet_estimate_fee` | Estimate transaction fees | Implemented |
+| `x402_starknet_sign_payment_required` | X-402 payment protocol signing | Implemented |
 
-### DeFi Tools
-- `starknet_swap` -- Execute token swaps via avnu aggregator
-- `starknet_get_quote` -- Get swap quotes without executing
-- `starknet_stake` -- Stake STRK or liquid staking tokens
-- `starknet_create_dca` -- Create Dollar Cost Averaging orders
+### Planned Tools (Nice to Have)
 
-### Identity Tools
-- `starknet_register_agent` -- Register agent identity on-chain (ERC-8004)
-- `starknet_get_agent_info` -- Query agent metadata and reputation
-- `starknet_give_feedback` -- Submit reputation feedback for an agent
-- `starknet_request_validation` -- Request third-party validation
+| Tool | Description | Priority |
+|------|-------------|----------|
+| `starknet_register_agent` | Register agent identity on-chain (ERC-8004) | Medium |
+| `starknet_get_agent_info` | Query agent metadata and reputation | Medium |
+| `starknet_give_feedback` | Submit reputation feedback for an agent | Medium |
+| `starknet_request_validation` | Request third-party validation | Medium |
+| `starknet_get_nonce` | Get current nonce | Low |
+| `starknet_deploy_contract` | Deploy new contracts | Low |
+| `starknet_get_events` | Query on-chain events | Low |
+| `starknet_stake` | Stake STRK or liquid staking tokens | Low |
+| `starknet_create_dca` | Create Dollar Cost Averaging orders | Low |
 
 ## Skills Format
 

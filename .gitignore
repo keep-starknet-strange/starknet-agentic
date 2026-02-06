@@ -146,3 +146,4 @@ target/
 # Starknet
 deployed_addresses*.json
 .env.local
+.mcp.json

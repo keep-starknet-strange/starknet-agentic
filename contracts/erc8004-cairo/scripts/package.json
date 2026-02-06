@@ -1,0 +1,14 @@
+{
+  "name": "erc8004-deploy-scripts",
+  "version": "1.0.0",
+  "description": "Deployment scripts for ERC-8004 contracts",
+  "type": "module",
+  "scripts": {
+    "deploy": "node deploy.js",
+    "deploy:sepolia": "node deploy.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "starknet": "^9.2.1"
+  }
+}

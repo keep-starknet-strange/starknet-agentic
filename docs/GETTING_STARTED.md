@@ -158,21 +158,31 @@ console.log(`✅ Swap complete: ${result.transactionHash}`);
 
 **Full example:** See `examples/defi-agent/` for a production-ready arbitrage bot.
 
-### 3. Identity Agent (10 minutes)
+### 3. Identity Agent (Coming Soon)
 
 Register your agent on-chain with ERC-8004:
 
 ```typescript
-// Register agent identity
-const agentCard = await registerAgent({
-  name: "My Trading Bot",
-  description: "Autonomous DeFi agent",
-  capabilities: ["swap", "arbitrage", "rebalance"],
-  owner: account.address,
-});
+// Note: MCP identity tools are planned (see ROADMAP 2.2)
+// For now, interact with ERC-8004 contracts directly:
+import { Contract } from "starknet";
 
-console.log(`✅ Agent registered: ${agentCard.tokenId}`);
+const identityRegistry = new Contract(
+  IdentityRegistryABI,
+  IDENTITY_REGISTRY_ADDRESS,
+  account
+);
+
+// Mint agent identity NFT
+const tx = await identityRegistry.register_agent(account.address);
+console.log(`✅ Agent registered: ${tx.transaction_hash}`);
+
+// Set metadata
+await identityRegistry.setMetadata(agentId, "agentName", "My Trading Bot");
+await identityRegistry.setMetadata(agentId, "capabilities", "swap,arbitrage");
 ```
+
+**Full example:** See `skills/starknet-identity/` for ERC-8004 integration patterns.
 
 ---
 
@@ -210,18 +220,19 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-**Available Tools:**
+**Available Tools (9 implemented):**
 
 | Tool | What It Does |
 |------|-------------|
 | `starknet_get_balance` | Check single token balance |
 | `starknet_get_balances` | Check multiple balances (batch) |
-| `starknet_transfer` | Send tokens (with gasless option) |
+| `starknet_transfer` | Send tokens (with gasfree option) |
 | `starknet_swap` | Execute token swaps via AVNU |
 | `starknet_get_quote` | Get swap price quotes |
 | `starknet_call_contract` | Read contract state |
 | `starknet_invoke_contract` | Call contract functions |
-| `starknet_register_agent` | Register ERC-8004 identity |
+| `starknet_estimate_fee` | Estimate transaction fees |
+| `x402_starknet_sign_payment_required` | Sign X-402 payment headers |
 
 **Example Claude conversation:**
 

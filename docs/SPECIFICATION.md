@@ -14,6 +14,20 @@ AI agents are emerging as autonomous economic actors, but they lack standardized
 
 Starknet's native Account Abstraction, low costs, and ZK-provable compute make it uniquely suited to solve these problems.
 
+### Implementation Status
+
+This specification describes both implemented features and planned designs:
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Agent Account Contract | **Exists (Untested)** | Code complete, needs tests before deployment |
+| Agent Registry (ERC-8004) | **Production** | 74 unit + 47 E2E tests, deployed on Sepolia |
+| MCP Server | **Production** | 9 tools implemented |
+| A2A Adapter | **Functional** | Basic implementation complete |
+| Framework Extensions | **Planned** | Deferred to v2.0 |
+
+See [ROADMAP.md](ROADMAP.md) for detailed implementation plan.
+
 ## 2. Architecture
 
 ### 2.1 Layer Model
@@ -66,6 +80,8 @@ Layer 0: Starknet L2 (native AA, ZK proofs, paymaster)
 ## 3. Smart Contracts
 
 ### 3.1 Agent Account Contract
+
+**Status:** Exists at `contracts/agent-account/` (140 lines). Needs tests before deployment.
 
 **Purpose:** A purpose-built Starknet account contract for AI agents that extends native AA with agent-specific features.
 
@@ -124,6 +140,8 @@ Based on ERC-8004, with Starknet-specific enhancements:
 
 ## 4. MCP Server
 
+**Status:** Production-ready at `packages/starknet-mcp-server/` (1,600+ lines, 9 tools implemented).
+
 ### 4.1 Tool Definitions
 
 Each tool follows the MCP tool schema:
@@ -159,6 +177,8 @@ Each tool follows the MCP tool schema:
 - Spending limit enforcement in the MCP server layer
 
 ## 5. A2A Adapter
+
+**Status:** Functional at `packages/starknet-a2a/` (437 lines). Basic implementation complete.
 
 ### 5.1 Agent Card Generation
 
@@ -198,6 +218,8 @@ A2A tasks map to Starknet transactions:
 | `canceled` | Not applicable (immutable) |
 
 ## 6. Skills Marketplace
+
+**Status:** 5 skills in `skills/` directory. 3 complete (wallet, mini-pay, anonymous-wallet), 2 templates (defi, identity).
 
 ### 6.1 Skill Directory Structure
 
@@ -239,6 +261,8 @@ user-invocable: boolean # Can users explicitly invoke
 
 ## 7. Framework Extensions
 
+**Status:** Not yet implemented. Deferred to v2.0 (see [ROADMAP.md](ROADMAP.md) section 3.1).
+
 ### 7.1 Daydreams Extension
 
 Follows the Daydreams extension pattern (`extension()` helper):
@@ -271,8 +295,15 @@ Implements the Lucid Agents `Extension` interface:
 
 ## 9. Open Questions
 
-- Should the Agent Account support multiple session keys simultaneously?
-- How should cross-chain identity work between EVM ERC-8004 and Starknet registry?
-- What is the right economic model for agent-to-agent micropayments?
-- Should skills be versioned and how should upgrades be handled?
-- How to integrate Giza's zkML for verifiable agent decisions?
+These questions are tracked for resolution in [ROADMAP.md](ROADMAP.md) section 3.7.
+
+- **Multiple session keys:** Should the Agent Account support multiple session keys simultaneously?
+  - *Current decision:* Single-level delegation only (owner -> agent). Nested delegation deferred to v2.0+.
+- **Cross-chain identity:** How should cross-chain identity work between EVM ERC-8004 and Starknet registry?
+  - *Status:* Open question, tracked in ROADMAP 3.3.
+- **Micropayments:** What is the right economic model for agent-to-agent micropayments?
+  - *Status:* Open question, tracked in ROADMAP 3.7.
+- **Skill versioning:** Should skills be versioned and how should upgrades be handled?
+  - *Status:* Open question, tracked in ROADMAP 3.7.
+- **zkML integration:** How to integrate Giza's zkML for verifiable agent decisions?
+  - *Status:* Planned for v2.0+, tracked in ROADMAP 3.4.
