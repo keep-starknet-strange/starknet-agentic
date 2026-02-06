@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tokenterminal": {
+      "command": "npx"
+    }
+  },
+  "imports": []
+}

@@ -1,0 +1,18 @@
+{
+  "lastUpdated": "2026-02-06T19:12:12.505Z",
+  "signals": [
+    {
+      "metric": "Starknet DAU",
+      "value": 105000,
+      "trend": "up",
+      "timestamp": "8:12:12 PM"
+    }
+  ],
+  "txs": [
+    {
+      "hash": "0xMOCK_HASH",
+      "action": "Buy 0.1 ETH -> STRK",
+      "status": "success"
+    }
+  ]
+}
