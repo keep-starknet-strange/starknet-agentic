@@ -7,7 +7,7 @@
 //
 // Key Features:
 // - Validation requests with URI and hash commitments
-// - Multiple responses per request (progressive validation)
+// - Single-responder updates per request (first response locks responder)
 // - Tag-based categorization (ByteArray for Solidity string parity)
 // - On-chain aggregation for composability
 // - Support for various validation methods (stake-secured, zkML, TEE)
@@ -196,6 +196,13 @@ pub mod ValidationRegistry {
             // Caller is the validator responding
             let caller = get_caller_address();
 
+            // SECURITY: lock a request to the first responder.
+            // Same responder may update their own response; other responders cannot overwrite.
+            let existing = self.responses.entry(request_hash).read();
+            if existing.has_response {
+                assert(existing.validator_address == caller, 'Responder mismatch');
+            }
+
             // Store response
             self
                 .responses
@@ -236,10 +243,25 @@ pub mod ValidationRegistry {
             agent_id: u256,
             request_hash: u256,
         ) -> (u8, u64, u256, bool) {
+            // Backward-compatible behavior for unknown requests
+            if !self.request_exists.entry(request_hash).read() {
+                return (0, 0, 0, false);
+            }
+
+            // Enforce agent parameter consistency
+            let request = self.requests.entry(request_hash).read();
+            assert(request.agent_id == agent_id, 'Agent ID mismatch');
+
             let resp = self.responses.entry(request_hash).read();
 
-            // Return response details
-            // has_response flag distinguishes between no response and response with value 0
+            // If no response yet, return defaults.
+            if !resp.has_response {
+                return (0, 0, 0, false);
+            }
+
+            // Enforce validator parameter consistency for responded requests.
+            assert(resp.validator_address == validator_address, 'Validator mismatch');
+
             (resp.response, resp.last_update, resp.response_hash, resp.has_response)
         }
 

@@ -756,3 +756,218 @@ fn test_get_summary_mixed_with_pending() {
     assert_eq!(valid_count, 1); // Only response=1 is valid
     assert_eq!(invalid_count, 1); // Only response=2 is invalid
 }
+
+// ============ Security Regression Tests ============
+
+#[test]
+#[should_panic(expected: 'Agent ID mismatch')]
+fn test_validation_response_agent_id_mismatch_reverts() {
+    // SECURITY: Response must match the request's agent_id.
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    // Register two agents
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id_1 = identity_registry.register();
+    let agent_id_2 = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // Create request for agent 1
+    let request_hash: u256 = 0x1234;
+    start_cheat_caller_address(validation_address, agent_owner());
+    let request_uri: ByteArray = "ipfs://QmRequest/validation-request.json";
+    validation_registry.validation_request(agent_id_1, request_uri, request_hash);
+    stop_cheat_caller_address(validation_address);
+
+    // Try to respond with wrong agent_id (should fail)
+    start_cheat_caller_address(validation_address, validator());
+    let tag: ByteArray = "";
+    validation_registry.validation_response(agent_id_2, request_hash, 1, "", 0, tag);
+    stop_cheat_caller_address(validation_address);
+}
+
+#[test]
+#[should_panic(expected: 'Responder mismatch')]
+fn test_response_overwrite_by_different_validator_reverts() {
+    // SECURITY: first responder locks the request; other validators cannot overwrite.
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let request_hash: u256 = 0x1234;
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(agent_id, "ipfs://req", request_hash);
+    stop_cheat_caller_address(validation_address);
+
+    // First response: invalid
+    start_cheat_caller_address(validation_address, validator());
+    validation_registry.validation_response(agent_id, request_hash, 2, "", 0, "");
+    stop_cheat_caller_address(validation_address);
+
+    let (resp1, _, _, has1) = validation_registry
+        .get_validation_status(validator(), agent_id, request_hash);
+    assert_eq!(resp1, 2);
+    assert!(has1);
+
+    // Different responder attempts overwrite (should fail)
+    start_cheat_caller_address(validation_address, validator2());
+    validation_registry.validation_response(agent_id, request_hash, 1, "", 0, "");
+    stop_cheat_caller_address(validation_address);
+}
+
+#[test]
+#[should_panic(expected: 'Validator mismatch')]
+fn test_get_validation_status_validator_mismatch_reverts() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let request_hash: u256 = 0xABCD;
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(agent_id, "ipfs://req", request_hash);
+    stop_cheat_caller_address(validation_address);
+
+    start_cheat_caller_address(validation_address, validator());
+    validation_registry.validation_response(agent_id, request_hash, 1, "", 0, "");
+    stop_cheat_caller_address(validation_address);
+
+    // Querying with a different validator should revert
+    validation_registry.get_validation_status(validator2(), agent_id, request_hash);
+}
+
+#[test]
+#[should_panic(expected: 'Agent ID mismatch')]
+fn test_get_validation_status_agent_id_mismatch_reverts() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    let other_agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let request_hash: u256 = 0xBEEF;
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(agent_id, "ipfs://req", request_hash);
+    stop_cheat_caller_address(validation_address);
+
+    // Querying with the wrong agent id should revert
+    validation_registry.get_validation_status(validator(), other_agent_id, request_hash);
+}
+
+#[test]
+fn test_get_summary_no_requests_returns_zeros() {
+    // Edge case: summary for agent with no validations.
+    let (identity_registry, validation_registry, identity_address, _) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let empty_validators = array![].span();
+    let (count, valid_count, invalid_count) = validation_registry
+        .get_summary(agent_id, "", empty_validators);
+
+    assert_eq!(count, 0);
+    assert_eq!(valid_count, 0);
+    assert_eq!(invalid_count, 0);
+}
+
+#[test]
+fn test_get_agent_validations_empty_returns_empty() {
+    let (identity_registry, validation_registry, identity_address, _) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let validations = validation_registry.get_agent_validations(agent_id);
+    assert_eq!(validations.len(), 0);
+}
+
+#[test]
+fn test_get_validator_requests_empty_returns_empty() {
+    let (_, validation_registry, _, _) = deploy_contracts();
+
+    let requests = validation_registry.get_validator_requests(validator());
+    assert_eq!(requests.len(), 0);
+}
+
+#[test]
+fn test_response_value_boundaries() {
+    // Test all valid response values: 0, 1, 2
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let hash0: u256 = 0x1111;
+    let hash1: u256 = 0x2222;
+    let hash2: u256 = 0x3333;
+
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(agent_id, "ipfs://req", hash0);
+    validation_registry.validation_request(agent_id, "ipfs://req", hash1);
+    validation_registry.validation_request(agent_id, "ipfs://req", hash2);
+    stop_cheat_caller_address(validation_address);
+
+    start_cheat_caller_address(validation_address, validator());
+    validation_registry.validation_response(agent_id, hash0, 0, "", 0, ""); // pending
+    validation_registry.validation_response(agent_id, hash1, 1, "", 0, ""); // valid
+    validation_registry.validation_response(agent_id, hash2, 2, "", 0, ""); // invalid
+    stop_cheat_caller_address(validation_address);
+
+    let (r0, _, _, h0) = validation_registry.get_validation_status(validator(), agent_id, hash0);
+    let (r1, _, _, h1) = validation_registry.get_validation_status(validator(), agent_id, hash1);
+    let (r2, _, _, h2) = validation_registry.get_validation_status(validator(), agent_id, hash2);
+
+    assert_eq!(r0, 0);
+    assert!(h0);
+    assert_eq!(r1, 1);
+    assert!(h1);
+    assert_eq!(r2, 2);
+    assert!(h2);
+}
+
+#[test]
+fn test_get_summary_combined_tag_and_validator_filter() {
+    // Apply both tag and validator filter simultaneously.
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // validator() with tag "zkml" → valid
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 1, 0x1111, "zkml",
+    );
+    // validator() with tag "tee" → valid
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 1, 0x2222, "tee",
+    );
+    // validator2() with tag "zkml" → invalid
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator2(), 2, 0x3333, "zkml",
+    );
+
+    // Filter: validator() + tag "zkml" → should find only 1
+    let validators_filter = array![validator()].span();
+    let (count, valid_count, invalid_count) = validation_registry
+        .get_summary(agent_id, "zkml", validators_filter);
+
+    assert_eq!(count, 1);
+    assert_eq!(valid_count, 1);
+    assert_eq!(invalid_count, 0);
+}
