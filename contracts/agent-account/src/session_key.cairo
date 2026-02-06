@@ -42,13 +42,17 @@ pub mod SessionKeyComponent {
         fn revoke(ref self: ComponentState<TContractState>, key: felt252);
         fn get_policy(self: @ComponentState<TContractState>, key: felt252) -> SessionPolicy;
         fn is_valid(self: @ComponentState<TContractState>, key: felt252) -> bool;
+        fn validate_call(
+            self: @ComponentState<TContractState>,
+            key: felt252,
+            target: ContractAddress,
+        ) -> bool;
         fn check_and_update_spending(
             ref self: ComponentState<TContractState>,
             key: felt252,
             token: ContractAddress,
             amount: u256
         );
-        fn revoke_all(ref self: ComponentState<TContractState>, keys: Span<felt252>);
     }
 
     pub impl SessionKeyImpl<
@@ -64,6 +68,10 @@ pub mod SessionKeyComponent {
 
             self.session_keys.entry(key).write(policy);
             self.session_key_active.entry(key).write(true);
+
+            // Clear any stale spending state from a previous lifecycle of this key
+            self.spending_used.entry((key, policy.spending_token)).write(0);
+            self.spending_period_start.entry((key, policy.spending_token)).write(0);
 
             self.emit(SessionKeyRegistered {
                 key,
@@ -92,18 +100,54 @@ pub mod SessionKeyComponent {
             now >= policy.valid_after && now <= policy.valid_until
         }
 
+        /// Validates that a session key is active, within its time window,
+        /// and that the target contract is allowed by the key's policy.
+        /// Returns false if any check fails.
+        fn validate_call(
+            self: @ComponentState<TContractState>,
+            key: felt252,
+            target: ContractAddress,
+        ) -> bool {
+            // Check key is active and in time window
+            if !self.is_valid(key) {
+                return false;
+            }
+
+            let policy = self.session_keys.entry(key).read();
+
+            // allowed_contract == zero means any contract is allowed
+            let zero_addr: ContractAddress = 0.try_into().unwrap();
+            if policy.allowed_contract != zero_addr && policy.allowed_contract != target {
+                return false;
+            }
+
+            true
+        }
+
+        /// Debits the session key's spending allowance.
+        /// Enforces: key validity (active + time window), token match, and
+        /// cumulative spend within the 24h period limit.
         fn check_and_update_spending(
             ref self: ComponentState<TContractState>,
             key: felt252,
             token: ContractAddress,
             amount: u256
         ) {
+            // Full validity check: active flag AND time window
+            assert(self.is_valid(key), 'Session key not valid');
+
             let policy = self.session_keys.entry(key).read();
+
+            // Enforce token matches the policy's configured spending token
+            assert(token == policy.spending_token, 'Wrong spending token');
+
             let now = get_block_timestamp();
 
-            // Reset if new period
+            // Reset if 24h period has elapsed.
+            // Uses addition instead of `period_start == 0` guard to avoid
+            // perpetual resets when now == 0.
             let period_start = self.spending_period_start.entry((key, token)).read();
-            if period_start == 0 || (now - period_start) >= 86400 { // 24h period
+            if period_start + 86400 <= now {
                 self.spending_used.entry((key, token)).write(0);
                 self.spending_period_start.entry((key, token)).write(now);
             }
@@ -114,17 +158,6 @@ pub mod SessionKeyComponent {
 
             // Update
             self.spending_used.entry((key, token)).write(used + amount);
-        }
-
-        fn revoke_all(ref self: ComponentState<TContractState>, keys: Span<felt252>) {
-            let mut i: u32 = 0;
-            loop {
-                if i >= keys.len() {
-                    break;
-                }
-                self.revoke(*keys.at(i));
-                i += 1;
-            }
         }
     }
 }

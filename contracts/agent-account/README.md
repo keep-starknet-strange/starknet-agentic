@@ -35,8 +35,7 @@ let policy = SessionPolicy {
     valid_until: now + 86400, // 24 hours
     spending_limit: 1000000000000000000, // 1 ETH
     spending_token: eth_address,
-    allowed_contract: swap_router,
-    max_calls_per_tx: 5,
+    allowed_contract: swap_router, // zero address = any contract
 };
 
 account.register_session_key(session_key, policy);
