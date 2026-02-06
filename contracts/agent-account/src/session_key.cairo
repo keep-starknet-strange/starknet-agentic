@@ -53,7 +53,6 @@ pub mod SessionKeyComponent {
             token: ContractAddress,
             amount: u256
         );
-        fn revoke_all(ref self: ComponentState<TContractState>, keys: Span<felt252>);
     }
 
     pub impl SessionKeyImpl<
@@ -159,17 +158,6 @@ pub mod SessionKeyComponent {
 
             // Update
             self.spending_used.entry((key, token)).write(used + amount);
-        }
-
-        fn revoke_all(ref self: ComponentState<TContractState>, keys: Span<felt252>) {
-            let mut i: u32 = 0;
-            loop {
-                if i >= keys.len() {
-                    break;
-                }
-                self.revoke(*keys.at(i));
-                i += 1;
-            }
         }
     }
 }

@@ -51,7 +51,6 @@ fn permissive_policy() -> SessionPolicy {
         spending_limit: 1_000_000,
         spending_token: token_addr(),
         allowed_contract: zero_addr(), // any contract
-        max_calls_per_tx: 100,
     }
 }
 
@@ -63,7 +62,6 @@ fn restricted_policy() -> SessionPolicy {
         spending_limit: 100,
         spending_token: token_addr(),
         allowed_contract: allowed_target(),
-        max_calls_per_tx: 5,
     }
 }
 
@@ -244,7 +242,6 @@ fn test_spending_before_valid_after_panics() {
         spending_limit: 1_000_000,
         spending_token: token_addr(),
         allowed_contract: zero_addr(),
-        max_calls_per_tx: 100,
     };
     register_key(agent, addr, key, policy);
 
@@ -392,7 +389,6 @@ fn test_validate_call_not_yet_valid() {
         spending_limit: 1_000_000,
         spending_token: token_addr(),
         allowed_contract: zero_addr(),
-        max_calls_per_tx: 100,
     };
     register_key(agent, addr, 0x1, policy);
     assert!(!agent.validate_session_key_call(0x1, allowed_target()));
@@ -715,7 +711,6 @@ fn test_register_and_get_policy() {
     assert_eq!(stored.valid_after, policy.valid_after);
     assert_eq!(stored.valid_until, policy.valid_until);
     assert_eq!(stored.spending_limit, policy.spending_limit);
-    assert_eq!(stored.max_calls_per_tx, policy.max_calls_per_tx);
 }
 
 #[test]

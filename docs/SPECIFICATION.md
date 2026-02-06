@@ -127,9 +127,7 @@ struct SessionPolicy {
     valid_until: u64,
     spending_limit: u256,
     spending_token: ContractAddress,
-    allowed_contract: ContractAddress,
-    // Reserved for future enforcement via __execute__ override.
-    max_calls_per_tx: u32,
+    allowed_contract: ContractAddress,  // zero address = any contract
 }
 ```
 
