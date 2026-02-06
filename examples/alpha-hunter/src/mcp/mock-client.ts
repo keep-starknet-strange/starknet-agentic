@@ -1,3 +1,8 @@
+/**
+ * MOCK CLIENT
+ * This is a placeholder for the Token Terminal MCP integration.
+ * In a real scenario, this would connect to an MCP server or API.
+ */
 
 
 export class AlphaHunterMCP {

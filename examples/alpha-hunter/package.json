@@ -4,7 +4,7 @@
   "description": "Starknet Agent example with Token Terminal MCP",
   "main": "src/index.ts",
   "scripts": {
-    "test": "tsc --noEmit && echo \"Typeguard passed\"",
+    "test": "tsc --noEmit && SIMULATION=true npx tsx tests/verify-safety.ts",
     "build": "tsc"
   },
   "keywords": [],

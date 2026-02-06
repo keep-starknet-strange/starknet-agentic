@@ -9,6 +9,7 @@ export class StarknetExecutor {
     constructor() {
         if (!IS_SIMULATION) {
             this.provider = new RpcProvider({ nodeUrl: CONFIG.starknet.nodeUrl });
+            // Using object signature for starknet v8 compatibility (matching defi-agent)
             this.account = new Account({
                 provider: this.provider,
                 address: CONFIG.starknet.agentAccount!,
@@ -33,12 +34,18 @@ export class StarknetExecutor {
         // AVNU Router Address (Mainnet)
         const routerAddress = '0x04270219d365d6b017231b5285e625638b5b6703b7a5a81d454a8a46755a97';
 
-        // Execute transaction
         if (IS_SIMULATION) {
             console.log("[Starknet] Simulation mode: Skipping on-chain call.");
             return "0xSIMULATION_HASH";
         }
 
+        // SAFETY: Slippage Protection
+        // The current implementation hardcodes amount_to_min: '0' in calldata, which is unsafe.
+        // We explicitly block execution in production until quote fetching is integrated.
+        throw new Error("Unsafe execution: 'amount_to_min' is 0. Production agents must fetch a quote first.");
+
+        // Unreachable code below kept for reference / future implementation
+        /*
         try {
             const swapCall = {
                 contractAddress: routerAddress,
@@ -63,7 +70,6 @@ export class StarknetExecutor {
             console.error("[Starknet] Execution failed:", e);
             throw e; // Propagate error so caller knows it failed
         }
+        */
     }
-
-
 }

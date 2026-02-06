@@ -1,5 +1,5 @@
 import path from 'path';
-import { AlphaHunterMCP } from './mcp/client';
+import { AlphaHunterMCP } from './mcp/mock-client';
 import { StarknetExecutor } from './starknet/executor';
 import { CONFIG, IS_SIMULATION } from './config';
 
