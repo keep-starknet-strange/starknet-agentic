@@ -56,6 +56,9 @@ jobs:
   cairo-check:
     name: Cairo Check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: /bin/bash
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,6 +76,9 @@ jobs:
   cairo-test:
     name: Cairo Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: /bin/bash
     steps:
       - uses: actions/checkout@v4
         with:
