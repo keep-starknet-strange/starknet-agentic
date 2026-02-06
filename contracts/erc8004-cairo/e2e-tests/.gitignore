@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Deployment artifacts
+deployed_addresses.json
+
+# Environment files (contains secrets)
+.env
+.env.local
+
+# Test outputs
+*.log
+.DS_Store
+

@@ -1,0 +1,125 @@
+{
+  "testRun": "2026-02-05T21:23:40.331Z",
+  "network": "Sepolia",
+  "accounts": {
+    "agentOwner": {
+      "address": "0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50"
+    },
+    "client": {
+      "address": "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5"
+    }
+  },
+  "agent": {
+    "agentId": "7",
+    "owner": "0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50"
+  },
+  "feedbackOperations": [
+    {
+      "operation": "give_feedback",
+      "feedbackNumber": 1,
+      "inputs": {
+        "agentId": "7",
+        "value": 100,
+        "decimals": 0,
+        "tag1": "quality",
+        "tag2": "service",
+        "endpoint": "ipfs://feedback1.json"
+      },
+      "transactionHash": "0x79cf67af1b1f6bc3b40b3f2955dcdef9995ebaca0d1e46918df92bc24666d64"
+    },
+    {
+      "operation": "give_feedback",
+      "feedbackNumber": 2,
+      "inputs": {
+        "agentId": "7",
+        "value": -50,
+        "decimals": 0
+      },
+      "transactionHash": "0x7215f075b5e432bed2822748781293cdf002cec2ef5501f05f7d224bf10b9af"
+    },
+    {
+      "operation": "give_feedback",
+      "feedbackNumber": 3,
+      "inputs": {
+        "agentId": "7",
+        "value": 75,
+        "decimals": 1
+      },
+      "transactionHash": "0x515b32cf5c0316d9dff534c5220e083083e817902950c0cfd19b7766ece45b5"
+    },
+    {
+      "operation": "append_response",
+      "inputs": {
+        "agentId": "7",
+        "clientAddress": "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5",
+        "feedbackIndex": 1,
+        "responseUri": "ipfs://response1.json",
+        "responseHash": "1770326678687"
+      },
+      "transactionHash": "0x206bf1efa3837471c00113c25175b4d2c6471854954bf8deccc8e9ba1cb9983"
+    },
+    {
+      "operation": "revoke_feedback",
+      "inputs": {
+        "agentId": "7",
+        "feedbackIndex": 1
+      },
+      "transactionHash": "0x5c719f4ce53f3c971f1ba1b2431f96974d649eb62790aec09c1d18b18de868a"
+    }
+  ],
+  "readOperations": [
+    {
+      "operation": "read_feedback",
+      "inputs": {
+        "agentId": "7",
+        "clientAddress": "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5",
+        "index": 1
+      },
+      "outputs": {
+        "value": "100",
+        "decimals": "0",
+        "revoked": false
+      }
+    },
+    {
+      "operation": "get_clients",
+      "inputs": {
+        "agentId": "7"
+      },
+      "outputs": {
+        "clientsCount": 1
+      }
+    },
+    {
+      "operation": "read_all_feedback",
+      "inputs": {
+        "agentId": "7",
+        "clients": [
+          "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5"
+        ]
+      },
+      "outputs": {
+        "totalCount": 3,
+        "nonRevokedCount": 2
+      }
+    }
+  ],
+  "summaryOperations": [
+    {
+      "operation": "get_summary",
+      "inputs": {
+        "agentId": "7",
+        "clients": [
+          "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5"
+        ],
+        "tag1Filter": "",
+        "tag2Filter": ""
+      },
+      "outputs": {
+        "count": "3",
+        "valueSum": "19",
+        "modeDecimals": "0"
+      }
+    }
+  ]
+}

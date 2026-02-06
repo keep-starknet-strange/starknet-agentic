@@ -1,0 +1,23 @@
+{
+  "name": "erc8004-e2e-tests",
+  "version": "1.0.0",
+  "description": "End-to-end tests for ERC-8004 Trustless Agents on Starknet",
+  "type": "module",
+  "scripts": {
+    "test": "node test-runner.js",
+    "test:identity": "node tests/identity.test.js",
+    "test:reputation": "node tests/reputation.test.js",
+    "test:validation": "node tests/validation.test.js",
+    "test:wallet-sig": "node tests/wallet-signature.test.js",
+    "test:all": "node test-runner.js"
+  },
+  "keywords": ["starknet", "cairo", "erc8004", "e2e", "testing"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "starknet": "^8.9.1"
+  },
+  "devDependencies": {}
+}
+
