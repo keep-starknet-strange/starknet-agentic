@@ -1,11 +1,24 @@
-
+import path from 'path';
 import { AlphaHunterMCP } from './mcp/client';
 import { StarknetExecutor } from './starknet/executor';
+import { CONFIG, IS_SIMULATION } from './config';
 
-import { CONFIG } from './config';
+// In CommonJS (default), __dirname is available globally
+// const __dirname = path.dirname(fileURLToPath(import.meta.url)); 
 
 async function main() {
     console.log("🐺 Alpha Hunter (Starknet x Token Terminal) Starting...");
+
+    if (process.version < 'v22.0.0') {
+        console.warn("⚠️  Warning: Node.js version < 22. Recommended for Starknet v9 compatibility.");
+    }
+
+    if (IS_SIMULATION) {
+        console.log("ℹ️  running in SIMULATION MODE. Keys missing. On-chain actions will be skipped.");
+    }
+
+    // Fix pathing for signals.json (src/index.ts -> ../www/public/signals.json)
+    const signalsPath = path.join(__dirname, '../www/public/signals.json');
 
     const mcp = new AlphaHunterMCP();
     const executor = new StarknetExecutor();
@@ -58,21 +71,18 @@ async function main() {
             console.log("⏸️ Signal: NEUTRAL. No action taken.");
         }
 
-        // 4. PUBLISH: Write to Frontend
-        const fs = await import('fs/promises');
-        const path = await import('path');
-
-        const output = {
-            lastUpdated: new Date().toISOString(),
-            signals: [signalData],
-            txs: txLog
-        };
-
-        await fs.writeFile(
-            path.join(process.cwd(), 'www/public/signals.json'),
-            JSON.stringify(output, null, 2)
-        );
-        console.log("💾 Dashboard updated.");
+        // Update frontend dashboard (mock database)
+        try {
+            const fs = await import('fs/promises');
+            const dashboardData = {
+                signals: [signalData], // Assuming 'signals' should be `[signalData]`
+                txs: txLog // Assuming 'txs' should be `txLog`
+            };
+            await fs.writeFile(signalsPath, JSON.stringify(dashboardData, null, 2));
+            console.log("💾 Dashboard updated.");
+        } catch (e) {
+            console.error("Failed to update dashboard:", e);
+        }
 
     } catch (error) {
         console.error("❌ Error running cycle:", error);

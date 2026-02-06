@@ -1,7 +1,14 @@
 {
   "mcpServers": {
     "tokenterminal": {
-      "command": "npx"
+      "command": "npx",
+      "args": [
+        "-y",
+        "@tokenterminal/mcp-server"
+      ],
+      "env": {
+        "TT_API_KEY": "${TOKEN_TERMINAL_API_KEY}"
+      }
     }
   },
   "imports": []

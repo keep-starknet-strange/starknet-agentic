@@ -1,6 +1,6 @@
 
 import { Account, RpcProvider, CallData } from 'starknet';
-import { CONFIG } from '../config';
+import { CONFIG, IS_SIMULATION } from '../config';
 
 export class StarknetExecutor {
     private provider: RpcProvider;
@@ -23,7 +23,7 @@ export class StarknetExecutor {
         console.log(`[Starknet] Executing BUY for ${token} with amount ${amount}...`);
 
         // AVNU Router Address (Mainnet)
-        const routerAddress = '0x04270219d365d6b017231b5285e625638b5b6703b7a5a81d454p8a46755a97';
+        const routerAddress = '0x04270219d365d6b017231b5285e625638b5b6703b7a5a81d454a8a46755a97';
 
         // Example Call: Swap ETH for STRK
         // In production, we would fetch quotes from AVNU API first.
@@ -44,8 +44,20 @@ export class StarknetExecutor {
         };
 
         // Execute transaction
-        // const { transaction_hash } = await this.account.execute([swapCall]);
-        const transaction_hash = "0xMOCK_HASH"; // Placeholder for demo until account is funded
+        let transaction_hash = "0xSIMULATION_HASH";
+
+        if (IS_SIMULATION) {
+            console.log("[Starknet] Simulation mode: Skipping on-chain call.");
+        } else {
+            try {
+                // const { transaction_hash: hash } = await this.account.execute([swapCall]);
+                // transaction_hash = hash;
+                throw new Error("Account not funded for real execution");
+            } catch (e) {
+                console.error("[Starknet] Execution failed:", e);
+                return null;
+            }
+        }
 
         console.log(`[Starknet] Transaction sent: ${transaction_hash}`);
         return transaction_hash;

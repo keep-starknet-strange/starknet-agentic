@@ -4,7 +4,7 @@
   "description": "Starknet Agent example with Token Terminal MCP",
   "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"No tests specified for example\" && exit 0",
+    "test": "echo \"Example tests (skipped)\" && exit 0",
     "build": "tsc"
   },
   "keywords": [],
