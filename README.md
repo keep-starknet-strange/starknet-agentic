@@ -115,6 +115,23 @@ Cairo implementation of the ERC-8004 Trustless Agents concept on Starknet:
 
 **Status:** Production-ready with 74 unit tests + 47 E2E tests. Deployed on Sepolia.
 
+### Starknet Identity - ERC-8004 (`contracts/erc8004-cairo/`)
+
+The first **non-EVM implementation** of [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) for Starknet, providing trustless agent discovery and reputation. Full feature parity with the Solidity reference implementation, using Poseidon hashing (native to Starknet) instead of keccak256.
+
+**Deployed Contracts:**
+
+| Network | Contract | Address |
+|---------|----------|---------|
+| **Mainnet** | IdentityRegistry | [`0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595`](https://voyager.online/contract/0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595) |
+| **Mainnet** | ReputationRegistry | [`0x698849defe3997eccd3dc5e096c01ae8f4fbc2e49e8d67efcb0b0642447944`](https://voyager.online/contract/0x698849defe3997eccd3dc5e096c01ae8f4fbc2e49e8d67efcb0b0642447944) |
+| **Mainnet** | ValidationRegistry | [`0x3c2aae404b64ddf09f7ef07dfb4f723c9053443d35038263acf7d5d77efcd83`](https://voyager.online/contract/0x3c2aae404b64ddf09f7ef07dfb4f723c9053443d35038263acf7d5d77efcd83) |
+| **Sepolia** | IdentityRegistry | [`0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631`](https://sepolia.voyager.online/contract/0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631) |
+| **Sepolia** | ReputationRegistry | [`0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e`](https://sepolia.voyager.online/contract/0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e) |
+| **Sepolia** | ValidationRegistry | [`0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f`](https://sepolia.voyager.online/contract/0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f) |
+
+Features include agent wallet management with SNIP-6 signature verification, automatic wallet clearing on NFT transfer, and upgradeability via `replace_class`.
+
 ## Packages
 
 ### Starknet MCP Server (`packages/starknet-mcp-server/`)
