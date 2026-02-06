@@ -100,6 +100,22 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@22.19.7)
 
+  packages/starknet-agent-passport:
+    dependencies:
+      starknet:
+        specifier: ^8.9.1
+        version: 8.9.2
+    devDependencies:
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.19.7)
+
   packages/starknet-mcp-server:
     dependencies:
       '@avnu/avnu-sdk':
