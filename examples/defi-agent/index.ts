@@ -11,11 +11,15 @@
  * 4. Communicates via A2A protocol
  */
 
-import { Account, RpcProvider, Contract, constants } from "starknet";
-import { getQuotes, executeSwap, QuoteRequest, fetchTokenPrices } from "@avnu/avnu-sdk";
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { Account, RpcProvider, Contract } from "starknet";
+import { getQuotes, executeSwap, QuoteRequest } from "@avnu/avnu-sdk";
 
-dotenv.config();
+// Load .env from script's directory (works regardless of cwd)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(__dirname, ".env") });
 
 // ============================================================================
 // Configuration
@@ -41,6 +45,23 @@ const TOKENS = {
   USDC: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
 };
 
+// Cairo 1 style ABI for ERC20 balance check
+const ERC20_ABI = [
+  {
+    type: "interface",
+    name: "openzeppelin::token::erc20::interface::IERC20",
+    items: [
+      {
+        type: "function",
+        name: "balance_of",
+        inputs: [{ name: "account", type: "core::starknet::contract_address::ContractAddress" }],
+        outputs: [{ type: "core::integer::u256" }],
+        state_mutability: "view",
+      },
+    ],
+  },
+];
+
 // ============================================================================
 // Agent Class
 // ============================================================================
@@ -52,28 +73,28 @@ class DeFiAgent {
   private tradeCount: number = 0;
 
   constructor() {
+    // starknet.js v8 uses options objects
     this.provider = new RpcProvider({ nodeUrl: CONFIG.RPC_URL });
-    this.account = new Account(
-      this.provider,
-      CONFIG.ACCOUNT_ADDRESS,
-      CONFIG.PRIVATE_KEY,
-      undefined,
-      constants.TRANSACTION_VERSION.V3
-    );
+    this.account = new Account({
+      provider: this.provider,
+      address: CONFIG.ACCOUNT_ADDRESS,
+      signer: CONFIG.PRIVATE_KEY,
+      // transactionVersion defaults to V3 in starknet.js v8
+    });
   }
 
   /**
    * Start the agent
    */
   async start() {
-    console.log("🤖 DeFi Agent Starting...");
-    console.log(`📍 Address: ${this.account.address}`);
+    console.log("DeFi Agent Starting...");
+    console.log(`Address: ${this.account.address}`);
 
     await this.checkBalance();
 
     this.isRunning = true;
-    console.log("✅ Agent is now running");
-    console.log(`🔍 Monitoring for opportunities every ${CONFIG.CHECK_INTERVAL_MS / 1000}s\n`);
+    console.log("Agent is now running");
+    console.log(`Monitoring for opportunities every ${CONFIG.CHECK_INTERVAL_MS / 1000}s\n`);
 
     this.monitorLoop();
   }
@@ -83,7 +104,7 @@ class DeFiAgent {
    */
   stop() {
     this.isRunning = false;
-    console.log("\n🛑 Agent stopped");
+    console.log("\nAgent stopped");
   }
 
   /**
@@ -91,30 +112,24 @@ class DeFiAgent {
    */
   private async checkBalance() {
     try {
-      const ethContract = new Contract(
-        [
-          {
-            name: "balanceOf",
-            type: "function",
-            inputs: [{ name: "account", type: "felt" }],
-            outputs: [{ name: "balance", type: "Uint256" }],
-            stateMutability: "view",
-          },
-        ],
-        TOKENS.ETH,
-        this.provider
-      );
+      const ethContract = new Contract({
+        abi: ERC20_ABI,
+        address: TOKENS.ETH,
+        providerOrAccount: this.provider,
+      });
 
-      const balance = await ethContract.balanceOf(this.account.address);
-      const balanceETH = Number(balance.low) / 1e18;
+      const balance = await ethContract.balance_of(this.account.address);
+      // In starknet.js v8 with Cairo 1 ABI, u256 returns as bigint
+      const balanceBigInt = typeof balance === "bigint" ? balance : BigInt(balance);
+      const balanceETH = Number(balanceBigInt) / 1e18;
 
-      console.log(`💰 ETH Balance: ${balanceETH.toFixed(4)} ETH`);
+      console.log(`ETH Balance: ${balanceETH.toFixed(6)} ETH`);
 
       if (balanceETH < 0.001) {
-        console.warn("⚠️  Low balance! Agent needs ETH to operate.");
+        console.warn("Warning: Low balance! Agent needs ETH to operate.");
       }
     } catch (error) {
-      console.error("❌ Error checking balance:", error);
+      console.error("Error checking balance:", error);
     }
   }
 
@@ -126,7 +141,7 @@ class DeFiAgent {
       try {
         await this.checkOpportunities();
       } catch (error) {
-        console.error("❌ Error in monitoring loop:", error);
+        console.error("Error in monitoring loop:", error);
       }
 
       // Wait before next check
@@ -138,7 +153,7 @@ class DeFiAgent {
    * Check for profitable trading opportunities
    */
   private async checkOpportunities() {
-    console.log(`[${new Date().toLocaleTimeString()}] 🔍 Checking for opportunities...`);
+    console.log(`[${new Date().toLocaleTimeString()}] Checking for opportunities...`);
 
     try {
       // Check ETH -> STRK -> ETH arbitrage
@@ -149,19 +164,19 @@ class DeFiAgent {
       );
 
       if (opportunity.profitable) {
-        console.log(`\n💎 OPPORTUNITY FOUND!`);
+        console.log(`\nOPPORTUNITY FOUND!`);
         console.log(`   Profit: ${opportunity.profitBps / 100}%`);
-        console.log(`   Path: ETH → STRK → ETH`);
+        console.log(`   Path: ETH -> STRK -> ETH`);
 
         await this.executeArbitrage(opportunity);
         this.tradeCount++;
 
-        console.log(`\n✅ Trade #${this.tradeCount} completed\n`);
+        console.log(`\nTrade #${this.tradeCount} completed\n`);
       } else {
         console.log(`   No profitable opportunities (best: ${opportunity.profitBps / 100}%)`);
       }
     } catch (error) {
-      console.error("❌ Error checking opportunities:", error);
+      console.error("Error checking opportunities:", error);
     }
   }
 
@@ -229,12 +244,12 @@ class DeFiAgent {
    */
   private async executeArbitrage(opportunity: any) {
     if (!opportunity.quotes || opportunity.quotes.length !== 2) {
-      console.error("❌ Invalid opportunity");
+      console.error("Invalid opportunity");
       return;
     }
 
     try {
-      console.log("📤 Executing first swap (ETH → STRK)...");
+      console.log("Executing first swap (ETH -> STRK)...");
 
       const result1 = await executeSwap({
         provider: this.account,
@@ -243,12 +258,12 @@ class DeFiAgent {
         executeApprove: true,
       });
 
-      console.log(`   ✅ Swap 1 complete: ${result1.transactionHash}`);
+      console.log(`   Swap 1 complete: ${result1.transactionHash}`);
 
       // Wait a bit before second swap
       await this.sleep(5000);
 
-      console.log("📤 Executing second swap (STRK → ETH)...");
+      console.log("Executing second swap (STRK -> ETH)...");
 
       const result2 = await executeSwap({
         provider: this.account,
@@ -257,10 +272,10 @@ class DeFiAgent {
         executeApprove: true,
       });
 
-      console.log(`   ✅ Swap 2 complete: ${result2.transactionHash}`);
+      console.log(`   Swap 2 complete: ${result2.transactionHash}`);
 
     } catch (error) {
-      console.error("❌ Error executing arbitrage:", error);
+      console.error("Error executing arbitrage:", error);
     }
   }
 
@@ -290,7 +305,7 @@ class DeFiAgent {
 async function main() {
   // Validate environment
   if (!CONFIG.ACCOUNT_ADDRESS || !CONFIG.PRIVATE_KEY) {
-    console.error("❌ Missing environment variables!");
+    console.error("Missing environment variables!");
     console.error("   Please set STARKNET_ACCOUNT_ADDRESS and STARKNET_PRIVATE_KEY");
     process.exit(1);
   }
@@ -299,7 +314,7 @@ async function main() {
 
   // Handle graceful shutdown
   process.on("SIGINT", () => {
-    console.log("\n\n📊 Final Stats:");
+    console.log("\n\nFinal Stats:");
     const stats = agent.getStats();
     console.log(`   Trades Executed: ${stats.trades}`);
     console.log(`   Agent Address: ${stats.address}`);
