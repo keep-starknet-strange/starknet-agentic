@@ -99,24 +99,24 @@ export default async function runTests() {
     const validatorAccountAddress = ozAccounts.clientAccount.address;
     
     // Connect to accounts
-    const agentOwner = new Account(provider, agentOwnerAccountAddress, agentOwnerPrivateKey);
-    const validator = new Account(provider, validatorAccountAddress, validatorPrivateKey);
+    const agentOwner = new Account({ provider, address: agentOwnerAccountAddress, signer: agentOwnerPrivateKey });
+    const validator = new Account({ provider, address: validatorAccountAddress, signer: validatorPrivateKey });
 
     console.log(`   👤 Agent Owner: ${agentOwner.address.slice(0, 16)}...`);
     console.log(`   👤 Validator:   ${validator.address.slice(0, 16)}...\n`);
     console.log('   ✅ Accounts Loaded\n');
     
     // Create contract instances
-    const identityRegistry = new Contract(
-      identityAbi,
-      deploymentInfo.contracts.identityRegistry.address,
-      agentOwner
-    );
-    const validationRegistry = new Contract(
-      validationAbi,
-      deploymentInfo.contracts.validationRegistry.address,
-      agentOwner
-    );
+    const identityRegistry = new Contract({
+      abi: identityAbi,
+      address: deploymentInfo.contracts.identityRegistry.address,
+      providerOrAccount: agentOwner,
+    });
+    const validationRegistry = new Contract({
+      abi: validationAbi,
+      address: deploymentInfo.contracts.validationRegistry.address,
+      providerOrAccount: agentOwner,
+    });
     
     // Save account info
     testData.accounts = {
@@ -203,14 +203,14 @@ export default async function runTests() {
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Create fresh account instance to clear any cached state
-    const freshAgentOwner = new Account(provider, agentOwnerAccountAddress, agentOwnerPrivateKey);
-    
+    const freshAgentOwner = new Account({ provider, address: agentOwnerAccountAddress, signer: agentOwnerPrivateKey });
+
     // Reconnect with fresh contract instance
-    const validationRegistryForRequest = new Contract(
-      validationAbi,
-      deploymentInfo.contracts.validationRegistry.address,
-      freshAgentOwner
-    );
+    const validationRegistryForRequest = new Contract({
+      abi: validationAbi,
+      address: deploymentInfo.contracts.validationRegistry.address,
+      providerOrAccount: freshAgentOwner,
+    });
     
     const requestUri1 = 'ipfs://validation-req1.json';
     // Use timestamp to ensure uniqueness

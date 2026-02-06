@@ -62,7 +62,7 @@ console.log(agentCard);
 import { Account, RpcProvider } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: RPC_URL });
-const account = new Account(provider, ADDRESS, PRIVATE_KEY);
+const account = new Account({ provider, address: ADDRESS, signer: PRIVATE_KEY });
 
 const txHash = await adapter.registerAgent(account, {
   name: "My Agent",

@@ -1,4 +1,4 @@
-import { Account, Contract, RpcProvider, cairo, shortString, constants } from 'starknet';
+import { Account, Contract, RpcProvider, cairo, shortString } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -23,12 +23,6 @@ const deploymentInfo = JSON.parse(fs.readFileSync(addressesPath, 'utf8'));
 export const rpcUrl = deploymentInfo.rpcUrl;
 export const provider = new RpcProvider({
   nodeUrl: rpcUrl,
-  chainId: constants.StarknetChainId.SN_SEPOLIA,
-  // Use 'latest' block instead of 'pending' for better compatibility
-  blockIdentifier: 'latest',
-  retries: 3,
-  // Skip spec version check as Alchemy may report different versions
-  skipSpecVersionCheck: true
 });
 
 console.log(`📡 Connected to: ${rpcUrl}`);
@@ -55,23 +49,23 @@ const reputationAbi = loadAbi('ReputationRegistry');
 const validationAbi = loadAbi('ValidationRegistry');
 
 // Create contract instances
-export const identityRegistry = new Contract(
-  identityAbi,
-  deploymentInfo.contracts.identityRegistry.address,
-  provider
-);
+export const identityRegistry = new Contract({
+  abi: identityAbi,
+  address: deploymentInfo.contracts.identityRegistry.address,
+  providerOrAccount: provider,
+});
 
-export const reputationRegistry = new Contract(
-  reputationAbi,
-  deploymentInfo.contracts.reputationRegistry.address,
-  provider
-);
+export const reputationRegistry = new Contract({
+  abi: reputationAbi,
+  address: deploymentInfo.contracts.reputationRegistry.address,
+  providerOrAccount: provider,
+});
 
-export const validationRegistry = new Contract(
-  validationAbi,
-  deploymentInfo.contracts.validationRegistry.address,
-  provider
-);
+export const validationRegistry = new Contract({
+  abi: validationAbi,
+  address: deploymentInfo.contracts.validationRegistry.address,
+  providerOrAccount: provider,
+});
 
 // Sepolia testnet accounts
 export const SEPOLIA_ACCOUNT_1 = {
@@ -98,13 +92,7 @@ export function createAccount(accountIndex = 0) {
   }
 
   const { address, privateKey } = PREDEPLOYED_ACCOUNTS[accountIndex];
-  const account = new Account(provider, address, privateKey);
-
-  // Clear nonce cache to ensure fresh nonce is fetched from network
-  // This prevents "invalid nonce" errors from previous test runs
-  if (account.signer && account.signer.nonce !== undefined) {
-    delete account.signer.nonce;
-  }
+  const account = new Account({ provider, address, signer: privateKey });
 
   return account;
 }

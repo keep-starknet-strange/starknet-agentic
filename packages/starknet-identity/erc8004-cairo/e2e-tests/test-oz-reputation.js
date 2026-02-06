@@ -105,7 +105,7 @@ async function main() {
     
     const funderAddress = '0x04a6b1f403E879B54Ba3e68072FE4C3aAf8Eb3617a51d8fea59b769432AbBF50';
     const funderPrivateKey = '0x0038ea6d7f8df0f1d3d29004deb72390028c1d15be04f1b089f9841d235a7d33';
-    const funderAccount = new Account(provider, funderAddress, funderPrivateKey);
+    const funderAccount = new Account({ provider, address: funderAddress, signer: funderPrivateKey });
     
     console.log(`💰 Funder: ${funderAddress.slice(0, 18)}...`);
     console.log('   ✅ Connected\n');
@@ -170,8 +170,8 @@ async function main() {
     console.log('Test 3: Connect to Existing Accounts');
     console.log('────────────────────────────────────────');
     
-    const agentOwnerAccount = new Account(provider, agentOwnerAccountAddress, agentOwnerPrivateKey);
-    const clientAccount = new Account(provider, clientAccountAddress, clientPrivateKey);
+    const agentOwnerAccount = new Account({ provider, address: agentOwnerAccountAddress, signer: agentOwnerPrivateKey });
+    const clientAccount = new Account({ provider, address: clientAccountAddress, signer: clientPrivateKey });
     
     console.log('   Agent Owner account connected');
     console.log('   Client account connected');
@@ -184,11 +184,11 @@ async function main() {
     console.log('Test 4: Register Agent (Agent Owner)');
     console.log('────────────────────────────────────────');
     
-    const identityRegistry = new Contract(
-      identityAbi,
-      deploymentInfo.contracts.identityRegistry.address,
-      agentOwnerAccount
-    );
+    const identityRegistry = new Contract({
+      abi: identityAbi,
+      address: deploymentInfo.contracts.identityRegistry.address,
+      providerOrAccount: agentOwnerAccount,
+    });
     
     const registerTx = await identityRegistry.register_with_token_uri('ipfs://oz-agent.json');
     await waitForTx(registerTx.transaction_hash, agentOwnerAccount);
@@ -213,11 +213,11 @@ async function main() {
     console.log('Test 5: Get Identity Registry');
     console.log('────────────────────────────────────────');
     
-    const reputationRegistry = new Contract(
-      reputationAbi,
-      deploymentInfo.contracts.reputationRegistry.address,
-      clientAccount
-    );
+    const reputationRegistry = new Contract({
+      abi: reputationAbi,
+      address: deploymentInfo.contracts.reputationRegistry.address,
+      providerOrAccount: clientAccount,
+    });
     
     const identityRegAddr = await reputationRegistry.get_identity_registry();
     console.log(`   Identity Registry: ${identityRegAddr.toString(16).slice(0, 16)}...`);

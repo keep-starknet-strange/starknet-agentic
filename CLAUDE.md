@@ -268,6 +268,7 @@ Always consult `references/` before relying on training data for Starknet-specif
 | pnpm install fails | Ensure pnpm installed globally. Node 18+ required. |
 | E2E tests fail | Check `.env` has valid Sepolia RPC URL and funded account. |
 | Git submodule empty (`references/starknet-docs/`) | Run `git submodule update --init --recursive` |
-| starknet.js type errors | Currently mixed v6/v7/v8 across packages. Target: v8 for all (see ROADMAP 1.0). |
+| starknet.js type errors | All packages standardized on v8.9.1. Use object-form constructors: `new Account({ provider, address, signer })` and `new Contract({ abi, address, providerOrAccount })`. |
+
 
 </troubleshooting>
