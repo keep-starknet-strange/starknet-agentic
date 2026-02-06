@@ -51,12 +51,16 @@ npm install starknet
 ### Register a New Agent
 
 ```typescript
-import { Account, RpcProvider, Contract, CallData, constants } from "starknet";
+import { Account, RpcProvider, Contract, CallData } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
-const account = new Account(provider, address, privateKey, undefined, constants.TRANSACTION_VERSION.V3);
+const account = new Account({ provider, address, signer: privateKey });
 
-const identityRegistry = new Contract(identityRegistryAbi, registryAddress, account);
+const identityRegistry = new Contract({
+  abi: identityRegistryAbi,
+  address: registryAddress,
+  providerOrAccount: account,
+});
 
 // Register with metadata
 const metadata = [
@@ -159,7 +163,11 @@ await clientAccount.execute({
 ### Query Reputation
 
 ```typescript
-const reputationRegistry = new Contract(reputationAbi, reputationAddress, provider);
+const reputationRegistry = new Contract({
+  abi: reputationAbi,
+  address: reputationAddress,
+  providerOrAccount: provider,
+});
 
 // Get summary for an agent (count + average score)
 const [count, avgScore] = await reputationRegistry.get_summary(
@@ -185,7 +193,11 @@ const clients = await reputationRegistry.get_clients(agentId);
 ### Request Validation
 
 ```typescript
-const validationRegistry = new Contract(validationAbi, validationAddress, account);
+const validationRegistry = new Contract({
+  abi: validationAbi,
+  address: validationAddress,
+  providerOrAccount: account,
+});
 
 // Agent owner requests validation from a specific validator
 await account.execute({

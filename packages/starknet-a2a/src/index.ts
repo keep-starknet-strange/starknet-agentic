@@ -195,11 +195,11 @@ export class StarknetA2AAdapter {
    * Generate an A2A Agent Card from on-chain identity
    */
   async generateAgentCard(agentId: string): Promise<AgentCard> {
-    const identityRegistry = new Contract(
-      IDENTITY_REGISTRY_ABI,
-      this.identityRegistryAddress,
-      this.provider
-    );
+    const identityRegistry = new Contract({
+      abi: IDENTITY_REGISTRY_ABI,
+      address: this.identityRegistryAddress,
+      providerOrAccount: this.provider,
+    });
 
     try {
       // Fetch agent metadata from Identity Registry
@@ -215,21 +215,21 @@ export class StarknetA2AAdapter {
       let validationCount: number | undefined;
 
       if (this.reputationRegistryAddress) {
-        const reputationRegistry = new Contract(
-          REPUTATION_REGISTRY_ABI,
-          this.reputationRegistryAddress,
-          this.provider
-        );
+        const reputationRegistry = new Contract({
+          abi: REPUTATION_REGISTRY_ABI,
+          address: this.reputationRegistryAddress,
+          providerOrAccount: this.provider,
+        });
         const summary = await reputationRegistry.get_reputation_summary(agentId);
         reputationScore = Number(summary.average_score);
       }
 
       if (this.validationRegistryAddress) {
-        const validationRegistry = new Contract(
-          VALIDATION_REGISTRY_ABI,
-          this.validationRegistryAddress,
-          this.provider
-        );
+        const validationRegistry = new Contract({
+          abi: VALIDATION_REGISTRY_ABI,
+          address: this.validationRegistryAddress,
+          providerOrAccount: this.provider,
+        });
         const count = await validationRegistry.get_validation_count(agentId);
         validationCount = Number(count);
       }
@@ -275,11 +275,11 @@ export class StarknetA2AAdapter {
       capabilities?: string[];
     }
   ): Promise<string> {
-    const identityRegistry = new Contract(
-      IDENTITY_REGISTRY_ABI,
-      this.identityRegistryAddress,
-      account
-    );
+    const identityRegistry = new Contract({
+      abi: IDENTITY_REGISTRY_ABI,
+      address: this.identityRegistryAddress,
+      providerOrAccount: account,
+    });
 
     try {
       const capabilities = metadata.capabilities || [];
