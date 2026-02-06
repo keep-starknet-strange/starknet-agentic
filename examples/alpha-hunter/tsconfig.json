@@ -9,6 +9,7 @@
         "outDir": "./dist"
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "tests/**/*"
     ]
 }

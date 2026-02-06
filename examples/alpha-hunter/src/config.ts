@@ -4,7 +4,7 @@ dotenv.config();
 
 export const CONFIG = {
     starknet: {
-        nodeUrl: process.env.STARKNET_RPC_URL || 'https://starknet-mainnet.public.blastapi.io',
+        nodeUrl: process.env.STARKNET_NODE_URL || 'https://starknet-mainnet.public.blastapi.io',
         agentAccount: process.env.STARKNET_AGENT_ACCOUNT,
         agentPrivateKey: process.env.STARKNET_AGENT_KEY,
     },
@@ -14,8 +14,9 @@ export const CONFIG = {
     }
 };
 
-export const IS_SIMULATION = !CONFIG.starknet.agentAccount || !CONFIG.starknet.agentPrivateKey;
+// Explicitly check for boolean string 'true' from env, or fallback to key presence check
+export const IS_SIMULATION = process.env.SIMULATION === 'true' || process.env.IS_SIMULATION === 'true' || (!CONFIG.starknet.agentAccount || !CONFIG.starknet.agentPrivateKey);
 
 if (IS_SIMULATION) {
-    console.warn("⚠️  Running in SIMULATION MODE (Missing STARKNET_AGENT_ACCOUNT or STARKNET_AGENT_KEY)");
+    console.warn("⚠️  Running in SIMULATION MODE");
 }

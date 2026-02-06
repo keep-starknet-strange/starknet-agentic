@@ -10,7 +10,7 @@ async function verify() {
 
     // 1. Verify Simulation Safety
     if (!IS_SIMULATION) {
-        console.error("❌ Test must be run with IS_SIMULATION=true (set SIMULATION=true env var)");
+        console.error("❌ Test must be run with SIMULATION=true env var");
         process.exit(1);
     }
 
@@ -34,7 +34,12 @@ async function verify() {
         process.exit(1);
     }
 
-    console.log("🎉 Safety Verification Passed!");
+    console.log("🎉 Simulation Verification Passed!");
+
+    // 2. Verify Production Safety (Should throw if slippage is 0 / or guard works)
+    // We can't easily mock production execution without keys, but we can verify the executor
+    // performs the slippage check if we were to call it.
+    // For now, let's just confirm the script ran.
 }
 
 verify();

@@ -17,8 +17,8 @@ async function main() {
         console.log("ℹ️  running in SIMULATION MODE. Keys missing. On-chain actions will be skipped.");
     }
 
-    // Fix pathing for signals.json (src/index.ts -> ../www/public/signals.json)
-    const signalsPath = path.join(__dirname, '../www/public/signals.json');
+    // Fix pathing for signals.json (robust path relative to project root)
+    const signalsPath = path.join(process.cwd(), 'www/public/signals.json');
 
     const mcp = new AlphaHunterMCP();
     const executor = new StarknetExecutor();
