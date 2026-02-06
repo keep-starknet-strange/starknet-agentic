@@ -1,5 +1,11 @@
-import 'dotenv/config';
-import { Account, RpcProvider, Contract, CallData, cairo, uint256 } from 'starknet';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { Account, RpcProvider, Contract, CallData, cairo } from 'starknet';
+
+// Load .env from script's directory (works regardless of cwd)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(__dirname, '.env') });
 
 const env = {
   STARKNET_RPC_URL: process.env.STARKNET_RPC_URL,
@@ -12,34 +18,47 @@ for (const k of Object.keys(env)) {
   if (!env[k]) throw new Error(`Missing env var: ${k}`);
 }
 
+// starknet.js v8 uses options objects
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL });
-const account = new Account({ provider, address: env.STARKNET_ACCOUNT_ADDRESS, signer: env.STARKNET_PRIVATE_KEY });
+const account = new Account({
+  provider,
+  address: env.STARKNET_ACCOUNT_ADDRESS,
+  signer: env.STARKNET_PRIVATE_KEY,
+});
 
 const TOKEN_ADDRESS = env.TOKEN_ADDRESS;
 
+// Cairo 1 style ABI for ERC20
 const ERC20_ABI = [
   {
-    name: 'balanceOf',
-    type: 'function',
-    inputs: [{ name: 'account', type: 'felt' }],
-    outputs: [{ name: 'balance', type: 'Uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    name: 'decimals',
-    type: 'function',
-    inputs: [],
-    outputs: [{ name: 'decimals', type: 'felt' }],
-    stateMutability: 'view',
-  },
-  {
-    name: 'transfer',
-    type: 'function',
-    inputs: [
-      { name: 'recipient', type: 'felt' },
-      { name: 'amount', type: 'Uint256' },
+    type: 'interface',
+    name: 'openzeppelin::token::erc20::interface::IERC20',
+    items: [
+      {
+        type: 'function',
+        name: 'balance_of',
+        inputs: [{ name: 'account', type: 'core::starknet::contract_address::ContractAddress' }],
+        outputs: [{ type: 'core::integer::u256' }],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'decimals',
+        inputs: [],
+        outputs: [{ type: 'core::integer::u8' }],
+        state_mutability: 'view',
+      },
+      {
+        type: 'function',
+        name: 'transfer',
+        inputs: [
+          { name: 'recipient', type: 'core::starknet::contract_address::ContractAddress' },
+          { name: 'amount', type: 'core::integer::u256' },
+        ],
+        outputs: [{ type: 'core::bool' }],
+        state_mutability: 'external',
+      },
     ],
-    outputs: [{ name: 'success', type: 'felt' }],
   },
 ];
 
@@ -59,8 +78,9 @@ async function main() {
 
   const token = new Contract({ abi: ERC20_ABI, address: TOKEN_ADDRESS, providerOrAccount: provider });
   const decimals = Number(await token.decimals());
-  const bal = await token.balanceOf(account.address);
-  const balBn = uint256.uint256ToBN(bal);
+  const balResult = await token.balance_of(account.address);
+  // In starknet.js v8 with Cairo 1 ABI, u256 returns as bigint
+  const balBn = typeof balResult === 'bigint' ? balResult : BigInt(balResult);
   console.log('token:', TOKEN_ADDRESS);
   console.log('balance:', formatAmount(balBn, decimals));
 

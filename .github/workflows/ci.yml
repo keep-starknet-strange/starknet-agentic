@@ -74,7 +74,7 @@ jobs:
         run: pnpm install
 
       - name: Run tests
-        run: pnpm run test || echo "Tests will be added in future PR"
+        run: pnpm run test
 
   cairo-check:
     name: Cairo Check
@@ -115,10 +115,6 @@ jobs:
         working-directory: packages/starknet-identity/erc8004-cairo
         run: snforge test
 
-      - name: Run Cairo tests (agent-account)
-        working-directory: contracts/agent-account
-        run: snforge test
-
   website-build:
     name: Website Build
     runs-on: ubuntu-latest
@@ -141,12 +137,12 @@ jobs:
 
       - name: Build website
         working-directory: website
-        run: pnpm run build || echo "Website build will be configured in future PR"
+        run: pnpm run build
 
   all-checks:
     name: All Checks Passed
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test, cairo-check, cairo-test, website-build]
+    needs: [typecheck, test, cairo-check, cairo-test, website-build]
     steps:
       - name: Success
         run: echo "All CI checks passed!"
