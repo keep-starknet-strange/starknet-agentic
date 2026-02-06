@@ -7,7 +7,7 @@ use openzeppelin::interfaces::erc721::{
 };
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
-    stop_cheat_caller_address,
+    start_cheat_block_timestamp, stop_cheat_block_timestamp, stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
 
@@ -37,6 +37,12 @@ fn deploy_registry() -> (IIdentityRegistryDispatcher, IERC721Dispatcher, Contrac
     let registry_dispatcher = IIdentityRegistryDispatcher { contract_address };
     let erc721_dispatcher = IERC721Dispatcher { contract_address };
     (registry_dispatcher, erc721_dispatcher, contract_address)
+}
+
+fn deploy_simple_mock_account() -> ContractAddress {
+    let contract = declare("SimpleMockAccount").unwrap().contract_class();
+    let (contract_address, _) = contract.deploy(@array![]).unwrap();
+    contract_address
 }
 
 // ============ Registration Tests ============
@@ -492,6 +498,74 @@ fn test_get_agent_wallet_initial() {
 }
 
 #[test]
+fn test_set_agent_wallet_success_with_valid_signature() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_simple_mock_account();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    registry.set_agent_wallet(agent_id, wallet, 100, array![1, 2, 3]);
+    stop_cheat_caller_address(registry_address);
+
+    assert_eq!(registry.get_agent_wallet(agent_id), wallet);
+}
+
+#[test]
+#[should_panic(expected: 'Not authorized')]
+fn test_set_agent_wallet_unauthorized_reverts() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_simple_mock_account();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    stop_cheat_caller_address(registry_address);
+
+    start_cheat_caller_address(registry_address, bob());
+    registry.set_agent_wallet(agent_id, wallet, 100, array![1]);
+    stop_cheat_caller_address(registry_address);
+}
+
+#[test]
+#[should_panic(expected: 'bad wallet')]
+fn test_set_agent_wallet_zero_address_reverts() {
+    let (registry, _, registry_address) = deploy_registry();
+    let zero_address: ContractAddress = 0.try_into().unwrap();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    registry.set_agent_wallet(agent_id, zero_address, 100, array![]);
+    stop_cheat_caller_address(registry_address);
+}
+
+#[test]
+#[should_panic(expected: 'expired')]
+fn test_set_agent_wallet_expired_deadline_reverts() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_simple_mock_account();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    start_cheat_block_timestamp(registry_address, 100);
+    registry.set_agent_wallet(agent_id, wallet, 99, array![1]);
+    stop_cheat_block_timestamp(registry_address);
+    stop_cheat_caller_address(registry_address);
+}
+
+#[test]
+#[should_panic(expected: 'deadline too far')]
+fn test_set_agent_wallet_deadline_too_far_reverts() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_simple_mock_account();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    start_cheat_block_timestamp(registry_address, 100);
+    registry.set_agent_wallet(agent_id, wallet, 401, array![1]);
+    stop_cheat_block_timestamp(registry_address);
+    stop_cheat_caller_address(registry_address);
+}
+
+#[test]
 fn test_unset_agent_wallet() {
     let (registry, _, registry_address) = deploy_registry();
 
@@ -583,4 +657,122 @@ fn test_is_authorized_or_owner() {
 
     // Now Bob should be authorized
     assert!(registry.is_authorized_or_owner(bob(), agent_id));
+}
+
+// ============ Security Regression Tests ============
+
+#[test]
+#[should_panic(expected: 'Not authorized')]
+fn test_unset_agent_wallet_unauthorized_reverts() {
+    // SECURITY: Only owner/approved can unset wallet.
+    let (registry, _, registry_address) = deploy_registry();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    stop_cheat_caller_address(registry_address);
+
+    // Bob tries to unset wallet (should fail)
+    start_cheat_caller_address(registry_address, bob());
+    registry.unset_agent_wallet(agent_id);
+    stop_cheat_caller_address(registry_address);
+}
+
+#[test]
+fn test_metadata_isolation_between_agents() {
+    // SECURITY: Metadata set on one agent should not leak to another.
+    let (registry, _, registry_address) = deploy_registry();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id1 = registry.register();
+    let agent_id2 = registry.register();
+
+    registry.set_metadata(agent_id1, "secret", "agent1_data");
+    stop_cheat_caller_address(registry_address);
+
+    // Agent 2 should not have agent 1's metadata
+    let value = registry.get_metadata(agent_id2, "secret");
+    assert_eq!(value.len(), 0, "Agent 2 should not have agent 1's metadata");
+}
+
+#[test]
+fn test_wallet_cleared_on_transfer_then_new_owner_can_set() {
+    // Verify wallet is cleared on transfer, and new owner can re-set metadata.
+    let (registry, erc721, registry_address) = deploy_registry();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    stop_cheat_caller_address(registry_address);
+
+    // Verify alice's wallet
+    assert_eq!(registry.get_agent_wallet(agent_id), alice());
+
+    // Transfer to bob
+    start_cheat_caller_address(registry_address, alice());
+    erc721.transfer_from(alice(), bob(), agent_id);
+    stop_cheat_caller_address(registry_address);
+
+    // Wallet should be cleared
+    let zero_addr: ContractAddress = 0.try_into().unwrap();
+    assert_eq!(registry.get_agent_wallet(agent_id), zero_addr);
+
+    // Bob (new owner) can set metadata
+    start_cheat_caller_address(registry_address, bob());
+    registry.set_metadata(agent_id, "status", "transferred");
+    stop_cheat_caller_address(registry_address);
+
+    assert_eq!(registry.get_metadata(agent_id, "status"), "transferred");
+}
+
+#[test]
+fn test_agent_id_sequential_no_gaps() {
+    // Agent IDs should be sequential starting from 1.
+    let (registry, _, registry_address) = deploy_registry();
+
+    start_cheat_caller_address(registry_address, alice());
+    let id1 = registry.register();
+    let id2 = registry.register();
+    let id3 = registry.register();
+    stop_cheat_caller_address(registry_address);
+
+    assert_eq!(id1, 1);
+    assert_eq!(id2, 2);
+    assert_eq!(id3, 3);
+    assert_eq!(registry.total_agents(), 3);
+}
+
+#[test]
+fn test_approved_operator_can_set_and_unset_wallet() {
+    // Approved operator should have full metadata control.
+    let (registry, erc721, registry_address) = deploy_registry();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    erc721.approve(bob(), agent_id);
+    stop_cheat_caller_address(registry_address);
+
+    // Bob (approved) can unset wallet
+    start_cheat_caller_address(registry_address, bob());
+    registry.unset_agent_wallet(agent_id);
+    stop_cheat_caller_address(registry_address);
+
+    let zero_addr: ContractAddress = 0.try_into().unwrap();
+    assert_eq!(registry.get_agent_wallet(agent_id), zero_addr);
+}
+
+#[test]
+fn test_approval_for_all_operator_can_manage_metadata() {
+    let (registry, erc721, registry_address) = deploy_registry();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    erc721.set_approval_for_all(bob(), true);
+    stop_cheat_caller_address(registry_address);
+
+    // Bob (approved-for-all) can set URI
+    start_cheat_caller_address(registry_address, bob());
+    registry.set_agent_uri(agent_id, "ipfs://new_uri");
+    stop_cheat_caller_address(registry_address);
+
+    let metadata_dispatcher = IERC721MetadataDispatcher { contract_address: registry_address };
+    assert_eq!(metadata_dispatcher.token_uri(agent_id), "ipfs://new_uri");
 }
