@@ -7,6 +7,8 @@ pub struct SessionPolicy {
     pub spending_limit: u256,
     pub spending_token: ContractAddress,
     pub allowed_contract: ContractAddress,
+    /// Reserved for future enforcement via __execute__ override.
+    /// Not enforced at runtime in the current implementation.
     pub max_calls_per_tx: u32,
 }
 
