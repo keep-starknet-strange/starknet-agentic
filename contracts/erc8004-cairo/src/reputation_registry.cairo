@@ -137,6 +137,9 @@ pub mod ReputationRegistry {
             feedback_uri: ByteArray,
             feedback_hash: u256,
         ) {
+            // Reentrancy protection around external identity-registry call + state writes
+            self.reentrancy_guard.start();
+
             // Validate value_decimals (0-18)
             assert(value_decimals <= 18, 'too many decimals');
 
@@ -197,6 +200,8 @@ pub mod ReputationRegistry {
                         },
                     ),
                 );
+
+            self.reentrancy_guard.end();
         }
 
         fn revoke_feedback(ref self: ContractState, agent_id: u256, feedback_index: u64) {
@@ -234,6 +239,10 @@ pub mod ReputationRegistry {
 
             let last_idx = self.last_index.entry((agent_id, client_address)).read();
             assert(feedback_index <= last_idx, 'index out of bounds');
+
+            // SECURITY: Prevent responding to revoked feedback
+            let fb = self.feedback_core.entry((agent_id, client_address, feedback_index)).read();
+            assert(!fb.is_revoked, 'Feedback is revoked');
 
             let caller = get_caller_address();
 
@@ -362,12 +371,16 @@ pub mod ReputationRegistry {
                 let net_sum = sum_positive - sum_negative;
                 let avg_wad = net_sum / count_u256;
                 let scaled = avg_wad / scale_factor;
+                let max_abs_u128: u128 = MAX_ABS_VALUE.try_into().unwrap();
+                assert(scaled.high == 0 && scaled.low <= max_abs_u128, 'summary overflow');
                 let val: i128 = scaled.low.try_into().unwrap();
                 (val, true)
             } else {
                 let net_sum = sum_negative - sum_positive;
                 let avg_wad = net_sum / count_u256;
                 let scaled = avg_wad / scale_factor;
+                let max_abs_u128: u128 = MAX_ABS_VALUE.try_into().unwrap();
+                assert(scaled.high == 0 && scaled.low <= max_abs_u128, 'summary overflow');
                 let val: i128 = -(scaled.low.try_into().unwrap());
                 (val, false)
             };
