@@ -388,6 +388,150 @@ pub mod ReputationRegistry {
             (count, summary_value, mode_decimals)
         }
 
+        fn get_summary_paginated(
+            self: @ContractState,
+            agent_id: u256,
+            client_addresses: Span<ContractAddress>,
+            tag1: ByteArray,
+            tag2: ByteArray,
+            client_offset: u32,
+            client_limit: u32,
+            feedback_offset: u64,
+            feedback_limit: u64,
+        ) -> (u64, i128, u8, bool) {
+            // clientAddresses required (matches Solidity-style trust model)
+            assert(client_addresses.len() > 0, 'clientAddresses required');
+
+            // Degenerate window: no scan, caller can advance pagination window.
+            if client_limit == 0 || feedback_limit == 0 {
+                return (0, 0, 0, client_offset < client_addresses.len());
+            }
+
+            // Track positive and negative sums separately (WAD = 18 decimals)
+            let mut sum_positive: u256 = 0;
+            let mut sum_negative: u256 = 0;
+            let mut count: u64 = 0;
+            let mut truncated = false;
+
+            // Track frequency of each valueDecimals (0-18)
+            let mut decimal_counts: Felt252Dict<u64> = Default::default();
+
+            let mut i: u32 = client_offset;
+            let mut scanned_clients: u32 = 0;
+            while i < client_addresses.len() && scanned_clients < client_limit {
+                let client = *client_addresses.at(i);
+                let last_idx = self.last_index.entry((agent_id, client)).read();
+
+                if feedback_offset < last_idx {
+                    let mut j: u64 = feedback_offset + 1;
+                    let mut scanned_feedbacks: u64 = 0;
+
+                    while j <= last_idx && scanned_feedbacks < feedback_limit {
+                        let fb = self.feedback_core.entry((agent_id, client, j)).read();
+
+                        // Skip revoked feedback
+                        if fb.is_revoked {
+                            j += 1;
+                            scanned_feedbacks += 1;
+                            continue;
+                        }
+
+                        // Apply tag filters
+                        if tag1.len() > 0 {
+                            let stored_tag1 = self.feedback_tag1.entry((agent_id, client, j)).read();
+                            if stored_tag1 != tag1 {
+                                j += 1;
+                                scanned_feedbacks += 1;
+                                continue;
+                            }
+                        }
+                        if tag2.len() > 0 {
+                            let stored_tag2 = self.feedback_tag2.entry((agent_id, client, j)).read();
+                            if stored_tag2 != tag2 {
+                                j += 1;
+                                scanned_feedbacks += 1;
+                                continue;
+                            }
+                        }
+
+                        // Normalize to 18 decimals (WAD)
+                        let factor: u256 = self._pow10_u256((18 - fb.value_decimals).into());
+
+                        // Handle signed value: split into positive and negative
+                        if fb.value >= 0 {
+                            let abs_val: u128 = fb.value.try_into().unwrap();
+                            sum_positive += abs_val.into() * factor;
+                        } else {
+                            let abs_val: u128 = (-fb.value).try_into().unwrap();
+                            sum_negative += abs_val.into() * factor;
+                        }
+
+                        // Track decimal frequency
+                        let dec_key: felt252 = fb.value_decimals.into();
+                        let current_count = decimal_counts.get(dec_key);
+                        decimal_counts.insert(dec_key, current_count + 1);
+
+                        count += 1;
+                        j += 1;
+                        scanned_feedbacks += 1;
+                    };
+
+                    if j <= last_idx {
+                        truncated = true;
+                    }
+                }
+
+                i += 1;
+                scanned_clients += 1;
+            };
+
+            if i < client_addresses.len() {
+                truncated = true;
+            }
+
+            if count == 0 {
+                return (0, 0, 0, truncated);
+            }
+
+            // Find mode (most frequent valueDecimals)
+            let mut mode_decimals: u8 = 0;
+            let mut max_count: u64 = 0;
+            let mut d: u8 = 0;
+            while d <= 18 {
+                let dec_count = decimal_counts.get(d.into());
+                if dec_count > max_count {
+                    max_count = dec_count;
+                    mode_decimals = d;
+                }
+                d += 1;
+            };
+
+            // Calculate average in WAD, then scale to mode precision
+            let count_u256: u256 = count.into();
+            let scale_factor: u256 = self._pow10_u256((18 - mode_decimals).into());
+
+            // Calculate signed average
+            let summary_value = if sum_positive >= sum_negative {
+                let net_sum = sum_positive - sum_negative;
+                let avg_wad = net_sum / count_u256;
+                let scaled = avg_wad / scale_factor;
+                let max_abs_u128: u128 = MAX_ABS_VALUE.try_into().unwrap();
+                assert(scaled.high == 0 && scaled.low <= max_abs_u128, 'summary overflow');
+                let val: i128 = scaled.low.try_into().unwrap();
+                val
+            } else {
+                let net_sum = sum_negative - sum_positive;
+                let avg_wad = net_sum / count_u256;
+                let scaled = avg_wad / scale_factor;
+                let max_abs_u128: u128 = MAX_ABS_VALUE.try_into().unwrap();
+                assert(scaled.high == 0 && scaled.low <= max_abs_u128, 'summary overflow');
+                let val: i128 = -(scaled.low.try_into().unwrap());
+                val
+            };
+
+            (count, summary_value, mode_decimals, truncated)
+        }
+
         fn read_feedback(
             self: @ContractState, agent_id: u256, client_address: ContractAddress, index: u64,
         ) -> (i128, u8, ByteArray, ByteArray, bool) {

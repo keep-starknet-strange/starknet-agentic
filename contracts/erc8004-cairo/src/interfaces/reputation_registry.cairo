@@ -102,6 +102,23 @@ pub trait IReputationRegistry<TState> {
         tag2: ByteArray,
     ) -> (u64, i128, u8);
 
+    /// Get aggregated summary of feedback over a bounded window.
+    /// Returns (count, summaryValue, summaryValueDecimals, truncated)
+    /// - client_offset/client_limit paginate the client list
+    /// - feedback_offset/feedback_limit paginate feedback entries per client
+    /// - truncated=true means additional matching data exists outside this window
+    fn get_summary_paginated(
+        self: @TState,
+        agent_id: u256,
+        client_addresses: Span<ContractAddress>,
+        tag1: ByteArray,
+        tag2: ByteArray,
+        client_offset: u32,
+        client_limit: u32,
+        feedback_offset: u64,
+        feedback_limit: u64,
+    ) -> (u64, i128, u8, bool);
+
     /// Read a single feedback entry
     /// Returns (value, valueDecimals, tag1, tag2, isRevoked)
     fn read_feedback(

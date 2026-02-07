@@ -104,6 +104,20 @@ pub trait IValidationRegistry<TState> {
         tag: ByteArray,
     ) -> (u64, u8);
 
+    /// @notice Get aggregated validation statistics for an agent using request pagination
+    /// @param request_offset Starting request index in the agent validation list
+    /// @param request_limit Maximum number of requests to scan
+    /// @return (count, avg_response, truncated)
+    /// - truncated=true means there are additional requests after this page
+    fn get_summary_paginated(
+        self: @TState,
+        agent_id: u256,
+        validator_addresses: Span<ContractAddress>,
+        tag: ByteArray,
+        request_offset: u64,
+        request_limit: u64,
+    ) -> (u64, u8, bool);
+
     /// @notice Get all validation request hashes for an agent
     fn get_agent_validations(self: @TState, agent_id: u256) -> Array<u256>;
 

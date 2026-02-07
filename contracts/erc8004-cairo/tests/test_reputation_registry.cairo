@@ -589,6 +589,66 @@ fn test_get_summary_with_negative_values() {
 }
 
 #[test]
+fn test_get_summary_paginated_client_window() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 10, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client2(), 20, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, responder(), 30, 0, "tag1", "tag2",
+    );
+
+    let clients_filter = array![client(), client2(), responder()].span();
+    let (count, avg_value, avg_decimals, truncated) = reputation_registry.get_summary_paginated(
+        agent_id, clients_filter, "", "", 1, 1, 0, 10,
+    );
+
+    assert_eq!(count, 1);
+    assert_eq!(avg_value, 20);
+    assert_eq!(avg_decimals, 0);
+    assert(truncated, 'Expected truncated');
+}
+
+#[test]
+fn test_get_summary_paginated_full_window_not_truncated() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 10, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client2(), 20, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, responder(), 30, 0, "tag1", "tag2",
+    );
+
+    let clients_filter = array![client(), client2(), responder()].span();
+    let (count, avg_value, avg_decimals, truncated) = reputation_registry.get_summary_paginated(
+        agent_id, clients_filter, "", "", 0, 3, 0, 10,
+    );
+
+    assert_eq!(count, 3);
+    assert_eq!(avg_value, 20);
+    assert_eq!(avg_decimals, 0);
+    assert(!truncated, 'Expected full window');
+}
+
+#[test]
 fn test_get_summary_net_negative() {
     let (identity_registry, reputation_registry, identity_address, reputation_address) =
         deploy_contracts();

@@ -554,6 +554,64 @@ fn test_get_summary_excludes_unresponded() {
     assert_eq!(avg_response, 80);
 }
 
+#[test]
+fn test_get_summary_paginated_window() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 10, 0x1111, "",
+    );
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 20, 0x2222, "",
+    );
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 30, 0x3333, "",
+    );
+
+    let empty_validators = array![].span();
+    let (count, avg_response, truncated) = validation_registry.get_summary_paginated(
+        agent_id, empty_validators, "", 1, 1,
+    );
+
+    assert_eq!(count, 1);
+    assert_eq!(avg_response, 20);
+    assert(truncated, 'Expected truncated');
+}
+
+#[test]
+fn test_get_summary_paginated_full_window_not_truncated() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 10, 0x1111, "",
+    );
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 20, 0x2222, "",
+    );
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 30, 0x3333, "",
+    );
+
+    let empty_validators = array![].span();
+    let (count, avg_response, truncated) = validation_registry.get_summary_paginated(
+        agent_id, empty_validators, "", 0, 10,
+    );
+
+    assert_eq!(count, 3);
+    assert_eq!(avg_response, 20);
+    assert(!truncated, 'Expected full window');
+}
+
 // ============ Read Function Tests ============
 
 #[test]
