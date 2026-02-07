@@ -132,6 +132,8 @@ pub mod IdentityRegistry {
             if from != zero_address && to != zero_address {
                 // Clear wallet
                 contract.agent_wallets.entry(token_id).write(zero_address);
+                // Intentionally keep wallet_set_nonces monotonic across transfers.
+                // Replay is still prevented because owner + nonce + domain are hash-bound.
 
                 // Emit MetadataSet event with empty value
                 contract

@@ -66,6 +66,7 @@ The reserved key `agentWallet` is managed specially:
 - It can be updated only after proving control of the new wallet via `set_agent_wallet(...)` (SNIP-6 signature verification with domain-separated hash binding to chain + registry address).
 - Signatures are single-use: each agent has a wallet-set nonce (`get_wallet_set_nonce(agent_id)`) included in the signed hash.
 - It is cleared automatically on NFT transfer via the `before_update` hook so a new owner must re-verify.
+- Nonce is intentionally not reset on transfer; replay remains blocked because the signed hash binds both owner and nonce.
 - Helpers: `get_agent_wallet(agent_id)` and `unset_agent_wallet(agent_id)`.
 
 **Agent Registration File (Recommended Shape)**
