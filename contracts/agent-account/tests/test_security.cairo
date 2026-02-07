@@ -44,7 +44,7 @@ trait IDeclarer<TState> {
     fn __validate_declare__(self: @TState, class_hash: felt252) -> felt252;
 }
 
-// Dispatcher for OZ's __validate_deploy__ entrypoint
+// Dispatcher for __validate_deploy__ entrypoint (matches custom impl with factory param)
 #[starknet::interface]
 trait IDeployer<TState> {
     fn __validate_deploy__(
@@ -52,6 +52,7 @@ trait IDeployer<TState> {
         class_hash: felt252,
         contract_address_salt: felt252,
         public_key: felt252,
+        factory: starknet::ContractAddress,
     ) -> felt252;
 }
 
@@ -983,7 +984,7 @@ fn test_validate_deploy_owner_succeeds() {
     let (r, s) = owner_kp.sign(TX_HASH).unwrap();
     setup_owner_tx(addr, r, s);
 
-    let result = deployer.__validate_deploy__(0x11111, 0x22222, owner_kp.public_key);
+    let result = deployer.__validate_deploy__(0x11111, 0x22222, owner_kp.public_key, zero_addr());
     assert_eq!(result, starknet::VALIDATED);
 
     stop_cheat_caller_address(addr);
@@ -991,11 +992,10 @@ fn test_validate_deploy_owner_succeeds() {
 }
 
 #[test]
-#[should_panic(expected: 'Account: invalid signature')]
 fn test_validate_deploy_session_key_panics() {
     // Session key 3-element signatures must not pass __validate_deploy__.
-    // OZ's DeployableImpl calls validate_transaction() which only accepts
-    // 2-element owner signatures.
+    // Our custom __validate_deploy__ rejects non-2-element signatures by
+    // returning 0 (INVALID) rather than panicking.
     let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
     let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
     let (addr, _, agent) = deploy_agent_account(owner_kp.public_key);
@@ -1020,7 +1020,8 @@ fn test_validate_deploy_session_key_panics() {
     start_cheat_transaction_version_global(MIN_TX_VERSION);
     start_cheat_caller_address(addr, zero_addr());
 
-    deployer.__validate_deploy__(0x11111, 0x22222, owner_kp.public_key);
+    let result = deployer.__validate_deploy__(0x11111, 0x22222, owner_kp.public_key, zero_addr());
+    assert_eq!(result, 0);
 }
 
 // ===========================================================================
