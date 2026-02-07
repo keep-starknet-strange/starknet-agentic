@@ -22,6 +22,10 @@ fn validator() -> ContractAddress {
     0xB0B.try_into().unwrap()
 }
 
+fn validator2() -> ContractAddress {
+    0xC0C.try_into().unwrap()
+}
+
 fn deploy_contracts() -> (
     IIdentityRegistryDispatcher, IValidationRegistryDispatcher, ContractAddress, ContractAddress,
 ) {
@@ -53,34 +57,70 @@ fn fuzz_validation_same_responder_can_update(raw_first: u8, raw_second: u8) {
 
     let request_hash: u256 = 0x1111;
     start_cheat_caller_address(validation_address, agent_owner());
-    validation_registry.validation_request(agent_id, "ipfs://req", request_hash);
+    validation_registry.validation_request(validator(), agent_id, "ipfs://req", request_hash);
     stop_cheat_caller_address(validation_address);
 
-    let first = raw_first % 3;
-    let second = raw_second % 3;
+    let first = raw_first % 101;
+    let second = raw_second % 101;
 
     start_cheat_caller_address(validation_address, validator());
-    validation_registry.validation_response(agent_id, request_hash, first, "", 0, "");
-    validation_registry.validation_response(agent_id, request_hash, second, "", 0, "");
+    validation_registry.validation_response(request_hash, first, "", 0, "");
+    validation_registry.validation_response(request_hash, second, "", 0, "");
     stop_cheat_caller_address(validation_address);
 
-    let (resp, _, _, has_response) = validation_registry
-        .get_validation_status(validator(), agent_id, request_hash);
+    let (_, _, resp, _, _, _) = validation_registry.get_validation_status(request_hash);
 
     assert_eq!(resp, second);
-    assert(has_response, 'response missing');
 }
 
 #[test]
 #[fuzzer(runs: 64)]
-fn fuzz_validation_status_nonexistent_defaults(random_agent_id: u256, random_hash: u256) {
-    let (_, validation_registry, _, _) = deploy_contracts();
+fn fuzz_validation_status_pending_defaults(random_hash_seed: u256) {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
 
-    let (resp, timestamp, response_hash, has_response) = validation_registry
-        .get_validation_status(validator(), random_agent_id, random_hash);
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
 
+    // avoid zero to keep generated hash distinguishable from sentinel values
+    let random_hash = if random_hash_seed == 0 { 1 } else { random_hash_seed };
+
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(validator(), agent_id, "ipfs://req", random_hash);
+    stop_cheat_caller_address(validation_address);
+
+    let (stored_validator, stored_agent_id, resp, response_hash, tag, timestamp) = validation_registry
+        .get_validation_status(random_hash);
+
+    assert_eq!(stored_validator, validator());
+    assert_eq!(stored_agent_id, agent_id);
     assert_eq!(resp, 0);
-    assert_eq!(timestamp, 0);
     assert_eq!(response_hash, 0);
-    assert(!has_response, 'no response');
+    assert_eq!(tag, "");
+    assert_eq!(timestamp, 0);
+}
+
+#[test]
+#[should_panic(expected: 'Not validator')]
+#[fuzzer(runs: 64)]
+fn fuzz_validation_wrong_responder_always_reverts(raw_score: u8) {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let request_hash: u256 = 0x2222;
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(validator(), agent_id, "ipfs://req", request_hash);
+    stop_cheat_caller_address(validation_address);
+
+    let score = raw_score % 101;
+    start_cheat_caller_address(validation_address, validator2());
+    validation_registry.validation_response(request_hash, score, "", 0, "");
+    stop_cheat_caller_address(validation_address);
+
+    // unreachable
 }
