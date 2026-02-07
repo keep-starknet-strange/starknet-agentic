@@ -1,24 +1,59 @@
 # Starknet Agentic
 
-Build AI agents that can operate on Starknet with wallets, identity, and payment tools.
+Infrastructure for building AI agents that can act on Starknet.
 
-## What This Repo Contains
+## What This Repo Is
 
-- Cairo contracts for agent accounts and ERC-8004 identity/reputation/validation.
-- TypeScript packages for MCP tools, A2A adapter, payment signing, and agent passport metadata.
-- Reusable Starknet skills for wallet, payments, identity, and DeFi workflows.
-- Examples and a documentation website.
+`starknet-agentic` is a monorepo with:
 
-## Current Status
+- Cairo smart contracts for agent wallets, identity, reputation, and validation
+- TypeScript packages for MCP tools, A2A integration, and payment signing
+- Reusable skills for common Starknet agent capabilities
+- Examples and docs for integration
 
-| Component | Path | Status | Test Coverage Snapshot |
-|---|---|---|---|
-| Agent Account (session keys, policy enforcement) | `contracts/agent-account` | Active | 96 Cairo tests |
-| ERC-8004 Cairo (Identity/Reputation/Validation) | `contracts/erc8004-cairo` | Active | 126 Cairo tests |
-| Huginn Registry | `contracts/huginn-registry` | Active | 6 Cairo tests |
-| MCP Server | `packages/starknet-mcp-server` | Active | Vitest suite in package |
-| A2A Adapter | `packages/starknet-a2a` | Active | Vitest suite in package |
-| Skills | `skills/*` | Mixed (complete + template) | See each `SKILL.md` |
+If you are integrating agents, this repo gives you contract primitives + runtime tooling in one place.
+
+## What Works Today
+
+Snapshot at time of this README update:
+
+| Area | Path | Status |
+|---|---|---|
+| Agent Account contract | `contracts/agent-account` | Active, tested (96 Cairo tests) |
+| ERC-8004 Cairo contracts | `contracts/erc8004-cairo` | Active, tested (126 Cairo tests) |
+| Huginn registry contract | `contracts/huginn-registry` | Active, tested (6 Cairo tests) |
+| MCP package | `packages/starknet-mcp-server` | Active |
+| A2A package | `packages/starknet-a2a` | Active |
+| Additional packages | `packages/*` | Active/MVP by package |
+| Skills | `skills/*` | Mixed (complete + template) |
+
+## Architecture (Current)
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│                 Agent Frameworks / Apps                │
+│   OpenClaw / MoltBook  |  Daydreams  |  Lucid  |  ...  │
+├─────────────────────────────────────────────────────────┤
+│                Integration + Runtime Layer             │
+│      MCP Server      |       A2A Adapter       | Skills│
+├─────────────────────────────────────────────────────────┤
+│                 Packages / Tooling Layer               │
+│   Wallet + Payments  |  Identity Clients  | Utilities  │
+├─────────────────────────────────────────────────────────┤
+│                 Cairo Contract Layer                   │
+│ Agent Account | ERC-8004 Registries | Huginn Registry  │
+├─────────────────────────────────────────────────────────┤
+│                       Starknet L2                      │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Standards Compatibility
+
+| Standard | Purpose | Where in this repo |
+|---|---|---|
+| [MCP](https://modelcontextprotocol.io/) | Agent-to-tool execution | `packages/starknet-mcp-server` |
+| [A2A](https://a2a-protocol.org/) | Agent-to-agent workflows | `packages/starknet-a2a` |
+| [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) | Agent identity, reputation, validation | `contracts/erc8004-cairo` |
 
 ## Skills At A Glance
 
@@ -28,39 +63,10 @@ Build AI agents that can operate on Starknet with wallets, identity, and payment
 | `starknet-mini-pay` | P2P payments, invoices, QR flows, Telegram support | Complete |
 | `starknet-anonymous-wallet` | Privacy-focused wallet operations | Complete |
 | `starknet-defi` | DeFi actions (swaps/staking/lending/LP) | Template |
-| `starknet-identity` | ERC-8004 identity, reputation, validation workflows | Template |
-| `huginn-onboard` | Agent onboarding flow for Huginn patterns | In Progress |
+| `starknet-identity` | ERC-8004 identity/reputation/validation workflows | Template |
+| `huginn-onboard` | Huginn onboarding flow | In Progress |
 
-Full definitions and usage: `skills/` (each skill has its own `SKILL.md`).
-
-## Quick Start
-
-### 1. Install dependencies
-
-```bash
-pnpm install
-```
-
-### 2. Run monorepo checks
-
-```bash
-pnpm run build
-pnpm run test
-```
-
-### 3. Run Cairo checks locally
-
-```bash
-cd contracts/erc8004-cairo && scarb build && snforge test
-cd ../agent-account && scarb build && snforge test
-cd ../huginn-registry && scarb build && snforge test
-```
-
-### 4. Run the MCP server package in dev mode
-
-```bash
-pnpm --filter @starknet-agentic/mcp-server dev
-```
+Full definitions and usage are in `skills/*/SKILL.md`.
 
 ## Repository Layout
 
@@ -82,20 +88,55 @@ starknet-agentic/
 └── website/
 ```
 
-## Standards and Integrations
+## Quick Start
 
-This repo is built to work across the current agent stack:
+### 1) Install dependencies
 
-- MCP for tool execution (`packages/starknet-mcp-server`)
-- A2A for agent-to-agent patterns (`packages/starknet-a2a`)
-- ERC-8004 for on-chain identity and trust (`contracts/erc8004-cairo`)
+```bash
+pnpm install
+```
 
-## Deployment and Contract Details
+### 2) Run JS/TS monorepo checks
 
-For contract-specific documentation (interfaces, behavior, network addresses), see:
+```bash
+pnpm run build
+pnpm run test
+```
+
+### 3) Run Cairo checks locally
+
+```bash
+cd contracts/erc8004-cairo && scarb build && snforge test
+cd ../agent-account && scarb build && snforge test
+cd ../huginn-registry && scarb build && snforge test
+```
+
+### 4) Run MCP package in dev mode
+
+```bash
+pnpm --filter @starknet-agentic/mcp-server dev
+```
+
+## External Foundations
+
+These projects are important dependencies or ecosystem foundations for this repo:
+
+| Project | Role |
+|---|---|
+| [starknet.js](https://github.com/starknet-io/starknet.js) | TS SDK used across packages |
+| [OpenZeppelin Cairo](https://github.com/OpenZeppelin/cairo-contracts) | Base contract components/patterns |
+| [Daydreams](https://github.com/daydreamsai/daydreams) | Agent framework integration target |
+| [Lucid Agents](https://github.com/daydreamsai/lucid-agents) | Commerce + wallet interoperability target |
+| [OpenClaw / MoltBook](https://docs.openclaw.ai/) | Skill distribution and agent ecosystem |
+| [Cartridge Controller](https://docs.cartridge.gg/controller/getting-started) | Session-key wallet patterns on Starknet |
+
+## Contract Docs and Deployments
+
+For contract-specific behavior and deployment addresses:
 
 - `contracts/erc8004-cairo/README.md`
 - `contracts/agent-account/README.md`
+- `contracts/huginn-registry/README.md` (if present in this branch)
 
 ## Contributing
 
