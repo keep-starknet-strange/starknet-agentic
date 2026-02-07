@@ -54,6 +54,7 @@ pub trait IIdentityRegistry<TState> {
 
     // Agent wallet management
     fn get_agent_wallet(self: @TState, agent_id: u256) -> ContractAddress;
+    fn get_wallet_set_nonce(self: @TState, agent_id: u256) -> u64;
 
     fn set_agent_wallet(
         ref self: TState,

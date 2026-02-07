@@ -1,6 +1,7 @@
 use erc8004::interfaces::identity_registry::{
     IIdentityRegistryDispatcher, IIdentityRegistryDispatcherTrait, MetadataEntry,
 };
+use core::poseidon::poseidon_hash_span;
 use openzeppelin::interfaces::erc721::{
     IERC721Dispatcher, IERC721DispatcherTrait, IERC721MetadataDispatcher,
     IERC721MetadataDispatcherTrait,
@@ -9,7 +10,7 @@ use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     start_cheat_block_timestamp, stop_cheat_block_timestamp, stop_cheat_caller_address,
 };
-use starknet::ContractAddress;
+use starknet::{ContractAddress, get_tx_info};
 
 // Test addresses
 fn alice() -> ContractAddress {
@@ -43,6 +44,45 @@ fn deploy_simple_mock_account() -> ContractAddress {
     let contract = declare("SimpleMockAccount").unwrap().contract_class();
     let (contract_address, _) = contract.deploy(@array![]).unwrap();
     contract_address
+}
+
+fn deploy_strict_mock_account() -> ContractAddress {
+    let contract = declare("StrictMockAccount").unwrap().contract_class();
+    let (contract_address, _) = contract.deploy(@array![]).unwrap();
+    contract_address
+}
+
+fn compute_domain_separated_wallet_hash(
+    agent_id: u256,
+    new_wallet: ContractAddress,
+    owner_addr: ContractAddress,
+    deadline: u64,
+    nonce: u64,
+    registry_address: ContractAddress,
+) -> felt252 {
+    let tx_info = get_tx_info().unbox();
+    let mut hash_data = ArrayTrait::new();
+    hash_data.append(agent_id.low.into());
+    hash_data.append(agent_id.high.into());
+    hash_data.append(new_wallet.into());
+    hash_data.append(owner_addr.into());
+    hash_data.append(deadline.into());
+    hash_data.append(nonce.into());
+    hash_data.append(tx_info.chain_id);
+    hash_data.append(registry_address.into());
+    poseidon_hash_span(hash_data.span())
+}
+
+fn compute_legacy_wallet_hash(
+    agent_id: u256, new_wallet: ContractAddress, owner_addr: ContractAddress, deadline: u64,
+) -> felt252 {
+    let mut hash_data = ArrayTrait::new();
+    hash_data.append(agent_id.low.into());
+    hash_data.append(agent_id.high.into());
+    hash_data.append(new_wallet.into());
+    hash_data.append(owner_addr.into());
+    hash_data.append(deadline.into());
+    poseidon_hash_span(hash_data.span())
 }
 
 // ============ Registration Tests ============
@@ -508,6 +548,110 @@ fn test_set_agent_wallet_success_with_valid_signature() {
     stop_cheat_caller_address(registry_address);
 
     assert_eq!(registry.get_agent_wallet(agent_id), wallet);
+}
+
+#[test]
+#[should_panic(expected: 'invalid wallet sig')]
+fn test_set_agent_wallet_rejects_legacy_hash_signature() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_strict_mock_account();
+    let deadline: u64 = 100;
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+
+    // Old pre-Workstream-B preimage must no longer validate.
+    let legacy_hash = compute_legacy_wallet_hash(agent_id, wallet, alice(), deadline);
+    registry.set_agent_wallet(agent_id, wallet, deadline, array![legacy_hash]);
+
+    stop_cheat_caller_address(registry_address);
+}
+
+#[test]
+fn test_set_agent_wallet_accepts_domain_separated_hash_signature() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_strict_mock_account();
+    let deadline: u64 = 100;
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+
+    let domain_hash = compute_domain_separated_wallet_hash(
+        agent_id, wallet, alice(), deadline, 0, registry_address,
+    );
+    registry.set_agent_wallet(agent_id, wallet, deadline, array![domain_hash]);
+    stop_cheat_caller_address(registry_address);
+
+    assert_eq!(registry.get_agent_wallet(agent_id), wallet);
+}
+
+#[test]
+#[should_panic(expected: 'invalid wallet sig')]
+fn test_set_agent_wallet_rejects_hash_for_different_registry() {
+    let (_, _, registry_a_address) = deploy_registry();
+    let (registry_b, _, registry_b_address) = deploy_registry();
+    let wallet = deploy_strict_mock_account();
+    let deadline: u64 = 100;
+
+    start_cheat_caller_address(registry_b_address, alice());
+    let agent_id_b = registry_b.register();
+
+    // Build signature preimage bound to registry A, then attempt to use on registry B.
+    let wrong_registry_hash = compute_domain_separated_wallet_hash(
+        agent_id_b, wallet, alice(), deadline, 0, registry_a_address,
+    );
+    registry_b.set_agent_wallet(agent_id_b, wallet, deadline, array![wrong_registry_hash]);
+
+    stop_cheat_caller_address(registry_b_address);
+}
+
+#[test]
+fn test_wallet_set_nonce_initially_zero() {
+    let (registry, _, registry_address) = deploy_registry();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    stop_cheat_caller_address(registry_address);
+
+    assert_eq!(registry.get_wallet_set_nonce(agent_id), 0);
+}
+
+#[test]
+fn test_wallet_set_nonce_increments_after_success() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_strict_mock_account();
+    let deadline: u64 = 100;
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+
+    let sig_hash = compute_domain_separated_wallet_hash(
+        agent_id, wallet, alice(), deadline, 0, registry_address,
+    );
+    registry.set_agent_wallet(agent_id, wallet, deadline, array![sig_hash]);
+    stop_cheat_caller_address(registry_address);
+
+    assert_eq!(registry.get_wallet_set_nonce(agent_id), 1);
+}
+
+#[test]
+#[should_panic(expected: 'invalid wallet sig')]
+fn test_set_agent_wallet_replay_same_signature_reverts() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_strict_mock_account();
+    let deadline: u64 = 100;
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+
+    let sig_hash = compute_domain_separated_wallet_hash(
+        agent_id, wallet, alice(), deadline, 0, registry_address,
+    );
+    registry.set_agent_wallet(agent_id, wallet, deadline, array![sig_hash]);
+
+    // Reusing same signature should fail because nonce is consumed after first use.
+    registry.set_agent_wallet(agent_id, wallet, deadline, array![sig_hash]);
+    stop_cheat_caller_address(registry_address);
 }
 
 #[test]
