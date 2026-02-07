@@ -12,13 +12,13 @@ Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (
 | Contract deps | OpenZeppelin Cairo | v3.0.0 |
 | TypeScript packages | pnpm workspaces, tsup | Node 18+ |
 | MCP server | `@modelcontextprotocol/sdk` | ^1.0.0 |
-| Starknet interaction | starknet.js | ^6.24.1 |
+| Starknet interaction | starknet.js | ^8.9.1 |
 | DeFi aggregation | `@avnu/avnu-sdk` | ^4.0.1 |
 | Schema validation | zod | ^3.23.0 |
 | TS testing | Vitest | -- |
 | Cairo testing | snforge | 0.54.1 |
 | Skills format | SKILL.md (YAML frontmatter + markdown) | AgentSkills spec |
-| Website | Next.js 15 + React 19 + Tailwind | -- |
+| Website | Next.js 16 + React 19 + Tailwind | -- |
 
 </stack>
 
@@ -31,14 +31,13 @@ starknet-agentic/
 │   ├── starknet-a2a/                     # A2A protocol adapter (FUNCTIONAL)
 │   ├── starknet-agent-passport/          # Capability metadata client (FUNCTIONAL)
 │   ├── x402-starknet/                    # X-402 payment protocol (FUNCTIONAL)
-│   ├── prediction-arb-scanner/           # Cross-venue arb detection (MVP)
-│   └── starknet-identity/                # (legacy — contracts moved to contracts/)
+│   └── prediction-arb-scanner/           # Cross-venue arb detection (MVP)
 ├── contracts/
 │   ├── erc8004-cairo/                    # ERC-8004 Cairo contracts (PRODUCTION)
 │   │   ├── src/                          # Contract source (identity, reputation, validation)
 │   │   ├── tests/                        # Unit tests (snforge)
 │   │   └── e2e-tests/                    # E2E tests (Sepolia)
-│   ├── agent-account/                    # Agent Account contract (TESTED — 110+ tests)
+│   ├── agent-account/                    # Agent Account contract (TESTED — 96 tests)
 │   └── huginn-registry/                  # Thought provenance registry (WIP)
 ├── skills/
 │   ├── starknet-wallet/                  # Wallet management skill (COMPLETE)
@@ -63,7 +62,7 @@ starknet-agentic/
 └── package.json                          # Root monorepo (pnpm workspaces)
 ```
 
-NOTE: The Agent Account contract at `contracts/agent-account/` (570+ lines) has 110+ tests across 4 test suites (test_agent_account, test_agent_account_factory, test_execute_validate, test_security).
+NOTE: The Agent Account contract at `contracts/agent-account/` (402 lines) has 96 tests across 3 test suites (test_agent_account, test_execute_validate, test_security).
 
 </structure>
 
@@ -141,16 +140,15 @@ This project implements three converging agent standards:
 
 | Contract | File | Lines | Purpose |
 |----------|------|-------|---------|
-| AgentAccount | `agent_account.cairo` | 570+ | Full account with session keys, timelocked upgrades, identity binding |
-| AgentAccountFactory | `agent_account_factory.cairo` | 170 | Deploy + register agent accounts with identity NFT |
+| AgentAccount | `agent_account.cairo` | 402 | Full account with session keys, timelocked upgrades, identity binding |
 
 ### ERC-8004 Cairo Contracts (`contracts/erc8004-cairo/src/`)
 
 | Contract | File | Lines | Purpose |
 |----------|------|-------|---------|
-| IdentityRegistry | `identity_registry.cairo` | 271 | ERC-721 agent NFT registry with key-value metadata |
-| ReputationRegistry | `reputation_registry.cairo` | 560 | Feedback system with cryptographic auth & signatures |
-| ValidationRegistry | `validation_registry.cairo` | 356 | Third-party validator assessments with request/response |
+| IdentityRegistry | `identity_registry.cairo` | 530 | ERC-721 agent NFT registry with key-value metadata |
+| ReputationRegistry | `reputation_registry.cairo` | 593 | Feedback system with cryptographic auth & signatures |
+| ValidationRegistry | `validation_registry.cairo` | 431 | Third-party validator assessments with request/response |
 
 Key interfaces: `IIdentityRegistry`, `IReputationRegistry`, `IValidationRegistry` (in `src/interfaces/`)
 
@@ -251,7 +249,7 @@ Always consult `references/` before relying on training data for Starknet-specif
 | Agent Passport client | **Functional** (142 lines) | `packages/starknet-agent-passport/` |
 | X-402 Starknet signing | **Functional** (110 lines) | `packages/x402-starknet/` |
 | Prediction arb scanner | **MVP** (296 lines) | `packages/prediction-arb-scanner/` |
-| Agent Account contract | **Tested** (570+ lines, 110+ tests) | `contracts/agent-account/` |
+| Agent Account contract | **Tested** (402 lines, 96 tests) | `contracts/agent-account/` |
 | Skill: starknet-wallet | **Complete** (465 lines) | `skills/starknet-wallet/` |
 | Skill: starknet-mini-pay | **Complete** (Python CLI + Telegram bot) | `skills/starknet-mini-pay/` |
 | Skill: starknet-anonymous-wallet | **Complete** (271 lines) | `skills/starknet-anonymous-wallet/` |
