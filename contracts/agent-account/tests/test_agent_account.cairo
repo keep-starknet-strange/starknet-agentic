@@ -38,7 +38,7 @@ fn attacker() -> ContractAddress {
 fn deploy_agent_account() -> (IAgentAccountDispatcher, ContractAddress) {
     let contract = declare("AgentAccount").unwrap().contract_class();
     let public_key: felt252 = 0x1234;
-    let (contract_address, _) = contract.deploy(@array![public_key]).unwrap();
+    let (contract_address, _) = contract.deploy(@array![public_key, 0]).unwrap();
     let dispatcher = IAgentAccountDispatcher { contract_address };
     (dispatcher, contract_address)
 }

@@ -60,7 +60,7 @@ fn deploy_agent_account(
     owner_pubkey: felt252,
 ) -> (ContractAddress, IAccountSRC6Dispatcher, IAgentAccountDispatcher) {
     let contract = declare("AgentAccount").unwrap().contract_class();
-    let (addr, _) = contract.deploy(@array![owner_pubkey]).unwrap();
+    let (addr, _) = contract.deploy(@array![owner_pubkey, 0]).unwrap();
     let src6_disp = IAccountSRC6Dispatcher { contract_address: addr };
     let agent_disp = IAgentAccountDispatcher { contract_address: addr };
     (addr, src6_disp, agent_disp)
