@@ -1,12 +1,14 @@
 import { 
   createAccount, 
   identityRegistry, 
+  provider,
+  addresses,
   waitForTransaction, 
   toUint256,
   assert,
   SEPOLIA_ACCOUNT_2
 } from '../setup.js';
-import { ec, hash } from 'starknet';
+import { ec, hash, shortString } from 'starknet';
 
 // SNIP-6 signature helpers for set_agent_wallet
 function toI128BigInt(num) {
@@ -15,10 +17,29 @@ function toI128BigInt(num) {
   return FELT_PRIME - BigInt(Math.abs(num));
 }
 
-function computeWalletSetHash(agentId, newWallet, owner, deadline) {
+function toFeltBigInt(value) {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') return BigInt(value);
+  if (typeof value === 'string') {
+    if (value.startsWith('0x')) return BigInt(value);
+    return BigInt(shortString.encodeShortString(value));
+  }
+  return BigInt(value);
+}
+
+function computeWalletSetHash(agentId, newWallet, owner, deadline, nonce, chainId, registryAddress) {
   const low = BigInt(agentId) & ((1n << 128n) - 1n);
   const high = BigInt(agentId) >> 128n;
-  const hashData = [low, high, BigInt(newWallet), BigInt(owner), BigInt(deadline)];
+  const hashData = [
+    low,
+    high,
+    BigInt(newWallet),
+    BigInt(owner),
+    BigInt(deadline),
+    BigInt(nonce),
+    toFeltBigInt(chainId),
+    BigInt(registryAddress),
+  ];
   return hash.computePoseidonHashOnElements(hashData);
 }
 
@@ -348,11 +369,16 @@ async function runTests() {
     
     // Step 2: Set wallet using SNIP-6 signature
     const deadline = Math.floor(Date.now() / 1000) + 240; // 4 minutes
+    const nonce = await identityRegistry.get_wallet_set_nonce(toUint256(hookTestAgentId));
+    const chainId = await provider.getChainId();
     const messageHash = computeWalletSetHash(
       BigInt(hookTestAgentId),
       otherUser.address,
       agentOwner.address,
-      deadline
+      deadline,
+      nonce,
+      chainId,
+      addresses.identityRegistry
     );
     const signature = signMessage(
       SEPOLIA_ACCOUNT_2.privateKey, // otherUser private key from env
@@ -434,4 +460,3 @@ if (isDirectRun) {
 }
 
 export default runTests;
-

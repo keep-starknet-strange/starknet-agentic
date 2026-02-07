@@ -7,7 +7,7 @@
  * 3. Call set_agent_wallet with the signature
  */
 
-import { Account, Contract, RpcProvider, ec, hash, cairo } from 'starknet';
+import { Account, Contract, RpcProvider, ec, hash, cairo, shortString } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -69,36 +69,22 @@ function toUint256(num) {
   };
 }
 
-/**
- * Compute the wallet set hash exactly as the Cairo contract does:
- * poseidon_hash_span([agent_id.low, agent_id.high, new_wallet, owner, deadline])
- */
-function computeWalletSetHash(agentId, newWallet, owner, deadline) {
-  const u256 = toUint256(agentId);
-  
-  // Prepare the data array matching Cairo's implementation
-  const hashData = [
-    u256.low.toString(),      // agent_id.low
-    u256.high.toString(),     // agent_id.high  
-    newWallet,                // new_wallet (ContractAddress as felt252)
-    owner,                    // owner (ContractAddress as felt252)
-    deadline.toString(),      // deadline (u64 as felt252)
-  ];
-  
-  // Use starknet.js poseidon hash
-  const messageHash = hash.computePoseidonHash(hashData[0], hashData[1]);
-  let finalHash = messageHash;
-  for (let i = 2; i < hashData.length; i++) {
-    finalHash = hash.computePoseidonHash(finalHash, hashData[i]);
+function toFeltBigInt(value) {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') return BigInt(value);
+  if (typeof value === 'string') {
+    if (value.startsWith('0x')) return BigInt(value);
+    // e.g. "SN_SEPOLIA"
+    return BigInt(shortString.encodeShortString(value));
   }
-  
-  return finalHash;
+  return BigInt(value);
 }
 
 /**
- * Alternative: Use poseidonHashMany which matches poseidon_hash_span
+ * Compute hash matching Cairo _compute_wallet_set_hash:
+ * poseidon_hash_span([agent_id.low, agent_id.high, new_wallet, owner, deadline, nonce, chain_id, registry_address])
  */
-function computeWalletSetHashV2(agentId, newWallet, owner, deadline) {
+function computeWalletSetHashV2(agentId, newWallet, owner, deadline, nonce, chainId, registryAddress) {
   const u256 = toUint256(agentId);
   
   // poseidonHashMany expects array of BigInt-like values
@@ -108,6 +94,9 @@ function computeWalletSetHashV2(agentId, newWallet, owner, deadline) {
     BigInt(newWallet),
     BigInt(owner),
     BigInt(deadline),
+    BigInt(nonce),
+    toFeltBigInt(chainId),
+    BigInt(registryAddress),
   ];
   
   return hash.computePoseidonHashOnElements(hashData);
@@ -190,12 +179,17 @@ async function runTest() {
     console.log(`   Deadline: ${deadline} (${new Date(deadline * 1000).toISOString()})`);
     console.log('');
 
-    // Compute message hash (matching Cairo's _compute_wallet_set_hash)
+    // Compute message hash (matching Cairo _compute_wallet_set_hash)
+    const nonce = await identityRegistry.get_wallet_set_nonce(cairo.uint256(agentId));
+    const chainId = await provider.getChainId();
     const messageHash = computeWalletSetHashV2(
       BigInt(agentId),
       newWalletAccount.address,
       agentOwner.address,
-      deadline
+      deadline,
+      nonce,
+      chainId,
+      deploymentInfo.contracts.identityRegistry.address
     );
     console.log(`   Message Hash: ${messageHash}`);
 
@@ -248,7 +242,7 @@ async function runTest() {
       console.log(`   ❌ set_agent_wallet failed: ${error.message}`);
       console.log('');
       console.log('   This could be due to:');
-      console.log('   1. Hash computation mismatch between JS and Cairo');
+      console.log('   1. Hash preimage mismatch (nonce/chain_id/registry fields)');
       console.log('   2. Signature format issue');
       console.log('   3. Deadline expired or invalid');
       console.log('');
