@@ -27,18 +27,25 @@ pub mod ValidationRegistry {
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use openzeppelin::security::reentrancyguard::ReentrancyGuardComponent;
     use openzeppelin::upgrades::UpgradeableComponent;
     use starknet::storage::*;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
     // ============ Components ============
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(
+        path: ReentrancyGuardComponent,
+        storage: reentrancy_guard,
+        event: ReentrancyGuardEvent,
+    );
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     // Ownable Mixin
     #[abi(embed_v0)]
     impl OwnableMixinImpl = OwnableComponent::OwnableMixinImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+    impl ReentrancyGuardInternalImpl = ReentrancyGuardComponent::InternalImpl<ContractState>;
 
     // Upgradeable
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
@@ -49,6 +56,8 @@ pub mod ValidationRegistry {
         // Components
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        reentrancy_guard: ReentrancyGuardComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
         // Reference to IdentityRegistry
@@ -78,6 +87,8 @@ pub mod ValidationRegistry {
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
+        ReentrancyGuardEvent: ReentrancyGuardComponent::Event,
+        #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
     }
 
@@ -103,12 +114,16 @@ pub mod ValidationRegistry {
     impl ValidationRegistryImpl of IValidationRegistry<ContractState> {
         fn validation_request(
             ref self: ContractState,
+            validator_address: ContractAddress,
             agent_id: u256,
             request_uri: ByteArray,
             request_hash: u256,
         ) {
             // Validate inputs
             assert(request_uri.len() > 0, 'Empty request URI');
+            assert(!validator_address.is_zero(), 'Invalid validator');
+
+            self.reentrancy_guard.start();
 
             // Verify agent exists using dispatcher
             let identity_registry = IIdentityRegistryDispatcher {
@@ -130,7 +145,7 @@ pub mod ValidationRegistry {
 
             // Generate requestHash if not provided (0 means auto-generate)
             let final_request_hash = if request_hash == 0 {
-                self._generate_request_hash(agent_id, @request_uri, caller)
+                self._generate_request_hash(validator_address, agent_id, @request_uri, caller)
             } else {
                 request_hash
             };
@@ -146,7 +161,7 @@ pub mod ValidationRegistry {
                 .entry(final_request_hash)
                 .write(
                     Request {
-                        validator_address: caller, // requester is stored
+                        validator_address,
                         agent_id,
                         request_hash: final_request_hash,
                         timestamp,
@@ -158,43 +173,44 @@ pub mod ValidationRegistry {
 
             // Add to tracking arrays
             self.agent_validations.entry(agent_id).push(final_request_hash);
-            self.validator_requests.entry(caller).push(final_request_hash);
+            self.validator_requests.entry(validator_address).push(final_request_hash);
             self.request_exists.entry(final_request_hash).write(true);
 
             self
                 .emit(
                     Event::ValidationRequest(
                         ValidationRequestEvent {
-                            validator_address: caller,
+                            validator_address,
                             agent_id,
                             request_uri,
                             request_hash: final_request_hash,
                         },
                     ),
                 );
+
+            self.reentrancy_guard.end();
         }
 
         fn validation_response(
             ref self: ContractState,
-            agent_id: u256,
             request_hash: u256,
             response: u8,
             response_uri: ByteArray,
             response_hash: u256,
             tag: ByteArray,
         ) {
-            // Validate response range (matches Solidity: 0=pending, 1=valid, 2=invalid)
-            assert(response <= 2, 'Response must be 0-2');
+            // Validate response range (0-100)
+            assert(response <= 100, 'Response must be 0-100');
 
             // Verify request exists
             assert(self.request_exists.entry(request_hash).read(), 'Request not found');
 
             // Get request
             let request = self.requests.entry(request_hash).read();
-            assert(request.agent_id == agent_id, 'Agent ID mismatch');
 
-            // Caller is the validator responding
+            // Only the designated validator can respond
             let caller = get_caller_address();
+            assert(caller == request.validator_address, 'Not validator');
 
             // Store response
             self
@@ -203,7 +219,7 @@ pub mod ValidationRegistry {
                 .write(
                     Response {
                         validator_address: caller,
-                        agent_id,
+                        agent_id: request.agent_id,
                         response,
                         response_hash,
                         last_update: get_block_timestamp(),
@@ -219,7 +235,7 @@ pub mod ValidationRegistry {
                     Event::ValidationResponse(
                         ValidationResponseEvent {
                             validator_address: caller,
-                            agent_id,
+                            agent_id: request.agent_id,
                             request_hash,
                             response,
                             response_uri,
@@ -232,29 +248,39 @@ pub mod ValidationRegistry {
 
         fn get_validation_status(
             self: @ContractState,
-            validator_address: ContractAddress,
-            agent_id: u256,
             request_hash: u256,
-        ) -> (u8, u64, u256, bool) {
+        ) -> (ContractAddress, u256, u8, u256, ByteArray, u64) {
+            assert(self.request_exists.entry(request_hash).read(), 'Request not found');
+
+            let request = self.requests.entry(request_hash).read();
             let resp = self.responses.entry(request_hash).read();
 
-            // Return response details
-            // has_response flag distinguishes between no response and response with value 0
-            (resp.response, resp.last_update, resp.response_hash, resp.has_response)
+            if resp.has_response {
+                let tag = self.response_tags.entry(request_hash).read();
+                (
+                    resp.validator_address,
+                    resp.agent_id,
+                    resp.response,
+                    resp.response_hash,
+                    tag,
+                    resp.last_update,
+                )
+            } else {
+                (request.validator_address, request.agent_id, 0, 0, "", 0)
+            }
         }
 
         fn get_summary(
             self: @ContractState,
             agent_id: u256,
-            tag: ByteArray,
             validator_addresses: Span<ContractAddress>,
-        ) -> (u64, u64, u64) {
+            tag: ByteArray,
+        ) -> (u64, u8) {
             let request_hashes_vec = self.agent_validations.entry(agent_id);
             let len = request_hashes_vec.len();
 
             let mut count: u64 = 0;
-            let mut valid_count: u64 = 0;
-            let mut invalid_count: u64 = 0;
+            let mut total_response: u64 = 0;
 
             let mut i = 0;
             while i < len {
@@ -293,18 +319,19 @@ pub mod ValidationRegistry {
                     }
                 }
 
-                // Count based on response value (matches Solidity: 1=valid, 2=invalid)
+                // Aggregate response score (0-100)
                 count += 1;
-                if resp.response == 1 {
-                    valid_count += 1;
-                } else if resp.response == 2 {
-                    invalid_count += 1;
-                }
+                total_response += resp.response.into();
 
                 i += 1;
             }
 
-            (count, valid_count, invalid_count)
+            if count == 0 {
+                (0, 0)
+            } else {
+                let avg_response: u8 = (total_response / count).try_into().unwrap();
+                (count, avg_response)
+            }
         }
 
         fn get_agent_validations(self: @ContractState, agent_id: u256) -> Array<u256> {
@@ -371,6 +398,7 @@ pub mod ValidationRegistry {
         /// Returns u256 for consistency with external hash types
         fn _generate_request_hash(
             ref self: ContractState,
+            validator_address: ContractAddress,
             agent_id: u256,
             request_uri: @ByteArray,
             caller: ContractAddress,
@@ -380,6 +408,7 @@ pub mod ValidationRegistry {
             // Convert all inputs to felt252 and hash
             let mut hash_data = ArrayTrait::new();
             hash_data.append(caller.into());
+            hash_data.append(validator_address.into());
             hash_data.append(agent_id.low.into());
             hash_data.append(agent_id.high.into());
 
