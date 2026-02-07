@@ -679,7 +679,7 @@ fn test_get_summary_negative_with_decimals() {
 #[test]
 #[should_panic(expected: 'clientAddresses required')]
 fn test_get_summary_no_clients_reverts() {
-    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+    let (identity_registry, reputation_registry, identity_address, _reputation_address) =
         deploy_contracts();
 
     start_cheat_caller_address(identity_address, agent_owner());
@@ -688,6 +688,33 @@ fn test_get_summary_no_clients_reverts() {
 
     let empty_clients: Span<ContractAddress> = array![].span();
     reputation_registry.get_summary(agent_id, empty_clients, "", "");
+}
+
+#[test]
+#[should_panic(expected: 'summary overflow')]
+fn test_get_summary_overflow_reverts() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // A huge 0-decimal value plus two 18-decimal values makes mode_decimals=18
+    // and forces a very large scaled average that should be rejected.
+    let huge_value: i128 = 100000000000000000000000000000000000000; // 1e38
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), huge_value, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client2(), 1, 18, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, responder(), 1, 18, "tag1", "tag2",
+    );
+
+    let clients_filter = array![client(), client2(), responder()].span();
+    reputation_registry.get_summary(agent_id, clients_filter, "", "");
 }
 
 #[test]
@@ -779,4 +806,242 @@ fn test_get_clients_returns_all_clients() {
 fn test_get_identity_registry_returns_correct_address() {
     let (_, reputation_registry, identity_address, _) = deploy_contracts();
     assert_eq!(reputation_registry.get_identity_registry(), identity_address);
+}
+
+// ============ Security Regression Tests ============
+
+#[test]
+#[should_panic(expected: 'index out of bounds')]
+fn test_different_user_cannot_revoke_others_feedback() {
+    // SECURITY: Only the feedback author can revoke their own feedback.
+    // revoke_feedback uses caller to look up last_index, so calling as
+    // a different user should fail (their last_index is 0).
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // client gives feedback
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+
+    // client2 tries to revoke client's feedback — should fail because client2
+    // has no feedback (last_index == 0 for client2), so index 1 > 0 = OOB.
+    start_cheat_caller_address(reputation_address, client2());
+    reputation_registry.revoke_feedback(agent_id, 1);
+    stop_cheat_caller_address(reputation_address);
+}
+
+#[test]
+#[should_panic(expected: 'Feedback is revoked')]
+fn test_append_response_to_revoked_feedback_reverts() {
+    // SECURITY: Responding to revoked feedback should not be allowed.
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // Give feedback
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+
+    // Revoke it
+    start_cheat_caller_address(reputation_address, client());
+    reputation_registry.revoke_feedback(agent_id, 1);
+    stop_cheat_caller_address(reputation_address);
+
+    // Try to append response to revoked feedback (should fail)
+    start_cheat_caller_address(reputation_address, responder());
+    reputation_registry.append_response(agent_id, client(), 1, "ipfs://response", 0);
+    stop_cheat_caller_address(reputation_address);
+}
+
+#[test]
+fn test_client_tracked_only_once_with_multiple_feedbacks() {
+    // SECURITY: The client list should not contain duplicates.
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // Same client gives 3 feedbacks
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 80, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 70, 0, "tag1", "tag2",
+    );
+
+    // Client should appear only once in the list
+    let clients = reputation_registry.get_clients(agent_id);
+    assert_eq!(clients.len(), 1, "Client should only appear once");
+    assert_eq!(reputation_registry.get_last_index(agent_id, client()), 3);
+}
+
+#[test]
+fn test_read_all_feedback_with_revoked_included() {
+    // Verify include_revoked=true returns all feedback including revoked.
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client2(), 80, 0, "tag1", "tag2",
+    );
+
+    // Revoke first
+    start_cheat_caller_address(reputation_address, client());
+    reputation_registry.revoke_feedback(agent_id, 1);
+    stop_cheat_caller_address(reputation_address);
+
+    // include_revoked=true should return both
+    let empty_clients: Span<ContractAddress> = array![].span();
+    let (clients_arr, _, _, _, _, _, revoked_arr) = reputation_registry
+        .read_all_feedback(agent_id, empty_clients, "", "", true);
+
+    assert_eq!(clients_arr.len(), 2, "Should include revoked feedback");
+    assert!(*revoked_arr.at(0), "First feedback should be revoked");
+    assert!(!*revoked_arr.at(1), "Second feedback should not be revoked");
+}
+
+#[test]
+fn test_get_summary_returns_zero_for_no_matching_feedback() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // Give feedback with specific tag
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "quality", "tag2",
+    );
+
+    // Query with non-matching tag
+    let clients_filter = array![client()].span();
+    let (count, avg_value, avg_decimals) = reputation_registry
+        .get_summary(agent_id, clients_filter, "nonexistent_tag", "");
+
+    assert_eq!(count, 0);
+    assert_eq!(avg_value, 0);
+    assert_eq!(avg_decimals, 0);
+}
+
+#[test]
+fn test_response_count_zero_for_no_responders() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+
+    // Empty responders list
+    let empty_responders: Span<ContractAddress> = array![].span();
+    let count = reputation_registry.get_response_count(agent_id, client(), 1, empty_responders);
+    assert_eq!(count, 0, "Should return 0 for empty responders");
+}
+
+#[test]
+fn test_response_count_with_specific_feedback_index() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // Give 2 feedbacks
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 80, 0, "tag1", "tag2",
+    );
+
+    // Respond to feedback 1 only
+    start_cheat_caller_address(reputation_address, responder());
+    reputation_registry.append_response(agent_id, client(), 1, "ipfs://response", 0);
+    stop_cheat_caller_address(reputation_address);
+
+    let responders = array![responder()].span();
+
+    // Feedback 1 should have 1 response
+    let count1 = reputation_registry.get_response_count(agent_id, client(), 1, responders);
+    assert_eq!(count1, 1);
+
+    // Feedback 2 should have 0 responses
+    let count2 = reputation_registry.get_response_count(agent_id, client(), 2, responders);
+    assert_eq!(count2, 0);
+}
+
+#[test]
+fn test_get_summary_zero_value_feedback() {
+    // Edge case: feedback with value 0 should still be counted.
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 0, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client2(), 100, 0, "tag1", "tag2",
+    );
+
+    let clients_filter = array![client(), client2()].span();
+    let (count, avg_value, _) = reputation_registry.get_summary(agent_id, clients_filter, "", "");
+
+    assert_eq!(count, 2);
+    assert_eq!(avg_value, 50); // (0 + 100) / 2 = 50
+}
+
+#[test]
+fn test_multiple_responses_from_same_responder_tracked() {
+    // Same responder can append multiple responses; count should reflect all.
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+
+    // Same responder responds twice
+    start_cheat_caller_address(reputation_address, responder());
+    reputation_registry.append_response(agent_id, client(), 1, "ipfs://response1", 0);
+    reputation_registry.append_response(agent_id, client(), 1, "ipfs://response2", 0);
+    stop_cheat_caller_address(reputation_address);
+
+    let responders = array![responder()].span();
+    let count = reputation_registry.get_response_count(agent_id, client(), 1, responders);
+    assert_eq!(count, 2, "Should count both responses from same responder");
 }
