@@ -2,7 +2,7 @@
 pub mod AgentAccount {
     use core::ecdsa::check_ecdsa_signature;
     use core::num::traits::Zero;
-    use starknet::{ClassHash, ContractAddress, SyscallResultTrait, get_block_timestamp, get_caller_address, get_contract_address, get_tx_info};
+    use starknet::{ClassHash, ContractAddress, SyscallResultTrait, get_block_timestamp, get_caller_address, get_tx_info};
     use starknet::account::Call;
     use starknet::storage::*;
     use openzeppelin::account::AccountComponent;
@@ -49,8 +49,6 @@ pub mod AgentAccount {
     // ──────────────────────────────────────────────────────────────────
     #[abi(embed_v0)]
     impl DeclarerImpl = AccountComponent::DeclarerImpl<ContractState>;
-    #[abi(embed_v0)]
-    impl DeployableImpl = AccountComponent::DeployableImpl<ContractState>;
     #[abi(embed_v0)]
     impl PublicKeyImpl = AccountComponent::PublicKeyImpl<ContractState>;
     #[abi(embed_v0)]
@@ -180,6 +178,49 @@ pub mod AgentAccount {
         self.account.initializer(public_key);
         self.factory.write(factory);
         self.upgrade_delay.write(DEFAULT_UPGRADE_DELAY);
+    }
+
+    // ─── Custom __validate_deploy__ ────────────────────────────────────
+    // The embedded AccountComponent::DeployableImpl generates a
+    // __validate_deploy__ that only accepts (public_key).  Our constructor
+    // is (public_key, factory), so we provide our own implementation.
+    // ──────────────────────────────────────────────────────────────────
+
+    #[abi(per_item)]
+    #[generate_trait]
+    impl CustomDeployableImpl of CustomDeployableTrait {
+        #[external(v0)]
+        fn __validate_deploy__(
+            self: @ContractState,
+            class_hash: felt252,
+            contract_address_salt: felt252,
+            public_key: felt252,
+            factory: ContractAddress,
+        ) -> felt252 {
+            let _ = class_hash;
+            let _ = contract_address_salt;
+            let _ = factory;
+
+            let tx_info = get_tx_info().unbox();
+            let tx_hash = tx_info.transaction_hash;
+            let signature = tx_info.signature;
+
+            if signature.len() != 2 {
+                return 0;
+            }
+
+            if public_key == 0 {
+                return 0;
+            }
+
+            let r = *signature.at(0);
+            let s = *signature.at(1);
+            if check_ecdsa_signature(tx_hash, public_key, r, s) {
+                starknet::VALIDATED
+            } else {
+                0
+            }
+        }
     }
 
     // ─── Custom SRC6 Implementation ────────────────────────────────────

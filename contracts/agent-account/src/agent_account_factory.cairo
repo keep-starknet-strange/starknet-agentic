@@ -1,7 +1,7 @@
 #[starknet::contract]
 pub mod AgentAccountFactory {
     use core::byte_array::ByteArray;
-    use openzeppelin::token::erc721::interface::{
+    use openzeppelin::interfaces::erc721::{
         IERC721Dispatcher, IERC721DispatcherTrait,
     };
     use starknet::{
