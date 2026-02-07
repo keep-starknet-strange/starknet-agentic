@@ -348,6 +348,25 @@ fn test_execute_session_key_disallowed_contract_panics() {
 }
 
 #[test]
+#[should_panic(expected: 'Session: contract not allowed')]
+fn test_execute_session_key_multicall_second_target_disallowed_panics() {
+    // Off-by-one guard: first call matches allowed target, second does not.
+    // The policy loop must inspect all calls and fail on call[1].
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+
+    register_key(agent, addr, session_kp.public_key, restricted_policy());
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx_context(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let calls = array![generic_call(allowed_target()), generic_call(other_target())];
+    account.__execute__(calls);
+}
+
+#[test]
 #[should_panic(expected: 'Spending limit exceeded')]
 fn test_execute_session_key_transfer_exceeds_spending_limit() {
     let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);

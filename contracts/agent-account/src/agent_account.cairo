@@ -60,25 +60,25 @@ pub mod AgentAccount {
     impl SessionKeyInternalImpl = SessionKeyComponent::SessionKeyImpl<ContractState>;
 
     /// ERC-20 `transfer(recipient, amount)` selector: sn_keccak("transfer")
-    const TRANSFER_SELECTOR: felt252 =
+    pub const TRANSFER_SELECTOR: felt252 =
         0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e;
 
     /// ERC-20 `approve(spender, amount)` selector: sn_keccak("approve")
     /// Without this check, a session key could bypass spending_limit by calling
     /// approve(colluder, MAX) and having the colluder drain via transferFrom.
-    const APPROVE_SELECTOR: felt252 =
+    pub const APPROVE_SELECTOR: felt252 =
         0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c;
 
     /// OZ ERC-20 `increase_allowance(spender, added_value)` selector (snake_case).
     /// Same calldata layout as approve: [spender, amount_low, amount_high].
     /// Without this, a session key could bypass spending_limit via
     /// increase_allowance on an existing zero/small approval.
-    const INCREASE_ALLOWANCE_SELECTOR: felt252 =
+    pub const INCREASE_ALLOWANCE_SELECTOR: felt252 =
         0x1d13ab0a76d7407b1d5faccd4b3d8a9efe42f3d3c21766431d4fafb30f45bd4;
 
     /// OZ ERC-20 `increaseAllowance(spender, addedValue)` selector (camelCase).
     /// OZ ERC-20 exposes both snake_case and camelCase; both must be tracked.
-    const INCREASE_ALLOWANCE_CAMEL_SELECTOR: felt252 =
+    pub const INCREASE_ALLOWANCE_CAMEL_SELECTOR: felt252 =
         0x16cc063b8338363cf388ce7fe1df408bf10f16cd51635d392e21d852fafb683;
 
     /// Returns true if the selector corresponds to an ERC-20 operation that

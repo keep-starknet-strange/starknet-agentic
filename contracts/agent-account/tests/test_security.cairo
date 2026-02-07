@@ -14,6 +14,10 @@
 use agent_account::interfaces::{
     IAgentAccountDispatcher, IAgentAccountDispatcherTrait, SessionPolicy,
 };
+use agent_account::agent_account::AgentAccount::{
+    APPROVE_SELECTOR, INCREASE_ALLOWANCE_CAMEL_SELECTOR, INCREASE_ALLOWANCE_SELECTOR,
+    TRANSFER_SELECTOR,
+};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address, start_cheat_block_timestamp, stop_cheat_block_timestamp,
@@ -58,22 +62,6 @@ trait IDeployer<TState> {
 const TX_HASH: felt252 = 0xABCDEF123456;
 const MIN_TX_VERSION: felt252 = 1;
 
-/// ERC-20 `transfer(to, amount)` selector
-const TRANSFER_SELECTOR: felt252 =
-    0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e;
-
-/// ERC-20 `approve(spender, amount)` selector
-const APPROVE_SELECTOR: felt252 =
-    0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c;
-
-/// OZ ERC-20 `increase_allowance(spender, added_value)` selector (snake_case)
-const INCREASE_ALLOWANCE_SELECTOR: felt252 =
-    0x1d13ab0a76d7407b1d5faccd4b3d8a9efe42f3d3c21766431d4fafb30f45bd4;
-
-/// OZ ERC-20 `increaseAllowance(spender, addedValue)` selector (camelCase)
-const INCREASE_ALLOWANCE_CAMEL_SELECTOR: felt252 =
-    0x16cc063b8338363cf388ce7fe1df408bf10f16cd51635d392e21d852fafb683;
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -92,6 +80,12 @@ fn deploy_agent_account(
     let contract = declare("AgentAccount").unwrap().contract_class();
     let (addr, _) = contract.deploy(@array![owner_pubkey]).unwrap();
     (addr, IAccountSRC6Dispatcher { contract_address: addr }, IAgentAccountDispatcher { contract_address: addr })
+}
+
+fn deploy_mock_erc20() -> ContractAddress {
+    let contract = declare("MockErc20ForTests").unwrap().contract_class();
+    let (addr, _) = contract.deploy(@array![]).unwrap();
+    addr
 }
 
 fn register_key(
@@ -157,6 +151,28 @@ fn increase_allowance_camel_call(token: ContractAddress, spender: felt252, amoun
         to: token,
         selector: INCREASE_ALLOWANCE_CAMEL_SELECTOR,
         calldata: array![spender, amount.low.into(), amount.high.into()].span(),
+    }
+}
+
+/// Build a transfer_from call (snake_case): transfer_from(sender, recipient, amount)
+fn transfer_from_call(
+    token: ContractAddress, sender: felt252, recipient: felt252, amount: u256,
+) -> Call {
+    Call {
+        to: token,
+        selector: selector!("transfer_from"),
+        calldata: array![sender, recipient, amount.low.into(), amount.high.into()].span(),
+    }
+}
+
+/// Build a transferFrom call (camelCase): transferFrom(sender, recipient, amount)
+fn transfer_from_camel_call(
+    token: ContractAddress, sender: felt252, recipient: felt252, amount: u256,
+) -> Call {
+    Call {
+        to: token,
+        selector: selector!("transferFrom"),
+        calldata: array![sender, recipient, amount.low.into(), amount.high.into()].span(),
     }
 }
 
@@ -322,7 +338,9 @@ fn test_fuzz_spending_within_limit_succeeds(amount_u128: u128) {
 #[test]
 #[fuzzer(runs: 128, seed: 7)]
 fn test_fuzz_session_key_valid_signature(secret: felt252) {
-    // Skip zero (invalid secret key)
+    // snforge may generate 0; that's not a valid private key for this curve.
+    // We skip instead of asserting to keep this property test focused on
+    // "random valid keypairs always validate".
     if secret == 0 {
         return;
     }
@@ -752,6 +770,99 @@ fn test_non_transfer_call_not_tracked_as_spending() {
     stop_cheat_block_timestamp(addr);
     stop_cheat_caller_address(addr);
     cleanup_cheats();
+}
+
+#[test]
+fn test_transfer_from_snake_not_debited_as_spending() {
+    // transfer_from is intentionally untracked to avoid double-counting approval
+    // exposure. With spending_limit=0, any tracked selector would panic.
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+    let mock_token = deploy_mock_erc20();
+
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 0,
+        spending_token: mock_token,
+        allowed_contract: mock_token,
+    };
+    register_key(agent, addr, session_kp.public_key, policy);
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let calls = array![transfer_from_call(mock_token, 0x1, 0x2, 1)];
+    let results = account.__execute__(calls);
+    assert_eq!(results.len(), 1);
+
+    stop_cheat_block_timestamp(addr);
+    stop_cheat_caller_address(addr);
+    cleanup_cheats();
+}
+
+#[test]
+fn test_transfer_from_camel_not_debited_as_spending() {
+    // Same invariant as above, but for transferFrom camelCase selector.
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+    let mock_token = deploy_mock_erc20();
+
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 0,
+        spending_token: mock_token,
+        allowed_contract: mock_token,
+    };
+    register_key(agent, addr, session_kp.public_key, policy);
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let calls = array![transfer_from_camel_call(mock_token, 0x1, 0x2, 1)];
+    let results = account.__execute__(calls);
+    assert_eq!(results.len(), 1);
+
+    stop_cheat_block_timestamp(addr);
+    stop_cheat_caller_address(addr);
+    cleanup_cheats();
+}
+
+#[test]
+#[should_panic(expected: 'Spending limit exceeded')]
+fn test_u256_high_limb_spending_limit_enforced() {
+    // Ensure u256 allowance math is correct when amount.high > 0.
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+    let mock_token = deploy_mock_erc20();
+
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: u256 { low: 5, high: 1 }, // 2^128 + 5
+        spending_token: mock_token,
+        allowed_contract: mock_token,
+    };
+    register_key(agent, addr, session_kp.public_key, policy);
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    // Spend exactly 2^128 first (high limb only) -> should pass.
+    let first = array![transfer_call(mock_token, 0xBEEF, u256 { low: 0, high: 1 })];
+    let first_results = account.__execute__(first);
+    assert_eq!(first_results.len(), 1);
+
+    // Then spend 6 more: total becomes 2^128 + 6 > 2^128 + 5 -> must revert.
+    let second = array![transfer_call(mock_token, 0xBEEF, 6)];
+    account.__execute__(second);
 }
 
 // ===========================================================================
