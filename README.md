@@ -55,6 +55,14 @@ Snapshot at time of this README update:
 | [A2A](https://a2a-protocol.org/) | Agent-to-agent workflows | `packages/starknet-a2a` |
 | [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) | Agent identity, reputation, validation | `contracts/erc8004-cairo` |
 
+## Cross-Chain Interop Strategy
+
+We are implementing a parity-core approach for ERC-8004 so integrations can be reused across EVM networks and Starknet, while keeping Starknet-native capabilities as opt-in extensions.
+
+- Goal: portability of agent integrations without giving up Starknet strengths (native account abstraction, Cairo-native patterns, lower execution cost).
+- Scope: API semantics align by default; chain-local state (reputation/validation history) remains chain-scoped unless explicitly aggregated off-chain.
+- Tracking plan: `#78` in this repository.
+
 ## Skills At A Glance
 
 | Skill | Purpose | Status |
