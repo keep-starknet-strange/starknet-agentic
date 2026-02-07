@@ -19,8 +19,8 @@ Snapshot at time of this README update:
 
 | Area | Path | Status |
 |---|---|---|
-| Agent Account contract | `contracts/agent-account` | Active, tested (96 Cairo tests) |
-| ERC-8004 Cairo contracts | `contracts/erc8004-cairo` | Active, tested (126 Cairo tests) |
+| Agent Account contract | `contracts/agent-account` | Active, tested (110 Cairo tests) |
+| ERC-8004 Cairo contracts | `contracts/erc8004-cairo` | Active, tested (131+ unit + 47 E2E tests) |
 | Huginn registry contract | `contracts/huginn-registry` | Active, tested (6 Cairo tests) |
 | MCP package | `packages/starknet-mcp-server` | Active |
 | A2A package | `packages/starknet-a2a` | Active |

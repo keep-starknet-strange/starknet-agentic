@@ -56,31 +56,31 @@ export class IdentityRegistryPassportClient {
     provider: ProviderInterface
     account?: AccountInterface
   }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- starknet.js Contract constructor accepts Abi type which is loosely typed
     this.contract = new Contract({
-      abi: identityRegistryAbi as unknown as any[],
+      abi: identityRegistryAbi as any,
       address: args.identityRegistryAddress,
-      providerOrAccount: args.provider as any,
+      providerOrAccount: args.provider,
     })
     if (args.account) this.contract.connect(args.account)
   }
 
   async agentExists(agentId: bigint): Promise<boolean> {
-    const res = await (this.contract as any).agent_exists(agentId)
+    const res = await this.contract.call("agent_exists", [agentId])
     return Boolean(res)
   }
 
   async getMetadata(agentId: bigint, key: string): Promise<string> {
-    const res = await (this.contract as any).get_metadata(agentId, encodeStringAsByteArray(key))
+    const res = await this.contract.call("get_metadata", [agentId, encodeStringAsByteArray(key)])
     return decodeByteArrayAsString(res)
   }
 
   async setMetadata(agentId: bigint, key: string, value: string) {
-    // starknet.js Contract typing often expects named args, but ABI-driven calls are fine at runtime.
-    return (this.contract as any).set_metadata(
+    return this.contract.invoke("set_metadata", [
       agentId,
       encodeStringAsByteArray(key),
       encodeStringAsByteArray(value),
-    )
+    ])
   }
 
   /**

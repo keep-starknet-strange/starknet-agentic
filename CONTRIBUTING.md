@@ -34,6 +34,20 @@ Preferred:
 - [ ] `pnpm -r test` passes (or scoped test target documented)
 - [ ] No unrelated refactors
 
+## Commit messages
+
+Use [conventional commits](https://www.conventionalcommits.org/):
+
+```
+feat: add starknet_get_events MCP tool
+fix: handle zero-balance tokens in batch query
+docs: update deployment guide for Sepolia
+chore: bump starknet.js to 8.10.0
+test: add edge case coverage for arb scanner
+```
+
+Common prefixes: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `ci`.
+
 ## Style
 
 - Keep PRs small (one logical change).

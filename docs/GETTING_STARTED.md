@@ -255,7 +255,7 @@ starknet-agentic/
 ├── packages/
 │   ├── starknet-mcp-server/     # MCP tools for AI agents
 │   ├── starknet-a2a/            # Agent-to-Agent protocol
-│   └── starknet-identity/       # ERC-8004 Cairo contracts
+│   └── starknet-agent-passport/  # ERC-8004 client library
 │
 ├── skills/                      # Reusable agent skills
 │   ├── starknet-wallet/        # Wallet management
@@ -375,7 +375,7 @@ Use gasless mode to pay gas in tokens instead of ETH.
 <details>
 <summary><b>Q: Is this production-ready?</b></summary>
 
-**Smart contracts:** Yes, ERC-8004 contracts are audited and tested (121 tests).
+**Smart contracts:** Yes, ERC-8004 contracts are tested (131+ unit tests + 47 E2E tests).
 
 **MCP Server:** Yes, but always test thoroughly before mainnet.
 

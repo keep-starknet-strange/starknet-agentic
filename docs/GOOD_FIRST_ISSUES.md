@@ -6,43 +6,7 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 
 ---
 
-## 1) MCP Server: Add Vitest Tests
-
-**Goal:** Re-enable and write unit tests for the MCP server tools.
-
-**Context:** The MCP server has 9 implemented tools but tests are disabled.
-
-**Acceptance:**
-- [ ] Vitest configuration enabled in `packages/starknet-mcp-server/`
-- [ ] At least 3 tools have unit tests with mocked RPC/AVNU
-- [ ] `pnpm test` passes in package directory
-- [ ] Code coverage reported
-
-**Files:** `packages/starknet-mcp-server/src/`, `packages/starknet-mcp-server/vitest.config.ts`
-
-**Difficulty:** Medium
-
----
-
-## 2) Agent Account: Add snforge Tests
-
-**Goal:** Write snforge unit tests for the Agent Account contract.
-
-**Context:** Contract exists (140 lines) but has no tests. Needed before deployment.
-
-**Acceptance:**
-- [ ] Tests directory created at `contracts/agent-account/tests/`
-- [ ] At least 5 test cases covering session key and spending limit logic
-- [ ] `snforge test` passes
-- [ ] 80%+ coverage
-
-**Files:** `contracts/agent-account/src/`, `contracts/agent-account/tests/`
-
-**Difficulty:** Medium-Hard
-
----
-
-## 3) Skill: Complete starknet-defi Documentation
+## 1) Skill: Complete starknet-defi Documentation
 
 **Goal:** Expand the starknet-defi skill from template to full documentation.
 
@@ -60,7 +24,7 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 
 ---
 
-## 4) Skill: Complete starknet-identity Documentation
+## 2) Skill: Complete starknet-identity Documentation
 
 **Goal:** Expand the starknet-identity skill with ERC-8004 integration details.
 
@@ -78,11 +42,11 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 
 ---
 
-## 5) Example: defi-agent README
+## 3) Example: defi-agent README
 
-**Goal:** Create comprehensive documentation for the flagship defi-agent example.
+**Goal:** Create comprehensive documentation for the defi-agent example.
 
-**Context:** 8800+ lines of production code, minimal documentation.
+**Context:** ~337 lines demonstrating arbitrage patterns, needs better documentation.
 
 **Acceptance:**
 - [ ] README.md with architecture overview
@@ -96,25 +60,7 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 
 ---
 
-## 6) CI: Add Cairo Contract Build to Workflow
-
-**Goal:** Ensure Cairo contracts compile in CI.
-
-**Context:** CI runs TypeScript builds but not Cairo.
-
-**Acceptance:**
-- [ ] GitHub Action installs Scarb 2.12.1
-- [ ] `scarb build` runs for `packages/starknet-identity/erc8004-cairo/`
-- [ ] `scarb build` runs for `contracts/agent-account/`
-- [ ] CI fails if contracts don't compile
-
-**Files:** `.github/workflows/ci.yml`
-
-**Difficulty:** Easy-Medium
-
----
-
-## 7) Docs: Auto-Generated Changelog Setup
+## 4) Docs: Auto-Generated Changelog Setup
 
 **Goal:** Set up automated changelog generation from conventional commits.
 
@@ -132,19 +78,38 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 
 ---
 
-## 8) Package: Upgrade to starknet.js v8
+## 5) Agent Account: Sepolia Deployment
 
-**Goal:** Upgrade one package from v6/v7 to v8.
+**Goal:** Deploy the Agent Account contract to Sepolia testnet.
 
-**Context:** Packages use mixed versions. Target: v8 for all.
+**Context:** Contract is fully tested (110 tests) but not yet deployed.
 
 **Acceptance:**
-- [ ] Pick one package (e.g., `starknet-mcp-server`)
-- [ ] Upgrade starknet.js dependency to v8
-- [ ] Fix any type errors from breaking changes
-- [ ] Verify builds and any existing tests pass
+- [ ] Deployment script created at `contracts/agent-account/scripts/`
+- [ ] Contract deployed to Sepolia
+- [ ] Deployed address documented in README
+- [ ] Basic interaction script verifying deployment works
 
-**Files:** `packages/<chosen-package>/package.json`, source files as needed
+**Files:** `contracts/agent-account/scripts/`, `contracts/agent-account/README.md`
+
+**Difficulty:** Medium
+
+---
+
+## 6) Package: Expand Test Coverage for starknet-a2a
+
+**Goal:** Add comprehensive unit tests for the A2A adapter.
+
+**Context:** Currently only has smoke tests. Needs mocked RPC calls and edge case coverage.
+
+**Acceptance:**
+- [ ] Mock starknet.js `Contract` and `RpcProvider`
+- [ ] Test `generateAgentCard()` with mocked contract calls
+- [ ] Test `getTaskStatus()` for all task states
+- [ ] Test `registerAgent()` with mocked account execution
+- [ ] `pnpm test` passes
+
+**Files:** `packages/starknet-a2a/__tests__/`
 
 **Difficulty:** Medium
 

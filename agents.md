@@ -131,7 +131,7 @@ pending --> in_progress --> in_review --> done
 
 ### Cairo Contract Tasks
 - Always read existing contract code before modifying (understand component embedding pattern)
-- Run `snforge test` in `packages/starknet-identity/erc8004-cairo/` after every change
+- Run `snforge test` in `contracts/erc8004-cairo/` after every change
 - New contracts: follow the IdentityRegistry pattern for structure
 - Test pattern: `declare` -> `deploy` -> call via dispatcher -> assert
 

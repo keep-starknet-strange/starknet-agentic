@@ -45,7 +45,7 @@ Starknet Agentic implements all three layers with Starknet as the settlement and
 
 | Asset | Where | What We Use |
 |-------|-------|-------------|
-| ERC-8004 Cairo contracts | [erc8004-cairo](https://github.com/Akashneelesh/erc8004-cairo) | Identity, Reputation, Validation registries. 74 unit tests + 47 E2E tests. Production-ready on Sepolia. |
+| ERC-8004 Cairo contracts | [erc8004-cairo](https://github.com/Akashneelesh/erc8004-cairo) | Identity, Reputation, Validation registries. 131+ unit tests + 47 E2E tests. Production-ready on Sepolia. |
 | avnu Skill | [avnu-skill](https://github.com/avnu-labs/avnu-skill) | Swap, DCA, staking, gasless/gasfree patterns. Documentation + scripts. |
 | Daydreams StarknetChain | [daydreams/defai](https://github.com/daydreamsai/daydreams) | Minimal IChain (read/write) using starknet.js v6. We extend this. |
 | Lucid Agents Extension System | [lucid-agents](https://github.com/daydreamsai/lucid-agents) | WalletConnector, PaymentsRuntime, EntrypointDef interfaces. We implement for Starknet. |
@@ -56,7 +56,7 @@ Starknet Agentic implements all three layers with Starknet as the settlement and
 
 | Gap | Priority | Status |
 |-----|----------|--------|
-| Agent Account contract | HIGH | **EXISTS** - needs tests, see `contracts/agent-account/` |
+| Agent Account contract | HIGH | **TESTED** (110 tests) - needs Sepolia deployment, see `contracts/agent-account/` |
 | Starknet MCP server with DeFi | HIGH | **DONE** - 9 tools implemented including swap, quote |
 | Starknet wallet skill | HIGH | **DONE** - complete at `skills/starknet-wallet/` |
 | A2A support for Starknet agents | MEDIUM | **DONE** - functional at `packages/starknet-a2a/` |

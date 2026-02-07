@@ -20,8 +20,8 @@ This specification describes both implemented features and planned designs:
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Agent Account Contract | **Exists (Untested)** | Code complete, needs tests before deployment |
-| Agent Registry (ERC-8004) | **Production** | 74 unit + 47 E2E tests, deployed on Sepolia |
+| Agent Account Contract | **Tested** | 110 tests across 4 test suites |
+| Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on Sepolia |
 | MCP Server | **Production** | 9 tools implemented |
 | A2A Adapter | **Functional** | Basic implementation complete |
 | Framework Extensions | **Planned** | Deferred to v2.0 |
@@ -81,7 +81,7 @@ Layer 0: Starknet L2 (native AA, ZK proofs, paymaster)
 
 ### 3.1 Agent Account Contract
 
-**Status:** Exists at `contracts/agent-account/` (140 lines). Needs tests before deployment.
+**Status:** Tested at `contracts/agent-account/` (~570 lines main contract, 110 tests across 4 suites).
 
 **Purpose:** A purpose-built Starknet account contract for AI agents that extends native AA with agent-specific features.
 

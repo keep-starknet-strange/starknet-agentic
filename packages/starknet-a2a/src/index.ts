@@ -9,7 +9,7 @@
  * See: docs/SPECIFICATION.md section 5
  */
 
-import { RpcProvider, Contract, Account } from "starknet";
+import { RpcProvider, Contract, Account, shortString } from "starknet";
 import { z } from "zod";
 
 // ============================================================================
@@ -147,26 +147,21 @@ const VALIDATION_REGISTRY_ABI = [
 // ============================================================================
 
 /**
- * Convert felt252 to string
+ * Convert felt252 to string using starknet.js utilities.
  */
 function feltToString(felt: bigint): string {
-  const hex = felt.toString(16);
-  const bytes: number[] = [];
-
-  for (let i = 0; i < hex.length; i += 2) {
-    const byte = parseInt(hex.substr(i, 2), 16);
-    if (byte !== 0) bytes.push(byte);
+  try {
+    return shortString.decodeShortString("0x" + felt.toString(16));
+  } catch {
+    return "";
   }
-
-  return String.fromCharCode(...bytes);
 }
 
 /**
- * Convert string to felt252
+ * Convert string to felt252 using starknet.js utilities.
  */
 function stringToFelt(str: string): string {
-  const bytes = Buffer.from(str, "utf-8");
-  return "0x" + bytes.toString("hex");
+  return shortString.encodeShortString(str);
 }
 
 // ============================================================================
@@ -333,7 +328,8 @@ export class StarknetA2AAdapter {
     try {
       const receipt = await this.provider.getTransactionReceipt(taskId);
 
-      const executionStatus = (receipt as any).execution_status;
+      const receiptRecord = receipt as Record<string, unknown>;
+      const executionStatus = receiptRecord.execution_status as string | undefined;
       const state =
         executionStatus === "SUCCEEDED"
           ? TaskState.Completed
@@ -352,7 +348,7 @@ export class StarknetA2AAdapter {
             : undefined,
         error:
           state === TaskState.Failed
-            ? (receipt as any).revert_reason || "Transaction reverted"
+            ? (receiptRecord.revert_reason as string) || "Transaction reverted"
             : undefined,
         createdAt: 0,
         updatedAt: Date.now(),
