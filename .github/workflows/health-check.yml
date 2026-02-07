@@ -1,0 +1,149 @@
+name: Daily Health Check
+
+on:
+  schedule:
+    - cron: "15 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: health-check
+  cancel-in-progress: false
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          submodules: recursive
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@53751a9789c7351e4924f01fe68370252a4f1f18 # v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: JS build
+        id: js_build
+        run: pnpm -r build --if-present
+        continue-on-error: true
+
+      - name: JS tests
+        id: js_test
+        run: pnpm -r test --if-present
+        continue-on-error: true
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
+        with:
+          scarb-version: "2.12.1"
+
+      - name: Setup Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@504d7c3c6d435ccebc1b23491a3e314633ed042a # v3
+        with:
+          starknet-foundry-version: "0.54.1"
+
+      - name: Cairo tests (erc8004)
+        id: cairo_identity
+        working-directory: packages/starknet-identity/erc8004-cairo
+        run: snforge test
+        continue-on-error: true
+
+      - name: Cairo tests (agent account)
+        id: cairo_agent
+        working-directory: contracts/agent-account
+        run: snforge test
+        continue-on-error: true
+
+      - name: Evaluate status
+        id: status
+        run: |
+          status=success
+          if [ "${{ steps.js_build.outcome }}" != "success" ]; then status=failure; fi
+          if [ "${{ steps.js_test.outcome }}" != "success" ]; then status=failure; fi
+          if [ "${{ steps.cairo_identity.outcome }}" != "success" ]; then status=failure; fi
+          if [ "${{ steps.cairo_agent.outcome }}" != "success" ]; then status=failure; fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update failure issue
+        if: steps.status.outputs.status == 'failure'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const labelName = 'health-check';
+            const labelColor = 'd73a4a';
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: labelName });
+            } catch (error) {
+              if (error.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name: labelName,
+                  color: labelColor,
+                  description: 'Automated health check failures',
+                });
+              } else {
+                throw error;
+              }
+            }
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              labels: labelName,
+            });
+
+            const summary = [
+              `- JS build: ${{ steps.js_build.outcome }}`,
+              `- JS test: ${{ steps.js_test.outcome }}`,
+              `- Cairo (erc8004): ${{ steps.cairo_identity.outcome }}`,
+              `- Cairo (agent account): ${{ steps.cairo_agent.outcome }}`,
+            ].join('\n');
+
+            const body = [
+              `Health check failed on ${new Date().toISOString()}.`,
+              '',
+              summary,
+              '',
+              `Run: ${runUrl}`,
+            ].join('\n');
+
+            if (issues.length > 0) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issues[0].number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title: 'Health check failing',
+                body,
+                labels: [labelName],
+              });
+            }
+
+      - name: Fail job if needed
+        if: steps.status.outputs.status == 'failure'
+        run: exit 1

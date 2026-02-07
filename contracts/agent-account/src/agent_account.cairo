@@ -2,7 +2,7 @@
 pub mod AgentAccount {
     use core::ecdsa::check_ecdsa_signature;
     use core::num::traits::Zero;
-    use starknet::{ContractAddress, SyscallResultTrait, get_block_timestamp, get_caller_address, get_tx_info};
+    use starknet::{ClassHash, ContractAddress, SyscallResultTrait, get_block_timestamp, get_caller_address, get_tx_info};
     use starknet::account::Call;
     use starknet::storage::*;
     use openzeppelin::account::AccountComponent;
@@ -12,6 +12,8 @@ pub mod AgentAccount {
 
     const MIN_TRANSACTION_VERSION: u256 = 1;
     const QUERY_OFFSET: u256 = 0x100000000000000000000000000000000;
+    /// Default timelock delay for upgrades (5 minutes).
+    const DEFAULT_UPGRADE_DELAY: u64 = 300;
 
     fn execute_calls(mut calls: Span<Call>) -> Array<Span<felt252>> {
         let mut res = array![];
@@ -47,8 +49,6 @@ pub mod AgentAccount {
     // ──────────────────────────────────────────────────────────────────
     #[abi(embed_v0)]
     impl DeclarerImpl = AccountComponent::DeclarerImpl<ContractState>;
-    #[abi(embed_v0)]
-    impl DeployableImpl = AccountComponent::DeployableImpl<ContractState>;
     #[abi(embed_v0)]
     impl PublicKeyImpl = AccountComponent::PublicKeyImpl<ContractState>;
     #[abi(embed_v0)]
@@ -112,6 +112,14 @@ pub mod AgentAccount {
         session_key_count: u32,
         /// Maps key -> 1-based index in active_session_keys (0 = not tracked).
         session_key_index: Map<felt252, u32>,
+        /// Factory address that deployed this account (zero if deployed directly).
+        factory: ContractAddress,
+        /// Timelocked upgrade: pending class hash.
+        pending_upgrade: ClassHash,
+        /// Timelocked upgrade: timestamp when upgrade was scheduled.
+        upgrade_scheduled_at: u64,
+        /// Timelocked upgrade: delay in seconds before upgrade can execute.
+        upgrade_delay: u64,
     }
 
     #[event]
@@ -125,6 +133,10 @@ pub mod AgentAccount {
         SessionKeyEvent: SessionKeyComponent::Event,
         AgentIdSet: AgentIdSet,
         EmergencyRevoked: EmergencyRevoked,
+        UpgradeScheduled: UpgradeScheduled,
+        UpgradeExecuted: UpgradeExecuted,
+        UpgradeCancelled: UpgradeCancelled,
+        UpgradeDelayUpdated: UpgradeDelayUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -138,9 +150,77 @@ pub mod AgentAccount {
         timestamp: u64,
     }
 
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeScheduled {
+        new_class_hash: ClassHash,
+        scheduled_at: u64,
+        executable_after: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeExecuted {
+        new_class_hash: ClassHash,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeCancelled {
+        class_hash: ClassHash,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeDelayUpdated {
+        old_delay: u64,
+        new_delay: u64,
+    }
+
     #[constructor]
-    fn constructor(ref self: ContractState, public_key: felt252) {
+    fn constructor(ref self: ContractState, public_key: felt252, factory: ContractAddress) {
         self.account.initializer(public_key);
+        self.factory.write(factory);
+        self.upgrade_delay.write(DEFAULT_UPGRADE_DELAY);
+    }
+
+    // ─── Custom __validate_deploy__ ────────────────────────────────────
+    // The embedded AccountComponent::DeployableImpl generates a
+    // __validate_deploy__ that only accepts (public_key).  Our constructor
+    // is (public_key, factory), so we provide our own implementation.
+    // ──────────────────────────────────────────────────────────────────
+
+    #[abi(per_item)]
+    #[generate_trait]
+    impl CustomDeployableImpl of CustomDeployableTrait {
+        #[external(v0)]
+        fn __validate_deploy__(
+            self: @ContractState,
+            class_hash: felt252,
+            contract_address_salt: felt252,
+            public_key: felt252,
+            factory: ContractAddress,
+        ) -> felt252 {
+            let _ = class_hash;
+            let _ = contract_address_salt;
+            let _ = factory;
+
+            let tx_info = get_tx_info().unbox();
+            let tx_hash = tx_info.transaction_hash;
+            let signature = tx_info.signature;
+
+            if signature.len() != 2 {
+                return 0;
+            }
+
+            if public_key == 0 {
+                return 0;
+            }
+
+            let r = *signature.at(0);
+            let s = *signature.at(1);
+            if check_ecdsa_signature(tx_hash, public_key, r, s) {
+                starknet::VALIDATED
+            } else {
+                0
+            }
+        }
     }
 
     // ─── Custom SRC6 Implementation ────────────────────────────────────
@@ -395,8 +475,96 @@ pub mod AgentAccount {
             self.emit(AgentIdSet { registry, agent_id });
         }
 
+        fn init_agent_id_from_factory(
+            ref self: ContractState,
+            registry: ContractAddress,
+            agent_id: u256,
+        ) {
+            // Only the factory that deployed this account may call this.
+            let factory = self.factory.read();
+            assert(get_caller_address() == factory, 'Only factory');
+            // Only allow initialization once (agent_id defaults to 0).
+            let zero: ContractAddress = 0.try_into().unwrap();
+            assert(self.agent_registry.read() == zero, 'Already initialized');
+
+            self.agent_registry.write(registry);
+            self.agent_id.write(agent_id);
+
+            self.emit(AgentIdSet { registry, agent_id });
+        }
+
         fn get_agent_id(self: @ContractState) -> (ContractAddress, u256) {
             (self.agent_registry.read(), self.agent_id.read())
+        }
+
+        // ─── Timelocked Upgrade ──────────────────────────────────────────
+
+        fn schedule_upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.account.assert_only_self();
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            assert(new_class_hash != zero_class, 'Zero class hash');
+            assert(self.pending_upgrade.read() == zero_class, 'Upgrade already pending');
+
+            let now = get_block_timestamp();
+            let delay = self.upgrade_delay.read();
+            self.pending_upgrade.write(new_class_hash);
+            self.upgrade_scheduled_at.write(now);
+
+            self
+                .emit(
+                    UpgradeScheduled {
+                        new_class_hash, scheduled_at: now, executable_after: now + delay,
+                    },
+                );
+        }
+
+        fn execute_upgrade(ref self: ContractState) {
+            self.account.assert_only_self();
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            let pending = self.pending_upgrade.read();
+            assert(pending != zero_class, 'No pending upgrade');
+
+            let scheduled_at = self.upgrade_scheduled_at.read();
+            let delay = self.upgrade_delay.read();
+            let now = get_block_timestamp();
+            assert(now >= scheduled_at + delay, 'Timelock not expired');
+
+            // Clear pending state before syscall
+            self.pending_upgrade.write(zero_class);
+            self.upgrade_scheduled_at.write(0);
+
+            starknet::syscalls::replace_class_syscall(pending).unwrap_syscall();
+
+            self.emit(UpgradeExecuted { new_class_hash: pending });
+        }
+
+        fn cancel_upgrade(ref self: ContractState) {
+            self.account.assert_only_self();
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            let pending = self.pending_upgrade.read();
+            assert(pending != zero_class, 'No pending upgrade');
+
+            self.pending_upgrade.write(zero_class);
+            self.upgrade_scheduled_at.write(0);
+
+            self.emit(UpgradeCancelled { class_hash: pending });
+        }
+
+        fn get_upgrade_info(self: @ContractState) -> (ClassHash, u64, u64, u64) {
+            (
+                self.pending_upgrade.read(),
+                self.upgrade_scheduled_at.read(),
+                self.upgrade_delay.read(),
+                get_block_timestamp(),
+            )
+        }
+
+        fn set_upgrade_delay(ref self: ContractState, new_delay: u64) {
+            self.account.assert_only_self();
+            let old_delay = self.upgrade_delay.read();
+            self.upgrade_delay.write(new_delay);
+
+            self.emit(UpgradeDelayUpdated { old_delay, new_delay });
         }
     }
 }
