@@ -10,7 +10,7 @@ Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (
 |-----------|-----------|---------|
 | Smart contracts | Cairo (Scarb + snforge) | Cairo 2.14.0, Scarb 2.14.0 |
 | Contract deps | OpenZeppelin Cairo | v3.0.0 |
-| TypeScript packages | pnpm workspaces, tsup | Node 18+ |
+| TypeScript packages | pnpm workspaces, tsup | Node 20+ |
 | MCP server | `@modelcontextprotocol/sdk` | ^1.0.0 |
 | Starknet interaction | starknet.js | ^8.9.1 |
 | DeFi aggregation | `@avnu/avnu-sdk` | ^4.0.1 |
@@ -37,7 +37,7 @@ starknet-agentic/
 │   │   ├── src/                          # Contract source (identity, reputation, validation)
 │   │   ├── tests/                        # Unit tests (snforge)
 │   │   └── e2e-tests/                    # E2E tests (Sepolia)
-│   ├── agent-account/                    # Agent Account contract (TESTED — 96 tests)
+│   ├── agent-account/                    # Agent Account contract (TESTED — 110 tests)
 │   └── huginn-registry/                  # Thought provenance registry (WIP)
 ├── skills/
 │   ├── starknet-wallet/                  # Wallet management skill (COMPLETE)
@@ -47,7 +47,7 @@ starknet-agentic/
 │   └── starknet-identity/                # Identity & reputation skill (TEMPLATE)
 ├── examples/
 │   ├── hello-agent/                      # Minimal E2E proof (WORKING)
-│   ├── defi-agent/                       # Production arb bot (FLAGSHIP - 8800+ lines)
+│   ├── defi-agent/                       # Arbitrage bot example (~337 lines)
 │   └── scaffold-stark-agentic/           # Frontend reference
 ├── references/
 │   ├── agentskills/                      # AgentSkills format specs
@@ -62,7 +62,7 @@ starknet-agentic/
 └── package.json                          # Root monorepo (pnpm workspaces)
 ```
 
-NOTE: The Agent Account contract at `contracts/agent-account/` (402 lines) has 96 tests across 3 test suites (test_agent_account, test_execute_validate, test_security).
+NOTE: The Agent Account contract at `contracts/agent-account/` (~570 lines main contract) has 110 tests across 4 test suites (test_agent_account, test_execute_validate, test_security, test_agent_account_factory).
 
 </structure>
 
@@ -140,7 +140,9 @@ This project implements three converging agent standards:
 
 | Contract | File | Lines | Purpose |
 |----------|------|-------|---------|
-| AgentAccount | `agent_account.cairo` | 402 | Full account with session keys, timelocked upgrades, identity binding |
+| AgentAccount | `agent_account.cairo` | 570 | Full account with session keys, timelocked upgrades, identity binding |
+| AgentAccountFactory | `agent_account_factory.cairo` | 169 | Factory for deploying agent accounts |
+| SessionKey | `session_key.cairo` | 163 | Session key data structure and validation |
 
 ### ERC-8004 Cairo Contracts (`contracts/erc8004-cairo/src/`)
 
@@ -243,20 +245,20 @@ Always consult `references/` before relying on training data for Starknet-specif
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| ERC-8004 Cairo contracts | **Production** (126+ unit + 47 E2E tests) | `contracts/erc8004-cairo/` |
+| ERC-8004 Cairo contracts | **Production** (131+ unit + 47 E2E tests) | `contracts/erc8004-cairo/` |
 | MCP server | **Production** (9 tools, 1,600+ lines) | `packages/starknet-mcp-server/` |
 | A2A adapter | **Functional** (437 lines) | `packages/starknet-a2a/` |
 | Agent Passport client | **Functional** (142 lines) | `packages/starknet-agent-passport/` |
 | X-402 Starknet signing | **Functional** (110 lines) | `packages/x402-starknet/` |
 | Prediction arb scanner | **MVP** (296 lines) | `packages/prediction-arb-scanner/` |
-| Agent Account contract | **Tested** (402 lines, 96 tests) | `contracts/agent-account/` |
+| Agent Account contract | **Tested** (~570 lines, 110 tests) | `contracts/agent-account/` |
 | Skill: starknet-wallet | **Complete** (465 lines) | `skills/starknet-wallet/` |
 | Skill: starknet-mini-pay | **Complete** (Python CLI + Telegram bot) | `skills/starknet-mini-pay/` |
 | Skill: starknet-anonymous-wallet | **Complete** (271 lines) | `skills/starknet-anonymous-wallet/` |
 | Skill: starknet-defi | **Template** (needs expansion) | `skills/starknet-defi/` |
 | Skill: starknet-identity | **Template** (needs expansion) | `skills/starknet-identity/` |
 | Example: hello-agent | **Working** (E2E proof) | `examples/hello-agent/` |
-| Example: defi-agent | **Production** (8800+ lines, flagship) | `examples/defi-agent/` |
+| Example: defi-agent | **Working** (~337 lines, arb example) | `examples/defi-agent/` |
 | Website | **Scaffolded** (Next.js 16 + landing content) | `website/` |
 | Docs & specs | **Complete** (updated 2026-02-06) | `docs/` |
 | CI/CD | **Implemented** | `.github/workflows/` |

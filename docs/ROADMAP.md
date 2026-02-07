@@ -18,53 +18,15 @@ Core infrastructure features required for v1.0 release. MVP definition: MCP serv
 
 ---
 
-### 1.0 Upgrade starknet.js to v8 Across All Packages
+### 1.0 ~~Upgrade starknet.js to v8 Across All Packages~~ DONE
 
-**Description**: Standardize all TypeScript packages on starknet.js v8 (latest) to ensure consistency and access to latest features.
-
-**Requirements**:
-- [ ] Audit current starknet.js versions across packages (currently mixed v6/v7/v8)
-- [ ] Upgrade `packages/starknet-mcp-server/` to starknet.js v8
-- [ ] Upgrade `packages/starknet-a2a/` to starknet.js v8
-- [ ] Upgrade `packages/starknet-agent-passport/` to starknet.js v8
-- [ ] Upgrade `packages/x402-starknet/` to starknet.js v8
-- [ ] Upgrade `examples/hello-agent/` to starknet.js v8
-- [ ] Upgrade `examples/defi-agent/` to starknet.js v8
-- [ ] Update type definitions where breaking changes occurred
-- [ ] Run all existing tests to verify no regressions
-- [ ] Update documentation with v8-specific patterns
-
-**Implementation Notes**:
-- starknet.js v8 has breaking changes in Account class and type definitions
-- Some packages may need Cairo type import updates
-- Keep AVNU SDK compatibility in mind (check their starknet.js peer dependency)
+All TypeScript packages are already standardized on starknet.js ^8.9.1.
 
 ---
 
-### 1.1 Enable and Write MCP Server Tests
+### 1.1 ~~Enable and Write MCP Server Tests~~ DONE
 
-**Description**: The MCP server has 9 implemented tools but tests are currently disabled. Enable and expand test coverage.
-
-**Requirements**:
-- [ ] Re-enable Vitest configuration in `packages/starknet-mcp-server/`
-- [ ] Write unit tests for `starknet_get_balance` tool
-- [ ] Write unit tests for `starknet_get_balances` tool
-- [ ] Write unit tests for `starknet_transfer` tool
-- [ ] Write unit tests for `starknet_call_contract` tool
-- [ ] Write unit tests for `starknet_invoke_contract` tool
-- [ ] Write unit tests for `starknet_swap` tool
-- [ ] Write unit tests for `starknet_get_quote` tool
-- [ ] Write unit tests for `starknet_estimate_fee` tool
-- [ ] Write unit tests for `x402_starknet_sign_payment_required` tool
-- [ ] Mock RPC provider and AVNU SDK for deterministic tests
-- [ ] Achieve minimum 80% code coverage
-- [ ] Add integration tests against Sepolia testnet (optional, for CI)
-
-**Implementation Notes**:
-- Current tests are disabled in package.json (`"test": "echo \"Tests disabled\""`)
-- Use Vitest with starknet.js mocks
-- AVNU SDK responses should be mocked for unit tests
-- Consider separate test:unit and test:integration scripts
+MCP server tests are fully implemented with 7 test files covering handlers, tools, services, providers, and utils. Vitest is configured with 80% coverage thresholds.
 
 ---
 
@@ -124,7 +86,7 @@ Core infrastructure features required for v1.0 release. MVP definition: MCP serv
 - [ ] Add production deployment guide (systemd, Docker, cloud)
 
 **Implementation Notes**:
-- defi-agent is 8800+ lines and production-ready
+- defi-agent is ~337 lines demonstrating arbitrage patterns
 - Demonstrates triangular arbitrage with ETH/STRK
 - Includes risk management (spending limits, min profit thresholds)
 - Good showcase for Starknet's low fees enabling high-frequency strategies
@@ -196,28 +158,27 @@ Features that enhance the platform but are not required for v1.0 release.
 
 ---
 
-### 2.1 Agent Account Contract Testing and Deployment
+### 2.1 Agent Account Contract Deployment
 
-**Description**: The Agent Account contract exists (140 lines) but has no tests. Add comprehensive tests and deploy to Sepolia.
+**Description**: The Agent Account contract is fully tested (110 tests across 4 suites). Next step is Sepolia deployment.
 
 **Requirements**:
-- [ ] Create `contracts/agent-account/tests/` directory
-- [ ] Write snforge tests for session key registration
-- [ ] Write snforge tests for session key revocation
-- [ ] Write snforge tests for spending limit enforcement
-- [ ] Write snforge tests for time bounds validation
-- [ ] Write snforge tests for emergency revoke mechanism
-- [ ] Write snforge tests for agent ID linking
-- [ ] Achieve minimum 80% code coverage
+- [x] ~~Create tests directory~~ — 4 test files exist in `contracts/agent-account/tests/`
+- [x] ~~Write snforge tests for session key registration~~
+- [x] ~~Write snforge tests for session key revocation~~
+- [x] ~~Write snforge tests for spending limit enforcement~~
+- [x] ~~Write snforge tests for time bounds validation~~
+- [x] ~~Write snforge tests for emergency revoke mechanism~~
+- [x] ~~Write snforge tests for agent ID linking~~
 - [ ] Create Sepolia deployment script
 - [ ] Deploy to Sepolia testnet
 - [ ] Document deployed contract address
 
 **Implementation Notes**:
-- Contract exists at `contracts/agent-account/src/agent_account.cairo`
+- Contract at `contracts/agent-account/src/agent_account.cairo` (~570 lines)
+- Tests: test_agent_account (43), test_execute_validate (20), test_security (33), test_agent_account_factory (14)
 - Uses OpenZeppelin AccountComponent
 - Single-level session keys (owner -> agent, no nested delegation)
-- Sepolia deployment OK without full test coverage; mainnet requires tests
 
 ---
 
@@ -288,18 +249,18 @@ Features that enhance the platform but are not required for v1.0 release.
 **Description**: Improve CI/CD pipeline with additional checks and automation.
 
 **Requirements**:
-- [ ] Add Cairo contract build verification to CI
-- [ ] Add snforge test execution to CI
+- [x] ~~Add Cairo contract build verification to CI~~ — done in `ci.yml`
+- [x] ~~Add snforge test execution to CI~~ — done in `ci.yml`
+- [x] ~~Add automated npm publishing on release~~ — done in `publish.yml`
 - [ ] Add starknet.js version consistency check
 - [ ] Add dependency vulnerability scanning
-- [ ] Add automated npm publishing on release
 - [ ] Add automated ClawHub publishing on release
 - [ ] Add test coverage reporting
 
 **Implementation Notes**:
-- Current CI at `.github/workflows/ci.yml` and `publish.yml`
-- Scarb and snforge need to be installed in CI environment
-- Consider caching for faster builds
+- CI pipeline at `.github/workflows/ci.yml` runs TS + Cairo builds + tests
+- `publish.yml` publishes 3 packages to npm on release
+- `health-check.yml` runs daily cron checks
 
 ---
 

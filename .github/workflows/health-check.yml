@@ -49,7 +49,7 @@ jobs:
       - name: Setup Scarb
         uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
         with:
-          scarb-version: "2.12.1"
+          scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
         uses: foundry-rs/setup-snfoundry@84390a1602c157576ceefa6f9cfcb8b0504c94c7 # v3
@@ -58,7 +58,7 @@ jobs:
 
       - name: Cairo tests (erc8004)
         id: cairo_identity
-        working-directory: packages/starknet-identity/erc8004-cairo
+        working-directory: contracts/erc8004-cairo
         run: snforge test
         continue-on-error: true
 

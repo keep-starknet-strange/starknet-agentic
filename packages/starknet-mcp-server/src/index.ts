@@ -517,7 +517,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: JSON.stringify({
-                result: Array.isArray(result) ? result : (result as any).result,
+                result: Array.isArray(result) ? result : (result as Record<string, unknown>).result ?? result,
                 contractAddress,
                 entrypoint,
               }, null, 2),
@@ -566,6 +566,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           gasfree?: boolean;
           gasToken?: string;
         };
+
+        // Validate slippage is within reasonable bounds
+        if (slippage < 0 || slippage > 0.5) {
+          throw new Error("Slippage must be between 0 and 0.5 (50%). Recommended: 0.005-0.03.");
+        }
 
         const [sellTokenAddress, buyTokenAddress] = await Promise.all([
           resolveTokenAddressAsync(sellToken),
