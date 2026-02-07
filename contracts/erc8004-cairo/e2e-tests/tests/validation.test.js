@@ -183,8 +183,9 @@ export default async function runTests() {
     // Use timestamp to ensure uniqueness
     const requestHash1 = BigInt(Date.now()) + 0xABCDEF1n;
     
-    // Interface: validation_request(agent_id, request_uri, request_hash)
+    // Interface: validation_request(validator_address, agent_id, request_uri, request_hash)
     const requestTx1 = await validationRegistry.validation_request(
+      validator.address,
       toUint256(agentId),
       requestUri1,
       toUint256(requestHash1)
@@ -257,8 +258,7 @@ export default async function runTests() {
     console.log(`   Agent ID: ${agentIdResult}`);
     console.log(`   Timestamp: ${timestamp}`);
     
-    // Note: validator is the caller who made the request (agentOwner in this case)
-    // The contract stores the caller as the one who can respond
+    // Validator is the designated validator passed by request creator
     console.log('   ✅ PASSED\n');
     
     testData.readOperations.push({
@@ -299,15 +299,14 @@ export default async function runTests() {
     console.log('Test 6: Get Validator Requests');
     console.log('────────────────────────────────────────');
     
-    // Note: get_validator_requests returns requests CREATED BY the address
-    // The agentOwner created the request in Test 2, so we query with agentOwner.address
-    const validatorRequests = await validationRegistry.get_validator_requests(agentOwner.address);
-    console.log(`   Request count for agentOwner: ${validatorRequests.length}`);
+    // get_validator_requests returns requests assigned to this validator
+    const validatorRequests = await validationRegistry.get_validator_requests(validator.address);
+    console.log(`   Request count for validator: ${validatorRequests.length}`);
     assert(validatorRequests.length >= 1, 'Should have at least 1 request');
     
     testData.readOperations.push({
       operation: 'get_validator_requests',
-      inputs: { validatorAddress: agentOwner.address },
+      inputs: { validatorAddress: validator.address },
       outputs: { requestCount: validatorRequests.length }
     });
     
@@ -322,14 +321,13 @@ export default async function runTests() {
     
     validationRegistry.connect(validator);
     
-    const response1 = 1; // 1 = Valid
+    const response1 = 100; // 100 = fully valid
     const responseUri1 = 'ipfs://validation-resp1.json';
     const responseHash1 = BigInt(Date.now()) + 0x111111n;
     const tag1 = "security-audit"; // ByteArray tag
     
-    // Interface: validation_response(agent_id, request_hash, response, response_uri, response_hash, tag)
+    // Interface: validation_response(request_hash, response, response_uri, response_hash, tag)
     const responseTx1 = await validationRegistry.validation_response(
-      toUint256(agentId),
       toUint256(requestHash1),
       response1,
       responseUri1,
@@ -346,7 +344,6 @@ export default async function runTests() {
       operation: 'validation_response',
       inputs: {
         requestHash: requestHash1.toString(16),
-        agentId: agentId.toString(),
         response: response1,
         responseUri: responseUri1,
         responseHash: responseHash1.toString(16),
@@ -362,33 +359,39 @@ export default async function runTests() {
     console.log('Test 8: Get Validation Status');
     console.log('────────────────────────────────────────');
     
-    // Interface: get_validation_status(validator_address, agent_id, request_hash)
-    // Returns: (response: u8, timestamp: u64, response_hash: u256, has_response: bool)
+    // Interface: get_validation_status(request_hash)
+    // Returns: (validator_address, agent_id, response, response_hash, tag, last_update)
     const status = await validationRegistry.get_validation_status(
-      validator.address,
-      toUint256(agentId),
       toUint256(requestHash1)
     );
-    
-    const statusResponse = status[0];
-    const statusTimestamp = status[1];
-    const statusResponseHash = status[2];
-    const statusHasResponse = status[3];
-    
+
+    const statusValidator = status[0];
+    const statusAgentId = status[1];
+    const statusResponse = status[2];
+    const statusResponseHash = status[3];
+    const statusTag = status[4];
+    const statusTimestamp = status[5];
+
+    console.log(`   Validator: ${BigInt(statusValidator).toString(16).slice(0, 16)}...`);
+    console.log(`   Agent ID: ${statusAgentId}`);
     console.log(`   Response: ${statusResponse}`);
     console.log(`   Timestamp: ${statusTimestamp}`);
-    console.log(`   Has Response: ${statusHasResponse}`);
+    console.log(`   Tag: ${statusTag}`);
     
+    assert(BigInt(statusValidator) === BigInt(validator.address), 'Validator should match');
+    assert(BigInt(statusAgentId.low ?? statusAgentId) === BigInt(agentId), 'Agent ID should match');
     assert(BigInt(statusResponse) === BigInt(response1), 'Response should match');
-    assert(statusHasResponse === true, 'Should have response');
     
     testData.readOperations.push({
       operation: 'get_validation_status',
       inputs: { requestHash: requestHash1.toString(16) },
       outputs: {
+        validatorAddress: BigInt(statusValidator).toString(16),
+        agentId: (statusAgentId.low ?? statusAgentId).toString(),
         response: statusResponse.toString(),
         timestamp: statusTimestamp.toString(),
-        hasResponse: statusHasResponse
+        responseHash: statusResponseHash.toString(),
+        tag: statusTag.toString()
       }
     });
     
@@ -409,6 +412,7 @@ export default async function runTests() {
     const requestHash2 = BigInt(Date.now()) + 0xFEDCBA2n;
     
     const requestTx2 = await validationRegistry.validation_request(
+      validator.address,
       toUint256(agentId),
       requestUri2,
       toUint256(requestHash2)
@@ -439,13 +443,12 @@ export default async function runTests() {
     
     validationRegistry.connect(validator);
     
-    const response2 = 2; // 2 = Invalid
+    const response2 = 0; // 0 = invalid
     const responseUri2 = 'ipfs://validation-resp2.json';
     const responseHash2 = BigInt(Date.now()) + 0x222222n;
     const tag2 = "compliance-check";
     
     const responseTx2 = await validationRegistry.validation_response(
-      toUint256(agentId),
       toUint256(requestHash2),
       response2,
       responseUri2,
@@ -462,7 +465,6 @@ export default async function runTests() {
       operation: 'validation_response',
       inputs: {
         requestHash: requestHash2.toString(16),
-        agentId: agentId.toString(),
         response: response2,
         responseUri: responseUri2,
         responseHash: responseHash2.toString(16),
@@ -478,25 +480,22 @@ export default async function runTests() {
     console.log('Test 11: Get Summary');
     console.log('────────────────────────────────────────');
     
-    // Interface: get_summary(agent_id, tag, validator_addresses)
-    // Returns: (count: u64, valid_count: u64, invalid_count: u64)
+    // Interface: get_summary(agent_id, validator_addresses, tag)
+    // Returns: (count: u64, avg_response: u8)
     const summary = await validationRegistry.get_summary(
       toUint256(agentId),
-      "",  // tag filter (empty = all)
-      [validator.address]
+      [validator.address],
+      ""  // tag filter (empty = all)
     );
     
     const summaryCount = summary[0];
-    const summaryValidCount = summary[1];
-    const summaryInvalidCount = summary[2];
+    const summaryAvgResponse = summary[1];
     
     console.log(`   Total Count: ${summaryCount}`);
-    console.log(`   Valid Count: ${summaryValidCount}`);
-    console.log(`   Invalid Count: ${summaryInvalidCount}`);
+    console.log(`   Average Response: ${summaryAvgResponse}`);
     
     assert(summaryCount >= 2n, 'Should have at least 2 validations');
-    assert(summaryValidCount >= 1n, 'Should have at least 1 valid');
-    assert(summaryInvalidCount >= 1n, 'Should have at least 1 invalid');
+    assert(summaryAvgResponse >= 0n && summaryAvgResponse <= 100n, 'Average should be in [0, 100]');
     
     testData.summaryOperations.push({
       operation: 'get_summary',
@@ -507,8 +506,7 @@ export default async function runTests() {
       },
       outputs: {
         count: summaryCount.toString(),
-        validCount: summaryValidCount.toString(),
-        invalidCount: summaryInvalidCount.toString()
+        avgResponse: summaryAvgResponse.toString()
       }
     });
     
@@ -523,17 +521,15 @@ export default async function runTests() {
     
     const summaryFiltered = await validationRegistry.get_summary(
       toUint256(agentId),
-      tag1, // filter by first tag
-      [validator.address]
+      [validator.address],
+      tag1 // filter by first tag
     );
     
     const filteredCount = summaryFiltered[0];
-    const filteredValidCount = summaryFiltered[1];
-    const filteredInvalidCount = summaryFiltered[2];
+    const filteredAvgResponse = summaryFiltered[1];
     
     console.log(`   Count (tag="${tag1}"): ${filteredCount}`);
-    console.log(`   Valid Count: ${filteredValidCount}`);
-    console.log(`   Invalid Count: ${filteredInvalidCount}`);
+    console.log(`   Average Response: ${filteredAvgResponse}`);
     
     assert(filteredCount >= 1n, 'Should have at least 1 validation with this tag');
     
@@ -546,8 +542,7 @@ export default async function runTests() {
       },
       outputs: {
         count: filteredCount.toString(),
-        validCount: filteredValidCount.toString(),
-        invalidCount: filteredInvalidCount.toString()
+        avgResponse: filteredAvgResponse.toString()
       }
     });
     
@@ -570,25 +565,18 @@ export default async function runTests() {
     passed++;
 
     // ===================================================================
-    // Test 14: Get Validation Status for Non-Responded Request
+    // Test 14: Get Validation Status for Non-Existent Request
     // ===================================================================
     console.log('Test 14: Get Validation Status (Non-Existent)');
     console.log('────────────────────────────────────────');
     
-    const statusNonExistent = await validationRegistry.get_validation_status(
-      validator.address,  // any valid address
-      toUint256(agentId),
-      toUint256(nonExistentHash)
-    );
-    
-    const neResponse = statusNonExistent['0'] ?? statusNonExistent[0];
-    const neHasResponse = statusNonExistent['3'] ?? statusNonExistent[3];
-    
-    console.log(`   Response: ${neResponse}`);
-    console.log(`   Has Response: ${neHasResponse}`);
-    
-    assert(neResponse === 0n || neResponse === 0 || neResponse === '0', 'Non-existent should return 0');
-    assert(neHasResponse === false, 'Non-existent should not have response');
+    let reverted = false;
+    try {
+      await validationRegistry.get_validation_status(toUint256(nonExistentHash));
+    } catch (_) {
+      reverted = true;
+    }
+    assert(reverted, 'Non-existent request must revert');
     
     console.log('   ✅ PASSED\n');
     passed++;
@@ -611,7 +599,7 @@ export default async function runTests() {
     console.log('  ✅ Get validator requests');
     console.log('  ✅ Submit validation response (valid/invalid)');
     console.log('  ✅ Get validation status (new return format)');
-    console.log('  ✅ Get summary (count, valid, invalid)');
+    console.log('  ✅ Get summary (count, avg response)');
     console.log('  ✅ Get summary with tag filter');
     console.log('  ✅ Non-existent request handling\n');
 

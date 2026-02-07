@@ -92,7 +92,7 @@ npm run test:validation
 - Get validator requests
 - Submit validation response (valid/invalid)
 - Get validation status
-- Get summary (count, valid_count, invalid_count)
+- Get summary (count, avg_response)
 - Get summary with tag filter
 - Non-existent request handling
 
@@ -111,9 +111,9 @@ After running tests, JSON files are generated with test data:
 
 ### ValidationRegistry
 - `validation_request(validator_address, agent_id: u256, request_uri: ByteArray, request_hash: u256)`
-- `validation_response(request_hash: u256, agent_id: u256, response: u8, response_uri: ByteArray, response_hash: u256, tag: ByteArray)`
-- `get_summary(agent_id, validators, tag) -> (count: u64, valid_count: u64, invalid_count: u64)`
-- `get_validation_status(request_hash) -> (response: u8, timestamp: u64, response_hash: u256, has_response: bool)`
+- `validation_response(request_hash: u256, response: u8, response_uri: ByteArray, response_hash: u256, tag: ByteArray)`
+- `get_summary(agent_id, validators, tag) -> (count: u64, avg_response: u8)`
+- `get_validation_status(request_hash) -> (validator_address, agent_id, response: u8, response_hash: u256, tag, last_update: u64)`
 
 ## Troubleshooting
 
