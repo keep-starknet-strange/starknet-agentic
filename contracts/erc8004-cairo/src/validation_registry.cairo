@@ -334,6 +334,86 @@ pub mod ValidationRegistry {
             }
         }
 
+        fn get_summary_paginated(
+            self: @ContractState,
+            agent_id: u256,
+            validator_addresses: Span<ContractAddress>,
+            tag: ByteArray,
+            request_offset: u64,
+            request_limit: u64,
+        ) -> (u64, u8, bool) {
+            let request_hashes_vec = self.agent_validations.entry(agent_id);
+            let len = request_hashes_vec.len();
+
+            if request_limit == 0 {
+                return (0, 0, request_offset < len);
+            }
+
+            let mut count: u64 = 0;
+            let mut total_response: u64 = 0;
+            let mut truncated = false;
+
+            let mut i = request_offset;
+            let mut scanned: u64 = 0;
+            while i < len && scanned < request_limit {
+                let request_hash = request_hashes_vec.at(i).read();
+                let resp = self.responses.entry(request_hash).read();
+
+                // Skip if no response yet
+                if !resp.has_response {
+                    i += 1;
+                    scanned += 1;
+                    continue;
+                }
+
+                // Apply validator filter if provided
+                if validator_addresses.len() > 0 {
+                    let mut matches_validator = false;
+                    let mut j = 0;
+                    while j < validator_addresses.len() {
+                        if resp.validator_address == *validator_addresses.at(j) {
+                            matches_validator = true;
+                            break;
+                        }
+                        j += 1;
+                    }
+                    if !matches_validator {
+                        i += 1;
+                        scanned += 1;
+                        continue;
+                    }
+                }
+
+                // Apply tag filter if provided (non-empty tag)
+                if tag.len() > 0 {
+                    let stored_tag = self.response_tags.entry(request_hash).read();
+                    if stored_tag != tag {
+                        i += 1;
+                        scanned += 1;
+                        continue;
+                    }
+                }
+
+                // Aggregate response score (0-100)
+                count += 1;
+                total_response += resp.response.into();
+
+                i += 1;
+                scanned += 1;
+            }
+
+            if i < len {
+                truncated = true;
+            }
+
+            if count == 0 {
+                (0, 0, truncated)
+            } else {
+                let avg_response: u8 = (total_response / count).try_into().unwrap();
+                (count, avg_response, truncated)
+            }
+        }
+
         fn get_agent_validations(self: @ContractState, agent_id: u256) -> Array<u256> {
             let mut result = ArrayTrait::new();
             let vec = self.agent_validations.entry(agent_id);
