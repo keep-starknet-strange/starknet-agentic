@@ -547,6 +547,7 @@ pub mod IdentityRegistry {
         }
 
         fn token_uri(self: @ContractState, token_id: u256) -> ByteArray {
+            assert(self.erc721.exists(token_id), 'Token does not exist');
             // Return our custom stored URI
             self.token_uris.entry(token_id).read()
         }

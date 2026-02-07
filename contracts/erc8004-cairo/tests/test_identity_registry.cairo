@@ -522,6 +522,14 @@ fn test_set_agent_uri_unauthorized() {
     stop_cheat_caller_address(registry_address);
 }
 
+#[test]
+#[should_panic(expected: 'Token does not exist')]
+fn test_token_uri_nonexistent_token_reverts() {
+    let (_, _, registry_address) = deploy_registry();
+    let metadata_dispatcher = IERC721MetadataDispatcher { contract_address: registry_address };
+    metadata_dispatcher.token_uri(999);
+}
+
 // ============ Agent Wallet Tests ============
 
 #[test]
