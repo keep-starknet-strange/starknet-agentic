@@ -20,6 +20,19 @@ Build AI agents that can operate on Starknet with wallets, identity, and payment
 | A2A Adapter | `packages/starknet-a2a` | Active | Vitest suite in package |
 | Skills | `skills/*` | Mixed (complete + template) | See each `SKILL.md` |
 
+## Skills At A Glance
+
+| Skill | Purpose | Status |
+|---|---|---|
+| `starknet-wallet` | Wallet management, session keys, transfers, balances | Complete |
+| `starknet-mini-pay` | P2P payments, invoices, QR flows, Telegram support | Complete |
+| `starknet-anonymous-wallet` | Privacy-focused wallet operations | Complete |
+| `starknet-defi` | DeFi actions (swaps/staking/lending/LP) | Template |
+| `starknet-identity` | ERC-8004 identity, reputation, validation workflows | Template |
+| `huginn-onboard` | Agent onboarding flow for Huginn patterns | In Progress |
+
+Full definitions and usage: `skills/` (each skill has its own `SKILL.md`).
+
 ## Quick Start
 
 ### 1. Install dependencies
