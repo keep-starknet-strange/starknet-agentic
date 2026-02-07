@@ -59,26 +59,26 @@ pub struct ValidationResponse {
 #[starknet::interface]
 pub trait IValidationRegistry<TState> {
     /// @notice Create a validation request for an agent
+    /// @param validator_address The designated validator address
     /// @param agent_id The ID of the agent to validate
     /// @param request_uri URI containing the validation request details
     /// @param request_hash Hash of the request for verification
     fn validation_request(
         ref self: TState,
+        validator_address: ContractAddress,
         agent_id: u256,
         request_uri: ByteArray,
         request_hash: u256,
     );
 
     /// @notice Respond to a validation request
-    /// @param agent_id The ID of the agent being validated
     /// @param request_hash Hash of the original request
-    /// @param response The validation result (0=pending, 1=valid, 2=invalid)
+    /// @param response The validation result (0-100)
     /// @param response_uri URI containing response details
     /// @param response_hash Hash of the response for verification
     /// @param tag Category tag for filtering (ByteArray to match Solidity string)
     fn validation_response(
         ref self: TState,
-        agent_id: u256,
         request_hash: u256,
         response: u8,
         response_uri: ByteArray,
@@ -87,25 +87,22 @@ pub trait IValidationRegistry<TState> {
     );
 
     /// @notice Get the validation status for a specific request
-    /// @param validator_address The validator's address
-    /// @param agent_id The agent ID
     /// @param request_hash The request hash
-    /// @return (response_code, timestamp, response_hash, has_response)
-    fn get_validation_status(
-        self: @TState, validator_address: ContractAddress, agent_id: u256, request_hash: u256,
-    ) -> (u8, u64, u256, bool);
+    /// @return (validator_address, agent_id, response, response_hash, tag, last_update)
+    fn get_validation_status(self: @TState, request_hash: u256)
+        -> (ContractAddress, u256, u8, u256, ByteArray, u64);
 
     /// @notice Get aggregated validation statistics for an agent by tag
     /// @param agent_id The agent ID
-    /// @param tag The tag to filter by (ByteArray)
     /// @param validator_addresses Optional list of validators to filter by
-    /// @return (count, valid_count, invalid_count)
+    /// @param tag The tag to filter by (ByteArray)
+    /// @return (count, avg_response)
     fn get_summary(
         self: @TState,
         agent_id: u256,
-        tag: ByteArray,
         validator_addresses: Span<ContractAddress>,
-    ) -> (u64, u64, u64);
+        tag: ByteArray,
+    ) -> (u64, u8);
 
     /// @notice Get all validation request hashes for an agent
     fn get_agent_validations(self: @TState, agent_id: u256) -> Array<u256>;
