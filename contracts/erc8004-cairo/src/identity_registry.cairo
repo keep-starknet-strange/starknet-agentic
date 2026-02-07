@@ -90,6 +90,7 @@ pub mod IdentityRegistry {
         agent_metadata: Map<(u256, felt252), ByteArray>, // (agent_id, key_hash) => value
         token_uris: Map<u256, ByteArray>, // agent_id => token_uri
         agent_wallets: Map<u256, ContractAddress>, // agent_id => wallet address
+        wallet_set_nonces: Map<u256, u64>, // agent_id => nonce for set_agent_wallet signatures
     }
 
     // ============ Events ============
@@ -269,6 +270,10 @@ pub mod IdentityRegistry {
             self.agent_wallets.entry(agent_id).read()
         }
 
+        fn get_wallet_set_nonce(self: @ContractState, agent_id: u256) -> u64 {
+            self.wallet_set_nonces.entry(agent_id).read()
+        }
+
         fn set_agent_wallet(
             ref self: ContractState,
             agent_id: u256,
@@ -290,11 +295,16 @@ pub mod IdentityRegistry {
 
             // Create message hash for signature verification
             let owner = self.erc721.owner_of(agent_id);
-            let message_hash = self._compute_wallet_set_hash(agent_id, new_wallet, owner, deadline);
+            let nonce = self.wallet_set_nonces.entry(agent_id).read();
+            let message_hash = self
+                ._compute_wallet_set_hash(agent_id, new_wallet, owner, deadline, nonce);
 
             // Verify signature using SNIP-6 is_valid_signature
             let is_valid = self._verify_wallet_signature(new_wallet, message_hash, signature.span());
             assert(is_valid, 'invalid wallet sig');
+
+            // Burn nonce after successful verification to make signatures one-time use.
+            self.wallet_set_nonces.entry(agent_id).write(nonce + 1);
 
             // Store wallet
             self.agent_wallets.entry(agent_id).write(new_wallet);
@@ -474,9 +484,10 @@ pub mod IdentityRegistry {
             new_wallet: ContractAddress,
             owner: ContractAddress,
             deadline: u64,
+            nonce: u64,
         ) -> felt252 {
             // Domain-separated preimage to prevent cross-contract and cross-chain replay:
-            // (agent_id, new_wallet, owner, deadline, chain_id, identity_registry_address)
+            // (agent_id, new_wallet, owner, deadline, nonce, chain_id, identity_registry_address)
             let tx_info = get_tx_info().unbox();
             let chain_id = tx_info.chain_id;
             let registry_address = get_contract_address();
@@ -487,6 +498,7 @@ pub mod IdentityRegistry {
             hash_data.append(new_wallet.into());
             hash_data.append(owner.into());
             hash_data.append(deadline.into());
+            hash_data.append(nonce.into());
             hash_data.append(chain_id);
             hash_data.append(registry_address.into());
             poseidon_hash_span(hash_data.span())

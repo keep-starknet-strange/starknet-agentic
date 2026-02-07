@@ -57,6 +57,7 @@ fn compute_domain_separated_wallet_hash(
     new_wallet: ContractAddress,
     owner_addr: ContractAddress,
     deadline: u64,
+    nonce: u64,
     registry_address: ContractAddress,
 ) -> felt252 {
     let tx_info = get_tx_info().unbox();
@@ -66,6 +67,7 @@ fn compute_domain_separated_wallet_hash(
     hash_data.append(new_wallet.into());
     hash_data.append(owner_addr.into());
     hash_data.append(deadline.into());
+    hash_data.append(nonce.into());
     hash_data.append(tx_info.chain_id);
     hash_data.append(registry_address.into());
     poseidon_hash_span(hash_data.span())
@@ -575,7 +577,7 @@ fn test_set_agent_wallet_accepts_domain_separated_hash_signature() {
     let agent_id = registry.register();
 
     let domain_hash = compute_domain_separated_wallet_hash(
-        agent_id, wallet, alice(), deadline, registry_address,
+        agent_id, wallet, alice(), deadline, 0, registry_address,
     );
     registry.set_agent_wallet(agent_id, wallet, deadline, array![domain_hash]);
     stop_cheat_caller_address(registry_address);
@@ -596,11 +598,60 @@ fn test_set_agent_wallet_rejects_hash_for_different_registry() {
 
     // Build signature preimage bound to registry A, then attempt to use on registry B.
     let wrong_registry_hash = compute_domain_separated_wallet_hash(
-        agent_id_b, wallet, alice(), deadline, registry_a_address,
+        agent_id_b, wallet, alice(), deadline, 0, registry_a_address,
     );
     registry_b.set_agent_wallet(agent_id_b, wallet, deadline, array![wrong_registry_hash]);
 
     stop_cheat_caller_address(registry_b_address);
+}
+
+#[test]
+fn test_wallet_set_nonce_initially_zero() {
+    let (registry, _, registry_address) = deploy_registry();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+    stop_cheat_caller_address(registry_address);
+
+    assert_eq!(registry.get_wallet_set_nonce(agent_id), 0);
+}
+
+#[test]
+fn test_wallet_set_nonce_increments_after_success() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_strict_mock_account();
+    let deadline: u64 = 100;
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+
+    let sig_hash = compute_domain_separated_wallet_hash(
+        agent_id, wallet, alice(), deadline, 0, registry_address,
+    );
+    registry.set_agent_wallet(agent_id, wallet, deadline, array![sig_hash]);
+    stop_cheat_caller_address(registry_address);
+
+    assert_eq!(registry.get_wallet_set_nonce(agent_id), 1);
+}
+
+#[test]
+#[should_panic(expected: 'invalid wallet sig')]
+fn test_set_agent_wallet_replay_same_signature_reverts() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_strict_mock_account();
+    let deadline: u64 = 100;
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+
+    let sig_hash = compute_domain_separated_wallet_hash(
+        agent_id, wallet, alice(), deadline, 0, registry_address,
+    );
+    registry.set_agent_wallet(agent_id, wallet, deadline, array![sig_hash]);
+
+    // Reusing same signature should fail because nonce is consumed after first use.
+    registry.set_agent_wallet(agent_id, wallet, deadline, array![sig_hash]);
+    stop_cheat_caller_address(registry_address);
 }
 
 #[test]
