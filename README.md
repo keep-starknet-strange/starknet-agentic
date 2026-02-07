@@ -76,6 +76,22 @@ We are implementing a parity-core approach for ERC-8004 so integrations can be r
 
 Full definitions and usage are in `skills/*/SKILL.md`.
 
+## Skills Marketplace
+
+The `skills/` directory is a marketplace of Starknet capabilities for agent runtimes that support skill-style tool packs (for example AgentSkills-compatible workflows).
+
+Install pattern:
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/<skill-name>
+```
+
+Example:
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
+```
+
 ## Repository Layout
 
 ```text
@@ -124,6 +140,20 @@ cd ../huginn-registry && scarb build && snforge test
 ```bash
 pnpm --filter @starknet-agentic/mcp-server dev
 ```
+
+## MCP Tools Snapshot
+
+Current MCP package (`@starknet-agentic/mcp-server`) exposes tools across:
+
+- balances and transfers
+- contract read/write calls
+- swap and quote flows
+- fee estimation
+- x402 Starknet payment signing
+
+See package source/docs for exact tool names and request schemas:
+
+- `packages/starknet-mcp-server/`
 
 ## External Foundations
 
