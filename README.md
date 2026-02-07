@@ -1,6 +1,6 @@
 # Starknet Agentic
 
-Infrastructure for building AI agents that can act on Starknet.
+Open-source stack for giving AI agents wallets, identity, reputation, and execution rails on Starknet.
 
 ## What This Repo Is
 
