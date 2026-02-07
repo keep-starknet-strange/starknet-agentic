@@ -32,7 +32,10 @@ pub mod IdentityRegistry {
     use openzeppelin::upgrades::UpgradeableComponent;
     use openzeppelin::interfaces::upgrades::IUpgradeable;
     use starknet::storage::*;
-    use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{
+        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
+        get_tx_info,
+    };
 
     // ============ Constants ============
     // Maximum deadline delay: 5 minutes (300 seconds)
@@ -472,13 +475,20 @@ pub mod IdentityRegistry {
             owner: ContractAddress,
             deadline: u64,
         ) -> felt252 {
-            // Create hash of (agent_id, new_wallet, owner, deadline)
+            // Domain-separated preimage to prevent cross-contract and cross-chain replay:
+            // (agent_id, new_wallet, owner, deadline, chain_id, identity_registry_address)
+            let tx_info = get_tx_info().unbox();
+            let chain_id = tx_info.chain_id;
+            let registry_address = get_contract_address();
+
             let mut hash_data = ArrayTrait::new();
             hash_data.append(agent_id.low.into());
             hash_data.append(agent_id.high.into());
             hash_data.append(new_wallet.into());
             hash_data.append(owner.into());
             hash_data.append(deadline.into());
+            hash_data.append(chain_id);
+            hash_data.append(registry_address.into());
             poseidon_hash_span(hash_data.span())
         }
 

@@ -63,7 +63,7 @@ The registry provides optional on-chain metadata:
 
 The reserved key `agentWallet` is managed specially:
 
-- It can be updated only after proving control of the new wallet via `set_agent_wallet(...)` (SNIP-6 signature verification).
+- It can be updated only after proving control of the new wallet via `set_agent_wallet(...)` (SNIP-6 signature verification with domain-separated hash binding to chain + registry address).
 - It is cleared automatically on NFT transfer via the `before_update` hook so a new owner must re-verify.
 - Helpers: `get_agent_wallet(agent_id)` and `unset_agent_wallet(agent_id)`.
 
@@ -126,7 +126,7 @@ The Validation Registry supports:
 
 1. Register an agent in the Identity Registry (`register_with_token_uri(...)`) and get an `agent_id`.
 2. Publish a registration file (e.g., on IPFS/HTTPS) and set it as the token URI via `set_token_uri(agent_id, ...)`.
-3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (SNIP-6 signature proof).
+3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (SNIP-6 signature proof bound to this chain and registry contract).
 4. Collect feedback from users/clients via `give_feedback(...)` on the Reputation Registry.
 5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback(...)` for off-chain scoring.
 
@@ -135,7 +135,7 @@ The Validation Registry supports:
 **Identity Registry**
 - ERC-721 compatible agent NFTs
 - Flexible key-value metadata storage
-- Agent wallet management with SNIP-6 signature verification (`set_agent_wallet`, `get_agent_wallet`, `unset_agent_wallet`)
+- Agent wallet management with domain-separated SNIP-6 signature verification (`set_agent_wallet`, `get_agent_wallet`, `unset_agent_wallet`)
 - Automatic wallet clearing on NFT transfer via `before_update` hook
 
 **Reputation Registry**
@@ -164,7 +164,8 @@ src/
 │   └── account.cairo             # SNIP-6 account interface
 └── mock/
     ├── mock_account.cairo        # OpenZeppelin account for testing
-    └── simple_mock_account.cairo # Simple mock for unit tests
+    ├── simple_mock_account.cairo # Simple mock for unit tests
+    └── strict_mock_account.cairo # Deterministic hash-checking mock for security tests
 
 tests/
 ├── test_identity_registry.cairo

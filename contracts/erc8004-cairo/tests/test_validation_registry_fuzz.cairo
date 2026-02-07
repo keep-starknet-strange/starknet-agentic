@@ -124,3 +124,53 @@ fn fuzz_validation_wrong_responder_always_reverts(raw_score: u8) {
 
     // unreachable
 }
+
+#[test]
+#[should_panic(expected: 'Not authorized')]
+#[fuzzer(runs: 64)]
+fn fuzz_validation_request_non_owner_or_operator_reverts(random_hash_seed: u256) {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let request_hash = if random_hash_seed == 0 { 1 } else { random_hash_seed };
+
+    // validator() is neither owner nor approved operator for agent_id.
+    start_cheat_caller_address(validation_address, validator());
+    validation_registry.validation_request(validator2(), agent_id, "ipfs://req", request_hash);
+    stop_cheat_caller_address(validation_address);
+}
+
+#[test]
+#[fuzzer(runs: 64)]
+fn fuzz_validation_summary_filter_isolates_validator(raw_score_a: u8, raw_score_b: u8) {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let score_a = raw_score_a % 101;
+    let score_b = raw_score_b % 101;
+
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(validator(), agent_id, "ipfs://req1", 0xAAA1);
+    validation_registry.validation_request(validator2(), agent_id, "ipfs://req2", 0xAAA2);
+    stop_cheat_caller_address(validation_address);
+
+    start_cheat_caller_address(validation_address, validator());
+    validation_registry.validation_response(0xAAA1, score_a, "", 0, "");
+    stop_cheat_caller_address(validation_address);
+
+    start_cheat_caller_address(validation_address, validator2());
+    validation_registry.validation_response(0xAAA2, score_b, "", 0, "");
+    stop_cheat_caller_address(validation_address);
+
+    let (count_a, avg_a) = validation_registry.get_summary(agent_id, array![validator()].span(), "");
+    assert_eq!(count_a, 1);
+    assert_eq!(avg_a, score_a);
+}
