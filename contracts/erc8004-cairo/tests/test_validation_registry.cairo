@@ -192,6 +192,23 @@ fn test_validation_request_empty_uri_reverts() {
 }
 
 #[test]
+#[should_panic(expected: 'Invalid validator')]
+fn test_validation_request_zero_validator_reverts() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let zero_addr: ContractAddress = 0.try_into().unwrap();
+    start_cheat_caller_address(validation_address, agent_owner());
+    let request_uri: ByteArray = "ipfs://QmRequest/validation-request.json";
+    validation_registry.validation_request(zero_addr, agent_id, request_uri, 0x1234);
+    stop_cheat_caller_address(validation_address);
+}
+
+#[test]
 #[should_panic(expected: 'Agent does not exist')]
 fn test_validation_request_nonexistent_agent_reverts() {
     let (_, validation_registry, _, validation_address) = deploy_contracts();
@@ -590,6 +607,37 @@ fn test_get_validator_requests_returns_all_requests() {
 }
 
 #[test]
+fn test_get_validator_requests_tracks_designated_validator_not_requester() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    let erc721 = IERC721Dispatcher { contract_address: identity_address };
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // Approve validator() as operator so requester != designated validator.
+    start_cheat_caller_address(identity_address, agent_owner());
+    erc721.approve(validator(), agent_id);
+    stop_cheat_caller_address(identity_address);
+
+    // Operator creates request while designating validator2() as responder.
+    let request_hash: u256 = 0xBEEF;
+    let request_uri: ByteArray = "ipfs://QmRequest/validation-request.json";
+    start_cheat_caller_address(validation_address, validator());
+    validation_registry.validation_request(validator2(), agent_id, request_uri, request_hash);
+    stop_cheat_caller_address(validation_address);
+
+    let designated_requests = validation_registry.get_validator_requests(validator2());
+    assert_eq!(designated_requests.len(), 1);
+    assert_eq!(*designated_requests[0], request_hash);
+
+    let requester_requests = validation_registry.get_validator_requests(validator());
+    assert_eq!(requester_requests.len(), 0);
+}
+
+#[test]
 #[should_panic(expected: 'Request not found')]
 fn test_get_request_nonexistent_reverts() {
     let (_, validation_registry, _, _) = deploy_contracts();
@@ -774,4 +822,52 @@ fn test_get_summary_mixed_with_pending() {
 
     assert_eq!(count, 2); // pending request excluded
     assert_eq!(avg_response, 60); // (100 + 20) / 2
+}
+
+#[test]
+fn test_get_summary_average_rounds_down() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 100, 0x1111, "",
+    );
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 99, 0x2222, "",
+    );
+
+    let empty_validators = array![].span();
+    let (count, avg_response) = validation_registry.get_summary(agent_id, empty_validators, "");
+    assert_eq!(count, 2);
+    assert_eq!(avg_response, 99); // floor((100 + 99) / 2)
+}
+
+#[test]
+fn test_get_summary_filter_no_match_returns_zero() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_and_respond_validation_with_tag(
+        validation_registry, validation_address, agent_id, validator(), 88, 0x1111, "security",
+    );
+
+    let unmatched_validators = array![validator2()].span();
+    let (count_by_validator, avg_by_validator) = validation_registry
+        .get_summary(agent_id, unmatched_validators, "");
+    assert_eq!(count_by_validator, 0);
+    assert_eq!(avg_by_validator, 0);
+
+    let empty_validators = array![].span();
+    let (count_by_tag, avg_by_tag) = validation_registry
+        .get_summary(agent_id, empty_validators, "non-matching-tag");
+    assert_eq!(count_by_tag, 0);
+    assert_eq!(avg_by_tag, 0);
 }
