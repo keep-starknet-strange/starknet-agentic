@@ -144,3 +144,73 @@ fn test_different_creators() {
     assert_eq!(id2, 1, "bob's market");
     assert_eq!(factory.get_market_count(), 2, "two markets total");
 }
+
+// ============ Additional Hardening Tests ============
+
+#[test]
+fn test_factory_market_ids_are_sequential() {
+    let (factory, factory_addr) = deploy_factory();
+
+    start_cheat_caller_address(factory_addr, alice());
+    let mut i: u32 = 0;
+    while i < 5 {
+        let (_, market_id) = factory.create_market(
+            i.into(), 2000 + i.into(), oracle(), token(), 100,
+        );
+        assert_eq!(market_id, i.into(), "sequential id");
+        i += 1;
+    };
+    stop_cheat_caller_address(factory_addr);
+
+    assert_eq!(factory.get_market_count(), 5, "five markets");
+}
+
+#[test]
+fn test_factory_get_nonexistent_market() {
+    let (factory, _) = deploy_factory();
+
+    // Requesting market at index beyond count returns zero address
+    let addr = factory.get_market(999);
+    let zero_addr: ContractAddress = 0.try_into().unwrap();
+    assert_eq!(addr, zero_addr, "nonexistent market returns zero address");
+}
+
+#[test]
+fn test_factory_created_market_can_accept_bets() {
+    let (factory, factory_addr) = deploy_factory();
+
+    // Deploy a real token
+    let token_class = declare("MockERC20").unwrap().contract_class();
+    let (token_addr, _) = token_class.deploy(@array![]).unwrap();
+
+    start_cheat_caller_address(factory_addr, alice());
+    let (market_address, _) = factory.create_market(
+        0xABCD, 2000, oracle(), token_addr, 200,
+    );
+    stop_cheat_caller_address(factory_addr);
+
+    let market = IPredictionMarketDispatcher { contract_address: market_address };
+
+    // Mint tokens to alice and approve market
+    let _mock = starknet::syscalls::call_contract_syscall(
+        token_addr,
+        selector!("mint"),
+        array![alice().into(), 1000_u256.low.into(), 1000_u256.high.into()].span(),
+    )
+        .unwrap();
+
+    let token = prediction_market::interfaces::IERC20Dispatcher {
+        contract_address: token_addr,
+    };
+    start_cheat_caller_address(token_addr, alice());
+    token.approve(market_address, 1000);
+    stop_cheat_caller_address(token_addr);
+
+    // Place a bet
+    start_cheat_caller_address(market_address, alice());
+    market.bet(1, 500);
+    stop_cheat_caller_address(market_address);
+
+    assert_eq!(market.get_total_pool(), 500, "market has tokens");
+    assert_eq!(market.get_bet(alice(), 1), 500, "alice bet recorded");
+}

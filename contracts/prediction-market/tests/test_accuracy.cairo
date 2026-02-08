@@ -359,3 +359,171 @@ fn test_weighted_probability_different_accuracy() {
     assert!(weighted > 600_000_000_000_000_000, "weighted should be > 0.6");
     assert!(weighted < 750_000_000_000_000_000, "weighted should be < 0.75");
 }
+
+// ============ Additional Hardening Tests ============
+
+#[test]
+#[should_panic]
+fn test_finalize_non_owner() {
+    let (tracker, tracker_addr) = deploy_tracker();
+
+    start_cheat_caller_address(tracker_addr, agent_alpha());
+    tracker.record_prediction(1, 500_000_000_000_000_000);
+    stop_cheat_caller_address(tracker_addr);
+
+    // agent_alpha tries to finalize (not owner)
+    start_cheat_caller_address(tracker_addr, agent_alpha());
+    tracker.finalize_market(1, 1); // should fail
+}
+
+#[test]
+fn test_three_agents_different_markets() {
+    let (tracker, tracker_addr) = deploy_tracker();
+
+    // All three agents predict on market 1
+    start_cheat_caller_address(tracker_addr, agent_alpha());
+    tracker.record_prediction(1, 900_000_000_000_000_000); // 0.9
+    stop_cheat_caller_address(tracker_addr);
+
+    start_cheat_caller_address(tracker_addr, agent_beta());
+    tracker.record_prediction(1, 600_000_000_000_000_000); // 0.6
+    stop_cheat_caller_address(tracker_addr);
+
+    start_cheat_caller_address(tracker_addr, agent_gamma());
+    tracker.record_prediction(1, 100_000_000_000_000_000); // 0.1
+    stop_cheat_caller_address(tracker_addr);
+
+    assert_eq!(tracker.get_market_predictor_count(1), 3, "three predictors");
+
+    // Finalize: YES (outcome=1)
+    start_cheat_caller_address(tracker_addr, owner());
+    tracker.finalize_market(1, 1);
+    stop_cheat_caller_address(tracker_addr);
+
+    // Alpha: diff=0.1, brier=0.01 => 10_000_000_000_000_000
+    let (alpha_cum, alpha_count) = tracker.get_brier_score(agent_alpha());
+    assert_eq!(alpha_cum, 10_000_000_000_000_000, "alpha brier");
+    assert_eq!(alpha_count, 1, "alpha count");
+
+    // Beta: diff=0.4, brier=0.16 => 160_000_000_000_000_000
+    let (beta_cum, beta_count) = tracker.get_brier_score(agent_beta());
+    assert_eq!(beta_cum, 160_000_000_000_000_000, "beta brier");
+    assert_eq!(beta_count, 1, "beta count");
+
+    // Gamma: diff=0.9, brier=0.81 => 810_000_000_000_000_000
+    let (gamma_cum, gamma_count) = tracker.get_brier_score(agent_gamma());
+    assert_eq!(gamma_cum, 810_000_000_000_000_000, "gamma brier");
+    assert_eq!(gamma_count, 1, "gamma count");
+}
+
+#[test]
+fn test_agent_across_multiple_markets() {
+    let (tracker, tracker_addr) = deploy_tracker();
+
+    // Alpha predicts on 3 different markets
+    start_cheat_caller_address(tracker_addr, agent_alpha());
+    tracker.record_prediction(1, 800_000_000_000_000_000); // 0.8 on market 1
+    tracker.record_prediction(2, 300_000_000_000_000_000); // 0.3 on market 2
+    tracker.record_prediction(3, 500_000_000_000_000_000); // 0.5 on market 3
+    stop_cheat_caller_address(tracker_addr);
+
+    // Finalize all three
+    start_cheat_caller_address(tracker_addr, owner());
+    tracker.finalize_market(1, 1); // YES → brier = (0.2)^2 = 0.04
+    tracker.finalize_market(2, 0); // NO  → brier = (0.3)^2 = 0.09
+    tracker.finalize_market(3, 1); // YES → brier = (0.5)^2 = 0.25
+    stop_cheat_caller_address(tracker_addr);
+
+    let (cumulative, count) = tracker.get_brier_score(agent_alpha());
+    // 0.04 + 0.09 + 0.25 = 0.38 → 380_000_000_000_000_000
+    assert_eq!(cumulative, 380_000_000_000_000_000, "cumulative across 3 markets");
+    assert_eq!(count, 3, "three finalized predictions");
+}
+
+#[test]
+fn test_no_outcome_finalize() {
+    // Finalize market with outcome=0 (NO wins)
+    let (tracker, tracker_addr) = deploy_tracker();
+
+    start_cheat_caller_address(tracker_addr, agent_alpha());
+    tracker.record_prediction(1, 800_000_000_000_000_000); // 0.8 YES
+    stop_cheat_caller_address(tracker_addr);
+
+    start_cheat_caller_address(tracker_addr, owner());
+    tracker.finalize_market(1, 0); // NO wins
+    stop_cheat_caller_address(tracker_addr);
+
+    // diff = 0.8 - 0 = 0.8, brier = 0.64
+    let (cumulative, _) = tracker.get_brier_score(agent_alpha());
+    assert_eq!(cumulative, 640_000_000_000_000_000, "0.8 on NO win = 0.64");
+}
+
+#[test]
+fn test_weighted_with_three_different_accuracy_agents() {
+    let (tracker, tracker_addr) = deploy_tracker();
+
+    // Build track records on market 0
+    start_cheat_caller_address(tracker_addr, agent_alpha());
+    tracker.record_prediction(0, 950_000_000_000_000_000); // 0.95
+    stop_cheat_caller_address(tracker_addr);
+
+    start_cheat_caller_address(tracker_addr, agent_beta());
+    tracker.record_prediction(0, 500_000_000_000_000_000); // 0.5
+    stop_cheat_caller_address(tracker_addr);
+
+    start_cheat_caller_address(tracker_addr, agent_gamma());
+    tracker.record_prediction(0, 100_000_000_000_000_000); // 0.1
+    stop_cheat_caller_address(tracker_addr);
+
+    start_cheat_caller_address(tracker_addr, owner());
+    tracker.finalize_market(0, 1); // YES
+    stop_cheat_caller_address(tracker_addr);
+
+    // alpha brier=0.0025, beta brier=0.25, gamma brier=0.81
+    // Now predict on market 1
+    start_cheat_caller_address(tracker_addr, agent_alpha());
+    tracker.record_prediction(1, 800_000_000_000_000_000); // alpha: 0.8
+    stop_cheat_caller_address(tracker_addr);
+
+    start_cheat_caller_address(tracker_addr, agent_beta());
+    tracker.record_prediction(1, 400_000_000_000_000_000); // beta: 0.4
+    stop_cheat_caller_address(tracker_addr);
+
+    start_cheat_caller_address(tracker_addr, agent_gamma());
+    tracker.record_prediction(1, 200_000_000_000_000_000); // gamma: 0.2
+    stop_cheat_caller_address(tracker_addr);
+
+    let weighted = tracker.get_weighted_probability(1);
+
+    // Alpha should dominate (tiny brier), so weighted should be close to 0.8
+    assert!(weighted > 700_000_000_000_000_000, "weighted > 0.7 (alpha dominates)");
+    assert!(weighted < 850_000_000_000_000_000, "weighted < 0.85");
+}
+
+#[test]
+fn test_finalize_empty_market() {
+    // Finalize a market with zero predictors
+    let (tracker, tracker_addr) = deploy_tracker();
+
+    start_cheat_caller_address(tracker_addr, owner());
+    tracker.finalize_market(99, 1); // no predictors
+    stop_cheat_caller_address(tracker_addr);
+
+    assert!(tracker.is_finalized(99), "should be finalized even with no predictors");
+}
+
+#[test]
+fn test_prediction_on_separate_markets_independent() {
+    let (tracker, tracker_addr) = deploy_tracker();
+
+    // Same agent predicts on two different markets (allowed)
+    start_cheat_caller_address(tracker_addr, agent_alpha());
+    tracker.record_prediction(1, 700_000_000_000_000_000);
+    tracker.record_prediction(2, 300_000_000_000_000_000);
+    stop_cheat_caller_address(tracker_addr);
+
+    assert_eq!(tracker.get_prediction(agent_alpha(), 1), 700_000_000_000_000_000, "market 1");
+    assert_eq!(tracker.get_prediction(agent_alpha(), 2), 300_000_000_000_000_000, "market 2");
+    assert_eq!(tracker.get_market_predictor_count(1), 1, "market 1 count");
+    assert_eq!(tracker.get_market_predictor_count(2), 1, "market 2 count");
+}

@@ -41,7 +41,6 @@ export default function BetForm({
     }
   })();
 
-  // Compute estimated payout
   const winningPool = outcome === 1 ? BigInt(yesPool) : BigInt(noPool);
   const newWinningPool = winningPool + amountBigInt;
   const newTotalPool = BigInt(totalPool) + amountBigInt;
@@ -54,11 +53,16 @@ export default function BetForm({
   const estMultiple =
     amountBigInt > 0n ? Number(estPayout) / Number(amountBigInt) : 0;
 
-  // New implied prob after bet
   const newImpliedYes =
-    outcome === 1
-      ? Number(BigInt(yesPool) + amountBigInt) / Number(newTotalPool)
-      : Number(BigInt(yesPool)) / Number(newTotalPool);
+    newTotalPool > 0n
+      ? Number(
+          outcome === 1
+            ? BigInt(yesPool) + amountBigInt
+            : BigInt(yesPool)
+        ) / Number(newTotalPool)
+      : impliedProbYes;
+
+  const probShift = Math.round((newImpliedYes - impliedProbYes) * 100);
 
   async function handleSubmit() {
     if (amountBigInt <= 0n) return;
@@ -83,119 +87,152 @@ export default function BetForm({
     setLoading(false);
   }
 
+  const presets = ["10", "50", "100", "500"];
+
   return (
-    <div className="border-2 border-black bg-white shadow-neo-lg p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-heading font-bold">Place a Bet</h3>
+    <div className="neo-card overflow-hidden animate-enter">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-neo-yellow border-b-2 border-black">
+        <h3 className="font-heading font-bold text-sm">Place Bet</h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-black text-lg font-bold"
+          className="w-6 h-6 flex items-center justify-center border-2 border-black bg-white hover:bg-neo-pink hover:text-white transition-colors text-xs font-bold"
         >
           x
         </button>
       </div>
 
-      <p className="text-sm text-gray-600 mb-4 line-clamp-2">{question}</p>
+      <div className="p-4">
+        <p className="text-xs text-gray-500 mb-4 line-clamp-2 leading-relaxed">
+          {question}
+        </p>
 
-      {/* Outcome Selector */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setOutcome(1)}
-          className={`flex-1 py-2 border-2 border-black font-bold text-sm transition-all ${
-            outcome === 1
-              ? "bg-neo-green text-black shadow-neo-sm"
-              : "bg-gray-100 text-gray-500"
-          }`}
-        >
-          YES
-        </button>
-        <button
-          onClick={() => setOutcome(0)}
-          className={`flex-1 py-2 border-2 border-black font-bold text-sm transition-all ${
-            outcome === 0
-              ? "bg-neo-pink text-black shadow-neo-sm"
-              : "bg-gray-100 text-gray-500"
-          }`}
-        >
-          NO
-        </button>
-      </div>
+        {/* Outcome Toggle */}
+        <div className="flex border-2 border-black mb-4">
+          <button
+            onClick={() => setOutcome(1)}
+            className={`flex-1 py-2.5 font-heading font-bold text-sm transition-all ${
+              outcome === 1
+                ? "bg-neo-green text-neo-dark shadow-[inset_0_-3px_0_0_rgba(0,0,0,0.15)]"
+                : "bg-white text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            YES
+          </button>
+          <div className="w-0.5 bg-black" />
+          <button
+            onClick={() => setOutcome(0)}
+            className={`flex-1 py-2.5 font-heading font-bold text-sm transition-all ${
+              outcome === 0
+                ? "bg-neo-pink text-neo-dark shadow-[inset_0_-3px_0_0_rgba(0,0,0,0.15)]"
+                : "bg-white text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            NO
+          </button>
+        </div>
 
-      {/* Amount Input */}
-      <div className="mb-4">
-        <label className="block text-xs font-medium mb-1">
-          Amount (STRK)
-        </label>
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="0.00"
-          className="w-full border-2 border-black p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neo-blue"
-        />
-      </div>
-
-      {/* Payout Preview */}
-      {amountBigInt > 0n && (
-        <div className="bg-gray-50 border border-gray-200 p-3 mb-4 space-y-1">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Est. payout:</span>
-            <span className="font-mono font-bold">
-              {(Number(estPayout) / 1e18).toFixed(2)} STRK
-            </span>
+        {/* Amount */}
+        <div className="mb-3">
+          <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">
+            Amount (STRK)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            className="neo-input w-full"
+          />
+          <div className="flex gap-1.5 mt-2">
+            {presets.map((p) => (
+              <button
+                key={p}
+                onClick={() => setAmount(p)}
+                className={`flex-1 py-1 border border-black text-[10px] font-bold transition-all ${
+                  amount === p
+                    ? "bg-neo-dark text-white"
+                    : "bg-gray-50 hover:bg-gray-100"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Multiplier:</span>
-            <span className="font-mono">
-              {estMultiple.toFixed(2)}x
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">New implied YES:</span>
-            <span className="font-mono">
-              {(newImpliedYes * 100).toFixed(1)}%
-              <span className="text-xs text-gray-400 ml-1">
-                (was {(impliedProbYes * 100).toFixed(1)}%)
+        </div>
+
+        {/* Payout Preview */}
+        {amountBigInt > 0n && (
+          <div className="border-2 border-dashed border-gray-300 p-3 mb-4 space-y-1.5 bg-gray-50/50">
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-500">Potential payout</span>
+              <span className="font-mono font-bold">
+                {(Number(estPayout) / 1e18).toFixed(2)} STRK
               </span>
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Submit */}
-      <button
-        onClick={handleSubmit}
-        disabled={loading || amountBigInt <= 0n}
-        className="w-full bg-neo-yellow text-black font-bold py-3 border-2 border-black shadow-neo-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {loading ? "Placing bet..." : "Place Bet"}
-      </button>
-
-      {/* Result */}
-      {result && (
-        <div
-          className={`mt-3 p-2 border text-sm ${
-            result.status === "success"
-              ? "border-neo-green bg-green-50 text-green-800"
-              : "border-neo-pink bg-red-50 text-red-800"
-          }`}
-        >
-          {result.status === "success" ? (
-            <span>
-              Bet placed!{" "}
-              {result.txHash && (
-                <span className="font-mono text-xs">
-                  tx: {result.txHash.slice(0, 16)}...
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-500">Multiplier</span>
+              <span className="font-mono font-bold text-neo-green">
+                {estMultiple.toFixed(2)}x
+              </span>
+            </div>
+            {probShift !== 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Price impact</span>
+                <span
+                  className={`font-mono font-bold ${
+                    probShift > 0 ? "text-neo-green" : "text-neo-pink"
+                  }`}
+                >
+                  {probShift > 0 ? "+" : ""}
+                  {probShift}pt
                 </span>
-              )}
-            </span>
-          ) : (
-            <span>{result.error}</span>
-          )}
-        </div>
-      )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Submit */}
+        <button
+          onClick={handleSubmit}
+          disabled={loading || amountBigInt <= 0n}
+          className={`neo-btn w-full text-sm ${
+            outcome === 1
+              ? "bg-neo-green text-neo-dark"
+              : "bg-neo-pink text-neo-dark"
+          } disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0`}
+        >
+          {loading
+            ? "Executing..."
+            : `Bet ${outcome === 1 ? "YES" : "NO"}${amount ? ` — ${amount} STRK` : ""}`}
+        </button>
+
+        {/* Result */}
+        {result && (
+          <div
+            className={`mt-3 p-2.5 border-2 text-xs font-mono ${
+              result.status === "success"
+                ? "border-neo-green bg-neo-green/10"
+                : "border-neo-pink bg-neo-pink/10"
+            }`}
+          >
+            {result.status === "success" ? (
+              <>
+                <span className="font-bold">Bet placed</span>
+                {result.txHash && (
+                  <span className="block text-[10px] text-gray-500 mt-0.5">
+                    {result.txHash}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-neo-pink">{result.error}</span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

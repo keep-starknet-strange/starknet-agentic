@@ -491,3 +491,136 @@ fn test_bet_after_resolution() {
     start_cheat_caller_address(market_address, user_alice());
     market.bet(1, 1000);
 }
+
+// ============ Additional Hardening Tests ============
+
+#[test]
+#[should_panic(expected: 'market not open')]
+fn test_resolve_twice() {
+    let (market, market_address, _) = deploy_full_setup();
+
+    start_cheat_block_timestamp_global(2000);
+
+    start_cheat_caller_address(market_address, oracle());
+    market.resolve(1);
+    market.resolve(0); // should fail
+}
+
+#[test]
+fn test_pools_after_bets() {
+    let (market, market_address, token_address) = deploy_full_setup();
+
+    // Multiple bets on both sides
+    setup_user_balance(token_address, user_alice(), market_address, 5000);
+    start_cheat_caller_address(market_address, user_alice());
+    market.bet(1, 3000); // YES
+    market.bet(0, 2000); // Also bets NO
+    stop_cheat_caller_address(market_address);
+
+    let pools = market.get_pools();
+    let (_, no_pool) = *pools.at(0);
+    let (_, yes_pool) = *pools.at(1);
+
+    assert_eq!(no_pool, 2000, "NO pool");
+    assert_eq!(yes_pool, 3000, "YES pool");
+    assert_eq!(market.get_total_pool(), 5000, "total pool");
+}
+
+#[test]
+fn test_both_sides_bet_user() {
+    // A user betting on both sides should be able to claim the winning side
+    let (market, market_address, token_address) = deploy_full_setup();
+
+    setup_user_balance(token_address, user_alice(), market_address, 3000);
+    start_cheat_caller_address(market_address, user_alice());
+    market.bet(1, 2000); // YES
+    market.bet(0, 1000); // NO
+    stop_cheat_caller_address(market_address);
+
+    // Resolve YES wins
+    start_cheat_block_timestamp_global(2000);
+    start_cheat_caller_address(market_address, oracle());
+    market.resolve(1);
+    stop_cheat_caller_address(market_address);
+
+    // Alice can claim her YES bet
+    // Payout = 2000 * 3000 * 9800 / (2000 * 10000) = 2940
+    start_cheat_caller_address(market_address, user_alice());
+    let payout = market.claim();
+    stop_cheat_caller_address(market_address);
+
+    assert_eq!(payout, 2940, "payout from YES side");
+}
+
+#[test]
+fn test_single_sided_market() {
+    // Only bets on one side — winner gets everything minus fee
+    let (market, market_address, token_address) = deploy_full_setup();
+
+    setup_user_balance(token_address, user_alice(), market_address, 1000);
+    start_cheat_caller_address(market_address, user_alice());
+    market.bet(1, 1000);
+    stop_cheat_caller_address(market_address);
+
+    // No bets on NO side. Resolve YES wins.
+    start_cheat_block_timestamp_global(2000);
+    start_cheat_caller_address(market_address, oracle());
+    market.resolve(1);
+    stop_cheat_caller_address(market_address);
+
+    // Payout = 1000 * 1000 * 9800 / (1000 * 10000) = 980
+    start_cheat_caller_address(market_address, user_alice());
+    let payout = market.claim();
+    stop_cheat_caller_address(market_address);
+
+    assert_eq!(payout, 980, "single side with fee");
+}
+
+#[test]
+fn test_max_fee_market() {
+    // 10% fee (1000 bps = max)
+    start_cheat_block_timestamp_global(1000);
+    let token_address = deploy_token();
+    let (market, market_address) = deploy_market(token_address, 2000, 1000);
+
+    setup_user_balance(token_address, user_alice(), market_address, 5000);
+    start_cheat_caller_address(market_address, user_alice());
+    market.bet(1, 5000);
+    stop_cheat_caller_address(market_address);
+
+    setup_user_balance(token_address, user_bob(), market_address, 5000);
+    start_cheat_caller_address(market_address, user_bob());
+    market.bet(0, 5000);
+    stop_cheat_caller_address(market_address);
+
+    start_cheat_block_timestamp_global(2000);
+    start_cheat_caller_address(market_address, oracle());
+    market.resolve(1);
+    stop_cheat_caller_address(market_address);
+
+    // Payout = 5000 * 10000 * 9000 / (5000 * 10000) = 9000
+    start_cheat_caller_address(market_address, user_alice());
+    let payout = market.claim();
+    stop_cheat_caller_address(market_address);
+
+    assert_eq!(payout, 9000, "10% fee payout");
+}
+
+#[test]
+#[should_panic(expected: 'fee_bps too high')]
+fn test_fee_too_high() {
+    start_cheat_block_timestamp_global(1000);
+    let token_address = deploy_token();
+    deploy_market(token_address, 2000, 1001); // > 10%
+}
+
+#[test]
+fn test_market_info_matches_constructor() {
+    let (market, _, _) = deploy_full_setup();
+
+    let (question_hash, resolution_time, oracle_addr, _token, fee_bps) = market.get_market_info();
+    assert_eq!(question_hash, 0x1234, "question");
+    assert_eq!(resolution_time, 2000, "time");
+    assert_eq!(oracle_addr, oracle(), "oracle");
+    assert_eq!(fee_bps, 200, "fee");
+}
