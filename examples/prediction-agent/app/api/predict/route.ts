@@ -9,28 +9,32 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const marketId = body.marketId as number;
 
-  const market = await getMarketById(marketId);
-
-  if (!market) {
-    return new Response(JSON.stringify({ error: "Market not found" }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const predictions = await getAgentPredictions(marketId);
-  const question = DEMO_QUESTIONS[marketId] ?? `Market #${marketId}`;
-
-  const daysUntil = Math.max(
-    0,
-    Math.floor((market.resolutionTime - Date.now() / 1000) / 86400)
-  );
-
-  // Stream the reasoning via SSE
+  // Return the stream immediately, do all work inside
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
+        // Fetch market data inside the stream to avoid pre-stream timeout
+        const market = await getMarketById(marketId);
+
+        if (!market) {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: "error", message: "Market not found" })}\n\n`
+            )
+          );
+          controller.close();
+          return;
+        }
+
+        const predictions = await getAgentPredictions(marketId);
+        const question = DEMO_QUESTIONS[marketId] ?? `Market #${marketId}`;
+
+        const daysUntil = Math.max(
+          0,
+          Math.floor((market.resolutionTime - Date.now() / 1000) / 86400)
+        );
+
         const generator = forecastMarket(question, {
           currentMarketProb: market.impliedProbYes,
           totalPool: (market.totalPool / 10n ** 18n).toString(),
