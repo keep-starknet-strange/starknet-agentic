@@ -1,10 +1,10 @@
 use agent_account::interfaces::{
     Call, IAgentAccountDispatcher, IAgentAccountDispatcherTrait, SessionPolicy,
 };
-use openzeppelin::account::interface::{
+use openzeppelin::interfaces::accounts::{
     IPublicKeyDispatcher, IPublicKeyDispatcherTrait, ISRC6_ID,
 };
-use openzeppelin::introspection::interface::{ISRC5Dispatcher, ISRC5DispatcherTrait};
+use openzeppelin::interfaces::introspection::{ISRC5Dispatcher, ISRC5DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address, start_cheat_block_timestamp, stop_cheat_block_timestamp,

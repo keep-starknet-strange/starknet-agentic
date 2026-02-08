@@ -1,7 +1,7 @@
 #[starknet::contract(account)]
 pub mod AgentAccount {
     use core::ecdsa::check_ecdsa_signature;
-    use openzeppelin::account::interface::{IPublicKey, IPublicKeyCamel, ISRC6_ID};
+    use openzeppelin::interfaces::accounts::{IPublicKey, IPublicKeyCamel, ISRC6_ID};
     use openzeppelin::account::utils::is_tx_version_valid;
     use openzeppelin::introspection::src5::SRC5Component;
     use starknet::{

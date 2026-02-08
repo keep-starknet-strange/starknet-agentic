@@ -26,42 +26,34 @@ const mockWaitForTransaction = vi.fn();
 const mockCallContract = vi.fn();
 const mockBalanceOf = vi.fn();
 
-vi.mock("starknet", () => ({
-  Account: vi.fn().mockImplementation(() => ({
-    address: mockEnv.STARKNET_ACCOUNT_ADDRESS,
-    execute: mockExecute,
-    estimateInvokeFee: mockEstimateInvokeFee,
-    estimatePaymasterTransactionFee: mockEstimatePaymasterTransactionFee,
-    executePaymasterTransaction: mockExecutePaymasterTransaction,
-  })),
-  RpcProvider: vi.fn().mockImplementation(() => ({
-    callContract: mockCallContract,
-    waitForTransaction: mockWaitForTransaction,
-  })),
-  Contract: vi.fn().mockImplementation(() => ({
-    balanceOf: mockBalanceOf,
-    get_balances: vi.fn(),
-  })),
-  CallData: {
-    compile: vi.fn((data) => Object.values(data)),
-  },
-  cairo: {
-    uint256: vi.fn((n) => ({ low: n.toString(), high: "0" })),
-  },
-  ETransactionVersion: {
-    V3: "0x3",
-  },
-  validateAndParseAddress: vi.fn((addr) => addr.toLowerCase().padStart(66, "0x".padEnd(66, "0"))),
-  uint256: {
-    uint256ToBN: vi.fn((val) => {
-      if (typeof val === "bigint") return val;
-      return BigInt(val.low) + (BigInt(val.high) << 128n);
-    }),
-  },
-  byteArray: {
-    stringFromByteArray: vi.fn((ba) => "TEST"),
-  },
-}));
+vi.mock("starknet", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("starknet")>();
+  return {
+    ...actual,
+    Account: vi.fn().mockImplementation(() => ({
+      address: mockEnv.STARKNET_ACCOUNT_ADDRESS,
+      execute: mockExecute,
+      estimateInvokeFee: mockEstimateInvokeFee,
+      estimatePaymasterTransactionFee: mockEstimatePaymasterTransactionFee,
+      executePaymasterTransaction: mockExecutePaymasterTransaction,
+    })),
+    RpcProvider: vi.fn().mockImplementation(() => ({
+      callContract: mockCallContract,
+      waitForTransaction: mockWaitForTransaction,
+    })),
+    Contract: vi.fn().mockImplementation(() => ({
+      balanceOf: mockBalanceOf,
+      get_balances: vi.fn(),
+    })),
+    CallData: {
+      compile: vi.fn((data: Record<string, unknown>) => Object.values(data)),
+    },
+    cairo: {
+      uint256: vi.fn((n: bigint | number) => ({ low: n.toString(), high: "0" })),
+    },
+    validateAndParseAddress: vi.fn((addr: string) => addr.toLowerCase().padStart(66, "0x".padEnd(66, "0"))),
+  };
+});
 
 // Mock avnu-sdk
 const mockGetQuotes = vi.fn();
@@ -751,14 +743,14 @@ describe("Tool list", () => {
     }
   });
 
-  it("lists all 9 tools", async () => {
+  it("lists all 15 tools", async () => {
     if (!capturedListHandler) {
       throw new Error("List handler not captured");
     }
 
     const response = await capturedListHandler();
 
-    expect(response.tools).toHaveLength(9);
+    expect(response.tools).toHaveLength(15);
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_get_balance");
     expect(toolNames).toContain("starknet_get_balances");
@@ -768,6 +760,12 @@ describe("Tool list", () => {
     expect(toolNames).toContain("starknet_swap");
     expect(toolNames).toContain("starknet_get_quote");
     expect(toolNames).toContain("starknet_estimate_fee");
+    expect(toolNames).toContain("starknet_deploy_agent_account");
+    expect(toolNames).toContain("prediction_get_markets");
+    expect(toolNames).toContain("prediction_bet");
+    expect(toolNames).toContain("prediction_record_prediction");
+    expect(toolNames).toContain("prediction_get_leaderboard");
+    expect(toolNames).toContain("prediction_claim");
     expect(toolNames).toContain("x402_starknet_sign_payment_required");
   });
 });
