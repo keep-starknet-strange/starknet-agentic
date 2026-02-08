@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.py.bak
+
+# Environment
+.env
+.env.local
+.venv/
+venv/
+ENV/
+env/
+.venv*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Logs
+*.log
+
+# Generated files
+qr_*.png
+link_*.png
+invoice_*.png
+
+# Node.js (if any)
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
