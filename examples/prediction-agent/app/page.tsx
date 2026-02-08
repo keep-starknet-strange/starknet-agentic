@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react";
 import MarketCard from "./components/MarketCard";
 import AgentLeaderboard from "./components/AgentLeaderboard";
-import AgentReasoningPanel from "./components/AgentReasoningPanel";
 import BetForm from "./components/BetForm";
 import TradeLog from "./components/TradeLog";
 import AgentIdentityCard from "./components/AgentIdentityCard";
 import MarketCreator from "./components/MarketCreator";
 import AgentActivityFeed from "./components/AgentActivityFeed";
 import AgentSpawnerForm from "./components/AgentSpawnerForm";
-import DataSourcesPanel from "./components/DataSourcesPanel";
+import AnalyzeModal from "./components/AnalyzeModal";
+import WalletConnect from "./components/WalletConnect";
 
 interface Market {
   id: number;
@@ -180,11 +180,14 @@ export default function Dashboard() {
 
             {/* Spawn Agent */}
             <button
-              onClick={() => setShowSpawner(!showSpawner)}
+              onClick={() => setShowSpawner(true)}
               className="neo-btn-primary text-xs py-2 px-4 bg-neo-purple border-2 border-black text-white hover:bg-neo-purple/90"
             >
               + Spawn Agent
             </button>
+
+            {/* Wallet */}
+            <WalletConnect />
 
             {/* Network indicator */}
             <div className="neo-badge bg-cream text-[10px] py-0.5 gap-1.5">
@@ -193,7 +196,7 @@ export default function Dashboard() {
             </div>
 
             <button
-              onClick={() => setShowCreator(!showCreator)}
+              onClick={() => setShowCreator(true)}
               className="neo-btn-primary text-xs py-2 px-4"
             >
               + New Market
@@ -230,29 +233,6 @@ export default function Dashboard() {
       </div>
 
       <main className="max-w-[1400px] mx-auto px-6 py-6">
-        {/* ═══ Market Creator ═══ */}
-        {showCreator && (
-          <div className="mb-6 max-w-xl">
-            <MarketCreator onClose={() => setShowCreator(false)} />
-          </div>
-        )}
-
-        {/* ═══ Agent Spawner Form ═══ */}
-        {showSpawner && (
-          <div className="mb-6 max-w-md">
-            <AgentSpawnerForm
-              onClose={() => setShowSpawner(false)}
-              onSpawned={() => {
-                // Refresh leaderboard to show new agent
-                fetch("/api/leaderboard")
-                  .then((r) => r.json())
-                  .then((data) => setLeaderboard(data.leaderboard ?? []))
-                  .catch(() => {});
-              }}
-            />
-          </div>
-        )}
-
         {/* ═══ Main Grid: Markets + Sidebar ═══ */}
         <div className="flex gap-6 items-start">
           {/* Left: Markets */}
@@ -345,33 +325,7 @@ export default function Dashboard() {
                 identity={selectedEntry.identity}
               />
             )}
-
-            {/* Data Sources Panel */}
-            {analyzeMarket && (
-              <DataSourcesPanel question={analyzeMarket.question} />
-            )}
-
-            {betMarket && (
-              <BetForm
-                marketId={betMarket.id}
-                question={betMarket.question}
-                yesPool={betMarket.yesPool}
-                noPool={betMarket.noPool}
-                totalPool={betMarket.totalPool}
-                feeBps={betMarket.feeBps}
-                impliedProbYes={betMarket.impliedProbYes}
-                onClose={() => setBetMarketId(null)}
-              />
-            )}
           </div>
-        </div>
-
-        {/* ═══ Agent Reasoning Panel ═══ */}
-        <div className="mt-6">
-          <AgentReasoningPanel
-            marketId={analyzeMarketId}
-            question={analyzeMarket?.question ?? ""}
-          />
         </div>
 
         {/* ═══ Agent Activity Feed ═══ */}
@@ -385,27 +339,43 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* ═══ Footer ═══ */}
-      <footer className="border-t-2 border-black bg-white mt-12">
-        <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4 text-[10px]">
-            <span className="font-heading font-bold text-sm">
-              starknet-agentic
-            </span>
-            <span className="text-gray-300">|</span>
-            <span className="text-gray-400">
-              ERC-8004 Identity + Reputation + Validation
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-[10px] font-mono text-gray-400">
-            <span>Agent Account</span>
-            <span className="text-gray-300">|</span>
-            <span>MCP Server</span>
-            <span className="text-gray-300">|</span>
-            <span>A2A Protocol</span>
-          </div>
-        </div>
-      </footer>
+      {/* ═══ Modals ═══ */}
+      {showSpawner && (
+        <AgentSpawnerForm
+          onClose={() => setShowSpawner(false)}
+          onSpawned={() => {
+            fetch("/api/leaderboard")
+              .then((r) => r.json())
+              .then((data) => setLeaderboard(data.leaderboard ?? []))
+              .catch(() => {});
+          }}
+        />
+      )}
+
+      {showCreator && (
+        <MarketCreator onClose={() => setShowCreator(false)} />
+      )}
+
+      {betMarket && (
+        <BetForm
+          marketId={betMarket.id}
+          question={betMarket.question}
+          yesPool={betMarket.yesPool}
+          noPool={betMarket.noPool}
+          totalPool={betMarket.totalPool}
+          feeBps={betMarket.feeBps}
+          impliedProbYes={betMarket.impliedProbYes}
+          onClose={() => setBetMarketId(null)}
+        />
+      )}
+
+      {analyzeMarket && (
+        <AnalyzeModal
+          marketId={analyzeMarket.id}
+          question={analyzeMarket.question}
+          onClose={() => setAnalyzeMarketId(null)}
+        />
+      )}
     </div>
   );
 }
