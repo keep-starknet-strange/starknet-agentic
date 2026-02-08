@@ -192,7 +192,7 @@ export default function DocsPage() {
               <span className="font-medium text-neo-dark/80 group-hover:text-neo-dark transition-colors">Discord</span>
             </a>
             <a
-              href="https://twitter.com/staborobot"
+              href="https://x.com/Starknet"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 p-4 border-2 border-neo-dark/20 rounded hover:border-neo-dark hover:shadow-neo transition-all group"

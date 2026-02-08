@@ -20,19 +20,31 @@ export default function DocsLayout({
                 Starknet Agentic
               </span>
             </Link>
-            <span className="text-neo-dark/40 hidden sm:block">/</span>
+            <span className="text-neo-dark/40">/</span>
             <Link
               href="/docs"
-              className="font-heading font-medium text-neo-dark/70 hover:text-neo-dark transition-colors hidden sm:block"
+              className="font-heading font-medium text-neo-dark/70 hover:text-neo-dark transition-colors"
             >
               Docs
             </Link>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Desktop search (md and up) */}
             <div className="hidden md:block">
               <DocsSearch />
             </div>
+
+            {/* Medium screen sidebar toggle (md to lg) - slide panel */}
+            <div className="hidden md:block lg:hidden">
+              <DocsMobileSidebar mode="slide" iconOnly />
+            </div>
+
+            {/* Small screen menu button (below md) - fullscreen modal */}
+            <div className="md:hidden">
+              <DocsMobileSidebar mode="fullscreen" iconOnly />
+            </div>
+
             <a
               href="https://github.com/keep-starknet-strange/starknet-agentic"
               target="_blank"
@@ -51,12 +63,9 @@ export default function DocsLayout({
           </div>
         </div>
 
-        {/* Mobile search and menu */}
-        <div className="md:hidden px-4 pb-3 flex items-center gap-2">
-          <div className="flex-1">
-            <DocsSearch />
-          </div>
-          <DocsMobileSidebar />
+        {/* Mobile search only (below md) */}
+        <div className="md:hidden px-4 pb-3">
+          <DocsSearch />
         </div>
       </header>
 
