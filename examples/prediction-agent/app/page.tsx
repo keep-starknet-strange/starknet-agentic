@@ -8,6 +8,9 @@ import BetForm from "./components/BetForm";
 import TradeLog from "./components/TradeLog";
 import AgentIdentityCard from "./components/AgentIdentityCard";
 import MarketCreator from "./components/MarketCreator";
+import AgentActivityFeed from "./components/AgentActivityFeed";
+import AgentSpawnerForm from "./components/AgentSpawnerForm";
+import DataSourcesPanel from "./components/DataSourcesPanel";
 
 interface Market {
   id: number;
@@ -55,8 +58,11 @@ export default function Dashboard() {
   const [analyzeMarketId, setAnalyzeMarketId] = useState<number | null>(null);
   const [betMarketId, setBetMarketId] = useState<number | null>(null);
   const [showCreator, setShowCreator] = useState(false);
+  const [showSpawner, setShowSpawner] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [autonomousMode, setAutonomousMode] = useState(false);
+  const [loopToggling, setLoopToggling] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -92,6 +98,35 @@ export default function Dashboard() {
     loadData();
   }, []);
 
+  // Check loop status on mount
+  useEffect(() => {
+    fetch("/api/agent-loop")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.status?.isRunning) setAutonomousMode(true);
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleAutonomousMode = async () => {
+    setLoopToggling(true);
+    try {
+      const action = autonomousMode ? "stop" : "start";
+      const res = await fetch("/api/agent-loop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, intervalMs: 60_000 }), // 1 min for demo
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setAutonomousMode(!autonomousMode);
+      }
+    } catch (err) {
+      console.error("Failed to toggle loop:", err);
+    }
+    setLoopToggling(false);
+  };
+
   const analyzeMarket = markets.find((m) => m.id === analyzeMarketId);
   const betMarket = markets.find((m) => m.id === betMarketId);
   const selectedEntry = leaderboard.find((e) => e.agent === selectedAgent);
@@ -119,6 +154,38 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Autonomous Mode Toggle */}
+            <button
+              onClick={toggleAutonomousMode}
+              disabled={loopToggling}
+              className={`flex items-center gap-2 px-3 py-1.5 border-2 text-xs font-mono transition-colors ${
+                autonomousMode
+                  ? "border-neo-green bg-neo-green/10 text-neo-green"
+                  : "border-gray-300 text-gray-500 hover:border-gray-400"
+              } ${loopToggling ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  autonomousMode
+                    ? "bg-neo-green animate-pulse"
+                    : "bg-gray-300"
+                }`}
+              />
+              {loopToggling
+                ? "..."
+                : autonomousMode
+                  ? "Autonomous ON"
+                  : "Autonomous OFF"}
+            </button>
+
+            {/* Spawn Agent */}
+            <button
+              onClick={() => setShowSpawner(!showSpawner)}
+              className="neo-btn-primary text-xs py-2 px-4 bg-neo-purple border-2 border-black text-white hover:bg-neo-purple/90"
+            >
+              + Spawn Agent
+            </button>
+
             {/* Network indicator */}
             <div className="neo-badge bg-cream text-[10px] py-0.5 gap-1.5">
               <span className="relative w-2 h-2 rounded-full bg-neo-green pulse-ring" />
@@ -146,6 +213,9 @@ export default function Dashboard() {
               accent
             />
             <Stat label="Active Agents" value={leaderboard.length.toString()} />
+            {autonomousMode && (
+              <Stat label="Mode" value="AUTONOMOUS" accent />
+            )}
           </div>
           <div className="flex items-center gap-4 text-[10px] font-mono text-white/30">
             <span>ERC-8004</span>
@@ -153,6 +223,8 @@ export default function Dashboard() {
             <span>Agent Account</span>
             <span>|</span>
             <span>MCP</span>
+            <span>|</span>
+            <span>Data Sources</span>
           </div>
         </div>
       </div>
@@ -162,6 +234,22 @@ export default function Dashboard() {
         {showCreator && (
           <div className="mb-6 max-w-xl">
             <MarketCreator onClose={() => setShowCreator(false)} />
+          </div>
+        )}
+
+        {/* ═══ Agent Spawner Form ═══ */}
+        {showSpawner && (
+          <div className="mb-6 max-w-md">
+            <AgentSpawnerForm
+              onClose={() => setShowSpawner(false)}
+              onSpawned={() => {
+                // Refresh leaderboard to show new agent
+                fetch("/api/leaderboard")
+                  .then((r) => r.json())
+                  .then((data) => setLeaderboard(data.leaderboard ?? []))
+                  .catch(() => {});
+              }}
+            />
           </div>
         )}
 
@@ -258,6 +346,11 @@ export default function Dashboard() {
               />
             )}
 
+            {/* Data Sources Panel */}
+            {analyzeMarket && (
+              <DataSourcesPanel question={analyzeMarket.question} />
+            )}
+
             {betMarket && (
               <BetForm
                 marketId={betMarket.id}
@@ -279,6 +372,11 @@ export default function Dashboard() {
             marketId={analyzeMarketId}
             question={analyzeMarket?.question ?? ""}
           />
+        </div>
+
+        {/* ═══ Agent Activity Feed ═══ */}
+        <div className="mt-6">
+          <AgentActivityFeed isLoopRunning={autonomousMode} />
         </div>
 
         {/* ═══ Trade Log ═══ */}

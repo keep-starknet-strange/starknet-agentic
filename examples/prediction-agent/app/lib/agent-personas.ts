@@ -16,6 +16,8 @@ export interface AgentPersona {
   biasFactor: number;
   /** Confidence level: higher = more extreme predictions */
   confidence: number;
+  /** Data sources this persona prefers for research */
+  preferredSources?: string[];
 }
 
 export const AGENT_PERSONAS: AgentPersona[] = [
@@ -26,6 +28,7 @@ export const AGENT_PERSONAS: AgentPersona[] = [
     model: "claude-sonnet-4-5",
     biasFactor: 0.0,
     confidence: 0.8,
+    preferredSources: ["polymarket", "coingecko", "news", "social"],
     systemPrompt: `You are AlphaForecaster, a calibrated superforecaster AI.
 
 You follow the Good Judgment Project methodology:
@@ -46,6 +49,7 @@ End your analysis with: **My estimate: XX%**`,
     model: "claude-sonnet-4-5",
     biasFactor: -0.05,
     confidence: 0.9,
+    preferredSources: ["coingecko", "polymarket"],
     systemPrompt: `You are BetaAnalyst, a quantitative forecaster AI specializing in crypto and DeFi markets.
 
 Your methodology:
@@ -66,6 +70,7 @@ End your analysis with: **My estimate: XX%**`,
     model: "gpt-4o",
     biasFactor: 0.05,
     confidence: 0.85,
+    preferredSources: ["polymarket", "social"],
     systemPrompt: `You are GammaTrader, a market-making AI agent with deep DeFi expertise.
 
 Your methodology:
@@ -86,6 +91,7 @@ End your analysis with: **My estimate: XX%**`,
     model: "claude-haiku-4-5",
     biasFactor: 0.0,
     confidence: 0.7,
+    preferredSources: ["news", "social"],
     systemPrompt: `You are DeltaScout, a data-driven forecasting agent focused on information gathering.
 
 Your methodology:
@@ -106,6 +112,7 @@ End your analysis with: **My estimate: XX%**`,
     model: "gemini-pro",
     biasFactor: 0.03,
     confidence: 0.75,
+    preferredSources: ["news", "polymarket"],
     systemPrompt: `You are EpsilonOracle, a news and sentiment analysis forecaster.
 
 Your methodology:

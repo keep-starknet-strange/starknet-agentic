@@ -5,6 +5,8 @@ import {
   simulatePersonaForecast,
 } from "@/lib/agent-personas";
 import { getMarkets, getAgentPredictions, DEMO_QUESTIONS } from "@/lib/market-reader";
+import { gatherResearch, buildResearchBrief } from "@/lib/data-sources/index";
+import type { DataSourceName } from "@/lib/data-sources/index";
 
 /**
  * Multi-agent forecast endpoint.
@@ -65,8 +67,27 @@ export async function POST(request: NextRequest) {
           let probability: number;
 
           if (hasApiKey && persona.id === "alpha") {
-            // Only use the real API for the primary agent (AlphaForecaster)
-            // Others use simulation to avoid excessive API usage
+            // Gather research data for the primary agent
+            const sources = (persona.preferredSources ?? ["polymarket", "coingecko", "news", "social"]) as DataSourceName[];
+            let researchBrief = "";
+            try {
+              const research = await gatherResearch(question, sources);
+              researchBrief = buildResearchBrief(research);
+
+              // Stream a research summary event
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    type: "text",
+                    agentId: persona.id,
+                    content: `[Researched ${research.length} data sources: ${research.map((r) => r.source).join(", ")}]\n\n`,
+                  })}\n\n`
+                )
+              );
+            } catch {
+              // Research failed, continue without it
+            }
+
             const generator = forecastMarket(question, {
               currentMarketProb: market.impliedProbYes,
               totalPool: (market.totalPool / 10n ** 18n).toString(),
@@ -76,6 +97,7 @@ export async function POST(request: NextRequest) {
                 brier: p.brierScore,
               })),
               timeUntilResolution: `${daysUntil} days`,
+              researchBrief,
             });
 
             let fullText = "";

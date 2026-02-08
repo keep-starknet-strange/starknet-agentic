@@ -34,7 +34,7 @@ export default function AgentReasoningPanel({
   marketId,
   question,
 }: AgentReasoningPanelProps) {
-  const [mode, setMode] = useState<"single" | "multi">("single");
+  const [mode, setMode] = useState<"single" | "multi" | "research">("single");
   const [reasoning, setReasoning] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [probability, setProbability] = useState<number | null>(null);
@@ -42,6 +42,7 @@ export default function AgentReasoningPanel({
   const [error, setError] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [charCount, setCharCount] = useState(0);
+  const [researchData, setResearchData] = useState<any[] | null>(null);
 
   // Multi-agent state
   const [agentResults, setAgentResults] = useState<Map<string, AgentResult>>(
@@ -222,13 +223,30 @@ export default function AgentReasoningPanel({
     setIsStreaming(false);
   }, [marketId, activeAgentTab]);
 
+  const fetchResearchData = useCallback(async () => {
+    if (!question) return;
+    try {
+      const res = await fetch(`/api/data-sources?question=${encodeURIComponent(question)}`);
+      const data = await res.json();
+      setResearchData(data.results ?? []);
+    } catch {
+      setResearchData([]);
+    }
+  }, [question]);
+
   const startAnalysis = useCallback(() => {
+    // Always fetch research data alongside analysis
+    fetchResearchData();
     if (mode === "single") {
       startSingleAnalysis();
-    } else {
+    } else if (mode === "multi") {
       startMultiAnalysis();
+    } else {
+      // Research-only mode: just fetch data
+      setIsCollapsed(false);
+      fetchResearchData();
     }
-  }, [mode, startSingleAnalysis, startMultiAnalysis]);
+  }, [mode, startSingleAnalysis, startMultiAnalysis, fetchResearchData]);
 
   useEffect(() => {
     if (marketId !== null) {
@@ -330,6 +348,16 @@ export default function AgentReasoningPanel({
               >
                 Multi
               </button>
+              <button
+                onClick={() => setMode("research")}
+                className={`px-2 py-0.5 text-[10px] font-mono transition-colors ${
+                  mode === "research"
+                    ? "bg-neo-blue/20 text-neo-blue"
+                    : "text-white/30 hover:text-white/50"
+                }`}
+              >
+                Research
+              </button>
             </div>
 
             {/* Agent tabs (multi mode) */}
@@ -402,7 +430,32 @@ export default function AgentReasoningPanel({
               </span>
             </div>
 
-            {mode === "single" ? (
+            {mode === "research" ? (
+              <div className="space-y-3">
+                <div className="text-neo-blue font-bold text-xs">
+                  === RESEARCH DATA ===
+                </div>
+                {researchData === null ? (
+                  <span className="text-white/20">Gathering research data...</span>
+                ) : researchData.length === 0 ? (
+                  <span className="text-white/40">No research data available.</span>
+                ) : (
+                  researchData.map((source: any, i: number) => (
+                    <div key={i} className="border border-white/10 p-2">
+                      <div className="text-neo-blue text-xs font-bold mb-1">
+                        [{source.source?.toUpperCase()}] {source.summary}
+                      </div>
+                      {source.data?.map((point: any, j: number) => (
+                        <div key={j} className="text-white/60 text-[11px] pl-2">
+                          <span className="text-white/40">{point.label}:</span>{" "}
+                          <span className="text-white/80">{String(point.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : mode === "single" ? (
               <>
                 {reasoning ? (
                   <div className="text-white/85">{reasoning}</div>

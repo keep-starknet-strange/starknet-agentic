@@ -13,6 +13,12 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   IDENTITY_REGISTRY_ADDRESS: z.string().optional(),
   REPUTATION_REGISTRY_ADDRESS: z.string().optional(),
+  // Data source API keys
+  BRAVE_SEARCH_API_KEY: z.string().optional(),
+  COINGECKO_API_KEY: z.string().optional(),
+  // Autonomous loop config
+  POLYMARKET_ENABLED: z.string().default("true"),
+  DATA_REFRESH_INTERVAL_MS: z.string().default("300000"),
 });
 
 export const config = envSchema.parse(process.env);

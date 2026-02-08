@@ -35,6 +35,7 @@ export async function* forecastMarket(
     totalPool?: string;
     agentPredictions?: { agent: string; prob: number; brier: number }[];
     timeUntilResolution?: string;
+    researchBrief?: string;
   }
 ): AsyncGenerator<string, ForecastResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -68,7 +69,12 @@ export async function* forecastMarket(
     }
   }
 
-  const userMessage = `Analyze this prediction market question and provide your probability estimate:\n\n"${question}"${contextStr}`;
+  let researchStr = "";
+  if (context.researchBrief) {
+    researchStr = `\n\n--- RESEARCH DATA ---\n${context.researchBrief}\n--- END RESEARCH DATA ---`;
+  }
+
+  const userMessage = `Analyze this prediction market question and provide your probability estimate:\n\n"${question}"${contextStr}${researchStr}`;
 
   let fullText = "";
 
