@@ -163,18 +163,24 @@ export interface LeaderboardEntry {
 export async function getMarkets(): Promise<MarketState[]> {
   if (config.MARKET_FACTORY_ADDRESS === "0x0") return getDemoMarkets();
 
-  const factory = new Contract(FACTORY_ABI as any, config.MARKET_FACTORY_ADDRESS, provider);
-  const countResult = await factory.get_market_count();
-  const count = Number(countResult);
+  try {
+    const factory = new Contract(FACTORY_ABI as any, config.MARKET_FACTORY_ADDRESS, provider);
+    const countResult = await factory.get_market_count();
+    const count = Number(countResult);
 
-  const markets: MarketState[] = [];
-  for (let i = 0; i < count; i++) {
-    const address = await factory.get_market(i);
-    const addrHex = "0x" + BigInt(address.toString()).toString(16);
-    const state = await getMarketState(i, addrHex);
-    markets.push(state);
+    // Fetch all addresses in parallel
+    const addrPromises = Array.from({ length: count }, (_, i) =>
+      factory.get_market(i).then((addr: any) => "0x" + BigInt(addr.toString()).toString(16))
+    );
+    const addresses = await Promise.all(addrPromises);
+
+    // Fetch all market states in parallel
+    const statePromises = addresses.map((addr, i) => getMarketState(i, addr));
+    return await Promise.all(statePromises);
+  } catch (err) {
+    console.error("Failed to fetch on-chain markets, falling back to demo:", err);
+    return getDemoMarkets();
   }
-  return markets;
 }
 
 /** Get a single market's state. */
