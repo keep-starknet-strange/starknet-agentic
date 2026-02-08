@@ -170,7 +170,8 @@ export async function getMarkets(): Promise<MarketState[]> {
   const markets: MarketState[] = [];
   for (let i = 0; i < count; i++) {
     const address = await factory.get_market(i);
-    const state = await getMarketState(i, address.toString());
+    const addrHex = "0x" + BigInt(address.toString()).toString(16);
+    const state = await getMarketState(i, addrHex);
     markets.push(state);
   }
   return markets;
@@ -190,10 +191,10 @@ export async function getMarketState(id: number, address: string): Promise<Marke
   return {
     id,
     address,
-    questionHash: info[0].toString(),
+    questionHash: "0x" + BigInt(info[0].toString()).toString(16),
     resolutionTime: Number(info[1]),
-    oracle: info[2].toString(),
-    collateralToken: info[3].toString(),
+    oracle: "0x" + BigInt(info[2].toString()).toString(16),
+    collateralToken: "0x" + BigInt(info[3].toString()).toString(16),
     feeBps: Number(info[4]),
     status: Number(status),
     totalPool: BigInt(totalPool.toString()),
@@ -213,7 +214,8 @@ export async function getAgentPredictions(marketId: number): Promise<AgentPredic
 
   const predictions: AgentPrediction[] = [];
   for (let i = 0; i < count; i++) {
-    const agent = (await tracker.get_market_predictor(marketId, i)).toString();
+    const agentRaw = await tracker.get_market_predictor(marketId, i);
+    const agent = "0x" + BigInt(agentRaw.toString()).toString(16);
     const prediction = await tracker.get_prediction(agent, marketId);
     const [cumulative, predCount] = await tracker.get_brier_score(agent);
 
