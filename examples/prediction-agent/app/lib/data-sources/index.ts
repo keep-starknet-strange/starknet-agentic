@@ -20,12 +20,13 @@ export interface DataSourceResult {
   summary: string;
 }
 
-export type DataSourceName = "polymarket" | "coingecko" | "news" | "social";
+export type DataSourceName = "polymarket" | "coingecko" | "news" | "social" | "espn";
 
 import { fetchPolymarketData } from "./polymarket";
 import { fetchCryptoPrices } from "./crypto-prices";
 import { fetchNewsData } from "./news-search";
 import { fetchSocialTrends } from "./social-trends";
+import { fetchEspnScores } from "./espn-live";
 
 const SOURCE_FETCHERS: Record<
   DataSourceName,
@@ -35,6 +36,7 @@ const SOURCE_FETCHERS: Record<
   coingecko: fetchCryptoPrices,
   news: fetchNewsData,
   social: fetchSocialTrends,
+  espn: fetchEspnScores,
 };
 
 const ALL_SOURCES: DataSourceName[] = [
@@ -42,6 +44,7 @@ const ALL_SOURCES: DataSourceName[] = [
   "coingecko",
   "news",
   "social",
+  "espn",
 ];
 
 /**

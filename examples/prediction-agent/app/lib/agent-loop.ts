@@ -2,10 +2,10 @@
  * Autonomous Agent Loop — Core engine for continuous agent operation.
  *
  * Runs a periodic cycle where agents research, forecast, and bet on markets.
- * Maintains an action log and emits events for connected UI clients.
+ * Executes REAL on-chain transactions when agent account is configured.
  */
 
-import { getMarkets, DEMO_QUESTIONS, type MarketState } from "./market-reader";
+import { getMarkets, DEMO_QUESTIONS, SUPER_BOWL_REGEX, type MarketState } from "./market-reader";
 import {
   researchAndForecast,
   type MarketContext,
@@ -16,6 +16,8 @@ import {
   type AgentPersona,
 } from "./agent-personas";
 import { type SpawnedAgent, agentSpawner } from "./agent-spawner";
+import { placeBet, recordPrediction, isAgentConfigured } from "./starknet-executor";
+import { config } from "./config";
 
 export interface AgentAction {
   id: string;
@@ -30,6 +32,7 @@ export interface AgentAction {
   betAmount?: string;
   betOutcome?: "YES" | "NO";
   sourcesUsed?: string[];
+  txHash?: string;
 }
 
 export interface LoopStatus {
@@ -39,6 +42,7 @@ export interface LoopStatus {
   nextTickAt: number | null;
   activeAgentCount: number;
   intervalMs: number;
+  onChainEnabled: boolean;
 }
 
 type LoopListener = (action: AgentAction) => void;
@@ -51,10 +55,10 @@ class AgentLoop {
   private actionLog: AgentAction[] = [];
   private tickCount = 0;
   private lastTickAt: number | null = null;
-  private intervalMs = 300_000; // 5 min default
+  private intervalMs = 60_000; // 1 min for live game
   private listeners = new Set<LoopListener>();
   private actionCounter = 0;
-  private analyzedMarkets = new Map<string, Set<number>>(); // agentId -> marketIds recently analyzed
+  private analyzedMarkets = new Map<string, Set<number>>();
 
   start(intervalMs?: number) {
     if (this.isRunning) return;
@@ -86,6 +90,7 @@ class AgentLoop {
         : null,
       activeAgentCount: AGENT_PERSONAS.length + spawned.length,
       intervalMs: this.intervalMs,
+      onChainEnabled: isAgentConfigured(),
     };
   }
 
@@ -164,6 +169,7 @@ class AgentLoop {
   ) {
     const agentId = spawned?.id ?? persona.id;
     const agentName = spawned?.name ?? persona.name;
+    const onChain = isAgentConfigured();
 
     // Pick a market this agent hasn't recently analyzed
     const analyzed = this.analyzedMarkets.get(agentId) ?? new Set();
@@ -173,6 +179,12 @@ class AgentLoop {
     const question =
       DEMO_QUESTIONS[target.id] ?? `Market #${target.id}`;
 
+    // Auto-add ESPN source for Super Bowl related markets
+    const sources = [...(persona.preferredSources ?? ["polymarket", "coingecko", "news", "social"])];
+    if (SUPER_BOWL_REGEX.test(question) && !sources.includes("espn")) {
+      sources.push("espn");
+    }
+
     // Research phase
     this.emit(
       this.createAction({
@@ -181,13 +193,8 @@ class AgentLoop {
         type: "research",
         marketId: target.id,
         question,
-        detail: `Researching "${question}" using ${(persona.preferredSources ?? ["all"]).join(", ")}`,
-        sourcesUsed: persona.preferredSources ?? [
-          "polymarket",
-          "coingecko",
-          "news",
-          "social",
-        ],
+        detail: `Researching "${question}" using ${sources.join(", ")}${onChain ? " [ON-CHAIN]" : " [DEMO]"}`,
+        sourcesUsed: sources,
       })
     );
 
@@ -197,7 +204,6 @@ class AgentLoop {
       const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
 
       if (hasApiKey && (persona.id === "alpha" || spawned)) {
-        // Use research-backed forecast for alpha or spawned agents
         const context: MarketContext = {
           currentMarketProb: target.impliedProbYes,
           totalPool: (target.totalPool / 10n ** 18n).toString(),
@@ -215,7 +221,6 @@ class AgentLoop {
         }
         probability = result?.probability ?? 0.5;
       } else {
-        // Simulated forecast
         const forecast = simulatePersonaForecast(
           persona,
           target.impliedProbYes,
@@ -228,7 +233,19 @@ class AgentLoop {
       probability = Math.max(0.03, Math.min(0.97, probability));
     }
 
-    // Record prediction
+    // Record prediction ON-CHAIN if configured
+    let predictionTxHash: string | undefined;
+    if (onChain) {
+      try {
+        const txResult = await recordPrediction(target.id, probability);
+        if (txResult.status === "success") {
+          predictionTxHash = txResult.txHash;
+        }
+      } catch {
+        // On-chain recording failed, continue
+      }
+    }
+
     this.emit(
       this.createAction({
         agentId,
@@ -237,12 +254,13 @@ class AgentLoop {
         marketId: target.id,
         question,
         probability,
-        detail: `Predicted ${Math.round(probability * 100)}% YES on "${question}"`,
+        detail: `Predicted ${Math.round(probability * 100)}% YES on "${question}"${predictionTxHash ? ` [tx: ${predictionTxHash.slice(0, 16)}...]` : ""}`,
+        txHash: predictionTxHash,
       })
     );
 
     // Decide whether to bet
-    const confidence = Math.abs(probability - 0.5) * 2; // 0..1
+    const confidence = Math.abs(probability - 0.5) * 2;
     const shouldBet = confidence > 0.15;
 
     if (shouldBet && spawned) {
@@ -259,7 +277,25 @@ class AgentLoop {
           const outcome = probability > 0.5 ? "YES" : "NO";
           const betDisplay = `${Number(betSize / 10n ** 14n) / 10000} STRK`;
 
-          // In demo mode just log the intent
+          // Execute REAL bet if on-chain, otherwise log
+          let betTxHash: string | undefined;
+          if (onChain) {
+            try {
+              const outcomeNum: 0 | 1 = probability > 0.5 ? 1 : 0;
+              const txResult = await placeBet(
+                target.address,
+                outcomeNum,
+                betSize,
+                config.COLLATERAL_TOKEN_ADDRESS
+              );
+              if (txResult.status === "success") {
+                betTxHash = txResult.txHash;
+              }
+            } catch {
+              // Bet tx failed, still log the intent
+            }
+          }
+
           this.emit(
             this.createAction({
               agentId,
@@ -270,19 +306,39 @@ class AgentLoop {
               probability,
               betAmount: betDisplay,
               betOutcome: outcome,
-              detail: `Bet ${betDisplay} on ${outcome} for "${question}" (confidence: ${(confidence * 100).toFixed(0)}%)`,
+              detail: `Bet ${betDisplay} on ${outcome} for "${question}" (confidence: ${(confidence * 100).toFixed(0)}%)${betTxHash ? ` [tx: ${betTxHash.slice(0, 16)}...]` : onChain ? " [tx failed]" : ""}`,
+              txHash: betTxHash,
             })
           );
 
-          // Update spent budget
           spawned.budget.spent += betSize;
           spawned.stats.bets++;
         }
       }
     } else if (shouldBet) {
-      // Built-in agent: log simulated bet
+      // Built-in agent: place real bet if on-chain
+      const betAmount = BigInt(Math.floor(confidence * 500)) * 10n ** 18n;
       const betDisplay = `${(confidence * 500).toFixed(0)} STRK`;
       const outcome = probability > 0.5 ? "YES" : "NO";
+
+      let betTxHash: string | undefined;
+      if (onChain && betAmount > 0n) {
+        try {
+          const outcomeNum: 0 | 1 = probability > 0.5 ? 1 : 0;
+          const txResult = await placeBet(
+            target.address,
+            outcomeNum,
+            betAmount,
+            config.COLLATERAL_TOKEN_ADDRESS
+          );
+          if (txResult.status === "success") {
+            betTxHash = txResult.txHash;
+          }
+        } catch {
+          // Bet tx failed
+        }
+      }
+
       this.emit(
         this.createAction({
           agentId,
@@ -293,16 +349,16 @@ class AgentLoop {
           probability,
           betAmount: betDisplay,
           betOutcome: outcome,
-          detail: `Bet ${betDisplay} on ${outcome} for "${question}" (confidence: ${(confidence * 100).toFixed(0)}%)`,
+          detail: `Bet ${betDisplay} on ${outcome} for "${question}" (confidence: ${(confidence * 100).toFixed(0)}%)${betTxHash ? ` [tx: ${betTxHash.slice(0, 16)}...]` : ""}`,
+          txHash: betTxHash,
         })
       );
     }
 
-    // Track which markets this agent has analyzed
+    // Track analyzed markets
     analyzed.add(target.id);
     this.analyzedMarkets.set(agentId, analyzed);
 
-    // Update spawned agent stats
     if (spawned) {
       spawned.stats.predictions++;
     }

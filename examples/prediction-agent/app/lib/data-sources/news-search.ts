@@ -146,24 +146,24 @@ const NEWS_TEMPLATES: Record<
   ],
   sports: [
     {
-      title: "NFL playoff picture takes shape as season enters final weeks",
-      snippet: "Top contenders solidify their positions while several wild card races remain hotly contested.",
+      title: "Seahawks favored by 4.5 points in Super Bowl LX at Levi's Stadium",
+      snippet: "Seattle opens as moderate favorites against New England. DK Metcalf expected to be the X-factor in a matchup against a physical Patriots secondary.",
     },
     {
-      title: "Super Bowl LXI host city preparations underway",
-      snippet: "Organizers report record sponsorship deals and ticket demand for the upcoming championship.",
+      title: "Bad Bunny confirmed as Super Bowl LX halftime performer",
+      snippet: "The global megastar will headline the halftime show at Levi's Stadium. Production reportedly features a 15-minute setlist with surprise guests.",
     },
     {
-      title: "NBA season sees surge in international viewership",
-      snippet: "League reports 25% increase in global streaming numbers compared to previous season.",
+      title: "Record $1.5B expected in Super Bowl LX betting handle",
+      snippet: "Sportsbooks anticipate record wagering volume for the Seahawks-Patriots matchup, driven by prop bet expansion.",
     },
     {
-      title: "Sports betting industry revenues hit quarterly record",
-      snippet: "Online sportsbooks report combined revenue of $8.2B as more states legalize mobile wagering.",
+      title: "Geno Smith's playoff run silences critics ahead of Super Bowl LX",
+      snippet: "The Seahawks QB has posted a 108.3 passer rating through three playoff games, completing 72% of passes with 9 TD and 1 INT.",
     },
     {
-      title: "Major League Baseball announces AI-assisted umpiring expansion",
-      snippet: "Automated ball-strike system to be implemented across all 30 stadiums next season.",
+      title: "Patriots defense ranks #3 in scoring, key to Super Bowl upset bid",
+      snippet: "New England's defensive unit has been elite in the postseason, allowing just 14.7 PPG and creating 8 turnovers in three playoff wins.",
     },
   ],
   tech: [

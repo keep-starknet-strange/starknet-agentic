@@ -90,9 +90,13 @@ function computeTrendScore(question: string): number {
   // High-interest topics boost trending
   if (/eth|btc|bitcoin|ethereum/i.test(q)) score += 25;
   if (/ai|artificial intelligence/i.test(q)) score += 20;
-  if (/super bowl|election|president/i.test(q)) score += 30;
+  if (/super bowl/i.test(q)) score += 40;
+  if (/seahawks|patriots/i.test(q)) score += 35;
+  if (/bad bunny|halftime/i.test(q)) score += 30;
+  if (/election|president/i.test(q)) score += 25;
   if (/apple|google|openai/i.test(q)) score += 15;
   if (/strk|starknet/i.test(q)) score += 10;
+  if (/mvp|quarterback|touchdown|overtime|spread/i.test(q)) score += 25;
 
   // Time-sensitive questions trend higher
   if (/this month|this week|today/i.test(q)) score += 15;
@@ -123,9 +127,11 @@ function getRelatedTopics(
     topics.push({ name: "ZK Rollup Performance", score: 55 });
     topics.push({ name: "Cairo Ecosystem", score: 48 });
   }
-  if (/super bowl|nfl/i.test(q)) {
-    topics.push({ name: "Sports Betting Markets", score: 82 });
-    topics.push({ name: "Championship Odds", score: 76 });
+  if (/super bowl|nfl|seahawks|patriots/i.test(q)) {
+    topics.push({ name: "Super Bowl LX Betting", score: 95 });
+    topics.push({ name: "Seahawks vs Patriots", score: 92 });
+    topics.push({ name: "DK Metcalf Super Bowl", score: 78 });
+    topics.push({ name: "Bad Bunny Halftime", score: 85 });
   }
   if (/apple|phone|foldable/i.test(q)) {
     topics.push({ name: "Consumer Electronics", score: 60 });

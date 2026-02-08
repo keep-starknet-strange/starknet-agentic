@@ -4,15 +4,16 @@ import {
   AGENT_PERSONAS,
   simulatePersonaForecast,
 } from "@/lib/agent-personas";
-import { getMarkets, getAgentPredictions, DEMO_QUESTIONS } from "@/lib/market-reader";
+import { getMarkets, getAgentPredictions, DEMO_QUESTIONS, SUPER_BOWL_REGEX } from "@/lib/market-reader";
 import { gatherResearch, buildResearchBrief } from "@/lib/data-sources/index";
 import type { DataSourceName } from "@/lib/data-sources/index";
+import { runDebateRound, type Round1Result } from "@/lib/agent-debate";
 
 /**
  * Multi-agent forecast endpoint.
  * Runs all agent personas on a market and streams their reasoning.
- * Each agent produces an independent probability estimate.
- * The final output includes a reputation-weighted consensus.
+ * Round 1: Independent forecasts. Round 2: Debate with revisions.
+ * Final output: reputation-weighted consensus from Round 2 estimates.
  */
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -49,9 +50,8 @@ export async function POST(request: NextRequest) {
           brierScore: number;
         }[] = [];
 
-        // Process each persona
+        // ======== ROUND 1: Independent Forecasts ========
         for (const persona of AGENT_PERSONAS) {
-          // Signal which agent is starting
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
@@ -67,14 +67,17 @@ export async function POST(request: NextRequest) {
           let probability: number;
 
           if (hasApiKey && persona.id === "alpha") {
-            // Gather research data for the primary agent
-            const sources = (persona.preferredSources ?? ["polymarket", "coingecko", "news", "social"]) as DataSourceName[];
+            // Auto-add ESPN for Super Bowl markets
+            const baseSources = (persona.preferredSources ?? ["polymarket", "coingecko", "news", "social"]) as DataSourceName[];
+            const sources = SUPER_BOWL_REGEX.test(question) && !baseSources.includes("espn")
+              ? [...baseSources, "espn" as DataSourceName]
+              : baseSources;
+
             let researchBrief = "";
             try {
               const research = await gatherResearch(question, sources);
               researchBrief = buildResearchBrief(research);
 
-              // Stream a research summary event
               controller.enqueue(
                 encoder.encode(
                   `data: ${JSON.stringify({
@@ -131,7 +134,6 @@ export async function POST(request: NextRequest) {
             );
             probability = forecast.probability;
 
-            // Stream the simulated reasoning in chunks for visual effect
             const chunks = forecast.reasoning.split(/(?<=\n\n)/);
             for (const chunk of chunks) {
               controller.enqueue(
@@ -147,7 +149,6 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Find this agent's existing Brier score from predictions
           const existing = predictions.find(
             (p) => p.agent === `0x${persona.id.charAt(0).toUpperCase()}${persona.id.slice(1)}`
           );
@@ -160,7 +161,6 @@ export async function POST(request: NextRequest) {
             brierScore,
           });
 
-          // Signal agent completion
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
@@ -174,7 +174,58 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Compute reputation-weighted consensus
+        // ======== ROUND 2: Agent Debate ========
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "debate_start" })}\n\n`
+          )
+        );
+
+        const round1Results: Round1Result[] = agentResults.map((a) => ({
+          agentId: a.agent,
+          agentName: a.name,
+          probability: a.probability,
+          brierScore: a.brierScore,
+        }));
+
+        const debateResults = runDebateRound(round1Results, question);
+
+        for (const debate of debateResults) {
+          // Stream debate reasoning
+          const chunks = debate.debateReasoning.split(/(?<=\n\n)/);
+          for (const chunk of chunks) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "debate_text",
+                  agentId: debate.agentId,
+                  content: chunk,
+                })}\n\n`
+              )
+            );
+            await new Promise((r) => setTimeout(r, 80));
+          }
+
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "debate_complete",
+                agentId: debate.agentId,
+                agentName: debate.agentName,
+                originalProbability: debate.originalProbability,
+                revisedProbability: debate.revisedProbability,
+              })}\n\n`
+            )
+          );
+
+          // Update probability to revised estimate
+          const idx = agentResults.findIndex((a) => a.agent === debate.agentId);
+          if (idx >= 0) {
+            agentResults[idx].probability = debate.revisedProbability;
+          }
+        }
+
+        // ======== CONSENSUS (from Round 2 revised estimates) ========
         const totalInverseWeight = agentResults.reduce(
           (sum, a) => sum + (a.brierScore > 0 ? 1 / a.brierScore : 10),
           0

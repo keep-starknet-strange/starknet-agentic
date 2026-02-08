@@ -207,6 +207,44 @@ export default function AgentReasoningPanel({
                 }
                 return next;
               });
+            } else if (parsed.type === "debate_start") {
+              // Visual separator — append to all agents
+              setAgentResults((prev) => {
+                const next = new Map(prev);
+                for (const [id, agent] of next) {
+                  next.set(id, {
+                    ...agent,
+                    reasoning:
+                      agent.reasoning +
+                      "\n\n─── ROUND 2: DEBATE ───\n\n",
+                  });
+                }
+                return next;
+              });
+            } else if (parsed.type === "debate_text" && parsed.agentId) {
+              setAgentResults((prev) => {
+                const next = new Map(prev);
+                const agent = next.get(parsed.agentId);
+                if (agent) {
+                  next.set(parsed.agentId, {
+                    ...agent,
+                    reasoning: agent.reasoning + parsed.content,
+                  });
+                }
+                return next;
+              });
+            } else if (parsed.type === "debate_complete") {
+              setAgentResults((prev) => {
+                const next = new Map(prev);
+                const agent = next.get(parsed.agentId);
+                if (agent) {
+                  next.set(parsed.agentId, {
+                    ...agent,
+                    probability: parsed.revisedProbability,
+                  });
+                }
+                return next;
+              });
             } else if (parsed.type === "consensus") {
               setConsensus(parsed);
             } else if (parsed.type === "error") {
