@@ -1,0 +1,29 @@
+{
+  "name": "@starknet-privacy/zk-circuits",
+  "version": "1.0.0",
+  "description": "ZK Privacy Pool circuits and proofs for Starknet",
+  "main": "starknet-privacy.js",
+  "scripts": {
+    "status": "node starknet-privacy.js status",
+    "demo": "node starknet-privacy.js demo",
+    "test": "node test-privacy.js",
+    "setup": "bash scripts/setup-circuits.sh",
+    "build": "bash scripts/build-circuits.sh",
+    "prove": "node scripts/generate-proof.js",
+    "verify": "node scripts/verify-proof.js"
+  },
+  "keywords": [
+    "starknet",
+    "zk",
+    "privacy",
+    "snarkjs",
+    "circom",
+    "groth16"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "snarkjs": "^0.7.3"
+  },
+  "devDependencies": {}
+}
