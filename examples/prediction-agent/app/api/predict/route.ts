@@ -76,9 +76,11 @@ export async function POST(request: NextRequest) {
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err: any) {
+        const msg = err.message || String(err);
+        console.error("[predict] Error:", msg, err.stack);
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ type: "error", message: err.message })}\n\n`
+            `data: ${JSON.stringify({ type: "error", message: msg })}\n\n`
           )
         );
         controller.close();

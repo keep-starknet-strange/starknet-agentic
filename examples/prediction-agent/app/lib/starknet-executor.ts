@@ -1,13 +1,16 @@
-import { Account, RpcProvider, Contract, CallData } from "starknet";
+import { Account, RpcProvider, Contract, CallData, constants } from "starknet";
 import { config } from "./config";
 import { toScaled } from "./accuracy";
 
 const provider = new RpcProvider({ nodeUrl: config.STARKNET_RPC_URL });
 
+// V3 transaction details — Sepolia requires V3 (V1 disabled)
+const V3_DETAILS = { version: constants.TRANSACTION_VERSION.V3 as any };
+
 /** Get an account instance for transaction signing. */
 function getAccount(): Account | null {
   if (!config.AGENT_PRIVATE_KEY || !config.AGENT_ADDRESS) return null;
-  return new Account(provider, config.AGENT_ADDRESS, config.AGENT_PRIVATE_KEY);
+  return new Account(provider, config.AGENT_ADDRESS, config.AGENT_PRIVATE_KEY, "1");
 }
 
 export interface TxResult {
@@ -49,7 +52,7 @@ export async function placeBet(
       }),
     };
 
-    const result = await account.execute([approveTx, betTx]);
+    const result = await account.execute([approveTx, betTx], undefined, V3_DETAILS);
     await provider.waitForTransaction(result.transaction_hash);
 
     return { txHash: result.transaction_hash, status: "success" };
@@ -85,7 +88,7 @@ export async function recordPrediction(
       }),
     };
 
-    const result = await account.execute([tx]);
+    const result = await account.execute([tx], undefined, V3_DETAILS);
     await provider.waitForTransaction(result.transaction_hash);
 
     return { txHash: result.transaction_hash, status: "success" };
@@ -108,7 +111,7 @@ export async function claimWinnings(marketAddress: string): Promise<TxResult> {
       calldata: [],
     };
 
-    const result = await account.execute([tx]);
+    const result = await account.execute([tx], undefined, V3_DETAILS);
     await provider.waitForTransaction(result.transaction_hash);
 
     return { txHash: result.transaction_hash, status: "success" };
