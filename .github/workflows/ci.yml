@@ -30,6 +30,29 @@ jobs:
       - name: Type check
         run: pnpm run build
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint
+        run: pnpm -r --if-present --filter './packages/*' lint
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -49,6 +72,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
 
       - name: Build packages
         run: pnpm run build
@@ -84,8 +111,8 @@ jobs:
         working-directory: contracts/huginn-registry
         run: scarb build
 
-  cairo-test:
-    name: Cairo Tests
+  cairo-test-erc8004:
+    name: Cairo Tests (erc8004)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -109,9 +136,51 @@ jobs:
         working-directory: contracts/erc8004-cairo
         run: snforge test
 
+  cairo-test-agent-account:
+    name: Cairo Tests (agent-account)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.14.0"
+
+      - name: Setup Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@v4
+        with:
+          starknet-foundry-version: "0.54.1"
+
       - name: Run Cairo tests (agent-account)
         working-directory: contracts/agent-account
         run: snforge test
+
+  cairo-test-huginn:
+    name: Cairo Tests (huginn-registry)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.14.0"
+
+      - name: Setup Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@v4
+        with:
+          starknet-foundry-version: "0.54.1"
 
       - name: Run Cairo tests (huginn-registry)
         working-directory: contracts/huginn-registry
@@ -144,7 +213,7 @@ jobs:
   all-checks:
     name: All Checks Passed
     runs-on: ubuntu-latest
-    needs: [typecheck, test, cairo-check, cairo-test, website-build]
+    needs: [typecheck, lint, test, cairo-check, cairo-test-erc8004, cairo-test-agent-account, cairo-test-huginn, website-build]
     steps:
       - name: Success
         run: echo "All CI checks passed!"
