@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+
+# ZK circuit artifacts
+*.r1cs
+*.wasm
+*.wtns
+*_zkey
+
+# Proof outputs
+proof.json
+public.json
+*_vk.json
+
+# Package managers
+package-lock.json
+yarn.lock
+
+# IDE
+.idea/
+.vscode/
