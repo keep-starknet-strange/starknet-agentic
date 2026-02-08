@@ -1,0 +1,5 @@
+{
+  "amount": 1000,
+  "salt": 12345,
+  "nullifier_secret": 98765
+}

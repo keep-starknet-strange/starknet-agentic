@@ -1,0 +1,9 @@
+{
+  "nPublic": 3,
+  "nPrivate": 2,
+  "nConstraints": 2,
+  "constraints": [
+    {"a": [1, 2], "b": [1, 0], "c": [1, 0]},
+    {"a": [1, 0], "b": [1, 1], "c": [1, 2]}
+  ]
+}

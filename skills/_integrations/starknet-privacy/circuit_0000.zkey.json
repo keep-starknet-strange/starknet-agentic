@@ -1,0 +1,41 @@
+{
+  "type": "groth16",
+  "curve": "bn254",
+  "nPublic": 3,
+  "nPrivate": 34,
+  "alpha": [
+    1,
+    2
+  ],
+  "beta": [
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "gamma": [
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "delta": [
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "powersOfTau": "pot12_0000.ptau"
+}

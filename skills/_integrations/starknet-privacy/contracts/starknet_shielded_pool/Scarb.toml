@@ -1,0 +1,10 @@
+[package]
+name = "starknet_shielded_pool"
+version = "1.0.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = "2.15.0"
+
+[features]
+deprecated_legacy_map = []

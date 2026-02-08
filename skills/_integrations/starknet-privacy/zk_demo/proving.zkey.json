@@ -1,0 +1,6 @@
+{
+  "type": "groth16",
+  "curve": "bn254",
+  "nPublic": 3,
+  "nPrivate": 2
+}

@@ -1,0 +1,12 @@
+[package]
+name = "starknet_shielded_pool"
+version = "2.0.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = ">=2.14.0"
+
+[[target.starknet-contract]]
+name = "shielded_pool"
+sierra = true
+casm = true
