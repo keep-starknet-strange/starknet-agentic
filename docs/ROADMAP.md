@@ -35,15 +35,15 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 **Description**: Publish all complete skills to GitHub, ClawHub, and npm for maximum distribution.
 
 **Requirements**:
-- [ ] Create npm packages for each skill (as installable dependencies)
-- [ ] Register `@starknet-agentic/skill-wallet` on npm
-- [ ] Register `@starknet-agentic/skill-defi` on npm
-- [ ] Register `@starknet-agentic/skill-identity` on npm
-- [ ] Register `@starknet-agentic/skill-mini-pay` on npm
-- [ ] Register `@starknet-agentic/skill-anonymous-wallet` on npm
+- [x] Create npm packages for each skill (as installable dependencies)
+- [x] Register `@starknet-agentic/skill-wallet` on npm
+- [x] Register `@starknet-agentic/skill-defi` on npm
+- [x] Register `@starknet-agentic/skill-identity` on npm
+- [x] Register `@starknet-agentic/skill-mini-pay` on npm
+- [x] Register `@starknet-agentic/skill-anonymous-wallet` on npm
 - [ ] Publish skills to ClawHub for OpenClaw/MoltBook users
-- [ ] Update skills README with installation instructions for all channels
-- [ ] Set up automated publishing in CI workflow
+- [x] Update skills README with installation instructions for all channels
+- [x] Set up automated publishing in CI workflow
 
 **Implementation Notes**:
 - Skills are complete in `skills/` directory
@@ -58,12 +58,12 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 **Description**: Standardize agent-passport as the convention for agents to describe their capabilities via ERC-8004 metadata.
 
 **Requirements**:
-- [ ] Document agent-passport schema in SPECIFICATION.md
-- [ ] Create JSON schema for capability metadata validation
-- [ ] Add capability metadata examples to skills documentation
-- [ ] Update starknet-identity skill to use agent-passport for registration
+- [x] Document agent-passport schema in SPECIFICATION.md
+- [x] Create JSON schema for capability metadata validation
+- [x] Add capability metadata examples to skills documentation
+- [x] Update starknet-identity skill to use agent-passport for registration
 - [ ] Add agent-passport integration to MCP server (optional helper tool)
-- [ ] Write migration guide for existing ERC-8004 agents
+- [x] Write migration guide for existing ERC-8004 agents
 
 **Implementation Notes**:
 - `packages/starknet-agent-passport/` already implements the client
@@ -117,13 +117,13 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 **Description**: The starknet-defi skill is currently a template. Complete the implementation with full documentation and examples.
 
 **Requirements**:
-- [ ] Add comprehensive swap documentation (avnu patterns)
-- [ ] Add staking documentation (STRK staking, liquid staking)
-- [ ] Add lending documentation (zkLend, Nostra patterns)
-- [ ] Add DCA (Dollar Cost Averaging) documentation
-- [ ] Create example scripts for each operation
-- [ ] Add error handling guide with recovery steps
-- [ ] Include token addresses and protocol endpoints
+- [x] Add comprehensive swap documentation (avnu patterns)
+- [x] Add staking documentation (STRK staking, liquid staking)
+- [x] Add lending documentation (zkLend, Nostra patterns)
+- [x] Add DCA (Dollar Cost Averaging) documentation
+- [x] Create example scripts for each operation
+- [x] Add error handling guide with recovery steps
+- [x] Include token addresses and protocol endpoints
 
 **Implementation Notes**:
 - Basic structure exists at `skills/starknet-defi/SKILL.md` (345 lines)
@@ -137,13 +137,13 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 **Description**: The starknet-identity skill has structure but needs ERC-8004 integration details.
 
 **Requirements**:
-- [ ] Add agent registration workflow documentation
-- [ ] Add reputation system usage guide
-- [ ] Add validation request/response documentation
-- [ ] Add metadata schema reference
-- [ ] Create example scripts for identity operations
-- [ ] Document deployed contract addresses (Sepolia, Mainnet when available)
-- [ ] Add querying reputation and validation status examples
+- [x] Add agent registration workflow documentation
+- [x] Add reputation system usage guide
+- [x] Add validation request/response documentation
+- [x] Add metadata schema reference
+- [x] Create example scripts for identity operations
+- [x] Document deployed contract addresses (Sepolia, Mainnet when available)
+- [x] Add querying reputation and validation status examples
 
 **Implementation Notes**:
 - Basic structure exists at `skills/starknet-identity/SKILL.md` (303 lines)
@@ -244,7 +244,29 @@ Features that enhance the platform but are not required for v1.0 release.
 
 ---
 
-### 2.5 CI/CD Enhancements
+### 2.5 OpenClaw.ai Agent Discovery Integration
+
+**Description**: Integrate OpenClaw.ai as the agent discovery and connection layer, allowing externally-registered agents to join prediction markets and other agentic workflows.
+
+**Requirements**:
+- [ ] Register starknet-agentic agents on OpenClaw.ai registry
+- [ ] Implement OpenClaw agent discovery client (fetch external agents by capability)
+- [ ] Bridge OpenClaw agent profiles to ERC-8004 on-chain identity (reputation sync)
+- [ ] Allow discovered agents to join the autonomous prediction loop as participants
+- [ ] Publish skills to ClawHub for OpenClaw/MoltBook agent ecosystem
+- [ ] Expose agent spawner via OpenClaw so external users can spin up agents remotely
+- [ ] Add OpenClaw agent card ↔ A2A agent card bidirectional mapping
+
+**Implementation Notes**:
+- OpenClaw.ai provides agent registry, discovery, and connection brokering
+- Our A2A adapter (`packages/starknet-a2a/`) already generates agent cards — map these to OpenClaw profiles
+- ERC-8004 reputation scores can feed into OpenClaw trust signals
+- The agent spawner (`examples/prediction-agent/app/lib/agent-spawner.ts`) currently runs in-memory; OpenClaw integration would enable persistent, cross-session agent discovery
+- ClawHub skill publishing is already tracked in 1.2 — this item covers the runtime agent discovery side
+
+---
+
+### 2.6 CI/CD Enhancements
 
 **Description**: Improve CI/CD pipeline with additional checks and automation.
 
@@ -412,7 +434,7 @@ Long-term features and ecosystem expansion planned for v2.0+.
 | Phase | Target | Key Deliverables |
 |-------|--------|------------------|
 | **MVP (v1.0)** | Q1 2026 | starknet.js v8, MCP tests, skill publishing, defi-agent docs, changelog |
-| **Nice to Have (v1.x)** | Q2 2026 | Agent Account deployment, identity MCP tools, A2A expansion, messaging |
+| **Nice to Have (v1.x)** | Q2 2026 | Agent Account deployment, identity MCP tools, OpenClaw.ai discovery, A2A expansion, messaging |
 | **Future (v2.0+)** | 2026+ | Framework extensions, economy apps, cross-chain, zkML |
 
 ---
@@ -423,4 +445,23 @@ Long-term features and ecosystem expansion planned for v2.0+.
 - `[x]` Complete
 - `[~]` In progress
 
-*Last updated: 2026-02-06*
+*Last updated: 2026-02-08*
+
+---
+
+## Milestone 5: Evals
+- Reproducible eval harness for agent actions
+- Security and policy gating tests
+
+## Milestone 6: Proof of Inference (Obelysk Integration)
+- **Tier 1 (LIVE)**: Fully on-chain ZK proofs for agent decision models (<200K params)
+  - 8 benchmark TXs verified on Sepolia (see [PROOF_OF_INFERENCE.md](./PROOF_OF_INFERENCE.md))
+  - SAGE payment distribution on verified proofs
+  - Proof batching: 20+ agent decisions per proof (~$0.003/decision)
+- **Tier 2 (This week)**: Embedding + ZK head for mid-size models (<10M params)
+  - Image classification, recommendation engines, NLP embeddings
+  - TEE attestation for embedding model + STWO proof for classifier head
+- **Tier 3 (In progress)**: TEE + stochastic ZK for billion-parameter models
+  - Qwen-72B, Llama-70B, DeepSeek-R1, YOLOv8-X
+  - NVIDIA H100 CC-On with NRAS attestation
+  - 24-hour fraud proof window + economic security

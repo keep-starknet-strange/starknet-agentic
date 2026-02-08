@@ -8,6 +8,10 @@
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist/",
+    "schemas/"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "dev": "tsup src/index.ts --format esm --watch",

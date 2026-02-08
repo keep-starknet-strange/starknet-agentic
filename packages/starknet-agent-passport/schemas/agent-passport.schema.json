@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starknet-agentic.dev/schemas/agent-passport.schema.json",
+  "title": "Agent Passport",
+  "description": "Schema for Starknet Agentic Agent Passport — describes agent capabilities stored via ERC-8004 metadata",
+  "type": "object",
+  "required": ["capabilities"],
+  "properties": {
+    "capabilities": {
+      "type": "array",
+      "description": "List of capabilities the agent provides",
+      "items": {
+        "$ref": "#/$defs/Capability"
+      },
+      "minItems": 1
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "Capability": {
+      "type": "object",
+      "required": ["name", "category"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Stable identifier for the capability (e.g., 'swap', 'stake', 'transfer')",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "category": {
+          "type": "string",
+          "description": "Capability category",
+          "enum": ["defi", "trading", "identity", "messaging", "payments", "prediction"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version of this capability",
+          "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of what this capability does",
+          "maxLength": 256
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Optional endpoint URL or MCP tool name for this capability"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

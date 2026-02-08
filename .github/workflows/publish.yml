@@ -32,7 +32,7 @@ jobs:
       - name: Build packages
         run: pnpm run build
 
-      - name: Publish to npm
+      - name: Publish packages to npm
         run: |
           cd packages/starknet-mcp-server
           npm publish --provenance --access public
@@ -40,5 +40,14 @@ jobs:
           npm publish --provenance --access public
           cd ../starknet-agent-passport
           npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish skills to npm
+        run: |
+          for skill in starknet-wallet starknet-defi starknet-identity starknet-mini-pay starknet-anonymous-wallet; do
+            cd "$GITHUB_WORKSPACE/skills/$skill"
+            npm publish --provenance --access public || echo "Skipping $skill (may already be published)"
+          done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

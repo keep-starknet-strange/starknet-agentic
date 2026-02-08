@@ -1,7 +1,7 @@
 {
-  "name": "@starknet-agentic/skill-wallet",
+  "name": "@starknet-agentic/skill-defi",
   "version": "0.1.0",
-  "description": "Starknet Wallet skill: create and manage wallets, transfer tokens, session keys, and paymaster support",
+  "description": "Starknet DeFi skill: token swaps, staking, lending, DCA via avnu aggregator",
   "type": "module",
   "private": false,
   "publishConfig": {
@@ -14,12 +14,13 @@
     ".env.example"
   ],
   "scripts": {
-    "check-balance": "tsx scripts/check-balance.ts",
-    "check-balances": "tsx scripts/check-balances.ts"
+    "check-price": "tsx scripts/check-price.ts",
+    "swap-quote": "tsx scripts/swap-quote.ts",
+    "pool-info": "tsx scripts/pool-info.ts"
   },
   "dependencies": {
     "@avnu/avnu-sdk": "^4.0.1",
-    "starknet": "^8.9.1",
+    "starknet": "^6.23.1",
     "dotenv": "^16.0.0"
   },
   "devDependencies": {

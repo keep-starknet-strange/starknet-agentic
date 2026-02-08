@@ -350,4 +350,80 @@ These questions are tracked for resolution in [ROADMAP.md](ROADMAP.md) section 3
 - **Skill versioning:** Should skills be versioned and how should upgrades be handled?
   - *Status:* Open question, tracked in ROADMAP 3.7.
 - **zkML integration:** How to integrate Giza's zkML for verifiable agent decisions?
-  - *Status:* Planned for v2.0+, tracked in ROADMAP 3.4.
+  - **ANSWERED**: See [PROOF_OF_INFERENCE.md](./PROOF_OF_INFERENCE.md) — Obelysk Protocol provides 3-tier verification (full ZK for <200K param models, hybrid TEE+ZK for mid-size, TEE+fraud proofs for 70B+ models). 8 benchmark TXs live on Sepolia.
+
+## 10. Agent Passport
+
+### 10.1 Overview
+
+Agent Passport is a standardized convention for agents to describe their capabilities using ERC-8004 metadata. It enables automated agent discovery, capability matching, and interoperability across the ecosystem.
+
+### 10.2 Schema
+
+An Agent Passport is stored as a set of ERC-8004 metadata entries:
+
+| Metadata Key | Format | Purpose |
+|--------------|--------|---------|
+| `caps` | JSON array of strings | Index of capability names |
+| `capability:<name>` | JSON object | Full capability descriptor |
+
+**Capability Object:**
+
+```json
+{
+  "name": "swap",
+  "category": "defi",
+  "version": "1.0.0",
+  "description": "Execute token swaps via avnu aggregator",
+  "endpoint": "starknet_swap"
+}
+```
+
+**Category Enum:** `defi`, `trading`, `identity`, `messaging`, `payments`, `prediction`
+
+### 10.3 On-Chain Storage
+
+Capabilities are stored on the ERC-8004 IdentityRegistry via `set_metadata`:
+
+```typescript
+// 1. Store capability descriptor
+await registry.set_metadata(agentId, "capability:swap", JSON.stringify({
+  name: "swap",
+  category: "defi",
+  version: "1.0",
+  description: "Execute token swaps via avnu"
+}));
+
+// 2. Update caps index
+await registry.set_metadata(agentId, "caps", JSON.stringify(["swap", "stake", "lend"]));
+```
+
+### 10.4 Validation
+
+Use the `@starknet-agentic/agent-passport` package for validation:
+
+```typescript
+import { validatePassport } from "@starknet-agentic/agent-passport";
+
+const result = validatePassport({
+  capabilities: [
+    { name: "swap", category: "defi", version: "1.0" },
+    { name: "transfer", category: "payments" },
+  ],
+});
+// { valid: true }
+```
+
+### 10.5 JSON Schema
+
+A formal JSON Schema is published at `packages/starknet-agent-passport/schemas/agent-passport.schema.json` and can be used for external validation tooling.
+
+### 10.6 Migration Guide
+
+For existing ERC-8004 agents that use the `capabilities` metadata key (comma-separated string):
+
+1. Read existing `capabilities` value: `"swap,stake,lend"`
+2. Convert to `caps` format: `'["swap","stake","lend"]'`
+3. Write individual `capability:<name>` entries with category metadata
+4. Set `caps` metadata key with the JSON array
+5. Optionally remove the old `capabilities` key

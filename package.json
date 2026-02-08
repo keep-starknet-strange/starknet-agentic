@@ -12,6 +12,7 @@
   "workspaces": [
     "packages/*",
     "examples/*",
+    "skills/*",
     "website"
   ],
   "scripts": {

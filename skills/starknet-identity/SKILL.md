@@ -307,6 +307,86 @@ Serve at `/.well-known/agent.json` for A2A discovery.
 - Signatures include chain ID and expiry to prevent replay attacks
 - Agent identity (NFT) is transferable -- new owner inherits reputation
 
+## Agent Passport
+
+The Agent Passport convention uses the ERC-8004 `caps` metadata key to publish agent capabilities as a JSON array:
+
+```typescript
+// Set Agent Passport capabilities
+await account.execute({
+  contractAddress: registryAddress,
+  entrypoint: "set_metadata",
+  calldata: CallData.compile({
+    agent_id: agentId,
+    key: byteArray.byteArrayFromString("caps"),
+    value: byteArray.byteArrayFromString(JSON.stringify(["swap", "stake", "lend", "transfer"])),
+  }),
+});
+
+// Read Agent Passport capabilities
+const capsRaw = await identityRegistry.get_metadata(agentId, "caps");
+const capabilities = JSON.parse(capsRaw); // ["swap", "stake", "lend", "transfer"]
+```
+
+Capability categories: `defi`, `trading`, `identity`, `messaging`, `payments`, `prediction`.
+
+Use the `@starknet-agentic/agent-passport` package for validated passport operations:
+
+```typescript
+import { IdentityRegistryPassportClient } from "@starknet-agentic/agent-passport";
+
+const passport = new IdentityRegistryPassportClient({
+  identityRegistryAddress: registryAddress,
+  provider,
+  account,
+});
+
+await passport.publishCapability({
+  agentId: 1n,
+  capability: { name: "swap", description: "Execute token swaps via avnu", version: "1.0" },
+});
+```
+
+## Error Reference
+
+| Error Code | Description | Recovery |
+|------------|-------------|----------|
+| `AGENT_NOT_FOUND` | Agent ID does not exist | Verify agent is registered |
+| `NOT_AGENT_OWNER` | Caller is not the agent owner | Use the owner account |
+| `ALREADY_REGISTERED` | Address already has an agent | Use existing agent ID |
+| `FEEDBACK_AUTH_EXPIRED` | Authorization timestamp passed | Request new authorization |
+| `SELF_FEEDBACK` | Agent owner trying to give self-feedback | Use a different account |
+| `SELF_VALIDATION` | Agent owner trying to self-validate | Use independent validator |
+| `INVALID_SIGNATURE` | Feedback authorization signature invalid | Regenerate signature |
+| `INDEX_LIMIT_REACHED` | Feedback index exceeds authorized limit | Request new authorization with higher index limit |
+
+## Deployed Addresses
+
+### Sepolia Testnet
+
+| Contract | Address | Notes |
+|----------|---------|-------|
+| IdentityRegistry | See deployment logs | ERC-721 agent NFTs |
+| ReputationRegistry | See deployment logs | Feedback system |
+| ValidationRegistry | See deployment logs | Third-party assessments |
+
+> Deploy using: `cd contracts/erc8004-cairo && bash scripts/deploy_sepolia.sh`
+
+## Full Metadata Schema
+
+| Key | Type | Description | Example |
+|-----|------|-------------|---------|
+| `agentName` | string | Display name | `"MyTradingAgent"` |
+| `agentType` | string | Category | `"defi-trader"` |
+| `version` | string | Semantic version | `"1.0.0"` |
+| `model` | string | LLM model used | `"claude-opus-4-5"` |
+| `status` | string | Current status | `"active"` / `"paused"` / `"deprecated"` |
+| `framework` | string | Agent framework | `"daydreams"` / `"openclaw"` |
+| `capabilities` | string | Comma-separated list | `"swap,stake,lend"` |
+| `caps` | JSON | Agent Passport capabilities array | `'["swap","stake"]'` |
+| `a2aEndpoint` | string | Agent Card URL | `"https://agent.example.com"` |
+| `moltbookId` | string | MoltBook agent ID | `"agent_abc123"` |
+
 ## References
 
 - [ERC-8004 EIP](https://eips.ethereum.org/EIPS/eip-8004)

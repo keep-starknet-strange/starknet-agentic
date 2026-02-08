@@ -1,7 +1,7 @@
 {
-  "name": "@starknet-agentic/skill-wallet",
+  "name": "@starknet-agentic/skill-identity",
   "version": "0.1.0",
-  "description": "Starknet Wallet skill: create and manage wallets, transfer tokens, session keys, and paymaster support",
+  "description": "Starknet Identity skill: ERC-8004 agent registration, reputation, and validation",
   "type": "module",
   "private": false,
   "publishConfig": {
@@ -14,12 +14,12 @@
     ".env.example"
   ],
   "scripts": {
-    "check-balance": "tsx scripts/check-balance.ts",
-    "check-balances": "tsx scripts/check-balances.ts"
+    "register-agent": "tsx scripts/register-agent.ts",
+    "query-reputation": "tsx scripts/query-reputation.ts",
+    "set-metadata": "tsx scripts/set-metadata.ts"
   },
   "dependencies": {
-    "@avnu/avnu-sdk": "^4.0.1",
-    "starknet": "^8.9.1",
+    "starknet": "^6.23.1",
     "dotenv": "^16.0.0"
   },
   "devDependencies": {

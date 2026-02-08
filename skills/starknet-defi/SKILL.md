@@ -166,7 +166,7 @@ import moment from "moment";
 const dcaOrder = {
   sellTokenAddress: usdcAddress,
   buyTokenAddress: strkAddress,
-  totalAmount: parseUnits("100", 6),   // Total 100 USDC
+  totalAmount: BigInt(100) * 10n ** 6n,  // Total 100 USDC (6 decimals)
   numberOfOrders: 10,                   // Split into 10 orders
   frequency: moment.duration(1, "day"), // moment.Duration object, not string
   startAt: Math.floor(Date.now() / 1000),
@@ -209,7 +209,7 @@ const stakingInfo = await getAvnuStakingInfo();
 const result = await executeStake({
   provider: account,
   poolAddress: stakingInfo.pools[0].address,
-  amount: parseUnits("100", 18), // 100 STRK
+  amount: BigInt(100) * 10n ** 18n, // 100 STRK (18 decimals)
 });
 ```
 
@@ -245,7 +245,7 @@ import { executeInitiateUnstake, executeUnstake } from "@avnu/avnu-sdk";
 await executeInitiateUnstake({
   provider: account,
   poolAddress: poolAddress,
-  amount: parseUnits("50", 18),
+  amount: BigInt(50) * 10n ** 18n, // 50 STRK
 });
 
 // Step 2: Complete unstake (after cooldown period)
@@ -335,6 +335,128 @@ async function safeSwap(account, quote, slippage = 0.01) {
   }
 }
 ```
+
+## Lending (zkLend)
+
+### Deposit Collateral
+
+```typescript
+import { Account, RpcProvider, CallData, cairo } from "starknet";
+
+const ZKLEND_MARKET = "0x04c0a5193d58f74fbace4b74dcf65481e734ed1714121bdc571da345540efa05";
+const ETH_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+
+// Approve + deposit in a multicall
+const { transaction_hash } = await account.execute([
+  {
+    contractAddress: ETH_ADDRESS,
+    entrypoint: "approve",
+    calldata: CallData.compile({
+      spender: ZKLEND_MARKET,
+      amount: cairo.uint256(depositAmountWei),
+    }),
+  },
+  {
+    contractAddress: ZKLEND_MARKET,
+    entrypoint: "deposit",
+    calldata: CallData.compile({
+      token: ETH_ADDRESS,
+      amount: cairo.felt(depositAmountWei),
+    }),
+  },
+]);
+```
+
+### Borrow
+
+```typescript
+const { transaction_hash } = await account.execute({
+  contractAddress: ZKLEND_MARKET,
+  entrypoint: "borrow",
+  calldata: CallData.compile({
+    token: USDC_ADDRESS,
+    amount: cairo.felt(borrowAmountRaw),
+  }),
+});
+```
+
+### Withdraw
+
+```typescript
+const { transaction_hash } = await account.execute({
+  contractAddress: ZKLEND_MARKET,
+  entrypoint: "withdraw",
+  calldata: CallData.compile({
+    token: ETH_ADDRESS,
+    amount: cairo.felt(withdrawAmountWei),
+  }),
+});
+```
+
+### Repay
+
+```typescript
+// Approve + repay
+const { transaction_hash } = await account.execute([
+  {
+    contractAddress: USDC_ADDRESS,
+    entrypoint: "approve",
+    calldata: CallData.compile({
+      spender: ZKLEND_MARKET,
+      amount: cairo.uint256(repayAmountRaw),
+    }),
+  },
+  {
+    contractAddress: ZKLEND_MARKET,
+    entrypoint: "repay",
+    calldata: CallData.compile({
+      token: USDC_ADDRESS,
+      amount: cairo.felt(repayAmountRaw),
+    }),
+  },
+]);
+```
+
+## Error Reference
+
+| Error Code | Description | Recovery |
+|------------|-------------|----------|
+| `INSUFFICIENT_BALANCE` | Not enough tokens for operation | Check balance before transacting |
+| `SLIPPAGE_EXCEEDED` | Price moved beyond tolerance | Retry with higher slippage or smaller amount |
+| `QUOTE_EXPIRED` | avnu quote timed out | Fetch a new quote and retry |
+| `INSUFFICIENT_LIQUIDITY` | Pool lacks depth for trade size | Split into smaller trades or try different pair |
+| `APPROVAL_REQUIRED` | Token not approved for spender | Call approve() before the operation |
+| `HEALTH_FACTOR_LOW` | Lending position at risk | Repay debt or add collateral |
+| `BORROW_CAP_REACHED` | Protocol borrow limit hit | Try smaller amount or different token |
+| `COOLDOWN_ACTIVE` | Unstaking cooldown in progress | Wait for cooldown period (21 days for STRK) |
+
+## Token Address Reference
+
+### Mainnet
+
+| Token | Address | Decimals |
+|-------|---------|----------|
+| ETH | `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7` | 18 |
+| STRK | `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d` | 18 |
+| USDC | `0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8` | 6 |
+| USDT | `0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8` | 6 |
+
+### Sepolia
+
+| Token | Address | Decimals |
+|-------|---------|----------|
+| ETH | `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7` | 18 |
+| STRK | `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d` | 18 |
+
+## Protocol Endpoints
+
+| Protocol | Network | URL |
+|----------|---------|-----|
+| avnu API | Mainnet | `https://starknet.api.avnu.fi` |
+| avnu API | Sepolia | `https://sepolia.api.avnu.fi` |
+| avnu Paymaster | Mainnet | `https://starknet.paymaster.avnu.fi` |
+| avnu Paymaster | Sepolia | `https://sepolia.paymaster.avnu.fi` |
+| zkLend | Mainnet | `https://app.zklend.com` |
 
 ## References
 
