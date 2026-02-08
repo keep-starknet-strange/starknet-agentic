@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+dist/
+build/
+*.py.bak
+
+# Binary archives - NEVER commit
+*.tar.gz
+*.zip
+
+# Environment
+.env
+.env.local
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+
+# Generated
+qr_*.png
+link_*.png
+invoice_*.png
