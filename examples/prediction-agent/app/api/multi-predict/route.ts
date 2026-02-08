@@ -4,7 +4,7 @@ import {
   AGENT_PERSONAS,
   simulatePersonaForecast,
 } from "@/lib/agent-personas";
-import { getMarkets, getAgentPredictions, DEMO_QUESTIONS, SUPER_BOWL_REGEX } from "@/lib/market-reader";
+import { getMarketById, getAgentPredictions, DEMO_QUESTIONS, SUPER_BOWL_REGEX } from "@/lib/market-reader";
 import { gatherResearch, buildResearchBrief } from "@/lib/data-sources/index";
 import type { DataSourceName } from "@/lib/data-sources/index";
 import { runDebateRound, type Round1Result } from "@/lib/agent-debate";
@@ -15,12 +15,13 @@ import { runDebateRound, type Round1Result } from "@/lib/agent-debate";
  * Round 1: Independent forecasts. Round 2: Debate with revisions.
  * Final output: reputation-weighted consensus from Round 2 estimates.
  */
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const marketId = body.marketId as number;
 
-  const markets = await getMarkets();
-  const market = markets.find((m) => m.id === marketId);
+  const market = await getMarketById(marketId);
 
   if (!market) {
     return new Response(JSON.stringify({ error: "Market not found" }), {

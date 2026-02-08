@@ -183,6 +183,23 @@ export async function getMarkets(): Promise<MarketState[]> {
   }
 }
 
+/** Get a single market by ID from the factory. */
+export async function getMarketById(id: number): Promise<MarketState | null> {
+  if (config.MARKET_FACTORY_ADDRESS === "0x0") {
+    const demos = getDemoMarkets();
+    return demos.find((m) => m.id === id) ?? null;
+  }
+
+  try {
+    const factory = new Contract(FACTORY_ABI as any, config.MARKET_FACTORY_ADDRESS, provider);
+    const addr = await factory.get_market(id);
+    const addrHex = "0x" + BigInt(addr.toString()).toString(16);
+    return await getMarketState(id, addrHex);
+  } catch {
+    return null;
+  }
+}
+
 /** Get a single market's state. */
 export async function getMarketState(id: number, address: string): Promise<MarketState> {
   const market = new Contract(MARKET_ABI as any, address, provider);

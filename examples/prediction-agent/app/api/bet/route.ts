@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { placeBet } from "@/lib/starknet-executor";
-import { getMarkets } from "@/lib/market-reader";
+import { getMarketById } from "@/lib/market-reader";
+
+export const maxDuration = 30;
 
 const BetSchema = z.object({
   marketId: z.number().int().min(0),
@@ -14,8 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = BetSchema.parse(body);
 
-    const markets = await getMarkets();
-    const market = markets.find((m) => m.id === parsed.marketId);
+    const market = await getMarketById(parsed.marketId);
 
     if (!market) {
       return NextResponse.json({ error: "Market not found" }, { status: 404 });

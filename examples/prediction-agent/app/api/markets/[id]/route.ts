@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getMarkets,
+  getMarketById,
   getAgentPredictions,
   getWeightedProbability,
   DEMO_QUESTIONS,
@@ -13,8 +13,7 @@ export async function GET(
   try {
     const { id } = await params;
     const marketId = parseInt(id, 10);
-    const markets = await getMarkets();
-    const market = markets.find((m) => m.id === marketId);
+    const market = await getMarketById(marketId);
 
     if (!market) {
       return NextResponse.json({ error: "Market not found" }, { status: 404 });

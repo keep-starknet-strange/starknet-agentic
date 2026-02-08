@@ -1,14 +1,15 @@
 import { NextRequest } from "next/server";
 import { forecastMarket, extractProbability } from "@/lib/agent-forecaster";
-import { getMarkets, getAgentPredictions, DEMO_QUESTIONS } from "@/lib/market-reader";
+import { getMarketById, getAgentPredictions, DEMO_QUESTIONS } from "@/lib/market-reader";
 import { recordPrediction } from "@/lib/starknet-executor";
+
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const marketId = body.marketId as number;
 
-  const markets = await getMarkets();
-  const market = markets.find((m) => m.id === marketId);
+  const market = await getMarketById(marketId);
 
   if (!market) {
     return new Response(JSON.stringify({ error: "Market not found" }), {
