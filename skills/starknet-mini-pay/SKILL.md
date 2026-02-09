@@ -1,8 +1,6 @@
 ---
 name: starknet-mini-pay
-description: >
-  Simple P2P payments on Starknet. Like Lightning, but native.
-  Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC.
+description: Simple P2P payments on Starknet. Like Lightning but native. Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC.
 keywords:
   - starknet
   - payments

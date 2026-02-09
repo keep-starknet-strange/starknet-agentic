@@ -1,9 +1,6 @@
 ---
 name: starknet-defi
-description: >
-  Execute DeFi operations on Starknet: token swaps with best-price routing
-  via avnu aggregator, DCA recurring buys, STRK staking, lending/borrowing,
-  and liquidity provision. Supports gasless and gasfree transactions.
+description: Execute DeFi operations on Starknet: token swaps via avnu aggregator, DCA recurring buys, STRK staking, lending/borrowing, and liquidity provision. Supports gasless and gasfree transactions.
 keywords:
   - starknet
   - defi
