@@ -1,9 +1,11 @@
 ---
 name: starknet-wallet
-description: >
-  Create and manage Starknet wallets for AI agents. Transfer tokens,
-  check balances, manage session keys, deploy accounts, and interact
-  with smart contracts on Starknet using native Account Abstraction.
+description: Create and manage Starknet wallets for AI agents. Transfer tokens, check balances, manage session keys, deploy accounts, and interact with smart contracts using native Account Abstraction.
+license: Apache-2.0
+metadata:
+  author: starknet-agentic
+  version: "1.0.0"
+  org: keep-starknet-strange
 keywords:
   - starknet
   - wallet

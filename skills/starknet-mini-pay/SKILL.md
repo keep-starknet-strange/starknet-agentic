@@ -1,8 +1,11 @@
 ---
 name: starknet-mini-pay
-description: >
-  Simple P2P payments on Starknet. Like Lightning, but native.
-  Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC.
+description: Simple P2P payments on Starknet. Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC. Like Lightning, but native.
+license: Apache-2.0
+metadata:
+  author: starknet-agentic
+  version: "1.0.0"
+  org: keep-starknet-strange
 keywords:
   - starknet
   - payments
