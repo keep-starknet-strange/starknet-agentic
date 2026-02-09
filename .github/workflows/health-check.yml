@@ -25,7 +25,11 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@53751a9789c7351e4924f01fe68370252a4f1f18 # v2
         with:
+<<<<<<< HEAD
           version: 8
+=======
+          version: 10
+>>>>>>> origin/main
 
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -38,12 +42,20 @@ jobs:
 
       - name: JS build
         id: js_build
+<<<<<<< HEAD
         run: pnpm -r build --if-present
+=======
+        run: pnpm -r --if-present build
+>>>>>>> origin/main
         continue-on-error: true
 
       - name: JS tests
         id: js_test
+<<<<<<< HEAD
         run: pnpm -r test --if-present
+=======
+        run: pnpm -r --if-present test
+>>>>>>> origin/main
         continue-on-error: true
 
       - name: Setup Scarb

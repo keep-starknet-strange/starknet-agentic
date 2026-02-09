@@ -1,7 +1,16 @@
 ---
 name: starknet-anonymous-wallet
+<<<<<<< HEAD
 description: Create an anonymous Starknet wallet for the agent via Typhoon and interact with Starknet contracts (read/write + preflight).
 allowed-tools: read exec process
+=======
+description: Create an anonymous Starknet wallet via Typhoon and interact with Starknet contracts. Privacy-focused wallet creation for agents requiring anonymity.
+license: Apache-2.0
+metadata:
+  author: starknet-agentic
+  version: "1.0.0"
+  org: keep-starknet-strange
+>>>>>>> origin/main
 keywords:
   - starknet
   - wallet
@@ -11,6 +20,18 @@ keywords:
   - anonymous-agent-wallet
   - strk
   - eth
+<<<<<<< HEAD
+=======
+  - privacy
+  - typhoon
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Glob
+  - Grep
+  - Task
+>>>>>>> origin/main
 user-invocable: true
 ---
 

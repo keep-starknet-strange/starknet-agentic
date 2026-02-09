@@ -1,0 +1,407 @@
+---
+title: Agent Account
+description: Smart contract account with session keys for autonomous AI agent operation
+---
+
+import { Callout, Steps, Step, Collapsible } from "@/components/docs";
+
+# Agent Account
+
+The **Agent Account** is a smart contract account designed specifically for AI agents. It extends Starknet's native account abstraction with session keys, spending limits, timelocked upgrades, and ERC-8004 identity integration.
+
+## Overview
+
+The Agent Account provides:
+
+- **Session keys** - Temporary keys with limited permissions and spending caps
+- **Spending limits** - 24-hour rolling caps per token per session key
+- **Contract restrictions** - Whitelist which contracts a session can call
+- **Time bounds** - Sessions automatically expire
+- **Timelocked upgrades** - Schedule contract upgrades with configurable delay
+- **Emergency revocation** - Owner can instantly revoke all session keys
+- **ERC-8004 integration** - Bind on-chain identity to the account
+
+## Why Agent Accounts?
+
+Standard EOA (Externally Owned Account) wallets aren't suitable for AI agents because:
+
+| Problem | Agent Account Solution |
+|---------|----------------------|
+| Private key exposure | Session keys with limited scope |
+| Unlimited spending | Per-token 24-hour spending limits |
+| No contract restrictions | Whitelist of allowed contract calls |
+| No expiration | Time-bounded sessions |
+| Instant upgrades | Timelocked upgrades with owner delay |
+
+## Data Structures
+
+### SessionPolicy
+
+Defines the constraints for a session key.
+
+```cairo
+pub struct SessionPolicy {
+    pub valid_after: u64,           // Unix timestamp when session becomes valid
+    pub valid_until: u64,           // Unix timestamp when session expires
+    pub allowed_contract: ContractAddress, // Zero = any contract allowed
+    pub spending_token: ContractAddress,   // Token for spending limit (zero = no limit)
+    pub spending_limit: u256,       // Max spend per 24-hour period
+}
+```
+
+## Events
+
+### SessionKeyRegistered
+
+Emitted when a session key is registered.
+
+```cairo
+pub struct SessionKeyRegistered {
+    #[key]
+    pub session_public_key: felt252,
+    pub valid_after: u64,
+    pub valid_until: u64,
+}
+```
+
+### SessionKeyRevoked
+
+Emitted when a session key is revoked.
+
+```cairo
+pub struct SessionKeyRevoked {
+    #[key]
+    pub session_public_key: felt252,
+}
+```
+
+### UpgradeScheduled
+
+Emitted when an upgrade is scheduled.
+
+```cairo
+pub struct UpgradeScheduled {
+    pub new_class_hash: ClassHash,
+    pub scheduled_at: u64,
+    pub execute_after: u64,
+}
+```
+
+### AgentIdSet
+
+Emitted when the agent identity is bound.
+
+```cairo
+pub struct AgentIdSet {
+    pub registry: ContractAddress,
+    pub agent_id: u256,
+}
+```
+
+## Interface
+
+### IAgentAccount
+
+```cairo
+#[starknet::interface]
+pub trait IAgentAccount<TContractState> {
+    // Session key management
+    fn register_session_key(ref self: TContractState, key: felt252, policy: SessionPolicy);
+    fn revoke_session_key(ref self: TContractState, key: felt252);
+    fn emergency_revoke_all(ref self: TContractState);
+    fn is_session_key_valid(self: @TContractState, key: felt252) -> bool;
+    fn get_session_policy(self: @TContractState, key: felt252) -> SessionPolicy;
+    fn get_session_key_count(self: @TContractState) -> u32;
+
+    // Identity binding
+    fn set_agent_id(ref self: TContractState, registry: ContractAddress, agent_id: u256);
+    fn get_agent_id(self: @TContractState) -> (ContractAddress, u256);
+
+    // Timelocked upgrades
+    fn schedule_upgrade(ref self: TContractState, new_class_hash: ClassHash);
+    fn execute_upgrade(ref self: TContractState);
+    fn cancel_upgrade(ref self: TContractState);
+    fn get_pending_upgrade(self: @TContractState) -> (ClassHash, u64);
+    fn set_upgrade_delay(ref self: TContractState, delay: u64);
+    fn get_upgrade_delay(self: @TContractState) -> u64;
+
+    // Standard account functions (from OpenZeppelin AccountComponent)
+    fn get_public_key(self: @TContractState) -> felt252;
+    fn set_public_key(ref self: TContractState, new_public_key: felt252, signature: Span<felt252>);
+}
+```
+
+## Session Keys
+
+Session keys provide temporary, limited access to the account without exposing the owner's private key.
+
+### Registering a Session Key
+
+```cairo
+fn register_session_key(ref self: TContractState, key: felt252, policy: SessionPolicy)
+```
+
+**Access Control:** Owner only
+
+**Validation:**
+- `valid_until` must be greater than `valid_after`
+- `valid_until` must be in the future
+
+**Example:**
+
+```typescript
+import { Account, RpcProvider, CallData, constants } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
+const account = new Account(
+  { nodeUrl: provider },
+  accountAddress,
+  privateKey,
+  undefined,
+  constants.TRANSACTION_VERSION.V3
+);
+
+const policy = {
+  valid_after: Math.floor(Date.now() / 1000),
+  valid_until: Math.floor(Date.now() / 1000) + 86400, // 24 hours
+  allowed_contract: "0x0", // Zero = any contract
+  spending_token: STRK_ADDRESS,
+  spending_limit: { low: "1000000000000000000000", high: "0" }, // 1000 STRK
+};
+
+await account.execute({
+  contractAddress: agentAccountAddress,
+  entrypoint: "register_session_key",
+  calldata: CallData.compile({
+    key: sessionPublicKey,
+    policy: policy,
+  }),
+});
+```
+
+### Spending Limit Enforcement
+
+Session keys track spending per token in a 24-hour rolling window:
+
+- Tracked selectors: `transfer`, `approve`, `increase_allowance`, `increaseAllowance`
+- Period resets after 86400 seconds (24 hours)
+- Cumulative spending must not exceed `spending_limit`
+
+```typescript
+// Session key can spend up to 1000 STRK per 24-hour period
+// After period expires, limit resets automatically
+```
+
+### Signature Format
+
+The account validates signatures based on length:
+
+- **Owner signature:** 2 felts `[r, s]`
+- **Session key signature:** 3 felts `[session_public_key, r, s]`
+
+### Emergency Revocation
+
+Instantly revoke all session keys:
+
+```cairo
+fn emergency_revoke_all(ref self: TContractState)
+```
+
+**Access Control:** Owner only
+
+This function uses compact storage with swap-and-remove to maintain bounded gas costs.
+
+## Timelocked Upgrades
+
+Contract upgrades require a time delay to prevent instant malicious upgrades.
+
+### Schedule an Upgrade
+
+```cairo
+fn schedule_upgrade(ref self: TContractState, new_class_hash: ClassHash)
+```
+
+**Access Control:** Owner only
+
+**Default delay:** 300 seconds (5 minutes)
+
+### Execute an Upgrade
+
+```cairo
+fn execute_upgrade(ref self: TContractState)
+```
+
+**Access Control:** Owner only
+
+**Validation:** Current time must be >= `scheduled_at + upgrade_delay`
+
+### Cancel an Upgrade
+
+```cairo
+fn cancel_upgrade(ref self: TContractState)
+```
+
+**Access Control:** Owner only
+
+**Example:**
+
+```typescript
+// Schedule upgrade
+await account.execute({
+  contractAddress: agentAccountAddress,
+  entrypoint: "schedule_upgrade",
+  calldata: CallData.compile({ new_class_hash: newClassHash }),
+});
+
+// Wait for delay...
+await sleep(300_000); // 5 minutes
+
+// Execute upgrade
+await account.execute({
+  contractAddress: agentAccountAddress,
+  entrypoint: "execute_upgrade",
+  calldata: [],
+});
+```
+
+## Agent Account Factory
+
+The factory deploys agent accounts with integrated ERC-8004 identity.
+
+### IAgentAccountFactory
+
+```cairo
+#[starknet::interface]
+pub trait IAgentAccountFactory<TContractState> {
+    fn deploy_account(
+        ref self: TContractState,
+        public_key: felt252,
+        salt: felt252,
+        token_uri: ByteArray
+    ) -> (ContractAddress, u256);
+
+    fn get_account_class_hash(self: @TContractState) -> ClassHash;
+    fn set_account_class_hash(ref self: TContractState, class_hash: ClassHash);
+    fn get_identity_registry(self: @TContractState) -> ContractAddress;
+    fn set_identity_registry(ref self: TContractState, registry: ContractAddress);
+}
+```
+
+### Deploying an Agent Account
+
+```typescript
+const { transaction_hash } = await factoryAccount.execute({
+  contractAddress: factoryAddress,
+  entrypoint: "deploy_account",
+  calldata: CallData.compile({
+    public_key: agentPublicKey,
+    salt: randomSalt,
+    token_uri: "ipfs://QmAgentMetadata",
+  }),
+});
+
+const receipt = await factoryAccount.waitForTransaction(transaction_hash);
+// Parse AccountDeployed event for account_address and agent_id
+```
+
+The factory:
+1. Deploys the agent account contract
+2. Registers an agent in the IdentityRegistry with the provided token URI
+3. Transfers the agent NFT to the deployed account
+4. Binds the identity to the account
+
+## ERC-8004 Integration
+
+Bind an on-chain identity to the agent account:
+
+```typescript
+await account.execute({
+  contractAddress: agentAccountAddress,
+  entrypoint: "set_agent_id",
+  calldata: CallData.compile({
+    registry: identityRegistryAddress,
+    agent_id: agentId,
+  }),
+});
+```
+
+Query the bound identity:
+
+```typescript
+const contract = new Contract(abi, agentAccountAddress, provider);
+const [registry, agentId] = await contract.get_agent_id();
+```
+
+## Architecture
+
+```text
++-------------------------------------------------------------+
+|                      Agent Account                          |
++-------------------------------------------------------------+
+|  +-------------+  +-------------+  +-------------+          |
+|  |    Owner    |  |  Session 1  |  |  Session 2  |  ...     |
+|  |  (Full Key) |  |  (Limited)  |  |  (Limited)  |          |
+|  +-------------+  +-------------+  +-------------+          |
++-------------------------------------------------------------+
+|  Validation (__validate__):                                 |
+|  - Check signature (owner or valid session)                 |
+|  - Verify contract is allowed for session                   |
+|  - Check spending limits not exceeded                       |
+|  - Verify session not expired                               |
++-------------------------------------------------------------+
+|  Execution (__execute__):                                   |
+|  - Execute calls if validation passes                       |
+|  - Update spending counters for ERC-20 operations           |
+|  - Emit events for tracking                                 |
++-------------------------------------------------------------+
+```
+
+## Security Model
+
+### Defense in Depth
+
+Multiple layers of protection:
+
+1. **Session isolation** - Compromise of session key doesn't expose owner key
+2. **Spending limits** - Even with session key, damage is bounded per 24-hour period
+3. **Contract restrictions** - Session keys can be limited to specific contracts
+4. **Time limits** - Sessions automatically expire at `valid_until`
+5. **Emergency revocation** - Owner can instantly revoke all session keys
+6. **Timelocked upgrades** - Prevents instant malicious contract replacement
+
+### Threat Model
+
+| Threat | Mitigation |
+|--------|-----------|
+| Session key stolen | 24-hour spending cap limits losses; time expiry limits window |
+| Malicious contract call | `allowed_contract` restricts which contracts can be called |
+| Long-running compromise | Session expiry; daily limits reset |
+| Draining via approvals | `increase_allowance` tracked against spending limit |
+| Malicious upgrade | Timelock provides window to cancel |
+
+## Test Coverage
+
+The Agent Account has comprehensive test coverage:
+
+| Test Suite | Tests | Coverage |
+|------------|-------|----------|
+| `test_agent_account` | Session key lifecycle, policies | 795 lines |
+| `test_agent_account_factory` | Deployment, identity binding | 274 lines |
+| `test_execute_validate` | Signature validation, execution | 507 lines |
+| `test_security` | Emergency revoke, upgrades, spending | 1,113 lines |
+| **Total** | **110 tests** | **2,689 lines** |
+
+## Reference Implementation
+
+The Agent Account design is inspired by:
+
+- **[Cartridge Controller](https://github.com/cartridge-gg/controller)** - Session key implementation for gaming
+- **[Argent Account](https://github.com/argentlabs/argent-contracts-starknet)** - Guardian and recovery features
+- **[OpenZeppelin Cairo](https://github.com/OpenZeppelin/cairo-contracts)** - AccountComponent base
+
+## Related Documentation
+
+- [ERC-8004 Overview](/docs/contracts/erc-8004-overview) - Agent identity standard
+- [Identity Registry](/docs/contracts/identity-registry) - Agent NFT registration
+- [Deployment Guide](/docs/contracts/deployment) - Deploy contracts to Sepolia
+- [Wallet Skill](/docs/skills/starknet-wallet) - Wallet management for agents

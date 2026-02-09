@@ -1,0 +1,139 @@
+---
+title: Skills Overview
+description: Introduction to agent skills and how to install them
+---
+
+# Skills Overview
+
+Skills are **reusable capability packages** that extend what AI agents can do on Starknet. Each skill provides a focused set of tools, code examples, and documentation for a specific domain.
+
+## What are Skills?
+
+A skill is a self-contained package defined by a `SKILL.md` file with:
+
+- **YAML Frontmatter** - Metadata like name, description, and keywords
+- **Documentation** - Detailed guides and code examples
+- **Prerequisites** - Required packages and environment variables
+- **Reference Scripts** - Working code snippets agents can use
+
+<Callout type="info" title="Skill Format">
+Skills follow the [AgentSkills specification](/docs/skills/writing-skills) - a standard format for defining AI agent capabilities that works across different frameworks and models.
+</Callout>
+
+## Available Skills
+
+Starknet Agentic provides five official skills. Use the search and filter controls to explore:
+
+<SkillsGrid />
+
+## Installing Skills
+
+Skills are designed to be loaded by AI agents at runtime. The agent reads the skill documentation and uses the provided code patterns to accomplish tasks.
+
+### For Claude Code / Cursor
+
+Add skills to your project by referencing them in your configuration:
+
+```bash
+# Clone the skills into your project
+git clone https://github.com/starkware/starknet-agentic
+cp -r starknet-agentic/skills ./skills
+```
+
+The agent will automatically discover skills in the `skills/` directory.
+
+### For MCP Server Users
+
+The MCP server provides tools that implement skill functionality directly. See the [MCP Server Guide](/docs/guides/mcp-server) for setup.
+
+### Using ClawHub
+
+Browse and install community skills from [ClawHub](https://clawhub.com):
+
+```bash
+# Install a skill from ClawHub (coming soon)
+claw install starknet-wallet
+```
+
+## Skill File Structure
+
+Each skill follows this structure:
+
+```text
+skills/
+|
++-- starknet-wallet/
+    |-- SKILL.md          # Skill definition (required)
+    |-- package.json      # Dependencies (optional)
+    |-- scripts/          # Reference implementations
+    |   |-- check-balance.ts
+    |   +-- transfer.ts
+    +-- .env.example      # Environment template
+```
+
+## SKILL.md Format
+
+Every skill has a `SKILL.md` file with YAML frontmatter:
+
+```yaml
+---
+name: starknet-wallet
+description: >
+  Create and manage Starknet wallets for AI agents.
+  Transfer tokens, check balances, and more.
+keywords:
+  - starknet
+  - wallet
+  - transfer
+  - balance
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+user-invocable: true
+---
+
+# Starknet Wallet Skill
+
+Documentation content here...
+```
+
+### Frontmatter Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Lowercase, hyphenated identifier (1-64 chars) |
+| `description` | Yes | Multi-line description of capabilities |
+| `keywords` | Yes | Array of discovery keywords |
+| `allowed-tools` | No | Tools the skill can use |
+| `user-invocable` | No | Whether users can invoke directly |
+
+## Using Skills in Agents
+
+When an agent loads a skill, it gains access to:
+
+1. **Code Examples** - Copy-paste ready TypeScript/Python snippets
+2. **Tool Definitions** - MCP tool schemas and handlers
+3. **Error Handling** - Common errors and recovery strategies
+4. **Configuration** - Environment variables and setup
+
+<Steps>
+<Step number={1} title="Load the Skill">
+The agent reads the SKILL.md file and extracts the relevant documentation.
+</Step>
+<Step number={2} title="Install Dependencies">
+If the skill requires packages, the agent runs the installation commands.
+</Step>
+<Step number={3} title="Configure Environment">
+Set up required environment variables from the skill's configuration section.
+</Step>
+<Step number={4} title="Execute Operations">
+The agent uses code examples as templates to accomplish the user's task.
+</Step>
+</Steps>
+
+## Next Steps
+
+- **[Wallet Skill](/docs/skills/starknet-wallet)** - Start with wallet operations
+- **[Writing Your Own Skill](/docs/skills/writing-skills)** - Create custom skills
+- **[Publishing to ClawHub](/docs/skills/publishing)** - Share with the community

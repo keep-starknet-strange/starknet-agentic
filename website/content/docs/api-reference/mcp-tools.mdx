@@ -1,0 +1,846 @@
+---
+title: MCP Tools Reference
+description: Complete reference for all Starknet MCP server tools
+---
+
+import { Callout, Collapsible } from "@/components/docs";
+
+# MCP Tools Reference
+
+This page documents all 9 tools exposed by the Starknet MCP Server. Each tool includes its description, parameters, return values, and usage examples.
+
+<Callout type="info" title="Tool Invocation">
+  These tools are invoked automatically by your AI assistant. You describe what you want in natural language, and the AI selects the appropriate tool and parameters.
+</Callout>
+
+## Quick Reference
+
+| Tool | Purpose | Write? |
+|------|---------|--------|
+| [`starknet_get_balance`](#starknet_get_balance) | Get single token balance | No |
+| [`starknet_get_balances`](#starknet_get_balances) | Get multiple token balances | No |
+| [`starknet_transfer`](#starknet_transfer) | Transfer tokens | Yes |
+| [`starknet_swap`](#starknet_swap) | Swap tokens via avnu | Yes |
+| [`starknet_get_quote`](#starknet_get_quote) | Get swap quote | No |
+| [`starknet_call_contract`](#starknet_call_contract) | Call view function | No |
+| [`starknet_invoke_contract`](#starknet_invoke_contract) | Invoke contract function | Yes |
+| [`starknet_estimate_fee`](#starknet_estimate_fee) | Estimate transaction fee | No |
+| [`x402_starknet_sign_payment_required`](#x402_starknet_sign_payment_required) | Sign X-402 payment | No |
+
+---
+
+## starknet_get_balance
+
+Get the token balance for an address on Starknet. Supports common token symbols (ETH, STRK, USDC, USDT) or any token contract address.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `token` | string | Yes | Token symbol (`ETH`, `STRK`, `USDC`, `USDT`) or contract address |
+| `address` | string | No | Address to check. Defaults to the configured account address |
+
+**Returns**
+
+```json
+{
+  "balance": "1.5",
+  "raw": "1500000000000000000",
+  "decimals": 18,
+  "tokenAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `balance` | string | Human-readable balance (e.g., "1.5") |
+| `raw` | string | Raw balance in smallest unit (wei) |
+| `decimals` | number | Token decimal places |
+| `tokenAddress` | string | Normalized token contract address |
+
+**Examples**
+
+<Collapsible title="Check ETH balance" defaultOpen={true}>
+
+**Prompt:** "What's my ETH balance?"
+
+**Tool call:**
+```json
+{
+  "token": "ETH"
+}
+```
+
+**Response:**
+```json
+{
+  "balance": "0.5",
+  "raw": "500000000000000000",
+  "decimals": 18,
+  "tokenAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Check balance for another address">
+
+**Prompt:** "Check the USDC balance of 0x04f3e8d17b41b1e82b13a9352b28f3f8e5b00ef..."
+
+**Tool call:**
+```json
+{
+  "token": "USDC",
+  "address": "0x04f3e8d17b41b1e82b13a9352b28f3f8e5b00ef..."
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Check balance by contract address">
+
+**Prompt:** "What's the balance of token 0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8?"
+
+**Tool call:**
+```json
+{
+  "token": "0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8"
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `INVALID_TOKEN` | Token symbol or address not recognized | Use a valid token symbol or contract address |
+| `INVALID_ADDRESS` | Address format incorrect | Ensure address starts with `0x` |
+| `RPC_ERROR` | Network communication failed | Check RPC URL and network connectivity |
+
+---
+
+## starknet_get_balances
+
+Get multiple token balances in a single optimized call. More efficient than calling `starknet_get_balance` multiple times.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `tokens` | string[] | Yes | Array of token symbols or addresses (max 200) |
+| `address` | string | No | Address to check. Defaults to configured account |
+
+**Returns**
+
+```json
+{
+  "balances": [
+    {
+      "token": "ETH",
+      "balance": "0.5",
+      "raw": "500000000000000000",
+      "decimals": 18,
+      "tokenAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+    },
+    {
+      "token": "STRK",
+      "balance": "1234.56",
+      "raw": "1234560000000000000000",
+      "decimals": 18,
+      "tokenAddress": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"
+    }
+  ],
+  "method": "balance_checker"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `balances` | array | Array of balance objects |
+| `method` | string | `"balance_checker"` (optimized) or `"batch_rpc"` (fallback) |
+
+The server uses a **BalanceChecker contract** (`0x031ce64a666fbf9a2b1b2ca51c2af60d9a76d3b85e5fbfb9d5a8dbd3fedc9716`) to fetch multiple balances in a single RPC call. If the contract is unavailable, it falls back to parallel individual RPC calls.
+
+**Examples**
+
+<Collapsible title="Check portfolio balances" defaultOpen={true}>
+
+**Prompt:** "Show me my ETH, STRK, USDC, and USDT balances"
+
+**Tool call:**
+```json
+{
+  "tokens": ["ETH", "STRK", "USDC", "USDT"]
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Check specific token addresses">
+
+**Prompt:** "What are my balances for these tokens: 0x049d..., 0x04718..."
+
+**Tool call:**
+```json
+{
+  "tokens": [
+    "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+    "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"
+  ]
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `TOO_MANY_TOKENS` | More than 200 tokens requested | Split into multiple calls |
+| `INVALID_TOKEN` | One or more tokens not recognized | Check token symbols/addresses |
+
+---
+
+## starknet_transfer
+
+Transfer tokens to another address on Starknet. Supports gasfree mode where gas is paid in an ERC-20 token.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `recipient` | string | Yes | Recipient address (must start with `0x`) |
+| `token` | string | Yes | Token symbol or contract address |
+| `amount` | string | Yes | Amount in human-readable format (e.g., "1.5") |
+| `gasfree` | boolean | No | Enable gasfree mode (default: `false`) |
+| `gasToken` | string | No | Token to pay gas in (gasfree only, default: STRK) |
+
+**Returns**
+
+```json
+{
+  "success": true,
+  "transactionHash": "0x7f3a2bc1...",
+  "recipient": "0x04f3e8d17b41...",
+  "token": "USDC",
+  "amount": "100",
+  "gasfree": false
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the transaction succeeded |
+| `transactionHash` | string | Transaction hash on Starknet |
+| `recipient` | string | Recipient address |
+| `token` | string | Token transferred |
+| `amount` | string | Amount transferred |
+| `gasfree` | boolean | Whether gasfree mode was used |
+
+**Examples**
+
+<Collapsible title="Simple transfer" defaultOpen={true}>
+
+**Prompt:** "Send 50 USDC to 0x04f3e8d17b41b1e82b13..."
+
+**Tool call:**
+```json
+{
+  "recipient": "0x04f3e8d17b41b1e82b13a9352b28f3f8e5b00ef...",
+  "token": "USDC",
+  "amount": "50"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Gasfree transfer">
+
+**Prompt:** "Send 100 STRK to 0x04f3... using gasfree mode"
+
+**Tool call:**
+```json
+{
+  "recipient": "0x04f3e8d17b41b1e82b13...",
+  "token": "STRK",
+  "amount": "100",
+  "gasfree": true
+}
+```
+
+The server will pay gas from your STRK balance (or the token being transferred).
+
+</Collapsible>
+
+<Collapsible title="Gasfree with specific gas token">
+
+**Prompt:** "Transfer 1 ETH to 0x04f3... and pay gas in USDC"
+
+**Tool call:**
+```json
+{
+  "recipient": "0x04f3e8d17b41b1e82b13...",
+  "token": "ETH",
+  "amount": "1",
+  "gasfree": true,
+  "gasToken": "USDC"
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `INSUFFICIENT_BALANCE` | Not enough tokens to transfer | Check balance and reduce amount |
+| `INSUFFICIENT_GAS` | Not enough tokens for gas fees | Add gas token or enable gasfree |
+| `INVALID_RECIPIENT` | Recipient address invalid | Verify the address format |
+| `TRANSACTION_REVERTED` | On-chain execution failed | Check recipient can receive tokens |
+
+<Callout type="warning" title="Double-check addresses">
+  Token transfers are irreversible. Always verify the recipient address before confirming a transfer.
+</Callout>
+
+---
+
+## starknet_swap
+
+Execute a token swap on Starknet using the [avnu](https://www.avnu.fi/) aggregator for best prices across all DEXes. Supports gasfree mode.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sellToken` | string | Yes | Token to sell (symbol or address) |
+| `buyToken` | string | Yes | Token to buy (symbol or address) |
+| `amount` | string | Yes | Amount to sell in human-readable format |
+| `slippage` | number | No | Max slippage as decimal (0.01 = 1%, default: 0.01) |
+| `gasfree` | boolean | No | Enable gasfree mode (default: `false`) |
+| `gasToken` | string | No | Token to pay gas in (gasfree only, defaults to sellToken) |
+
+**Returns**
+
+```json
+{
+  "success": true,
+  "transactionHash": "0x2bc1a7f3...",
+  "sellToken": "USDC",
+  "buyToken": "ETH",
+  "sellAmount": "100",
+  "buyAmount": "0.0284",
+  "priceImpact": "0.12",
+  "gasFeesUsd": "0.05",
+  "gasfree": false,
+  "routes": [
+    {
+      "name": "JediSwap",
+      "percent": 100
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the swap succeeded |
+| `transactionHash` | string | Transaction hash |
+| `sellToken` | string | Token sold |
+| `buyToken` | string | Token received |
+| `sellAmount` | string | Amount sold |
+| `buyAmount` | string | Amount received |
+| `priceImpact` | string | Price impact percentage |
+| `gasFeesUsd` | string | Gas fees in USD |
+| `gasfree` | boolean | Whether gasfree mode was used |
+| `routes` | array | DEX routing information |
+
+**Examples**
+
+<Collapsible title="Basic swap" defaultOpen={true}>
+
+**Prompt:** "Swap 100 USDC for ETH"
+
+**Tool call:**
+```json
+{
+  "sellToken": "USDC",
+  "buyToken": "ETH",
+  "amount": "100"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Swap with custom slippage">
+
+**Prompt:** "Swap 500 STRK to USDC with 0.5% slippage"
+
+**Tool call:**
+```json
+{
+  "sellToken": "STRK",
+  "buyToken": "USDC",
+  "amount": "500",
+  "slippage": 0.005
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Gasfree swap">
+
+**Prompt:** "Swap 1000 USDC to ETH using gasfree mode"
+
+**Tool call:**
+```json
+{
+  "sellToken": "USDC",
+  "buyToken": "ETH",
+  "amount": "1000",
+  "gasfree": true
+}
+```
+
+Gas fees will be deducted from the USDC being sold.
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `NO_ROUTES_FOUND` | No DEX path between tokens | Try different token pair or smaller amount |
+| `INSUFFICIENT_LIQUIDITY` | Not enough liquidity for swap size | Reduce swap amount |
+| `SLIPPAGE_EXCEEDED` | Price moved beyond slippage tolerance | Increase slippage or retry |
+| `INSUFFICIENT_BALANCE` | Not enough sell token | Check balance |
+| `PRICE_IMPACT_TOO_HIGH` | Swap would cause significant price impact | Reduce amount or split into multiple swaps |
+
+---
+
+## starknet_get_quote
+
+Get a swap quote without executing the trade. Useful for comparing prices or displaying expected outcomes before confirmation.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sellToken` | string | Yes | Token to sell (symbol or address) |
+| `buyToken` | string | Yes | Token to buy (symbol or address) |
+| `amount` | string | Yes | Amount to sell |
+
+**Returns**
+
+```json
+{
+  "sellToken": "USDC",
+  "buyToken": "ETH",
+  "sellAmount": "100",
+  "buyAmount": "0.0284",
+  "priceImpact": "0.12",
+  "gasFeesUsd": "0.05",
+  "quoteId": "abc123...",
+  "routes": [
+    {
+      "name": "JediSwap",
+      "address": "0x...",
+      "percent": 60
+    },
+    {
+      "name": "10KSwap",
+      "address": "0x...",
+      "percent": 40
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sellToken` | string | Token being sold |
+| `buyToken` | string | Token being bought |
+| `sellAmount` | string | Input amount |
+| `buyAmount` | string | Expected output amount |
+| `priceImpact` | string | Price impact percentage |
+| `gasFeesUsd` | string | Estimated gas fees in USD |
+| `quoteId` | string | Quote identifier (for reference) |
+| `routes` | array | DEX routing breakdown |
+
+**Examples**
+
+<Collapsible title="Get swap quote" defaultOpen={true}>
+
+**Prompt:** "How much ETH would I get for 1000 USDC?"
+
+**Tool call:**
+```json
+{
+  "sellToken": "USDC",
+  "buyToken": "ETH",
+  "amount": "1000"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Compare different amounts">
+
+**Prompt:** "Quote swapping 100 STRK to USDC"
+
+**Tool call:**
+```json
+{
+  "sellToken": "STRK",
+  "buyToken": "USDC",
+  "amount": "100"
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `NO_ROUTES_FOUND` | No DEX path available | Try different tokens |
+| `INVALID_TOKEN` | Token not recognized | Use valid symbol or address |
+
+---
+
+## starknet_call_contract
+
+Call a read-only (view) function on a Starknet smart contract. Does not create a transaction or cost gas.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `contractAddress` | string | Yes | Contract address |
+| `entrypoint` | string | Yes | Function name to call |
+| `calldata` | string[] | No | Function arguments as strings (default: `[]`) |
+
+**Returns**
+
+```json
+{
+  "result": ["0x4574686572", "0x455448"],
+  "contractAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+  "entrypoint": "name"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `result` | string[] | Array of return values as hex strings |
+| `contractAddress` | string | Contract that was called |
+| `entrypoint` | string | Function that was called |
+
+**Examples**
+
+<Collapsible title="Read token name" defaultOpen={true}>
+
+**Prompt:** "What's the name of the ETH token contract?"
+
+**Tool call:**
+```json
+{
+  "contractAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+  "entrypoint": "name"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Read with calldata">
+
+**Prompt:** "Check if 0x04f3... is approved to spend from 0x07a2..."
+
+**Tool call:**
+```json
+{
+  "contractAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+  "entrypoint": "allowance",
+  "calldata": ["0x07a2...", "0x04f3..."]
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Read total supply">
+
+**Prompt:** "What's the total supply of STRK?"
+
+**Tool call:**
+```json
+{
+  "contractAddress": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+  "entrypoint": "total_supply"
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `ENTRYPOINT_NOT_FOUND` | Function doesn't exist | Check function name spelling |
+| `INVALID_CALLDATA` | Wrong number or type of arguments | Verify function signature |
+| `CONTRACT_NOT_FOUND` | No contract at address | Verify contract address |
+
+---
+
+## starknet_invoke_contract
+
+Execute a state-changing function on a Starknet smart contract. Creates a transaction that modifies blockchain state.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `contractAddress` | string | Yes | Contract address |
+| `entrypoint` | string | Yes | Function name to call |
+| `calldata` | string[] | No | Function arguments as strings (default: `[]`) |
+| `gasfree` | boolean | No | Enable gasfree mode (default: `false`) |
+| `gasToken` | string | No | Token to pay gas in (gasfree only) |
+
+**Returns**
+
+```json
+{
+  "success": true,
+  "transactionHash": "0x3a7c1b2d...",
+  "contractAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+  "entrypoint": "approve",
+  "gasfree": false
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the transaction succeeded |
+| `transactionHash` | string | Transaction hash |
+| `contractAddress` | string | Contract that was invoked |
+| `entrypoint` | string | Function that was called |
+| `gasfree` | boolean | Whether gasfree mode was used |
+
+**Examples**
+
+<Collapsible title="Approve token spending" defaultOpen={true}>
+
+**Prompt:** "Approve 0x04f3... to spend 1000 USDC from my account"
+
+**Tool call:**
+```json
+{
+  "contractAddress": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+  "entrypoint": "approve",
+  "calldata": [
+    "0x04f3e8d17b41b1e82b13...",
+    "1000000000",
+    "0"
+  ]
+}
+```
+
+<Callout type="info" title="uint256 Encoding">
+  Starknet uint256 values are passed as two felt252 values: low and high. For amounts under 2^128, pass `[amount, "0"]`.
+</Callout>
+
+</Collapsible>
+
+<Collapsible title="Gasfree contract call">
+
+**Prompt:** "Call the claim function on 0x07a2... with gasfree mode"
+
+**Tool call:**
+```json
+{
+  "contractAddress": "0x07a2...",
+  "entrypoint": "claim",
+  "calldata": [],
+  "gasfree": true
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `TRANSACTION_REVERTED` | Contract execution failed | Check function requirements |
+| `INSUFFICIENT_GAS` | Not enough for gas fees | Add gas tokens or use gasfree |
+| `ENTRYPOINT_NOT_FOUND` | Function doesn't exist | Verify function name |
+| `INVALID_CALLDATA` | Wrong arguments | Check function signature |
+
+<Callout type="warning" title="State Changes">
+  Unlike `starknet_call_contract`, this tool modifies blockchain state. Ensure you understand what the function does before invoking.
+</Callout>
+
+---
+
+## starknet_estimate_fee
+
+Estimate the transaction fee for a contract call before executing it.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `contractAddress` | string | Yes | Contract address |
+| `entrypoint` | string | Yes | Function name |
+| `calldata` | string[] | No | Function arguments (default: `[]`) |
+
+**Returns**
+
+```json
+{
+  "overallFee": "0.000042",
+  "resourceBounds": {
+    "l1_gas": {
+      "max_amount": "0x1a4",
+      "max_price_per_unit": "0x5af3107a4000"
+    },
+    "l2_gas": {
+      "max_amount": "0x0",
+      "max_price_per_unit": "0x0"
+    }
+  },
+  "unit": "STRK"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `overallFee` | string | Estimated fee in human-readable format |
+| `resourceBounds` | object | L1 and L2 gas bounds |
+| `unit` | string | Fee currency (STRK for V3 transactions) |
+
+**Examples**
+
+<Collapsible title="Estimate transfer fee" defaultOpen={true}>
+
+**Prompt:** "How much would it cost to transfer 100 USDC?"
+
+**Tool call:**
+```json
+{
+  "contractAddress": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+  "entrypoint": "transfer",
+  "calldata": [
+    "0x04f3e8d17b41b1e82b13...",
+    "100000000",
+    "0"
+  ]
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `ESTIMATION_FAILED` | Transaction would fail | Check function and calldata |
+| `INVALID_CALLDATA` | Wrong arguments | Verify function signature |
+
+---
+
+## x402_starknet_sign_payment_required
+
+Sign a base64-encoded PAYMENT-REQUIRED header containing Starknet typedData. Part of the [X-402 payment protocol](https://x402.xyz/) for AI-to-AI micropayments.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `paymentRequiredHeader` | string | Yes | Base64-encoded JSON from PAYMENT-REQUIRED HTTP header |
+| `rpcUrl` | string | No | Starknet RPC URL (defaults to env var) |
+| `accountAddress` | string | No | Account address (defaults to env var) |
+| `privateKey` | string | No | Private key (defaults to env var) |
+
+**Returns**
+
+```json
+{
+  "paymentSignatureHeader": "eyJzaWduYXR1cmUiOiIweDEyMzQ...",
+  "payload": {
+    "version": "1",
+    "network": "starknet-mainnet",
+    "amount": "1000000",
+    "token": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+    "recipient": "0x04f3..."
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `paymentSignatureHeader` | string | Base64-encoded signature for PAYMENT-SIGNATURE header |
+| `payload` | object | Decoded payment request details |
+
+**Examples**
+
+<Collapsible title="Sign payment header" defaultOpen={true}>
+
+**Prompt:** "Sign this payment header: eyJhbW91bnQiOiIxMDAw..."
+
+**Tool call:**
+```json
+{
+  "paymentRequiredHeader": "eyJhbW91bnQiOiIxMDAwMDAwIiwicmVjaXBpZW50IjoiMHgwNGYzZThkMTdiNDFiMWU4MmIxM2E5MzUyYjI4ZjNmOGU1YjAwZWYuLi4ifQ=="
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `INVALID_HEADER` | Malformed base64 or JSON | Check header encoding |
+| `UNSUPPORTED_NETWORK` | Network not Starknet | Verify payment request |
+| `SIGNATURE_FAILED` | Signing operation failed | Check private key |
+
+<Callout type="info" title="X-402 Protocol">
+  X-402 enables HTTP-based micropayments where servers return `402 Payment Required` responses. The client signs and returns a `PAYMENT-SIGNATURE` header to authorize payment.
+</Callout>
+
+---
+
+## Token Addresses
+
+The MCP server recognizes these token symbols:
+
+| Symbol | Address | Decimals |
+|--------|---------|----------|
+| `ETH` | `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7` | 18 |
+| `STRK` | `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d` | 18 |
+| `USDC` | `0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8` | 6 |
+| `USDT` | `0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8` | 6 |
+
+Additional tokens are resolved dynamically via the avnu token list with 24-hour caching.
+
+---
+
+## Error Handling
+
+All tools return structured errors with:
+
+```json
+{
+  "error": "INSUFFICIENT_BALANCE",
+  "message": "Not enough USDC to complete transfer. Required: 100, Available: 50",
+  "suggestion": "Check your balance and try a smaller amount"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `error` | Error code for programmatic handling |
+| `message` | Human-readable description |
+| `suggestion` | Recovery action when available |
+
+Common error patterns are translated to user-friendly messages with actionable guidance.

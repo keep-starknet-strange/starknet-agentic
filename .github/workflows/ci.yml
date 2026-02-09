@@ -30,6 +30,32 @@ jobs:
       - name: Type check
         run: pnpm run build
 
+<<<<<<< HEAD
+=======
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint
+        run: pnpm -r --if-present --filter './packages/*' lint
+
+>>>>>>> origin/main
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -50,6 +76,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+<<<<<<< HEAD
+=======
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+
+>>>>>>> origin/main
       - name: Build packages
         run: pnpm run build
 
@@ -84,8 +117,13 @@ jobs:
         working-directory: contracts/huginn-registry
         run: scarb build
 
+<<<<<<< HEAD
   cairo-test:
     name: Cairo Tests
+=======
+  cairo-test-erc8004:
+    name: Cairo Tests (erc8004)
+>>>>>>> origin/main
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -109,10 +147,58 @@ jobs:
         working-directory: contracts/erc8004-cairo
         run: snforge test
 
+<<<<<<< HEAD
+=======
+  cairo-test-agent-account:
+    name: Cairo Tests (agent-account)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.14.0"
+
+      - name: Setup Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@v4
+        with:
+          starknet-foundry-version: "0.54.1"
+
+>>>>>>> origin/main
       - name: Run Cairo tests (agent-account)
         working-directory: contracts/agent-account
         run: snforge test
 
+<<<<<<< HEAD
+=======
+  cairo-test-huginn:
+    name: Cairo Tests (huginn-registry)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.14.0"
+
+      - name: Setup Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@v4
+        with:
+          starknet-foundry-version: "0.54.1"
+
+>>>>>>> origin/main
       - name: Run Cairo tests (huginn-registry)
         working-directory: contracts/huginn-registry
         run: snforge test
@@ -141,10 +227,104 @@ jobs:
         working-directory: website
         run: pnpm run build
 
+<<<<<<< HEAD
   all-checks:
     name: All Checks Passed
     runs-on: ubuntu-latest
     needs: [typecheck, test, cairo-check, cairo-test, website-build]
+=======
+  validate-skills:
+    name: Validate Skills
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Validate skill frontmatter
+        run: |
+          echo "Validating Agent Skills format..."
+          python3 scripts/quick_validate_skill.py skills/*/
+          echo ""
+          echo "All skills validated successfully!"
+
+      - name: Validate plugin manifest
+        run: |
+          echo "Validating .claude-plugin/marketplace.json..."
+
+          if [ ! -f ".claude-plugin/marketplace.json" ]; then
+            echo "ERROR: Missing .claude-plugin/marketplace.json"
+            exit 1
+          fi
+
+          # Validate JSON syntax
+          if ! python3 -m json.tool .claude-plugin/marketplace.json > /dev/null 2>&1; then
+            echo "ERROR: Invalid JSON in marketplace.json"
+            exit 1
+          fi
+
+          echo "JSON syntax: OK"
+
+          # Check that referenced skills exist
+          python3 << 'EOF'
+          import json
+          import os
+          import sys
+
+          with open('.claude-plugin/marketplace.json') as f:
+              data = json.load(f)
+
+          errors = []
+          for plugin in data.get('plugins', []):
+              for skill in plugin.get('skills', []):
+                  skill_path = skill.replace('./', 'skills/')
+                  if not os.path.isdir(skill_path):
+                      errors.append(f"Referenced skill not found: {skill_path}")
+
+          if errors:
+              for e in errors:
+                  print(f"ERROR: {e}")
+              sys.exit(1)
+
+          print("All referenced skills exist: OK")
+          EOF
+
+          echo "Plugin manifest validated successfully!"
+
+  onboarding-smoke:
+    name: Onboarding Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install root dependencies
+        run: pnpm install
+
+      - name: Install onboarding example dependencies
+        run: pnpm --dir examples/onboard-agent install --frozen-lockfile
+
+      - name: Run onboarding smoke checks
+        run: pnpm --dir examples/onboard-agent smoke
+
+  all-checks:
+    name: All Checks Passed
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint, test, cairo-check, cairo-test-erc8004, cairo-test-agent-account, cairo-test-huginn, website-build, validate-skills, onboarding-smoke]
+>>>>>>> origin/main
     steps:
       - name: Success
         run: echo "All CI checks passed!"

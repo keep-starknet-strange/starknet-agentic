@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+import Link from "next/link";
+>>>>>>> origin/main
 import { STEPS, EXTERNAL_LINKS } from "@/data/get-started";
 import { InstallCommand } from "@/components/Hero/InstallCommand";
 import { StepCard } from "@/components/ui/StepCard";
@@ -38,6 +42,7 @@ export function GetStarted() {
             GitHub Repository
             <span className="sr-only"> (opens in new tab)</span>
           </a>
+<<<<<<< HEAD
           <a
             href={EXTERNAL_LINKS.specification}
             target="_blank"
@@ -47,6 +52,14 @@ export function GetStarted() {
             Read the Spec
             <span className="sr-only"> (opens in new tab)</span>
           </a>
+=======
+          <Link
+            href="/docs"
+            className="neo-btn-secondary text-lg py-4 px-8"
+          >
+            Read the Docs
+          </Link>
+>>>>>>> origin/main
         </div>
       </div>
     </section>

@@ -130,6 +130,11 @@ pub mod AgentAccountFactory {
 
         fn set_account_class_hash(ref self: ContractState, new_class_hash: ClassHash) {
             self._assert_owner();
+<<<<<<< HEAD
+=======
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            assert(new_class_hash != zero_class, 'Class hash cannot be zero');
+>>>>>>> origin/main
             let old_class_hash = self.account_class_hash.read();
             self.account_class_hash.write(new_class_hash);
             self.emit(AccountClassHashUpdated { old_class_hash, new_class_hash });
@@ -141,6 +146,11 @@ pub mod AgentAccountFactory {
 
         fn set_identity_registry(ref self: ContractState, new_registry: ContractAddress) {
             self._assert_owner();
+<<<<<<< HEAD
+=======
+            let zero: ContractAddress = 0.try_into().unwrap();
+            assert(new_registry != zero, 'Registry cannot be zero');
+>>>>>>> origin/main
             let old_registry = self.identity_registry.read();
             self.identity_registry.write(new_registry);
             self.emit(IdentityRegistryUpdated { old_registry, new_registry });

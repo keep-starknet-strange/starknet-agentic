@@ -1,0 +1,113 @@
+---
+title: Agent Identity
+description: Register AI agents on-chain with ERC-8004 for identity and reputation
+---
+
+import { Callout } from "@/components/docs";
+
+# Agent Identity
+
+This guide covers on-chain identity registration for AI agents using the ERC-8004 standard. For complete API details and code examples, see the [Identity Skill documentation](/docs/skills/starknet-identity).
+
+## Overview
+
+ERC-8004 (Trustless Agents) provides a standard for verifiable AI agent identity on Ethereum-compatible chains. On Starknet, agents can register identities, build reputation through feedback, and receive third-party validation.
+
+| Registry | Purpose |
+|----------|---------|
+| **Identity** | ERC-721 NFT representing the agent with key-value metadata |
+| **Reputation** | Cryptographically authorized feedback from clients |
+| **Validation** | Third-party assessments (zkML, TEE, human reviewers) |
+
+## Why On-Chain Identity?
+
+- **Verifiable History** - Immutable record of agent behavior and reputation
+- **Trustless Interactions** - Other agents can verify identity before transacting
+- **Portable Reputation** - Identity NFT can be transferred, reputation follows
+- **A2A Discovery** - Combine with Agent Cards for discoverability
+
+## Register an Agent
+
+```typescript
+import { Account, RpcProvider, CallData, constants } from "starknet";
+
+const metadata = [
+  { key: "agentName", value: "MyTradingAgent" },
+  { key: "agentType", value: "defi-trader" },
+  { key: "version", value: "1.0.0" },
+  { key: "model", value: "claude-opus-4-5" },
+  { key: "status", value: "active" },
+];
+
+const { transaction_hash } = await account.execute({
+  contractAddress: identityRegistryAddress,
+  entrypoint: "register_with_metadata",
+  calldata: CallData.compile({
+    token_uri: "ipfs://QmYourAgentSpecHash",
+    metadata: metadata,
+  }),
+});
+```
+
+## Metadata Schema
+
+| Key | Description | Example |
+|-----|-------------|---------|
+| `agentName` | Display name | `"MyTradingAgent"` |
+| `agentType` | Category | `"defi-trader"`, `"nft-curator"` |
+| `version` | Semantic version | `"1.0.0"` |
+| `model` | LLM model | `"claude-opus-4-5"`, `"gpt-4o"` |
+| `status` | Current status | `"active"`, `"paused"` |
+| `a2aEndpoint` | Agent Card URL | `"https://agent.example.com"` |
+
+## Reputation System
+
+The reputation system prevents spam through cryptographic authorization:
+
+1. **Agent owner authorizes** - Signs who can give feedback and limits
+2. **Client submits feedback** - Scored feedback (0-100) with optional tags
+3. **On-chain verification** - Contract verifies signature and records feedback
+
+```typescript
+// Query reputation summary
+const [count, avgScore] = await reputationRegistry.get_summary(
+  agentId,
+  [],  // all clients
+  0,   // all tags
+  0,
+);
+```
+
+## Validation System
+
+Third-party validators can assess agents:
+
+```typescript
+// Request validation
+await account.execute({
+  contractAddress: validationRegistryAddress,
+  entrypoint: "validation_request",
+  calldata: CallData.compile({
+    validator_address: validatorAddress,
+    agent_id: agentId,
+    request_uri: "ipfs://QmValidationRequestDetails",
+  }),
+});
+```
+
+<Callout type="info" title="Validator Types">
+Validators can be zkML provers, TEE attesters, staking-based reviewers, or human auditors. The validation registry is agnostic to the validation method.
+</Callout>
+
+## Security Considerations
+
+- Only the agent owner can update metadata and authorize feedback
+- Self-feedback and self-validation are prevented
+- Signatures include chain ID and expiry to prevent replay attacks
+- Agent identity (NFT) is transferable - new owner inherits reputation
+
+## Next Steps
+
+- **[Identity Skill Reference](/docs/skills/starknet-identity)** - Complete API with authorization flows, query methods, and A2A integration
+- **[ERC-8004 Contracts](/docs/contracts/erc-8004-overview)** - Contract architecture and deployment
+- **[A2A Protocol](/docs/api-reference/a2a-protocol)** - Agent-to-agent communication

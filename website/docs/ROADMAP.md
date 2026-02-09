@@ -1,6 +1,10 @@
 # Website Roadmap
 
+<<<<<<< HEAD
 Feature roadmap for the Starknet Agentic documentation website, broken into MVP, Nice-to-have, and Future phases.
+=======
+Feature roadmap for the Starknet Agentic documentation website, broken into Nice-to-have, and Future phases.
+>>>>>>> origin/main
 
 > **Note:** Infrastructure features are tracked in the main `docs/ROADMAP.md`.
 
@@ -12,6 +16,7 @@ Hey, I am working to implement features for the Starknet Agentic website from th
 
 ---
 
+<<<<<<< HEAD
 # Phase 1: MVP
 
 Core website features required for v1.0 release.
@@ -143,6 +148,8 @@ Core website features required for v1.0 release.
 
 ---
 
+=======
+>>>>>>> origin/main
 # Phase 2: Nice to Have
 
 Features that enhance the website but are not required for v1.0 release.
@@ -277,7 +284,10 @@ Long-term website features.
 
 | Phase | Target | Key Deliverables |
 |-------|--------|------------------|
+<<<<<<< HEAD
 | **MVP (v1.0)** | Q1 2026 | Docs section, getting started, MCP reference, skills docs |
+=======
+>>>>>>> origin/main
 | **Nice to Have (v1.x)** | Q2 2026 | Interactive examples, blog, API playground |
 | **Future (v2.0+)** | 2026+ | Community showcase, agent directory, tutorial series |
 
@@ -289,4 +299,8 @@ Long-term website features.
 - `[x]` Complete
 - `[~]` In progress
 
+<<<<<<< HEAD
 *Last updated: 2026-02-06*
+=======
+*Last updated: 2026-02-08*
+>>>>>>> origin/main

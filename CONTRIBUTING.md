@@ -58,3 +58,17 @@ Common prefixes: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `ci`.
 
 - Never commit real private keys or secrets.
 - Use `.env.example` only.
+<<<<<<< HEAD
+=======
+
+## Security Guardrails
+
+- Do not ship "stubbed security success". If verification or authorization is not implemented yet:
+  - revert/panic explicitly, or
+  - store/emit explicit unverified state (`verified = false`).
+  Never default to success (`verified = true`) behind a TODO.
+- If you change auth/signature/verification/session-key logic, include tests for both:
+  - expected allow path, and
+  - expected deny/reject path.
+- Keep security claims in docs/readmes aligned with current code behavior.
+>>>>>>> origin/main

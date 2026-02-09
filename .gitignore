@@ -149,5 +149,16 @@ target/
 
 # Starknet
 deployed_addresses*.json
+<<<<<<< HEAD
 ***REMOVED***
 .mcp.json
+=======
+.env.local
+.mcp.json
+
+# Claude Code
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+>>>>>>> origin/main

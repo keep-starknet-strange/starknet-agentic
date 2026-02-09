@@ -1,0 +1,420 @@
+---
+title: Writing Your Own Skill
+description: Guide to creating custom agent skills for Starknet
+---
+
+# Writing Your Own Skill
+
+This guide walks you through creating a custom skill for AI agents on Starknet. Skills are self-contained capability packages that extend what agents can do.
+
+## Recommended: Use the Skill Creator
+
+The easiest way to create a new skill is using the **skill-creator** skill. Simply prompt your AI agent:
+
+```text
+"Help me create a new skill for [your use case]"
+```
+
+The skill-creator will guide you through:
+1. Understanding your use case with concrete examples
+2. Planning reusable skill contents (scripts, references, assets)
+3. Initializing the skill structure
+4. Writing the SKILL.md and bundled resources
+5. Packaging and validating the skill
+
+<Callout type="tip" title="Skill Creator">
+The skill-creator skill is available from [Anthropic's skills repository](https://github.com/anthropics/skills/tree/main/skills/skill-creator). It provides a complete workflow for creating effective skills.
+</Callout>
+
+## Core Principles
+
+Before diving into structure, understand these key principles:
+
+### Concise is Key
+
+The context window is a public good. Only add context the AI doesn't already have. Challenge each piece of information: "Does the AI really need this explanation?"
+
+### Progressive Disclosure
+
+Skills use a three-level loading system:
+1. **Metadata (name + description)** - Always in context (~100 words)
+2. **SKILL.md body** - When skill triggers (under 500 lines ideal)
+3. **Bundled resources** - As needed by the AI (unlimited)
+
+### Set Appropriate Degrees of Freedom
+
+- **High freedom**: Text-based instructions when multiple approaches are valid
+- **Medium freedom**: Pseudocode or scripts with parameters
+- **Low freedom**: Specific scripts when operations are fragile
+
+## Skill Structure
+
+Every skill needs at minimum a `SKILL.md` file:
+
+```text
+my-skill/
+├── SKILL.md              # Required: Skill definition with frontmatter
+├── scripts/              # Optional: Executable code (Python/Bash/etc.)
+│   └── example.py
+├── references/           # Optional: Documentation loaded as needed
+│   └── api-docs.md
+└── assets/               # Optional: Files used in output (templates, images)
+    └── template.json
+```
+
+<Callout type="warning" title="What NOT to Include">
+Do not create README.md, CHANGELOG.md, or other auxiliary documentation. Skills should only contain information needed for an AI agent to do the job.
+</Callout>
+
+## SKILL.md Format
+
+The skill definition uses YAML frontmatter followed by markdown documentation:
+
+```yaml
+---
+name: my-starknet-skill
+description: >
+  Enables token swaps on Starknet via AVNU aggregator. Use when the user
+  wants to: (1) swap tokens, (2) get price quotes, (3) execute DeFi trades.
+  Supports ETH, STRK, USDC, USDT and any verified token.
+---
+
+# My Starknet Skill
+
+Your documentation content here...
+```
+
+## Frontmatter Reference
+
+### Required Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Unique identifier (lowercase, hyphens, 1-64 chars) |
+| `description` | string | What the skill does AND when to use it (this is the primary trigger) |
+
+<Callout type="info" title="Description is Critical">
+The description is the primary triggering mechanism. Include both what the skill does and specific triggers/contexts for when to use it. All "when to use" information should be here - not in the body, since the body only loads after triggering.
+</Callout>
+
+### Optional Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `license` | string | - | License reference (e.g., "Complete terms in LICENSE.txt") |
+| `compatibility` | object | - | Environment requirements (target product, system packages) |
+
+## Bundled Resources
+
+### Scripts (`scripts/`)
+
+Executable code for tasks that require deterministic reliability or are repeatedly rewritten.
+
+- **When to include**: When the same code is being rewritten repeatedly
+- **Example**: `scripts/rotate_pdf.py` for PDF rotation tasks
+- **Benefits**: Token efficient, deterministic, may be executed without loading into context
+
+### References (`references/`)
+
+Documentation loaded as needed to inform the AI's process.
+
+- **When to include**: For documentation the AI should reference while working
+- **Examples**: API docs, database schemas, company policies
+- **Best practice**: If files are large (over 10k words), include grep search patterns in SKILL.md
+
+### Assets (`assets/`)
+
+Files used in the output, not loaded into context.
+
+- **When to include**: When the skill needs files for final output
+- **Examples**: Templates, images, boilerplate code, fonts
+- **Benefits**: Separates output resources from documentation
+
+## Writing Documentation
+
+Structure your documentation for AI agent consumption:
+
+<Steps>
+<Step number={1} title="Start with Prerequisites">
+List all dependencies and environment setup:
+
+```markdown
+## Prerequisites
+
+\`\`\`bash
+npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
+\`\`\`
+
+Environment variables:
+- `STARKNET_RPC_URL` - Your Starknet RPC endpoint
+- `STARKNET_PRIVATE_KEY` - Agent's signing key
+```
+</Step>
+
+<Step number={2} title="Provide Code Examples">
+Include copy-paste ready code for common operations:
+
+```markdown
+## Token Transfer
+
+\`\`\`typescript
+import { Account, RpcProvider } from "starknet";
+
+const provider = new RpcProvider({
+  nodeUrl: process.env.STARKNET_RPC_URL
+});
+
+const account = new Account({
+  provider,
+  address: process.env.STARKNET_ACCOUNT_ADDRESS,
+  signer: process.env.STARKNET_PRIVATE_KEY,
+});
+
+// Transfer code here...
+\`\`\`
+```
+</Step>
+
+<Step number={3} title="Document Error Handling">
+Help agents recover from failures:
+
+```markdown
+## Error Handling
+
+| Error | Cause | Resolution |
+|-------|-------|------------|
+| `INSUFFICIENT_BALANCE` | Not enough tokens | Check balance first |
+| `INVALID_NONCE` | Nonce mismatch | Retry with fresh nonce |
+```
+</Step>
+
+<Step number={4} title="Add Configuration Tables">
+Make setup clear:
+
+```markdown
+## Configuration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `RPC_URL` | Yes | - | Starknet endpoint |
+| `TIMEOUT` | No | 30000 | Request timeout (ms) |
+```
+</Step>
+</Steps>
+
+## Best Practices
+
+### Be Specific
+
+<Callout type="tip" title="Specificity">
+Include exact version numbers, contract addresses, and complete code examples. AI agents work better with precise information.
+</Callout>
+
+```yaml
+# Good
+keywords:
+  - starknet-mainnet
+  - erc20-transfer
+  - strk-token
+
+# Bad
+keywords:
+  - blockchain
+  - crypto
+  - tokens
+```
+
+### Include Working Examples
+
+Every operation should have runnable code:
+
+```typescript
+// Complete, runnable example
+import { RpcProvider } from "starknet";
+
+const provider = new RpcProvider({
+  nodeUrl: "https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY"
+});
+
+const balance = await provider.getBalance("0x...");
+console.log(balance);
+```
+
+### Document Contract Addresses
+
+Include mainnet and testnet addresses:
+
+```markdown
+## Token Addresses
+
+### Mainnet
+
+| Token | Address |
+|-------|---------|
+| ETH | `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7` |
+| STRK | `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d` |
+
+### Sepolia Testnet
+
+| Token | Address |
+|-------|---------|
+| ETH | `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7` |
+```
+
+### Add Security Warnings
+
+Flag sensitive operations:
+
+```markdown
+<Callout type="warning" title="Security">
+Never log private keys. Use environment variables for secrets.
+</Callout>
+```
+
+## Example: NFT Minting Skill
+
+Here's a complete example skill:
+
+```yaml
+---
+name: starknet-nft-mint
+description: >
+  Mint NFTs on Starknet. Supports ERC-721 collections with
+  metadata uploads to IPFS via Pinata.
+keywords:
+  - starknet
+  - nft
+  - mint
+  - erc721
+  - ipfs
+  - pinata
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+user-invocable: true
+---
+
+# Starknet NFT Minting Skill
+
+Mint NFTs on Starknet with IPFS metadata storage.
+
+## Prerequisites
+
+\`\`\`bash
+npm install starknet@^8.9.1 @pinata/sdk
+\`\`\`
+
+## Configuration
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `STARKNET_RPC_URL` | Yes | Starknet RPC endpoint |
+| `STARKNET_ACCOUNT_ADDRESS` | Yes | Minter account |
+| `STARKNET_PRIVATE_KEY` | Yes | Signing key |
+| `PINATA_API_KEY` | Yes | Pinata API key |
+| `PINATA_SECRET` | Yes | Pinata secret |
+
+## Mint an NFT
+
+\`\`\`typescript
+import { Account, RpcProvider, Contract, CallData } from "starknet";
+import PinataSDK from "@pinata/sdk";
+
+// 1. Upload metadata to IPFS
+const pinata = new PinataSDK(
+  process.env.PINATA_API_KEY,
+  process.env.PINATA_SECRET
+);
+
+const metadata = {
+  name: "My NFT",
+  description: "A unique digital asset",
+  image: "ipfs://QmImageHash",
+  attributes: [
+    { trait_type: "Rarity", value: "Legendary" }
+  ]
+};
+
+const { IpfsHash } = await pinata.pinJSONToIPFS(metadata);
+const tokenUri = \`ipfs://\${IpfsHash}\`;
+
+// 2. Mint on Starknet
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
+const account = new Account({
+  provider,
+  address: process.env.STARKNET_ACCOUNT_ADDRESS,
+  signer: process.env.STARKNET_PRIVATE_KEY,
+});
+
+const nftContract = new Contract({
+  abi: erc721Abi,
+  address: collectionAddress,
+  providerOrAccount: account,
+});
+
+const { transaction_hash } = await account.execute({
+  contractAddress: collectionAddress,
+  entrypoint: "mint",
+  calldata: CallData.compile({
+    to: account.address,
+    token_uri: tokenUri,
+  }),
+});
+
+await account.waitForTransaction(transaction_hash);
+console.log("Minted! TX:", transaction_hash);
+\`\`\`
+
+## Error Handling
+
+| Error | Cause | Resolution |
+|-------|-------|------------|
+| `PINATA_AUTH_FAILED` | Invalid API key | Check credentials |
+| `MINT_LIMIT_REACHED` | Collection max supply | Use different collection |
+| `INSUFFICIENT_BALANCE` | Can't pay gas | Add ETH/STRK |
+
+## References
+
+- [Starknet NFT Guide](https://docs.starknet.io/)
+- [Pinata Documentation](https://docs.pinata.cloud/)
+```
+
+## Testing Your Skill
+
+Before publishing, validate and package your skill:
+
+<Steps>
+<Step number={1} title="Validate and Package">
+If using the skill-creator, run the packaging script which validates automatically:
+
+```bash
+scripts/package_skill.py path/to/my-skill
+```
+
+This checks:
+- YAML frontmatter format and required fields
+- Skill naming conventions and directory structure
+- Description completeness and quality
+- File organization and resource references
+</Step>
+
+<Step number={2} title="Test Scripts">
+Run any bundled scripts to ensure they work:
+
+```bash
+cd my-skill/scripts && python example.py
+```
+</Step>
+
+<Step number={3} title="Agent Testing">
+Have an AI agent use the skill on real tasks. Notice struggles or inefficiencies and iterate.
+</Step>
+</Steps>
+
+## Next Steps
+
+Once your skill is complete:
+
+- **[Publishing to ClawHub](/docs/skills/publishing)** - Share with the community
+- **[Skills Overview](/docs/skills/overview)** - See how skills work

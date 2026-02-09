@@ -1,9 +1,6 @@
 ---
 name: starknet-defi
-description: >
-  Execute DeFi operations on Starknet: token swaps with best-price routing
-  via avnu aggregator, DCA recurring buys, STRK staking, lending/borrowing,
-  and liquidity provision. Supports gasless and gasfree transactions.
+description: Execute DeFi operations on Starknet: token swaps with best-price routing via avnu aggregator, DCA recurring buys, STRK staking, lending/borrowing, and liquidity provision. Supports gasless and gasfree transactions.
 keywords:
   - starknet
   - defi
@@ -32,10 +29,47 @@ user-invocable: true
 
 Execute DeFi operations on Starknet using avnu aggregator and native protocols.
 
+## Overview
+
+starknet-defi provides DeFi operations on Starknet: token swaps via avnu aggregator, DCA recurring buys, STRK staking, lending/borrowing, and liquidity provision. Supports gasless and gasfree transactions.
+
+### Key Features
+- Best-price swap aggregation (avnu, Ekubo, Jediswap)
+- DCA order creation and management
+- STRK staking with rewards
+- Lending and borrowing protocols
+- Gasless transactions via paymaster
+
 ## Prerequisites
 
 ```bash
 npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
+```
+
+## Quick Start
+
+### 1. Setup
+
+Configure the skill by editing `references/config.json`:
+```json
+{
+  "network": "mainnet",
+  "rpc_url": "https://starknet-mainnet.public.blastapi.io/v2/rpc/v0.8",
+  "account_address": "0x...",
+  "private_key": "0x..."
+}
+```
+
+### 2. Get Quote
+
+```typescript
+import { getQuotes } from "@avnu/avnu-sdk";
+```
+
+### 3. Execute Swap
+
+```typescript
+import { executeSwap } from "@avnu/avnu-sdk";
 ```
 
 ## Token Swaps (avnu SDK v4)
@@ -335,6 +369,25 @@ async function safeSwap(account, quote, slippage = 0.01) {
   }
 }
 ```
+
+## Python Scripts
+
+Alternative Python implementation for CLI usage:
+
+### scripts/router.py
+```bash
+python scripts/router.py quote --token-in ETH --token-out USDC --amount 1e18
+python scripts/router.py swap --token-in ETH --token-out USDC --amount 1e18 --account 0x... --key 0x...
+```
+Multi-DEX routing (Avnu, Jediswap, Ekubo) with best price finding.
+
+### scripts/yield.py
+```bash
+python scripts/yield.py pools                    # List all pools
+python scripts/yield.py apr --pool jediswap_eth_usdc --amount 1000e18 --days 30
+python scripts/yield.py report                   # Generate report
+```
+Yield farming, LP positions, and APR calculations.
 
 ## References
 

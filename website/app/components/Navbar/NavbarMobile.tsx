@@ -1,8 +1,44 @@
 "use client";
 
 import { useState } from "react";
+<<<<<<< HEAD
 import { NAV_LINKS } from "@/data/navigation";
 
+=======
+import Link from "next/link";
+import { NAV_LINKS } from "@/data/navigation";
+
+function MobileNavLink({
+  href,
+  label,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  onClick: () => void;
+}) {
+  const isInternal = href.startsWith("/");
+
+  if (isInternal) {
+    return (
+      <Link
+        href={href}
+        onClick={onClick}
+        className="font-heading font-medium py-2"
+      >
+        {label}
+      </Link>
+    );
+  }
+
+  return (
+    <a href={href} onClick={onClick} className="font-heading font-medium py-2">
+      {label}
+    </a>
+  );
+}
+
+>>>>>>> origin/main
 export function NavbarMobile() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -26,6 +62,7 @@ export function NavbarMobile() {
           className="absolute top-full left-0 right-0 md:hidden border-t-2 border-black bg-cream px-6 py-4 flex flex-col gap-3"
         >
           {NAV_LINKS.map((link) => (
+<<<<<<< HEAD
             <a
               key={link.href}
               href={link.href}
@@ -34,6 +71,14 @@ export function NavbarMobile() {
             >
               {link.label}
             </a>
+=======
+            <MobileNavLink
+              key={link.href}
+              href={link.href}
+              label={link.label}
+              onClick={() => setMobileOpen(false)}
+            />
+>>>>>>> origin/main
           ))}
           <a
             href="#get-started"

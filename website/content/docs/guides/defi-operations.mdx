@@ -1,0 +1,134 @@
+---
+title: DeFi Operations
+description: Execute token swaps, DCA orders, and staking on Starknet
+---
+
+import { Callout } from "@/components/docs";
+
+# DeFi Operations
+
+This guide covers DeFi operations for AI agents on Starknet using the AVNU aggregator. For complete API details and code examples, see the [DeFi Skill documentation](/docs/skills/starknet-defi).
+
+## Overview
+
+AVNU aggregates liquidity across all Starknet DEXs (Ekubo, JediSwap, etc.) to find optimal routes for every swap. Combined with paymaster support, agents can execute DeFi operations in any token.
+
+| Operation | Description |
+|-----------|-------------|
+| **Swaps** | Best-price token exchanges across all DEXs |
+| **DCA** | Automated dollar-cost averaging orders |
+| **Staking** | STRK staking with reward claiming |
+| **Gasless** | Pay fees in any token via paymaster |
+
+## Token Swaps
+
+### Get Quote and Execute
+
+```typescript
+// Via MCP tools
+const quote = await mcpClient.callTool({
+  name: "starknet_get_quote",
+  arguments: {
+    sellToken: "ETH",
+    buyToken: "STRK",
+    amount: "0.1",
+  }
+});
+
+const result = await mcpClient.callTool({
+  name: "starknet_swap",
+  arguments: {
+    sellToken: "ETH",
+    buyToken: "STRK",
+    amount: "0.1",
+    slippage: 0.01,  // 1%
+  }
+});
+```
+
+### Gasless Swaps
+
+Pay gas in any supported token:
+
+```typescript
+const result = await mcpClient.callTool({
+  name: "starknet_swap",
+  arguments: {
+    sellToken: "ETH",
+    buyToken: "STRK",
+    amount: "0.1",
+    gasfree: true,
+    gasToken: "USDC",  // Pay gas in USDC
+  }
+});
+```
+
+<Callout type="tip" title="Best Price Routing">
+AVNU automatically finds the optimal route across Ekubo, JediSwap, and other DEXs. You don't need to specify which exchange to use.
+</Callout>
+
+## DCA (Dollar Cost Averaging)
+
+Set up recurring purchases to reduce timing risk:
+
+```typescript
+import { executeCreateDca } from "@avnu/avnu-sdk";
+import moment from "moment";
+
+await executeCreateDca({
+  provider: account,
+  order: {
+    sellTokenAddress: usdcAddress,
+    buyTokenAddress: strkAddress,
+    totalAmount: BigInt(100 * 10**6),  // 100 USDC
+    numberOfOrders: 10,                 // 10 orders of 10 USDC each
+    frequency: moment.duration(1, "day"),
+    startAt: Math.floor(Date.now() / 1000),
+  },
+});
+```
+
+## STRK Staking
+
+Stake STRK to earn rewards:
+
+```typescript
+import { executeStake, getAvnuStakingInfo } from "@avnu/avnu-sdk";
+
+// Get pool info
+const stakingInfo = await getAvnuStakingInfo();
+
+// Stake
+await executeStake({
+  provider: account,
+  poolAddress: stakingInfo.pools[0].address,
+  amount: BigInt(100 * 10**18), // 100 STRK
+});
+```
+
+<Callout type="warning" title="Unstaking Cooldown">
+STRK has a 21-day unstaking cooldown. Plan accordingly when managing agent liquidity.
+</Callout>
+
+## Supported Protocols
+
+| Protocol | Operations |
+|----------|------------|
+| **AVNU** | Swap aggregation, DCA, gasless transactions |
+| **Ekubo** | AMM with concentrated liquidity |
+| **JediSwap** | Classic AMM pools |
+| **zkLend** | Lending and borrowing |
+| **Nostra** | Multi-asset lending pools |
+
+## API Endpoints
+
+| Network | AVNU API | Paymaster |
+|---------|----------|-----------|
+| Mainnet | `https://starknet.api.avnu.fi` | `https://starknet.paymaster.avnu.fi` |
+| Sepolia | `https://sepolia.api.avnu.fi` | `https://sepolia.paymaster.avnu.fi` |
+
+## Next Steps
+
+- **[DeFi Skill Reference](/docs/skills/starknet-defi)** - Complete API with DCA management, staking rewards, and error handling
+- **[Wallet Management](/docs/guides/wallet-management)** - Token transfers and balance checking
+- **[MCP Server Setup](/docs/guides/mcp-server)** - Configure your AI assistant

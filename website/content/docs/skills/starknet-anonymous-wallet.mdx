@@ -1,0 +1,181 @@
+---
+title: Anonymous Wallet Skill
+description: Create privacy-preserving Starknet wallets via Typhoon
+---
+
+# Anonymous Wallet Skill
+
+The `starknet-anonymous-wallet` skill enables AI agents to create and manage anonymous Starknet wallets using Typhoon's privacy protocol. Break the on-chain link between your deposits and agent operations.
+
+<Callout type="warning" title="Privacy Protocol">
+This skill uses Typhoon to create wallets with no on-chain connection to the funding source. Use responsibly and in compliance with applicable laws.
+</Callout>
+
+## Example Usages
+
+<Collapsible title="Create anonymous wallet" defaultOpen={true}>
+
+**Prompt:**
+> Create a new anonymous wallet using my Typhoon deposit note
+
+**AI uses:** Typhoon integration with deposit note
+
+**Response:**
+> Anonymous wallet created!
+> - Address: 0x07a3...
+> - Funded from: Typhoon pool
+> - Balance: 0.1 STRK
+> - No on-chain link to deposit source
+
+</Collapsible>
+
+<Collapsible title="Show account addresses">
+
+**Prompt:**
+> Show my anonymous account addresses
+
+**AI uses:** Account registry query
+
+**Response:**
+> Your anonymous accounts:
+> 1. 0x07a3... (0.1 STRK)
+> 2. 0x04f2... (0.05 ETH)
+> 3. 0x09b1... (25 USDC)
+
+</Collapsible>
+
+<Collapsible title="Check balance">
+
+**Prompt:**
+> Check the balance of my anonymous wallet
+
+**AI uses:** Balance query for anonymous account
+
+**Response:**
+> Anonymous wallet 0x07a3... balances:
+> - ETH: 0.0
+> - STRK: 0.1
+> - USDC: 0.0
+
+</Collapsible>
+
+<Collapsible title="Transfer from anonymous account">
+
+**Prompt:**
+> Transfer 0.05 STRK from my anonymous account to 0x...
+
+**AI uses:** Anonymous account transfer
+
+**Response:**
+> Transfer complete!
+> - From: 0x07a3... (anonymous)
+> - To: 0x...
+> - Amount: 0.05 STRK
+> - Transaction: 0x2bc1...
+
+</Collapsible>
+
+<Collapsible title="Get contract ABI">
+
+**Prompt:**
+> Get the ABI for contract 0x... and list available functions
+
+**AI uses:** ABI discovery tool
+
+**Response:**
+> Contract 0x... functions:
+> - transfer(recipient, amount) - external
+> - approve(spender, amount) - external
+> - balanceOf(account) - view
+> - allowance(owner, spender) - view
+
+</Collapsible>
+
+<Collapsible title="Simulate before executing">
+
+**Prompt:**
+> Simulate a swap before executing it
+
+**AI uses:** Preflight simulation
+
+**Response:**
+> Simulation result:
+> - Status: SUCCESS
+> - Expected output: 0.0312 ETH
+> - Estimated gas: 0.0001 STRK
+> - No errors detected
+
+</Collapsible>
+
+<Collapsible title="Sign typed data">
+
+**Prompt:**
+> Sign this typed data for authentication
+
+**AI uses:** TypedData signing
+
+**Response:**
+> Signed successfully!
+> - Signer: 0x07a3...
+> - Signature: [r, s]
+> - Ready for authentication
+
+</Collapsible>
+
+## Features
+
+This skill provides:
+
+- Anonymous account creation via Typhoon
+- ABI discovery and function inspection
+- Contract read/write operations
+- Preflight simulation and fee estimation
+- ERC20 allowance management
+- TypedData signing for authentication
+
+## Account Creation Flow
+
+<Steps>
+<Step number={1} title="Fund via Typhoon">
+1. Go to [Typhoon Finance](https://www.typhoon-finance.com/app)
+2. Make a STRK deposit
+3. Download your deposit note
+4. Copy the note content
+</Step>
+
+<Step number={2} title="Create Account">
+Provide the deposit note to the AI agent. The note format:
+```json
+{
+  "secret": "0x...",
+  "nullifier": "0x...",
+  "txHash": "0x...",
+  "pool": "0x...",
+  "day": "0x..."
+}
+```
+</Step>
+
+<Step number={3} title="Verify Success">
+The agent creates your new account address. The private key is stored securely in your local environment.
+</Step>
+</Steps>
+
+<Callout type="info" title="Creation Time">
+Account creation can take several minutes. Typhoon proof generation and Starknet deployment require time - avoid retrying unless it fails.
+</Callout>
+
+## Security Notes
+
+<Callout type="warning" title="Privacy">
+- Typhoon breaks the on-chain link between deposits and withdrawals
+- Never reuse addresses across different identity contexts
+- Be aware that transaction patterns can still leak information
+- Private keys are stored locally - secure your machine
+</Callout>
+
+## References
+
+- [Typhoon Finance](https://www.typhoon-finance.com/)
+- [Starknet Documentation](https://docs.starknet.io/)
+- [starknet.js](https://www.starknetjs.com/)

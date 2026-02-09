@@ -27,6 +27,10 @@ Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (
 ```
 starknet-agentic/
 ├── packages/
+<<<<<<< HEAD
+=======
+│   ├── create-starknet-agent/            # CLI scaffolding tool (COMPLETE)
+>>>>>>> origin/main
 │   ├── starknet-mcp-server/              # MCP server (PRODUCTION - 9 tools)
 │   ├── starknet-a2a/                     # A2A protocol adapter (FUNCTIONAL)
 │   ├── starknet-agent-passport/          # Capability metadata client (FUNCTIONAL)
@@ -79,6 +83,10 @@ NOTE: The Agent Account contract at `contracts/agent-account/` (~570 lines main 
 | Build single TS package | `pnpm build` | `packages/<pkg>/` |
 | Dev mode (website) | `pnpm dev` | `website/` |
 | Deploy contracts (Sepolia) | `bash scripts/deploy_sepolia.sh` | `contracts/erc8004-cairo/` |
+<<<<<<< HEAD
+=======
+| Scaffold new agent | `npx create-starknet-agent@latest` | any |
+>>>>>>> origin/main
 
 </commands>
 
@@ -245,6 +253,10 @@ Always consult `references/` before relying on training data for Starknet-specif
 
 | Component | Status | Location |
 |-----------|--------|----------|
+<<<<<<< HEAD
+=======
+| create-starknet-agent CLI | **Complete** (scaffolding tool) | `packages/create-starknet-agent/` |
+>>>>>>> origin/main
 | ERC-8004 Cairo contracts | **Production** (131+ unit + 47 E2E tests) | `contracts/erc8004-cairo/` |
 | MCP server | **Production** (9 tools, 1,600+ lines) | `packages/starknet-mcp-server/` |
 | A2A adapter | **Functional** (437 lines) | `packages/starknet-a2a/` |

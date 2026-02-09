@@ -1,0 +1,159 @@
+---
+title: Mini-Pay Skill
+description: Simple P2P payments with QR codes, payment links, and invoices
+---
+
+# Mini-Pay Skill
+
+The `starknet-mini-pay` skill enables simple P2P payments on Starknet. Generate QR codes, create payment links, manage invoices, and transfer ETH/STRK/USDC - like Lightning, but native to Starknet.
+
+<Callout type="tip" title="Instant Payments">
+Unlike Lightning which requires channel setup, Mini-Pay works instantly with any Starknet wallet.
+</Callout>
+
+## Example Usages
+
+<Collapsible title="Send a payment with memo" defaultOpen={true}>
+
+**Prompt:**
+> Send 0.5 ETH to 0x123... with memo "coffee payment"
+
+**AI uses:** Transfer tool with recipient, amount, and memo
+
+**Response:**
+> Payment sent successfully!
+> - Amount: 0.5 ETH
+> - To: 0x123...
+> - Memo: coffee payment
+> - Transaction: 0x7f3a...
+
+</Collapsible>
+
+<Collapsible title="Generate a QR code">
+
+**Prompt:**
+> Generate a QR code for my Starknet address
+
+**AI uses:** QR generation with your account address
+
+**Response:**
+> Here's your payment QR code. Anyone can scan this to send you tokens on Starknet.
+> [QR code image saved to payment_qr.png]
+
+</Collapsible>
+
+<Collapsible title="Create a payment link">
+
+**Prompt:**
+> Create a payment link for 10 USDC with memo "lunch"
+
+**AI uses:** Link builder with amount, token, and memo
+
+**Response:**
+> Payment link created:
+> `starknet:0x04f3...?amount=10&memo=lunch&token=USDC`
+>
+> Share this link with anyone to request payment.
+
+</Collapsible>
+
+<Collapsible title="Create an invoice with expiry">
+
+**Prompt:**
+> Create an invoice for 25 USDC that expires in 1 hour
+
+**AI uses:** Invoice system with amount, token, and expiry
+
+**Response:**
+> Invoice created:
+> - Amount: 25 USDC
+> - Expires: in 1 hour
+> - Invoice ID: inv_abc123
+> - Status: PENDING
+
+</Collapsible>
+
+<Collapsible title="Check transaction status">
+
+**Prompt:**
+> Check the status of transaction 0xabc...
+
+**AI uses:** Transaction status lookup
+
+**Response:**
+> Transaction 0xabc... status: CONFIRMED
+> - Block: #12345
+> - Confirmations: 42
+
+</Collapsible>
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **P2P Transfers** | Send ETH/STRK/USDC to any Starknet address |
+| **QR Codes** | Generate QR codes for addresses |
+| **Payment Links** | `starknet:{addr}?amount=1&memo=coffee` |
+| **Invoices** | Payment requests with expiry |
+| **Telegram Bot** | Send/receive via chat commands |
+| **Transaction History** | Track all transfers with status |
+
+## Payment Link Format
+
+```text
+starknet:{address}?amount={value}&memo={text}&token={ETH|STRK|USDC}
+```
+
+Example:
+```text
+starknet:0x053c91253bc9682c04929ca02ed00b3e423f6714...?amount=0.01&memo=coffee&token=ETH
+```
+
+## Telegram Bot Commands
+
+| Command | Description |
+|---------|-------------|
+| `/pay {address} {amount} [memo]` | Send payment |
+| `/qr` | Show your QR code |
+| `/balance` | Check balance |
+| `/link {amount} [memo]` | Generate payment link |
+| `/invoice {amount}` | Create invoice |
+| `/history` | Transaction history |
+| `/help` | Show help |
+
+## Comparison with Lightning
+
+| Feature | Lightning | Starknet Mini-Pay |
+|---------|-----------|-------------------|
+| Setup time | Hours (channels) | Instant |
+| Privacy | Onion routing | Per-transaction |
+| Speed | ~1 second | ~2-3 minutes |
+| Fees | Variable | Predictable |
+| Custody | Lightning node | Self-custody |
+| Native | No (needs BTC) | Yes |
+
+## Error Handling
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `INSUFFICIENT_BALANCE` | Not enough tokens | Add more to account |
+| `ACCOUNT_NOT_FOUND` | Invalid address | Check address format |
+| `INVALID_AMOUNT` | Amount less than or equal to 0 | Use positive amount |
+| `TX_FAILED` | Transaction reverted | Check recipient address |
+| `INVOICE_EXPIRED` | Past expiry | Create new invoice |
+
+## Security Notes
+
+<Callout type="warning" title="Security">
+- Never expose private keys in logs or errors
+- Validate all addresses before sending
+- Set reasonable invoice expiry times
+- Use HTTPS for any web interfaces
+</Callout>
+
+## References
+
+- [Starknet Documentation](https://docs.starknet.io/)
+- [starknet-py](https://github.com/starknet-io/starknet-py)
+- [Ready Wallet](https://www.ready.co/download-ready-wallet)
+- [Braavos Wallet](https://braavos.app/)

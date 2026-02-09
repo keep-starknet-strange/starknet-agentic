@@ -7,7 +7,11 @@ deployed_addresses.json
 
 # Environment files (contains secrets)
 .env
+<<<<<<< HEAD
 ***REMOVED***
+=======
+.env.local
+>>>>>>> origin/main
 
 # Test outputs
 *.log

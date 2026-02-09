@@ -18,6 +18,7 @@ Core infrastructure features required for v1.0 release. MVP definition: MCP serv
 
 ---
 
+<<<<<<< HEAD
 ### 1.0 ~~Upgrade starknet.js to v8 Across All Packages~~ DONE
 
 All TypeScript packages are already standardized on starknet.js ^8.9.1.
@@ -27,11 +28,61 @@ All TypeScript packages are already standardized on starknet.js ^8.9.1.
 ### 1.1 ~~Enable and Write MCP Server Tests~~ DONE
 
 MCP server tests are fully implemented with 7 test files covering handlers, tools, services, providers, and utils. Vitest is configured with 80% coverage thresholds.
+=======
+### 1.1 Create `create-starknet-agent` CLI Scaffolding Tool
+
+**Description**: The website (`website/app/data/get-started.ts`) advertises `npx create-starknet-agent@latest` as the primary onboarding command, but this package does not exist on npm. Create and publish the CLI scaffolding tool to match the documented experience.
+
+**Requirements**:
+- [ ] Create `packages/create-starknet-agent/` directory
+- [ ] Implement CLI using `create-*` npm convention (runs via `npx create-starknet-agent`)
+- [ ] Add interactive prompts for project configuration:
+  - Project name
+  - RPC endpoint (Mainnet/Sepolia/custom)
+  - Agent framework (standalone, MCP server, A2A compatible)
+  - DeFi protocols to enable (avnu, zkLend, Nostra, etc.)
+  - Include example agent (hello-agent, defi-agent)
+- [ ] Generate project structure with:
+  - Pre-configured `package.json` with starknet.js v8.9.1
+  - Environment template (`.env.example`) with RPC, wallet placeholders
+  - Basic agent entry point importing MCP tools & skills
+  - TypeScript configuration (ESM, strict mode)
+  - README with next steps
+- [ ] Add `--template` flag for different starting points:
+  - `minimal` - Just wallet + basic tools
+  - `defi` - Wallet + avnu SDK + DeFi skill
+  - `full` - All skills + identity + A2A
+- [ ] Publish to npm as `create-starknet-agent`
+- [ ] Add automated publishing to CI workflow (`publish.yml`)
+- [ ] Update website to reflect accurate install command status
+
+**Implementation Notes**:
+- Use `prompts` or `inquirer` for interactive CLI
+- Consider `degit` or template copying for project scaffolding
+- Reference implementations:
+  - `create-next-app` (Next.js)
+  - `create-vite` (Vite)
+  - `create-eth` (Scaffold-ETH 2)
+- Package should be lightweight (minimal dependencies)
+- Test with `npm link` before publishing
+- Version should start at 0.1.0 and sync with main repo releases
+
+**Acceptance Criteria**:
+```bash
+# These commands should work after implementation:
+npx create-starknet-agent@latest my-agent
+npx create-starknet-agent@latest --template defi my-defi-agent
+npx create-starknet-agent@latest --help
+```
+
+**Priority**: HIGH - Website is currently advertising a non-existent tool, creating a broken first-run experience.
+>>>>>>> origin/main
 
 ---
 
 ### 1.2 Publish Skills to Distribution Channels
 
+<<<<<<< HEAD
 **Description**: Publish all complete skills to GitHub, ClawHub, and npm for maximum distribution.
 
 **Requirements**:
@@ -50,6 +101,34 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 - ClawHub publication requires OpenClaw account setup
 - npm packages should include SKILL.md, references/, and scripts/
 - Consider scoped packages under `@starknet-agentic` org
+=======
+**Description**: Publish all complete skills to GitHub, ClawHub, and other channels for maximum distribution.
+
+**Requirements**:
+- [x] Register/Setup Publication for `@starknet-agentic/skill-wallet`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-defi`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-identity`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-mini-pay`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-anonymous-wallet`
+- [x] Register/Setup Publication for `@starknet-agentic/huginn-onboard`
+- [ ] Publish skills to ClawHub for OpenClaw/MoltBook users (blocked: CLI not on npm, publishing workflow undocumented)
+- [x] Update skills README with installation instructions for all channels
+- [x] Set up automated publishing in CI workflow
+
+**Implementation Notes**:
+- Skills are complete in `skills/` directory with standardized frontmatter
+- Claude Code plugin manifest at `.claude-plugin/marketplace.json`
+- CI validation workflow added to `.github/workflows/ci.yml`
+- Skills README at `skills/README.md` with installation instructions
+- Monorepo approach chosen: all skills in one repo, installable individually or together
+- ClawHub blocked: CLI not published to npm, publishing workflow not documented
+
+**Distribution Channels**:
+- GitHub: `npx skills add keep-starknet-strange/starknet-agentic`
+- Claude Code: `/plugin marketplace add keep-starknet-strange/starknet-agentic`
+- skills.sh: Auto-indexed from GitHub
+- ClawHub: Blocked (check clawhub.ai for updates)
+>>>>>>> origin/main
 
 ---
 
@@ -72,6 +151,7 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 
 ---
 
+<<<<<<< HEAD
 ### 1.4 Flagship DeFi Agent Documentation
 
 **Description**: Promote defi-agent as the flagship demo with comprehensive documentation and tutorials.
@@ -93,6 +173,8 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 
 ---
 
+=======
+>>>>>>> origin/main
 ### 1.5 Auto-Generated Changelog Setup
 
 **Description**: Set up automated changelog generation from conventional commits.
@@ -109,6 +191,10 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 - Use conventional commits format: `feat:`, `fix:`, `docs:`, `chore:`
 - release-please handles monorepo versioning well
 - Consider changesets as alternative for more manual control
+<<<<<<< HEAD
+=======
+- Consider backfilling changelog from existing commit history
+>>>>>>> origin/main
 
 ---
 
@@ -152,6 +238,114 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 
 ---
 
+<<<<<<< HEAD
+=======
+### 1.8 Standardize MCP ↔ Skill Architecture Separation
+
+**Description**: Align all skills with 2025-2026 best practices for the MCP (capability layer) vs Skills (knowledge layer) separation. Currently, skills vary in how they relate to the MCP server—some document MCP tools (ideal), some bundle standalone execution (acceptable for missing capabilities), and some are complete standalone apps (should be refactored).
+
+**Background** (from architecture analysis):
+- **Best practice**: Skills provide "context, instructions, domain knowledge, and behavioral patterns"—MCP tools provide executable functions. Skills teach *when/what*, MCP executes *how*.
+- **Token economics**: One MCP server can consume 50k+ tokens of schemas; skills use progressive disclosure (~100 tokens metadata, ~5k when activated).
+- **Industry alignment**: AgentSkills spec (agentskills.io) + MCP (donated to Linux Foundation AAIF) are complementary standards adopted by Microsoft, OpenAI, Cursor, GitHub, etc.
+
+**Current State Assessment**:
+
+| Skill | Pattern | Best Practice Alignment |
+|-------|---------|-------------------------|
+| `starknet-wallet` | Documents 8 MCP tools, minimal validation scripts | ✅ 100% - Ideal separation |
+| `starknet-defi` | Documents MCP swap/quote tools, SDK patterns | ✅ 95% - Good separation |
+| `starknet-identity` | Template, needs ERC-8004 integration | ⚠️ 60% - Incomplete |
+| `starknet-anonymous-wallet` | Bundles Node.js scripts (Typhoon not in MCP) | ⚠️ 60% - Valid deviation |
+| `starknet-mini-pay` | Complete standalone Python app + Telegram bot | ❌ 40% - Should use MCP |
+| `huginn-onboard` | Onboarding workflow | ⚠️ TBD - Needs review |
+
+**Requirements**:
+
+#### 1.8.1 starknet-wallet (Reference Implementation)
+- [x] Documents MCP tools in skill body
+- [x] Provides TypeScript code examples
+- [x] Bundles only validation scripts (`scripts/check-balance.ts`, `scripts/check-balances.ts`)
+- [ ] Add explicit "MCP Tools Used" section with tool schemas
+- [ ] Add integration test: skill + MCP server working together
+- [ ] Document as reference implementation for other skills
+
+#### 1.8.2 starknet-defi (Minor Improvements)
+- [x] Documents MCP swap/quote tools
+- [x] Comprehensive avnu SDK patterns
+- [ ] Add explicit "MCP Tools Used" section listing `starknet_swap`, `starknet_get_quote`
+- [ ] Add integration test: DeFi skill guiding agent to use MCP swap tools
+- [ ] Verify all code examples use MCP tool patterns (not direct SDK calls for operations MCP exposes)
+
+#### 1.8.3 starknet-identity (Complete Implementation)
+- [ ] Complete skill implementation (see 1.7)
+- [ ] Document which operations should be MCP tools vs skill knowledge
+- [ ] Add "MCP Tools Used" section (pending 2.2 MCP Identity Tools)
+- [ ] Ensure skill teaches patterns, doesn't duplicate MCP execution logic
+
+#### 1.8.4 starknet-anonymous-wallet (Document Deviation)
+- [x] Bundles scripts because Typhoon protocol not in MCP server
+- [ ] Add explicit note: "This skill bundles execution because Typhoon is not exposed via MCP"
+- [ ] Evaluate: Should Typhoon operations be added to MCP server?
+  - If yes: Create issue to add `starknet_typhoon_deposit`, `starknet_typhoon_withdraw` tools
+  - If no: Document rationale (specialized use case, different security model, etc.)
+- [ ] Add integration test for script-based workflow
+
+#### 1.8.5 starknet-mini-pay (Refactor to MCP Pattern)
+- [ ] **Add payment operations to MCP server**:
+  - [ ] `starknet_create_payment_link` - Generate `starknet:<addr>?amount=...` links
+  - [ ] `starknet_parse_payment_link` - Parse incoming payment links
+  - [ ] `starknet_create_invoice` - Create payment request with expiry
+  - [ ] `starknet_get_invoice_status` - Check invoice fulfillment
+  - [ ] `starknet_generate_qr` - Generate QR code for address/payment (returns base64 or file path)
+- [ ] **Refactor skill to document MCP tools** (like starknet-wallet does)
+- [ ] **Keep Telegram bot as separate deployment** that consumes MCP server
+- [ ] **Maintain Python scripts** as alternative runtime (document as "standalone mode")
+- [ ] Add integration test: skill + MCP payment tools
+
+#### 1.8.6 huginn-onboard (Review and Align)
+- [ ] Review current implementation
+- [ ] Determine if it documents MCP tools or bundles execution
+- [ ] Align with starknet-wallet pattern if applicable
+- [ ] Add integration test
+
+#### 1.8.7 Cross-Skill Integration Testing
+- [ ] Create `tests/integration/` directory for skill + MCP tests
+- [ ] Test: Agent loads starknet-wallet skill → uses MCP tools correctly
+- [ ] Test: Agent loads starknet-defi skill → executes swap via MCP
+- [ ] Test: Agent loads starknet-mini-pay skill → creates payment link via MCP
+- [ ] Document test patterns for community skill authors
+
+#### 1.8.8 Documentation Updates
+- [ ] Add "MCP ↔ Skill Architecture" section to SPECIFICATION.md
+- [ ] Document when to add capability to MCP vs bundle in skill
+- [ ] Add skill authoring guide with best practices
+- [ ] Update CLAUDE.md with architecture guidance
+
+**Implementation Notes**:
+- starknet-wallet is the reference implementation—other skills should follow its pattern
+- Skills that bundle execution (anonymous-wallet, mini-pay) should document *why*
+- MCP server changes require Zod schemas, tests, and documentation updates
+- Telegram bot in mini-pay is a valid standalone deployment—it can consume MCP server
+- Python scripts in mini-pay can remain as "standalone mode" for non-MCP environments
+
+**Acceptance Criteria**:
+- All skills have explicit "MCP Tools Used" section (or "Standalone Execution" with rationale)
+- Integration tests pass for each skill + MCP combination
+- SPECIFICATION.md documents the architecture pattern
+- New skill authors have clear guidance on MCP vs bundled execution
+
+**Priority**: MEDIUM - Improves maintainability and aligns with industry standards, but current skills are functional.
+
+**References**:
+- [Anthropic: Code Execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp)
+- [Anthropic: Equipping Agents with Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
+- [Agent Skills Specification](https://agentskills.io/specification)
+- [Skills vs Tools Production Guide](https://blog.arcade.dev/what-are-agent-skills-and-tools)
+
+---
+
+>>>>>>> origin/main
 # Phase 2: Nice to Have
 
 Features that enhance the platform but are not required for v1.0 release.
@@ -170,7 +364,11 @@ Features that enhance the platform but are not required for v1.0 release.
 - [x] ~~Write snforge tests for time bounds validation~~
 - [x] ~~Write snforge tests for emergency revoke mechanism~~
 - [x] ~~Write snforge tests for agent ID linking~~
+<<<<<<< HEAD
 - [ ] Create Sepolia deployment script
+=======
+- [x] Create Sepolia deployment script
+>>>>>>> origin/main
 - [ ] Deploy to Sepolia testnet
 - [ ] Document deployed contract address
 
@@ -179,6 +377,10 @@ Features that enhance the platform but are not required for v1.0 release.
 - Tests: test_agent_account (43), test_execute_validate (20), test_security (33), test_agent_account_factory (14)
 - Uses OpenZeppelin AccountComponent
 - Single-level session keys (owner -> agent, no nested delegation)
+<<<<<<< HEAD
+=======
+- Use starkli in the deployment script. Follow this as an example: https://github.com/keep-starknet-strange/pow/tree/main/onchain/scripts ( see deploy-sepolia.sh, deploy-mainnet.sh, ... )
+>>>>>>> origin/main
 
 ---
 
@@ -253,7 +455,11 @@ Features that enhance the platform but are not required for v1.0 release.
 - [x] ~~Add snforge test execution to CI~~ — done in `ci.yml`
 - [x] ~~Add automated npm publishing on release~~ — done in `publish.yml`
 - [ ] Add starknet.js version consistency check
+<<<<<<< HEAD
 - [ ] Add dependency vulnerability scanning
+=======
+- [x] ~~Add dependency vulnerability scanning~~
+>>>>>>> origin/main
 - [ ] Add automated ClawHub publishing on release
 - [ ] Add test coverage reporting
 
@@ -423,4 +629,8 @@ Long-term features and ecosystem expansion planned for v2.0+.
 - `[x]` Complete
 - `[~]` In progress
 
+<<<<<<< HEAD
 *Last updated: 2026-02-06*
+=======
+*Last updated: 2026-02-09*
+>>>>>>> origin/main

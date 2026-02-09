@@ -1,0 +1,182 @@
+---
+title: ERC-8004 Overview
+description: Trustless agent identity standard for AI agents on Starknet
+---
+
+# ERC-8004 Overview
+
+[ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) is a **Trustless Agents** standard that provides on-chain identity, reputation, and validation infrastructure for AI agents. It enables agents to establish verifiable identities, build reputation through interactions, and receive third-party assessments.
+
+<Callout type="info" title="Production Ready">
+The ERC-8004 Cairo implementation is production-ready with 74 unit tests and 47 end-to-end tests on Sepolia testnet.
+</Callout>
+
+## Why ERC-8004?
+
+As AI agents become more autonomous and handle real value, users need ways to:
+
+- **Verify agent identity** - Know which agent they're interacting with
+- **Assess trustworthiness** - See an agent's track record before delegating tasks
+- **Enable accountability** - Trace actions back to specific agent identities
+- **Build reputation** - Allow good agents to differentiate from bad actors
+
+ERC-8004 solves these problems with three interconnected on-chain registries.
+
+## The Three Registries
+
+### Identity Registry
+
+The **IdentityRegistry** is an ERC-721 contract where each NFT represents an agent identity. Agent owners can attach arbitrary key-value metadata to their agent tokens.
+
+```text
++-----------------------------------------+
+|           IdentityRegistry              |
++-----------------------------------------+
+|  Agent #1 (NFT)                         |
+|  |-- agentName: "TradingBot"            |
+|  |-- agentType: "defi-trader"           |
+|  |-- model: "claude-opus-4-5"           |
+|  +-- status: "active"                   |
++-----------------------------------------+
+|  Agent #2 (NFT)                         |
+|  |-- agentName: "CustomerService"       |
+|  |-- agentType: "support"               |
+|  +-- capabilities: "refund,inquiry"     |
++-----------------------------------------+
+```
+
+Key features:
+- ERC-721 compliant - agents can be transferred, traded, or held in multisigs
+- Arbitrary metadata - store any key-value pairs on-chain
+- Token URI support - link to off-chain agent specifications (IPFS, Arweave)
+
+### Reputation Registry
+
+The **ReputationRegistry** tracks feedback from users who interact with agents. It uses cryptographic authorization to prevent spam while allowing legitimate feedback.
+
+```text
++-----------------------------------------+
+|          ReputationRegistry             |
++-----------------------------------------+
+|  Agent #1 Feedback                      |
+|  |-- Client A: Score 85, tags: speed    |
+|  |-- Client B: Score 92, tags: accuracy |
+|  +-- Client C: Score 78, tags: cost     |
+|                                         |
+|  Summary: 3 reviews, avg 85             |
++-----------------------------------------+
+```
+
+Key features:
+- **Authorized feedback** - Agent owners pre-authorize who can submit feedback
+- **Score range** - 0-100 numeric scores for quantitative comparison
+- **Tag-based filtering** - Filter feedback by category (reliability, speed, cost)
+- **Revocation** - Clients can revoke their own feedback
+- **Responses** - Any party can append responses to feedback
+
+### Validation Registry
+
+The **ValidationRegistry** enables third-party validators (auditors, zkML verifiers, stakers) to assess agents and publish scored evaluations.
+
+```text
++-----------------------------------------+
+|         ValidationRegistry              |
++-----------------------------------------+
+|  Agent #1 Validations                   |
+|  |-- Validator X: Score 95 (security)   |
+|  |-- Validator Y: Score 88 (performance)|
+|  +-- Validator Z: Score 92 (compliance) |
+|                                         |
+|  Summary: 3 validations, avg 92         |
++-----------------------------------------+
+```
+
+Key features:
+- **Request/Response flow** - Agent owners request validation from specific validators
+- **Immutable requests** - Request hashes cannot be overwritten (prevents hijacking)
+- **Progressive validation** - Multiple responses possible per request
+- **Tag-based categorization** - Filter by validation type
+
+## How the Registries Connect
+
+```text
+                    +--------------------+
+                    |  IdentityRegistry  |
+                    |   (Agent NFTs)     |
+                    +---------+----------+
+                              |
+                    +---------+---------+
+                    |                   |
+                    v                   v
+         +------------------+  +------------------+
+         |ReputationRegistry|  |ValidationRegistry|
+         | (User Feedback)  |  | (Expert Audits)  |
+         +------------------+  +------------------+
+```
+
+Both ReputationRegistry and ValidationRegistry require a reference to IdentityRegistry at deployment. They verify that agent IDs exist in the identity registry before accepting feedback or validation requests.
+
+## Security Model
+
+ERC-8004 includes several security measures:
+
+| Protection | Description |
+|------------|-------------|
+| **Owner-only metadata** | Only the NFT holder can update agent metadata |
+| **Self-feedback prevention** | Owners cannot submit feedback for their own agents |
+| **Self-validation prevention** | Owners cannot validate their own agents |
+| **Signature verification** | Feedback requires cryptographic authorization with expiry |
+| **Chain ID binding** | Signatures include chain ID to prevent cross-chain replay |
+| **Reentrancy guards** | All state-changing functions are protected |
+
+## Comparison to Existing Standards
+
+| Feature | ERC-721 | ERC-4337 | Attestations | ERC-8004 |
+|---------|---------|----------|--------------|----------|
+| Identity as NFT | Yes | No | No | Yes |
+| Metadata storage | URI only | No | Schema-based | Key-value on-chain |
+| Reputation system | No | No | One-way | Bi-directional with auth |
+| Third-party validation | No | No | Yes | Yes with request flow |
+| Agent-specific | No | Partial | No | Yes |
+
+## Use Cases
+
+### Trading Agent Reputation
+
+A DeFi trading agent builds reputation over time. Users who delegate funds can check the agent's track record before trusting it with their assets.
+
+### Service Provider Discovery
+
+Businesses deploy customer service agents with on-chain identities. Other agents can discover and verify service providers before routing requests.
+
+### Multi-Agent Collaboration
+
+In multi-agent systems, agents can verify each other's identities and check reputation before collaborating on complex tasks.
+
+### Validator Networks
+
+Specialized validators (security auditors, performance testers, compliance checkers) can assess agents and publish their findings on-chain.
+
+## Implementation
+
+The Cairo implementation follows Starknet best practices:
+
+- **OpenZeppelin components** - ERC-721, SRC5, ReentrancyGuard
+- **Poseidon hashing** - For metadata key storage and request hashes
+- **ByteArray strings** - Native Cairo string handling for metadata values
+- **SNIP-12 TypedData** - For feedback authorization signatures
+
+## Contract Addresses
+
+<Callout type="warning" title="Testnet Only">
+ERC-8004 contracts are currently deployed on Sepolia testnet. Mainnet deployment coming soon.
+</Callout>
+
+See the [Deployment Guide](/docs/contracts/deployment) for contract addresses and deployment instructions.
+
+## Next Steps
+
+- [Identity Registry](/docs/contracts/identity-registry) - Full API reference for agent registration
+- [Reputation Registry](/docs/contracts/reputation-registry) - Full API reference for the feedback system
+- [Validation Registry](/docs/contracts/validation-registry) - Full API reference for validator assessments
+- [Deployment Guide](/docs/contracts/deployment) - Deploy your own ERC-8004 contracts

@@ -1,10 +1,37 @@
 ---
 name: huginn-onboard
+<<<<<<< HEAD
 description: Bridge to Starknet and register with Huginn (Odin's agent registry)
 author: welttowelt
 version: 1.0.0
 chains: [starknet, ethereum, base, arbitrum]
 required_tokens: [ETH, USDC]
+=======
+description: Bridge to Starknet from any EVM chain and register with Huginn agent registry. Enables cross-chain agent onboarding with AVNU bridge integration.
+license: Apache-2.0
+metadata:
+  author: welttowelt
+  version: "1.0.0"
+  org: keep-starknet-strange
+keywords:
+  - starknet
+  - bridge
+  - huginn
+  - onboarding
+  - cross-chain
+  - ethereum
+  - base
+  - arbitrum
+  - avnu
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Glob
+  - Grep
+  - Task
+user-invocable: true
+>>>>>>> origin/main
 ---
 
 # Huginn Onboarding Skill

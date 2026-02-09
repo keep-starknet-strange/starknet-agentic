@@ -1,0 +1,522 @@
+---
+title: Identity Registry
+description: ERC-721 agent identity NFT registry with key-value metadata storage
+---
+
+# Identity Registry
+
+The **IdentityRegistry** is an ERC-721 contract that manages agent identities as NFTs. Each agent is represented by a unique token ID, and owners can attach arbitrary key-value metadata to their agents.
+
+## Overview
+
+The IdentityRegistry provides:
+
+- **Agent registration** with optional token URI and metadata
+- **Key-value metadata** storage using Poseidon hashing for keys
+- **ERC-721 compliance** for standard NFT operations (transfer, approve, etc.)
+- **Reentrancy protection** on all state-changing operations
+
+## Data Structures
+
+### MetadataEntry
+
+Used when registering agents with initial metadata.
+
+```cairo
+pub struct MetadataEntry {
+    pub key: ByteArray,    // Metadata key (e.g., "agentName")
+    pub value: ByteArray,  // Metadata value (e.g., "MyTradingBot")
+}
+```
+
+## Events
+
+### Registered
+
+Emitted when a new agent is registered.
+
+```cairo
+pub struct Registered {
+    #[key]
+    pub agent_id: u256,           // The new agent's token ID
+    pub token_uri: ByteArray,     // Token URI (may be empty)
+    pub owner: ContractAddress,   // Owner of the new agent
+}
+```
+
+### MetadataSet
+
+Emitted when metadata is updated for an agent.
+
+```cairo
+pub struct MetadataSet {
+    #[key]
+    pub agent_id: u256,          // Agent token ID
+    #[key]
+    pub indexed_key: ByteArray,  // Key for indexing
+    pub key: ByteArray,          // Full metadata key
+    pub value: ByteArray,        // New metadata value
+}
+```
+
+### URIUpdated
+
+Emitted when the token URI is updated.
+
+```cairo
+pub struct URIUpdated {
+    #[key]
+    pub agent_id: u256,          // Agent token ID
+    #[key]
+    pub updater: ContractAddress, // Who updated the URI
+    pub new_uri: ByteArray,      // New token URI
+}
+```
+
+## Interface
+
+### IIdentityRegistry
+
+```cairo
+#[starknet::interface]
+pub trait IIdentityRegistry<TContractState> {
+    // Registration functions
+    fn register(ref self: TContractState) -> u256;
+    fn register_with_token_uri(ref self: TContractState, token_uri: ByteArray) -> u256;
+    fn register_with_metadata(
+        ref self: TContractState,
+        token_uri: ByteArray,
+        metadata: Array<MetadataEntry>
+    ) -> u256;
+
+    // Metadata functions
+    fn set_metadata(ref self: TContractState, agent_id: u256, key: ByteArray, value: ByteArray);
+    fn get_metadata(self: @TContractState, agent_id: u256, key: ByteArray) -> ByteArray;
+    fn set_agent_uri(ref self: TContractState, agent_id: u256, new_uri: ByteArray);
+
+    // Wallet binding functions
+    fn set_agent_wallet(
+        ref self: TContractState,
+        agent_id: u256,
+        new_wallet: ContractAddress,
+        deadline: u64,
+        signature: Span<felt252>
+    );
+    fn unset_agent_wallet(ref self: TContractState, agent_id: u256);
+    fn get_agent_wallet(self: @TContractState, agent_id: u256) -> ContractAddress;
+    fn get_wallet_set_nonce(self: @TContractState, agent_id: u256) -> u64;
+
+    // Query functions
+    fn total_agents(self: @TContractState) -> u256;
+    fn agent_exists(self: @TContractState, agent_id: u256) -> bool;
+    fn is_authorized_or_owner(self: @TContractState, spender: ContractAddress, agent_id: u256) -> bool;
+}
+```
+
+## Functions
+
+### register
+
+Register a new agent with no URI or metadata.
+
+```cairo
+fn register(ref self: TContractState) -> u256
+```
+
+**Returns:** The newly created agent's token ID
+
+**Example:**
+
+```typescript
+import { Account, RpcProvider, Contract, constants } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
+const account = new Account(
+  provider,
+  address,
+  privateKey,
+  undefined,
+  constants.TRANSACTION_VERSION.V3
+);
+
+const { transaction_hash } = await account.execute({
+  contractAddress: identityRegistryAddress,
+  entrypoint: "register",
+  calldata: [],
+});
+
+const receipt = await account.waitForTransaction(transaction_hash);
+// Parse agent_id from Registered event
+```
+
+### register_with_token_uri
+
+Register a new agent with a token URI.
+
+```cairo
+fn register_with_token_uri(ref self: TContractState, token_uri: ByteArray) -> u256
+```
+
+**Parameters:**
+- `token_uri` - URI pointing to agent metadata (e.g., IPFS hash)
+
+**Returns:** The newly created agent's token ID
+
+**Example:**
+
+```typescript
+import { CallData } from "starknet";
+
+const tokenUri = "ipfs://QmYourAgentSpecificationHash";
+
+await account.execute({
+  contractAddress: identityRegistryAddress,
+  entrypoint: "register_with_token_uri",
+  calldata: CallData.compile({ token_uri: tokenUri }),
+});
+```
+
+### register_with_metadata
+
+Register a new agent with token URI and initial metadata in a single transaction.
+
+```cairo
+fn register_with_metadata(
+    ref self: TContractState,
+    token_uri: ByteArray,
+    metadata: Array<MetadataEntry>
+) -> u256
+```
+
+**Parameters:**
+- `token_uri` - URI pointing to agent metadata
+- `metadata` - Array of key-value pairs to set
+
+**Returns:** The newly created agent's token ID
+
+**Example:**
+
+```typescript
+const metadata = [
+  { key: "agentName", value: "TradingBot" },
+  { key: "agentType", value: "defi-trader" },
+  { key: "version", value: "1.0.0" },
+  { key: "model", value: "claude-opus-4-5" },
+  { key: "status", value: "active" },
+];
+
+await account.execute({
+  contractAddress: identityRegistryAddress,
+  entrypoint: "register_with_metadata",
+  calldata: CallData.compile({
+    token_uri: "ipfs://QmAgentSpec",
+    metadata: metadata,
+  }),
+});
+```
+
+### set_metadata
+
+Update a single metadata entry for an agent. Only the agent owner can call this.
+
+```cairo
+fn set_metadata(ref self: TContractState, agent_id: u256, key: ByteArray, value: ByteArray)
+```
+
+**Parameters:**
+- `agent_id` - The agent's token ID
+- `key` - Metadata key
+- `value` - New metadata value
+
+**Access Control:** Only the agent owner (NFT holder) can update metadata
+
+**Example:**
+
+```typescript
+await account.execute({
+  contractAddress: identityRegistryAddress,
+  entrypoint: "set_metadata",
+  calldata: CallData.compile({
+    agent_id: agentId,
+    key: "status",
+    value: "paused",
+  }),
+});
+```
+
+### get_metadata
+
+Read a metadata value for an agent.
+
+```cairo
+fn get_metadata(self: @TContractState, agent_id: u256, key: ByteArray) -> ByteArray
+```
+
+**Parameters:**
+- `agent_id` - The agent's token ID
+- `key` - Metadata key to read
+
+**Returns:** The metadata value (empty ByteArray if not set)
+
+**Example:**
+
+```typescript
+const identityRegistry = new Contract(abi, identityRegistryAddress, provider);
+
+const name = await identityRegistry.get_metadata(agentId, "agentName");
+const status = await identityRegistry.get_metadata(agentId, "status");
+```
+
+### total_agents
+
+Get the total number of registered agents.
+
+```cairo
+fn total_agents(self: @TContractState) -> u256
+```
+
+**Returns:** Total count of registered agents
+
+### agent_exists
+
+Check if an agent ID exists.
+
+```cairo
+fn agent_exists(self: @TContractState, agent_id: u256) -> bool
+```
+
+**Parameters:**
+- `agent_id` - The agent's token ID to check
+
+**Returns:** `true` if the agent exists, `false` otherwise
+
+### set_agent_uri
+
+Update the token URI for an agent.
+
+```cairo
+fn set_agent_uri(ref self: TContractState, agent_id: u256, new_uri: ByteArray)
+```
+
+**Parameters:**
+- `agent_id` - The agent's token ID
+- `new_uri` - New token URI
+
+**Access Control:** Only the agent owner
+
+**Example:**
+
+```typescript
+await account.execute({
+  contractAddress: identityRegistryAddress,
+  entrypoint: "set_agent_uri",
+  calldata: CallData.compile({
+    agent_id: agentId,
+    new_uri: "ipfs://QmNewAgentSpec",
+  }),
+});
+```
+
+## Wallet Binding
+
+The IdentityRegistry supports binding an external wallet to an agent identity. This enables wallet-based authentication for agent operations.
+
+### set_agent_wallet
+
+Bind a wallet to an agent identity with signature verification.
+
+```cairo
+fn set_agent_wallet(
+    ref self: TContractState,
+    agent_id: u256,
+    new_wallet: ContractAddress,
+    deadline: u64,
+    signature: Span<felt252>
+)
+```
+
+**Parameters:**
+- `agent_id` - The agent's token ID
+- `new_wallet` - Wallet address to bind (must implement SNIP-6 `is_valid_signature`)
+- `deadline` - Unix timestamp when signature expires
+- `signature` - Wallet signature over the binding message
+
+**Access Control:** Only the agent owner
+
+**Validation:**
+- Agent must exist
+- Deadline must be within 5 minutes of current time
+- Signature must be valid from the wallet
+
+**Signature Hash Computation:**
+
+```cairo
+hash = poseidon_hash(agent_id, new_wallet, owner, deadline, nonce)
+```
+
+The wallet must sign this hash using SNIP-6 compliant signing.
+
+**Example:**
+
+```typescript
+import { hash, Account, CallData } from "starknet";
+
+// Compute the message hash
+const nonce = await identityRegistry.get_wallet_set_nonce(agentId);
+const deadline = Math.floor(Date.now() / 1000) + 300; // 5 minutes
+
+const messageHash = hash.computePoseidonHash(
+  agentId,
+  newWalletAddress,
+  ownerAddress,
+  deadline,
+  nonce
+);
+
+// Wallet signs the hash
+const signature = await walletAccount.signMessage({ hash: messageHash });
+
+// Owner calls set_agent_wallet
+await ownerAccount.execute({
+  contractAddress: identityRegistryAddress,
+  entrypoint: "set_agent_wallet",
+  calldata: CallData.compile({
+    agent_id: agentId,
+    new_wallet: newWalletAddress,
+    deadline: deadline,
+    signature: signature,
+  }),
+});
+```
+
+### unset_agent_wallet
+
+Clear the wallet binding for an agent.
+
+```cairo
+fn unset_agent_wallet(ref self: TContractState, agent_id: u256)
+```
+
+**Access Control:** Only the agent owner
+
+### get_agent_wallet
+
+Get the bound wallet address for an agent.
+
+```cairo
+fn get_agent_wallet(self: @TContractState, agent_id: u256) -> ContractAddress
+```
+
+**Returns:** Wallet address (zero if not set)
+
+### get_wallet_set_nonce
+
+Get the nonce for wallet binding operations (prevents replay attacks).
+
+```cairo
+fn get_wallet_set_nonce(self: @TContractState, agent_id: u256) -> u64
+```
+
+**Returns:** Current nonce (incremented on each successful `set_agent_wallet`)
+
+<Callout type="info" title="Auto-clearing on Transfer">
+When an agent NFT is transferred, the bound wallet is automatically cleared. This prevents the previous owner's wallet from remaining associated with the agent.
+</Callout>
+
+## Metadata Schema
+
+While the registry accepts any key-value pairs, these keys are recommended for interoperability:
+
+| Key | Description | Example Values |
+|-----|-------------|----------------|
+| `agentName` | Display name | `"TradingBot"`, `"CustomerSupport"` |
+| `agentType` | Category | `"defi-trader"`, `"nft-curator"`, `"support"` |
+| `version` | Semantic version | `"1.0.0"`, `"2.3.1"` |
+| `model` | LLM model used | `"claude-opus-4-5"`, `"gpt-4o"` |
+| `status` | Current status | `"active"`, `"paused"`, `"deprecated"` |
+| `framework` | Agent framework | `"daydreams"`, `"openclaw"`, `"langchain"` |
+| `capabilities` | Comma-separated | `"swap,stake,lend"`, `"chat,refund"` |
+| `a2aEndpoint` | Agent Card URL | `"https://agent.example.com"` |
+| `moltbookId` | External registry ID | `"agent-123"` |
+
+## Storage Layout
+
+Metadata is stored in a `Map<(u256, felt252), ByteArray>` where:
+- First key: agent ID (u256)
+- Second key: Poseidon hash of the metadata key string
+
+This allows efficient O(1) lookups while supporting arbitrary string keys.
+
+```cairo
+// Internal storage
+metadata: Map<(u256, felt252), ByteArray>
+
+// Key hashing
+let key_hash: felt252 = poseidon_hash(key_bytes);
+let value = self.metadata.read((agent_id, key_hash));
+```
+
+## ERC-721 Functions
+
+The IdentityRegistry also implements standard ERC-721 functions:
+
+| Function | Description |
+|----------|-------------|
+| `balance_of(owner)` | Get number of agents owned by address |
+| `owner_of(agent_id)` | Get owner of agent |
+| `transfer_from(from, to, agent_id)` | Transfer agent ownership |
+| `approve(to, agent_id)` | Approve address to transfer agent |
+| `set_approval_for_all(operator, approved)` | Approve operator for all agents |
+| `get_approved(agent_id)` | Get approved address for agent |
+| `is_approved_for_all(owner, operator)` | Check if operator is approved |
+| `token_uri(agent_id)` | Get token URI |
+
+## Security Considerations
+
+<Callout type="warning" title="Access Control">
+- Only the agent owner can update metadata via `set_metadata`
+- Agent IDs start at 1 (0 is reserved and invalid)
+- All registration functions have reentrancy guards
+- Metadata keys are hashed - store original keys if needed for enumeration
+</Callout>
+
+## Complete Example
+
+```typescript
+import { Account, RpcProvider, Contract, CallData, constants } from "starknet";
+
+// Setup
+const provider = new RpcProvider({ nodeUrl: "https://starknet-sepolia.g.alchemy.com/..." });
+const account = new Account(provider, address, privateKey, undefined, constants.TRANSACTION_VERSION.V3);
+
+// Register agent with metadata
+const metadata = [
+  { key: "agentName", value: "TradingBot" },
+  { key: "agentType", value: "defi-trader" },
+  { key: "model", value: "claude-opus-4-5" },
+  { key: "status", value: "active" },
+];
+
+const { transaction_hash } = await account.execute({
+  contractAddress: identityRegistryAddress,
+  entrypoint: "register_with_metadata",
+  calldata: CallData.compile({
+    token_uri: "ipfs://QmAgentSpec",
+    metadata: metadata,
+  }),
+});
+
+await account.waitForTransaction(transaction_hash);
+
+// Query the agent
+const registry = new Contract(abi, identityRegistryAddress, provider);
+const total = await registry.total_agents();
+const exists = await registry.agent_exists(1n);
+const name = await registry.get_metadata(1n, "agentName");
+const owner = await registry.owner_of(1n);
+
+console.log(`Total agents: ${total}`);
+console.log(`Agent exists: ${exists}`);
+console.log(`Agent name: ${name}`);
+console.log(`Owner: ${owner}`);
+```

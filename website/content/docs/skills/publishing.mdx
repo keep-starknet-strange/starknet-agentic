@@ -1,0 +1,290 @@
+---
+title: Publishing to ClawHub
+description: Share your skills with the AI agent community
+---
+
+# Publishing to ClawHub
+
+ClawHub is the community marketplace for AI agent skills. Publish your Starknet skills to share them with other developers and agents.
+
+<Callout type="info" title="Coming Soon">
+ClawHub is currently in development. This guide covers the planned publishing workflow and how to prepare your skills for release.
+</Callout>
+
+## What is ClawHub?
+
+ClawHub is a registry and discovery platform for agent skills:
+
+- **Browse** thousands of community skills
+- **Install** skills with a single command
+- **Publish** your own skills
+- **Version** and update skills over time
+- **Discover** skills by keyword, category, or capability
+
+## Preparing for Publication
+
+Before publishing, ensure your skill meets these requirements:
+
+### Required Files
+
+| File | Purpose |
+|------|---------|
+| `SKILL.md` | Skill definition with YAML frontmatter |
+| `LICENSE` | Open source license (MIT recommended) |
+| `README.md` | Human-readable documentation |
+
+### Quality Checklist
+
+<Callout type="tip" title="Quality Standards">
+Skills that meet these standards are featured in ClawHub search results.
+</Callout>
+
+- [ ] Valid YAML frontmatter with all required fields
+- [ ] Clear, descriptive name and description
+- [ ] Relevant keywords for discovery
+- [ ] Working code examples for all operations
+- [ ] Error handling documentation
+- [ ] Configuration reference table
+- [ ] Security considerations noted
+- [ ] External references and links
+
+## Skill Naming
+
+Choose a descriptive, unique name:
+
+```yaml
+# Good names
+name: starknet-nft-mint
+name: starknet-dao-voting
+name: starknet-price-oracle
+
+# Bad names
+name: my-skill
+name: utils
+name: starknet  # Too generic
+```
+
+### Naming Rules
+
+- Lowercase letters, numbers, and hyphens only
+- 1-64 characters
+- Must be unique on ClawHub
+- Should describe the capability
+
+## Versioning
+
+Skills use semantic versioning (semver):
+
+```yaml
+---
+name: starknet-nft-mint
+version: 1.2.0
+---
+```
+
+| Version | When to Increment |
+|---------|-------------------|
+| MAJOR (1.x.x) | Breaking changes to the skill interface |
+| MINOR (x.1.x) | New features, backward compatible |
+| PATCH (x.x.1) | Bug fixes, documentation updates |
+
+## Publishing Workflow
+
+### 1. Create ClawHub Account
+
+```bash
+# Install ClawHub CLI
+npm install -g @clawhub/cli
+
+# Login or create account
+claw login
+```
+
+### 2. Initialize Your Skill
+
+```bash
+cd skills/my-skill
+
+# Initialize for publishing
+claw init
+```
+
+This creates a `claw.json` manifest:
+
+```json
+{
+  "name": "starknet-nft-mint",
+  "version": "1.0.0",
+  "description": "Mint NFTs on Starknet",
+  "author": "your-username",
+  "repository": "https://github.com/you/starknet-nft-mint",
+  "license": "MIT",
+  "keywords": ["starknet", "nft", "mint"],
+  "starknet": {
+    "networks": ["mainnet", "sepolia"],
+    "contracts": []
+  }
+}
+```
+
+### 3. Validate Your Skill
+
+```bash
+# Check for issues
+claw validate
+
+# Output:
+# ✓ SKILL.md found and valid
+# ✓ Required fields present
+# ✓ Code examples verified
+# ✓ Ready to publish
+```
+
+### 4. Publish
+
+```bash
+# Publish to ClawHub
+claw publish
+
+# Output:
+# Publishing starknet-nft-mint@1.0.0...
+# ✓ Published successfully
+# https://clawhub.com/skills/starknet-nft-mint
+```
+
+## Updating Skills
+
+When you make changes:
+
+```bash
+# Bump version (updates claw.json)
+claw version patch  # 1.0.0 -> 1.0.1
+claw version minor  # 1.0.0 -> 1.1.0
+claw version major  # 1.0.0 -> 2.0.0
+
+# Publish update
+claw publish
+```
+
+## Discovery Optimization
+
+Help users find your skill:
+
+### Keywords
+
+Choose specific, relevant keywords:
+
+```yaml
+keywords:
+  - starknet
+  - nft
+  - erc721
+  - mint
+  - collection
+  - digital-art
+  - ipfs
+  - metadata
+```
+
+### Description
+
+Write a clear, searchable description:
+
+```yaml
+description: >
+  Mint NFTs on Starknet ERC-721 collections. Upload metadata
+  to IPFS via Pinata, set token URIs, and batch mint multiple
+  NFTs. Supports both mainnet and Sepolia testnet.
+```
+
+### Categories
+
+Tag your skill with relevant categories:
+
+```json
+{
+  "categories": ["defi", "nft", "identity", "gaming", "social"]
+}
+```
+
+## Best Practices
+
+### Documentation Quality
+
+<Steps>
+<Step number={1} title="Clear Prerequisites">
+List exact package versions and environment requirements.
+</Step>
+
+<Step number={2} title="Complete Examples">
+Every operation should have runnable code.
+</Step>
+
+<Step number={3} title="Error Handling">
+Document common errors and recovery steps.
+</Step>
+
+<Step number={4} title="Security Notes">
+Flag sensitive operations and best practices.
+</Step>
+</Steps>
+
+### Maintenance
+
+- Respond to issues on your repository
+- Keep dependencies updated
+- Test with new Starknet versions
+- Update documentation as protocols change
+
+### Community
+
+- Add a `CONTRIBUTING.md` for contributors
+- Use GitHub Issues for bug reports
+- Consider a Discord or Telegram for support
+
+## Monetization (Future)
+
+ClawHub will support skill monetization:
+
+| Model | Description |
+|-------|-------------|
+| **Free** | Open source, free to use |
+| **Donation** | Tip jar for supporters |
+| **Premium** | Paid skills with licensing |
+| **Usage-based** | Pay per invocation |
+
+## Example: Publishing Checklist
+
+```markdown
+## Pre-publish Checklist
+
+- [ ] SKILL.md with valid YAML frontmatter
+- [ ] README.md with overview and quickstart
+- [ ] LICENSE file (MIT, Apache 2.0, etc.)
+- [ ] All code examples tested and working
+- [ ] Environment variables documented
+- [ ] Error handling section complete
+- [ ] Security considerations noted
+- [ ] Version number set in claw.json
+- [ ] Keywords optimized for discovery
+- [ ] Repository linked and public
+```
+
+## Resources
+
+- [ClawHub Website](https://clawhub.com) (Coming Soon)
+- [ClawHub CLI Documentation](https://docs.clawhub.com/cli)
+- [AgentSkills Specification](/docs/skills/writing-skills)
+- [Writing Skills Guide](/docs/skills/writing-skills)
+
+## Getting Early Access
+
+Join the ClawHub waitlist to be notified when publishing is available:
+
+1. Visit [clawhub.com](https://clawhub.com)
+2. Enter your email for updates
+3. Get early access to the CLI and publishing tools
+
+<Callout type="info" title="Contribute">
+ClawHub is being built in public. Follow development and contribute at [github.com/clawhub](https://github.com/clawhub).
+</Callout>

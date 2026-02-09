@@ -1,0 +1,356 @@
+---
+title: A2A Protocol
+description: Agent-to-Agent protocol adapter for Starknet-native agents
+---
+
+import { Callout, Steps, Step } from "@/components/docs";
+
+# A2A Protocol
+
+The Starknet A2A Adapter implements [Google's Agent-to-Agent (A2A) protocol](https://a2a-protocol.org/latest/) for Starknet-native agents. It bridges on-chain identity (ERC-8004) with A2A discovery, enabling agents to find and communicate with each other.
+
+## Overview
+
+A2A is an open protocol for agent interoperability. It defines:
+
+- **Agent Cards** - JSON documents describing an agent's capabilities
+- **Discovery** - Standard endpoint at `/.well-known/agent.json`
+- **Task Protocol** - Request/response pattern for agent interactions
+
+The Starknet A2A Adapter adds:
+
+- **On-chain Identity** - Agent Cards generated from ERC-8004 registry data
+- **Reputation Integration** - Reputation scores included in Agent Cards
+- **Transaction Tracking** - A2A tasks mapped to Starknet transactions
+
+## Installation
+
+```bash
+npm install @starknet-agentic/a2a starknet
+```
+
+## Quick Start
+
+```typescript
+import { createStarknetA2AAdapter } from "@starknet-agentic/a2a";
+
+const adapter = createStarknetA2AAdapter({
+  rpcUrl: process.env.STARKNET_RPC_URL,
+  identityRegistryAddress: "0x...",
+  reputationRegistryAddress: "0x...",  // Optional
+  validationRegistryAddress: "0x...",  // Optional
+});
+
+// Generate Agent Card from on-chain identity
+const card = await adapter.generateAgentCard(agentId);
+```
+
+## API Reference
+
+### `createStarknetA2AAdapter(config)`
+
+Creates a new adapter instance.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `rpcUrl` | `string` | Yes | Starknet JSON-RPC endpoint |
+| `identityRegistryAddress` | `string` | Yes | ERC-8004 Identity Registry address |
+| `reputationRegistryAddress` | `string` | No | ERC-8004 Reputation Registry address |
+| `validationRegistryAddress` | `string` | No | ERC-8004 Validation Registry address |
+
+**Returns:** `StarknetA2AAdapter`
+
+---
+
+### `adapter.generateAgentCard(agentId)`
+
+Generates an A2A Agent Card from on-chain identity data.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `agentId` | `string` | Agent's on-chain ID (NFT token ID) |
+
+**Returns:** `Promise<AgentCard>`
+
+```typescript
+interface AgentCard {
+  name: string;
+  description: string;
+  url?: string;
+  version: string;
+  skills: string[];
+  starknetIdentity?: {
+    registryAddress: string;
+    agentId: string;
+    reputationScore?: number;
+    validationCount?: number;
+    walletAddress?: string;
+  };
+}
+```
+
+**Example:**
+
+```typescript
+const card = await adapter.generateAgentCard("42");
+console.log(card);
+// {
+//   name: "TradingBot",
+//   description: "Autonomous DeFi trading agent",
+//   url: "https://trading-bot.example.com",
+//   version: "1.0",
+//   skills: ["swap", "stake", "lend"],
+//   starknetIdentity: {
+//     registryAddress: "0x...",
+//     agentId: "42",
+//     reputationScore: 85,
+//     validationCount: 3,
+//   }
+// }
+```
+
+---
+
+### `adapter.registerAgent(account, metadata)`
+
+Registers a new agent identity on-chain.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `account` | `Account` | starknet.js Account instance |
+| `metadata.name` | `string` | Agent display name |
+| `metadata.description` | `string` | Agent description |
+| `metadata.a2aEndpoint` | `string` | Optional A2A endpoint URL |
+| `metadata.capabilities` | `string[]` | Optional list of capabilities |
+
+**Returns:** `Promise<string>` - Transaction hash
+
+**Example:**
+
+```typescript
+import { Account, RpcProvider } from "starknet";
+
+const account = new Account(provider, address, privateKey);
+
+const txHash = await adapter.registerAgent(account, {
+  name: "MyAgent",
+  description: "A helpful trading assistant",
+  a2aEndpoint: "https://my-agent.example.com",
+  capabilities: ["swap", "transfer", "stake"],
+});
+```
+
+---
+
+### `adapter.generateWellKnownAgentJson(agentId, baseUrl)`
+
+Generates the `/.well-known/agent.json` content for A2A discovery.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `agentId` | `string` | Agent's on-chain ID |
+| `baseUrl` | `string` | Base URL where the agent is hosted |
+
+**Returns:** `Promise<object>`
+
+**Example:**
+
+```typescript
+const wellKnown = await adapter.generateWellKnownAgentJson(
+  "42",
+  "https://my-agent.example.com"
+);
+
+// Serve at /.well-known/agent.json
+// {
+//   "@context": "https://a2a-protocol.org/schema/1.0",
+//   "type": "Agent",
+//   "id": "https://my-agent.example.com/.well-known/agent.json",
+//   "name": "TradingBot",
+//   "description": "Autonomous DeFi trading agent",
+//   "url": "https://my-agent.example.com",
+//   "version": "1.0",
+//   "capabilities": ["swap", "stake", "lend"],
+//   "identity": {
+//     "starknet": { ... }
+//   },
+//   "endpoints": {
+//     "tasks": "https://my-agent.example.com/api/tasks",
+//     "status": "https://my-agent.example.com/api/tasks/:id"
+//   }
+// }
+```
+
+---
+
+### `adapter.createTaskFromTransaction(transactionHash, prompt)`
+
+Creates an A2A task tracker for a Starknet transaction.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `transactionHash` | `string` | Starknet transaction hash |
+| `prompt` | `string` | Task description/prompt |
+
+**Returns:** `Task`
+
+```typescript
+interface Task {
+  id: string;
+  state: TaskState;
+  prompt: string;
+  result?: string;
+  transactionHash?: string;
+  error?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+enum TaskState {
+  Submitted = "submitted",
+  Working = "working",
+  Completed = "completed",
+  Failed = "failed",
+  Canceled = "canceled",
+}
+```
+
+---
+
+### `adapter.getTaskStatus(taskId)`
+
+Gets task status by checking transaction state on-chain.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `taskId` | `string` | Task ID (transaction hash) |
+
+**Returns:** `Promise<Task>`
+
+**Example:**
+
+```typescript
+const task = await adapter.getTaskStatus(transactionHash);
+
+if (task.state === TaskState.Completed) {
+  console.log("Transaction succeeded:", task.result);
+} else if (task.state === TaskState.Failed) {
+  console.error("Transaction failed:", task.error);
+}
+```
+
+## Serving Agent Discovery
+
+<Steps>
+<Step number={1} title="Generate Agent Card">
+
+```typescript
+const wellKnown = await adapter.generateWellKnownAgentJson(
+  agentId,
+  "https://your-agent.com"
+);
+```
+
+</Step>
+<Step number={2} title="Serve at well-known endpoint">
+
+```typescript
+// Express.js example
+app.get("/.well-known/agent.json", async (req, res) => {
+  const agentJson = await adapter.generateWellKnownAgentJson(
+    process.env.AGENT_ID,
+    `https://${req.hostname}`
+  );
+  res.json(agentJson);
+});
+```
+
+</Step>
+<Step number={3} title="Other agents discover you">
+
+```typescript
+// Another agent discovers your agent
+const response = await fetch("https://your-agent.com/.well-known/agent.json");
+const agentCard = await response.json();
+
+// Verify on-chain identity
+const onChainCard = await theirAdapter.generateAgentCard(
+  agentCard.identity.starknet.agentId
+);
+```
+
+</Step>
+</Steps>
+
+## Task Flow Example
+
+```typescript
+// Agent receives a task request
+const taskRequest = {
+  prompt: "Swap 10 USDC for STRK",
+};
+
+// Execute the swap
+const { transaction_hash } = await account.execute(swapCall);
+
+// Create task tracker
+const task = adapter.createTaskFromTransaction(
+  transaction_hash,
+  taskRequest.prompt
+);
+
+// Return task ID to requester
+return { taskId: task.id };
+
+// Later: requester checks status
+const status = await adapter.getTaskStatus(taskId);
+```
+
+## Integration with ERC-8004
+
+The A2A adapter reads agent data from the ERC-8004 Identity Registry:
+
+| A2A Field | ERC-8004 Source |
+|-----------|-----------------|
+| `name` | `agentName` metadata |
+| `description` | `agentDescription` metadata |
+| `url` | `a2aEndpoint` metadata |
+| `capabilities` | `capabilities` metadata (comma-separated) |
+| `reputationScore` | Reputation Registry `get_summary()` |
+| `validationCount` | Validation Registry `get_validation_count()` |
+
+<Callout type="info" title="On-Chain Truth">
+Agent Cards generated by this adapter reflect the current on-chain state. Updates to the Identity Registry are immediately reflected in generated cards.
+</Callout>
+
+## Error Handling
+
+```typescript
+try {
+  const card = await adapter.generateAgentCard(agentId);
+} catch (error) {
+  if (error.message.includes("Failed to generate agent card")) {
+    // Agent doesn't exist or registry call failed
+    console.error("Agent not found:", agentId);
+  }
+}
+```
+
+## References
+
+- [A2A Protocol Specification](https://a2a-protocol.org/latest/)
+- [ERC-8004 Contracts](/docs/contracts/erc-8004-overview)
+- [Identity Skill](/docs/skills/starknet-identity)
+- [Agent Identity Guide](/docs/guides/agent-identity)

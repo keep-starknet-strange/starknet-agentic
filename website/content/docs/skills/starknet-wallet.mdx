@@ -1,0 +1,154 @@
+---
+title: Wallet Skill
+description: Manage Starknet wallets, check balances, and transfer tokens
+---
+
+# Wallet Skill
+
+The `starknet-wallet` skill enables AI agents to manage Starknet wallets with native Account Abstraction support. Transfer tokens, check balances, interact with contracts, and use gasless transactions.
+
+<Callout type="tip" title="MCP Tools Available">
+This skill's functionality is also available through the MCP server tools: `starknet_get_balance`, `starknet_get_balances`, `starknet_transfer`, and more.
+</Callout>
+
+## Example Usages
+
+<Collapsible title="Check single token balance" defaultOpen={true}>
+
+**Prompt:**
+> What's my ETH balance on Starknet?
+
+**AI uses:** `starknet_get_balance` with token="ETH"
+
+**Response:**
+> Your ETH balance is 0.5 ETH (500000000000000000 wei)
+
+</Collapsible>
+
+<Collapsible title="Check multiple balances">
+
+**Prompt:**
+> Show me my ETH, STRK, and USDC balances
+
+**AI uses:** `starknet_get_balances` with tokens=["ETH", "STRK", "USDC"]
+
+**Response:**
+> Here are your balances:
+> - ETH: 0.5 ETH
+> - STRK: 1,234.56 STRK
+> - USDC: 100.00 USDC
+
+</Collapsible>
+
+<Collapsible title="Transfer tokens">
+
+**Prompt:**
+> Send 10 STRK to 0x04f3e8d17b41b1e82b13...
+
+**AI uses:** `starknet_transfer` with recipient, token="STRK", amount="10"
+
+**Response:**
+> Transfer complete!
+> - Sent: 10 STRK
+> - To: 0x04f3e8d17b41b1e82b13...
+> - Transaction: 0x2bc1...
+
+</Collapsible>
+
+<Collapsible title="Gasless transfer">
+
+**Prompt:**
+> Transfer 100 USDC to 0x123... using gasless mode, pay gas in USDC
+
+**AI uses:** `starknet_transfer` with gasfree=true, gasToken="USDC"
+
+**Response:**
+> Gasless transfer complete!
+> - Sent: 100 USDC
+> - Gas paid in: USDC
+> - Transaction: 0x9af2...
+
+</Collapsible>
+
+<Collapsible title="Read contract state">
+
+**Prompt:**
+> Call the balanceOf function on contract 0x049d... for my address
+
+**AI uses:** `starknet_call_contract` with entrypoint="balanceOf"
+
+**Response:**
+> Contract call result:
+> - balanceOf: 1000000000000000000 (1 token with 18 decimals)
+
+</Collapsible>
+
+<Collapsible title="Execute contract function">
+
+**Prompt:**
+> Approve the router contract 0x... to spend 100 STRK
+
+**AI uses:** `starknet_invoke_contract` with entrypoint="approve"
+
+**Response:**
+> Approval transaction submitted!
+> - Spender: 0x...
+> - Amount: 100 STRK
+> - Transaction: 0xdef4...
+
+</Collapsible>
+
+## MCP Tools
+
+The MCP server provides these wallet tools:
+
+| Tool | Purpose |
+|------|---------|
+| `starknet_get_balance` | Check single token balance |
+| `starknet_get_balances` | Check multiple token balances (batch) |
+| `starknet_transfer` | Send tokens with optional gasless mode |
+| `starknet_call_contract` | Read contract state (view functions) |
+| `starknet_invoke_contract` | Execute contract functions |
+
+## Session Keys
+
+Session keys allow agents to operate autonomously within defined limits:
+
+1. **Owner creates session key** with policies:
+   - Allowed contract addresses and methods
+   - Maximum spending per transaction/period
+   - Expiry timestamp
+
+2. **Agent uses session key** for autonomous operations
+
+3. **Owner can revoke** at any time
+
+<Callout type="info" title="Implementation">
+See [Cartridge Controller](https://docs.cartridge.gg/controller/getting-started) for the reference session key implementation.
+</Callout>
+
+## Token Addresses
+
+### Mainnet
+
+| Token | Address |
+|-------|---------|
+| ETH | `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7` |
+| STRK | `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d` |
+| USDC | `0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8` |
+| USDT | `0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8` |
+
+## Error Handling
+
+| Error | Cause | Resolution |
+|-------|-------|------------|
+| `INSUFFICIENT_BALANCE` | Not enough tokens | Check balance before transfer |
+| `INVALID_NONCE` | Nonce mismatch | Retry with fresh nonce |
+| `TRANSACTION_REVERTED` | Contract execution failed | Check calldata and allowances |
+| `FEE_TRANSFER_FAILURE` | Can't pay gas | Use paymaster or add ETH/STRK |
+
+## References
+
+- [starknet.js Documentation](https://www.starknetjs.com/)
+- [AVNU Paymaster](https://docs.avnu.fi/paymaster)
+- [Session Keys Guide](https://www.starknet.io/blog/session-keys-on-starknet-unlocking-gasless-secure-transactions/)

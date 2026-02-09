@@ -1,0 +1,8 @@
+{
+  "name": "starknet-skills",
+  "description": "Starknet skills for AI agents: wallets, DeFi, identity, payments, and privacy",
+  "author": {
+    "name": "keep-starknet-strange",
+    "email": "starknet-agentic@proton.me"
+  }
+}

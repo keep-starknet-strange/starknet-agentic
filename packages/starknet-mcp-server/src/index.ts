@@ -32,10 +32,18 @@ import {
   RpcProvider,
   CallData,
   cairo,
+<<<<<<< HEAD
+=======
+  byteArray,
+>>>>>>> origin/main
   ETransactionVersion,
   type Call,
   type PaymasterDetails,
 } from "starknet";
+<<<<<<< HEAD
+=======
+import { randomBytes } from "node:crypto";
+>>>>>>> origin/main
 import {
   resolveTokenAddressAsync,
   validateTokensInputAsync,
@@ -62,6 +70,10 @@ const envSchema = z.object({
   AVNU_BASE_URL: z.string().url().optional(),
   AVNU_PAYMASTER_URL: z.string().url().optional(),
   AVNU_PAYMASTER_API_KEY: z.string().optional(),
+<<<<<<< HEAD
+=======
+  AGENT_ACCOUNT_FACTORY_ADDRESS: z.string().startsWith("0x").optional(),
+>>>>>>> origin/main
 });
 
 const env = envSchema.parse({
@@ -71,6 +83,10 @@ const env = envSchema.parse({
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || "https://starknet.api.avnu.fi",
   AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
   AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
+<<<<<<< HEAD
+=======
+  AGENT_ACCOUNT_FACTORY_ADDRESS: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
+>>>>>>> origin/main
 });
 
 // Initialize Starknet provider and account
@@ -89,6 +105,59 @@ const isSponsored = !!env.AVNU_PAYMASTER_API_KEY;
 getTokenService(env.AVNU_BASE_URL);
 configureTokenServiceProvider(provider);
 
+<<<<<<< HEAD
+=======
+function parseFelt(name: string, value: string): bigint {
+  let parsed: bigint;
+  try {
+    parsed = BigInt(value);
+  } catch {
+    throw new Error(`${name} must be a valid felt`);
+  }
+  if (parsed < 0n) {
+    throw new Error(`${name} must be non-negative`);
+  }
+  return parsed;
+}
+
+function randomSaltFelt(): string {
+  const random = BigInt(`0x${randomBytes(32).toString("hex")}`);
+  // Starknet felts are field elements; keep value in 251-bit range.
+  return `0x${BigInt.asUintN(251, random).toString(16)}`;
+}
+
+function parseDeployResultFromReceipt(
+  receipt: unknown,
+  factoryAddress: string
+): { accountAddress: string | null; agentId: string | null } {
+  const events = (receipt as { events?: Array<{ from_address?: string; data?: string[] }> })?.events;
+  if (!events) {
+    return { accountAddress: null, agentId: null };
+  }
+
+  const factory = factoryAddress.toLowerCase();
+  for (const event of events) {
+    const from = event.from_address?.toLowerCase();
+    const data = event.data;
+    if (from !== factory || !data || data.length < 4) {
+      continue;
+    }
+
+    try {
+      const accountAddress = data[0];
+      const agentIdLow = BigInt(data[2]);
+      const agentIdHigh = BigInt(data[3]);
+      const agentId = (agentIdLow + (agentIdHigh << 128n)).toString();
+      return { accountAddress, agentId };
+    } catch {
+      continue;
+    }
+  }
+
+  return { accountAddress: null, agentId: null };
+}
+
+>>>>>>> origin/main
 /**
  * Execute transaction with optional gasfree mode.
  * - gasfree=false: standard account.execute
@@ -375,6 +444,40 @@ const tools: Tool[] = [
   },
 ];
 
+<<<<<<< HEAD
+=======
+if (env.AGENT_ACCOUNT_FACTORY_ADDRESS) {
+  tools.push({
+    name: "starknet_deploy_agent_account",
+    description:
+      "Deploy a new agent account via AgentAccountFactory. Requires caller-supplied public_key (no server-side key generation).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        public_key: {
+          type: "string",
+          description: "Stark public key (felt, 0x-prefixed recommended)",
+        },
+        token_uri: {
+          type: "string",
+          description: "Token URI to register identity metadata",
+        },
+        salt: {
+          type: "string",
+          description: "Optional deploy salt felt. Random if omitted.",
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
+          default: false,
+        },
+      },
+      required: ["public_key", "token_uri"],
+    },
+  });
+}
+
+>>>>>>> origin/main
 
 async function parseAmount(
   amount: string,
@@ -740,6 +843,69 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+<<<<<<< HEAD
+=======
+      case "starknet_deploy_agent_account": {
+        if (!env.AGENT_ACCOUNT_FACTORY_ADDRESS) {
+          throw new Error("AGENT_ACCOUNT_FACTORY_ADDRESS not configured");
+        }
+
+        const { public_key, token_uri, salt, gasfree = false } = args as {
+          public_key: string;
+          token_uri: string;
+          salt?: string;
+          gasfree?: boolean;
+        };
+
+        if (!public_key || typeof public_key !== "string") {
+          throw new Error("public_key is required");
+        }
+        if (!token_uri || typeof token_uri !== "string") {
+          throw new Error("token_uri is required");
+        }
+
+        const parsedPublicKey = parseFelt("public_key", public_key);
+        if (parsedPublicKey === 0n) {
+          throw new Error("public_key must be non-zero felt");
+        }
+        const parsedSalt = parseFelt("salt", salt || randomSaltFelt());
+
+        const deployCall: Call = {
+          contractAddress: env.AGENT_ACCOUNT_FACTORY_ADDRESS,
+          entrypoint: "deploy_account",
+          calldata: CallData.compile({
+            public_key: `0x${parsedPublicKey.toString(16)}`,
+            salt: `0x${parsedSalt.toString(16)}`,
+            token_uri: byteArray.byteArrayFromString(token_uri),
+          }),
+        };
+
+        const transactionHash = await executeTransaction(deployCall, gasfree);
+        const receipt = await provider.waitForTransaction(transactionHash);
+        const { accountAddress, agentId } = parseDeployResultFromReceipt(
+          receipt,
+          env.AGENT_ACCOUNT_FACTORY_ADDRESS
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: true,
+                transactionHash,
+                factoryAddress: env.AGENT_ACCOUNT_FACTORY_ADDRESS,
+                publicKey: `0x${parsedPublicKey.toString(16)}`,
+                salt: `0x${parsedSalt.toString(16)}`,
+                accountAddress,
+                agentId,
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
+>>>>>>> origin/main
       default:
         throw new Error(`Unknown tool: ${name}`);
     }

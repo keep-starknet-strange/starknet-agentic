@@ -1,0 +1,188 @@
+---
+title: Identity Skill
+description: Register AI agents on-chain using ERC-8004 for identity and reputation
+---
+
+# Identity Skill
+
+The `starknet-identity` skill enables AI agents to register on-chain identities using the ERC-8004 Trustless Agents standard. Build verifiable reputation through feedback systems and third-party validation.
+
+<Callout type="info" title="ERC-8004 Standard">
+ERC-8004 defines three interconnected registries for trustless agent identity: Identity (NFTs), Reputation (feedback), and Validation (assessments).
+</Callout>
+
+## Example Usages
+
+<Collapsible title="Register a new agent" defaultOpen={true}>
+
+**Prompt:**
+> Register a new agent identity with name "MyTradingBot"
+
+**AI uses:** Identity registry registration with metadata
+
+**Response:**
+> Agent registered successfully!
+> - Agent ID: #42
+> - Name: MyTradingBot
+> - Owner: 0x04f3...
+> - Transaction: 0x7f3a...
+
+</Collapsible>
+
+<Collapsible title="Check reputation score">
+
+**Prompt:**
+> What's the reputation score for agent #42?
+
+**AI uses:** Reputation registry query
+
+**Response:**
+> Agent #42 reputation:
+> - Average score: 85/100
+> - Total feedback: 23 entries
+> - Top tags: reliability, speed, accuracy
+
+</Collapsible>
+
+<Collapsible title="Update agent metadata">
+
+**Prompt:**
+> Update my agent's status to "active"
+
+**AI uses:** Metadata update function
+
+**Response:**
+> Metadata updated!
+> - Agent ID: #42
+> - Updated: status → "active"
+> - Transaction: 0x2bc1...
+
+</Collapsible>
+
+<Collapsible title="Submit feedback">
+
+**Prompt:**
+> Submit feedback for agent #15 with score 85 and tags "reliable" and "fast"
+
+**AI uses:** Reputation feedback submission
+
+**Response:**
+> Feedback submitted!
+> - Agent: #15
+> - Score: 85/100
+> - Tags: reliable, fast
+> - Transaction: 0x9af2...
+
+</Collapsible>
+
+<Collapsible title="Request validation">
+
+**Prompt:**
+> Request a validation assessment from validator 0x...
+
+**AI uses:** Validation request function
+
+**Response:**
+> Validation requested!
+> - Validator: 0x...
+> - Agent: #42
+> - Request ID: req_abc123
+> - Status: PENDING
+
+</Collapsible>
+
+<Collapsible title="List owned agents">
+
+**Prompt:**
+> List all agents I own
+
+**AI uses:** Identity registry ownership query
+
+**Response:**
+> Your agents:
+> - #42: MyTradingBot (active)
+> - #67: DataAnalyzer (paused)
+> - #89: NFTCurator (active)
+
+</Collapsible>
+
+<Collapsible title="Get agent metadata">
+
+**Prompt:**
+> Get the metadata for agent #100
+
+**AI uses:** Identity registry metadata query
+
+**Response:**
+> Agent #100 metadata:
+> - Name: AutoTrader
+> - Type: defi-trader
+> - Version: 1.2.0
+> - Model: claude-opus-4-5
+> - Status: active
+
+</Collapsible>
+
+## Overview
+
+ERC-8004 provides:
+
+1. **Identity Registry** - Agents as ERC-721 NFTs with key-value metadata
+2. **Reputation Registry** - Cryptographically authorized feedback system
+3. **Validation Registry** - Third-party validator assessments (zkML, TEE, stakers)
+
+## Metadata Schema
+
+Recommended metadata keys:
+
+| Key | Description | Example |
+|-----|-------------|---------|
+| `agentName` | Display name | `"MyTradingAgent"` |
+| `agentType` | Category | `"defi-trader"`, `"nft-curator"` |
+| `version` | Semantic version | `"1.0.0"` |
+| `model` | LLM model used | `"claude-opus-4-5"`, `"gpt-4o"` |
+| `status` | Current status | `"active"`, `"paused"`, `"deprecated"` |
+| `framework` | Agent framework | `"daydreams"`, `"openclaw"` |
+| `capabilities` | Comma-separated list | `"swap,stake,lend"` |
+| `a2aEndpoint` | Agent Card URL | `"https://agent.example.com"` |
+
+## A2A Integration
+
+Combine on-chain identity with A2A Agent Cards for discoverability:
+
+```json
+{
+  "name": "MyTradingAgent",
+  "description": "Autonomous DeFi trading agent on Starknet",
+  "url": "https://my-agent.example.com",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false
+  },
+  "starknetIdentity": {
+    "registryAddress": "0x...",
+    "agentId": 42,
+    "reputationScore": 85,
+    "validationCount": 3
+  }
+}
+```
+
+Serve at `/.well-known/agent.json` for A2A discovery.
+
+## Security Considerations
+
+<Callout type="warning" title="Security">
+- Only the agent owner can update metadata and authorize feedback
+- Self-feedback is prevented (owner cannot rate own agent)
+- Self-validation is prevented (owner cannot validate own agent)
+- Signatures include chain ID and expiry to prevent replay attacks
+- Agent identity (NFT) is transferable - new owner inherits reputation
+</Callout>
+
+## References
+
+- [ERC-8004 EIP](https://eips.ethereum.org/EIPS/eip-8004)
+- [ERC-8004 Cairo Implementation](https://github.com/Akashneelesh/erc8004-cairo)
+- [A2A Protocol](https://a2a-protocol.org/latest/)
