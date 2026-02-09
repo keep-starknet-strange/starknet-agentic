@@ -5,13 +5,12 @@
   },
   "metadata": {
     "description": "Starknet skills for AI agents: wallets, DeFi, identity, payments, and more",
-    "version": "1.0.0",
-    "pluginRoot": "./skills"
+    "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "starknet-skills",
-      "source": "./skills",
+      "source": ".",
       "description": "Complete Starknet agent toolkit: wallet management, DeFi operations, on-chain identity, P2P payments, and anonymous transactions"
     },
     {
