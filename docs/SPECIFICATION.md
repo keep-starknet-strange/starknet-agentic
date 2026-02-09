@@ -228,6 +228,25 @@ Recommended convention for cross-chain portability:
 4. Deploy AgentAccount class (template for new agent wallets)
 5. Create factory for deploying new AgentAccount instances linked to the registry
 
+### 3.8 Huginn Registry Semantics (v1)
+
+This section clarifies v1 invariants for `contracts/huginn-registry/`:
+
+- Verifier mutability:
+  - The verifier address is constructor-set and immutable in v1.
+  - If verifier logic must change, deploy a new registry instance and migrate clients.
+
+- Proof record invariant:
+  - Invalid proofs revert and are not stored.
+  - Therefore stored records satisfy: `submitted => verified = true`.
+  - `verified = false` is not a persisted runtime state in v1.
+
+- Ownership and replay:
+  - First logger of a `thought_hash` becomes canonical thought owner.
+  - Same owner may re-log idempotently; different owner is rejected.
+  - Only thought owner can submit proof for that hash.
+  - One submitted proof per `thought_hash` (replay blocked).
+
 ## 4. MCP Server
 
 **Status:** Production-ready at `packages/starknet-mcp-server/` (1,600+ lines, 9 tools implemented).

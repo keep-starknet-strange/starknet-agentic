@@ -16,6 +16,14 @@ fn deploy_contract(verifier_address: ContractAddress) -> ContractAddress {
 }
 
 #[test]
+fn test_get_verifier_returns_constructor_value() {
+    let verifier = test_address();
+    let contract_address = deploy_contract(verifier);
+    let dispatcher = IHuginnRegistryDispatcher { contract_address };
+    assert(dispatcher.get_verifier() == verifier, 'wrong verifier');
+}
+
+#[test]
 fn test_register_agent() {
     let contract_address = deploy_contract(test_address());
     let dispatcher = IHuginnRegistryDispatcher { contract_address };

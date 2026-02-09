@@ -40,6 +40,8 @@ pub mod HuginnRegistry {
     pub struct Proof {
         thought_hash: u256,
         proof_hash: u256,
+        // Invariant: when a record is submitted, `verified` is always true.
+        // Invalid proofs revert and are never persisted.
         verified: bool,
         agent_id: ContractAddress,
         submitted: bool,
@@ -77,6 +79,8 @@ pub mod HuginnRegistry {
 
     #[constructor]
     fn constructor(ref self: ContractState, verifier_address: ContractAddress) {
+        // Verifier address is intentionally immutable for v1.
+        // Changing verifier implementation requires registry redeploy.
         assert(!verifier_address.is_zero(), 'Invalid verifier');
         self.verifier.write(verifier_address);
     }
