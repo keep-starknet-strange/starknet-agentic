@@ -1,27 +1,126 @@
-# Good First Issues (with tight acceptance tests)
+# Good First Issues
 
-If you want to help, pick one item and ship it as a single PR.
+Pick one item and ship it as a single PR with acceptance tests.
 
-## 1) Repo: “one command” health check
-- Goal: add `pnpm health` that validates node/pnpm versions and prints a short report.
-- Acceptance: `pnpm health` exits 0 on a good setup, non-zero with actionable error messages.
+See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 
-## 2) Packages: MCP server minimal tool set
-- Goal: define a stable v0 API list for `packages/starknet-mcp-server` (names + params).
-- Acceptance: a markdown spec + a stub implementation that returns “not implemented” but typechecks.
+---
 
-## 3) Contracts: agent registry interface
-- Goal: define Cairo interface for agent registry (create/update/read) aligned to ERC-8004 concepts.
-- Acceptance: contract compiles, plus at least one test proving storage roundtrip.
+## 1) Skill: Complete starknet-defi Documentation
 
-## 4) Wallet SDK skeleton
-- Goal: `packages/*` TS SDK with deploy/invoke helpers and typed config.
-- Acceptance: `pnpm -r build` passes and a sample script runs against devnet (documented).
+**Goal:** Expand the starknet-defi skill from template to full documentation.
 
-## 5) Identity URI support
-- Goal: support custom identity URIs in identity layer (compatible with daydreamsai/lucid-agents style).
-- Acceptance: unit test shows parsing/normalization behavior and docs specify format.
+**Context:** Currently 345 lines of basic structure. Should match starknet-wallet (465 lines).
 
-## 6) CI: enforce version consistency
-- Goal: add a CI check that ensures package versions are aligned (when required).
-- Acceptance: CI fails if versions drift, with a clear error.
+**Acceptance:**
+- [ ] Comprehensive swap documentation with avnu patterns
+- [ ] Staking documentation (STRK, liquid staking)
+- [ ] At least 2 example scripts in `scripts/`
+- [ ] Error handling guide
+
+**Files:** `skills/starknet-defi/SKILL.md`, `skills/starknet-defi/scripts/`
+
+**Difficulty:** Easy
+
+---
+
+## 2) Skill: Complete starknet-identity Documentation
+
+**Goal:** Expand the starknet-identity skill with ERC-8004 integration details.
+
+**Context:** Currently 303 lines. Needs concrete contract interaction examples.
+
+**Acceptance:**
+- [ ] Agent registration workflow documented
+- [ ] Reputation querying examples
+- [ ] Deployed contract addresses for Sepolia
+- [ ] At least 2 example scripts
+
+**Files:** `skills/starknet-identity/SKILL.md`, `skills/starknet-identity/scripts/`
+
+**Difficulty:** Easy
+
+---
+
+## 3) Example: defi-agent README
+
+**Goal:** Create comprehensive documentation for the defi-agent example.
+
+**Context:** ~337 lines demonstrating arbitrage patterns, needs better documentation.
+
+**Acceptance:**
+- [ ] README.md with architecture overview
+- [ ] Step-by-step setup guide
+- [ ] Configuration options documented
+- [ ] Deployment guide (Docker or systemd)
+
+**Files:** `examples/defi-agent/README.md`
+
+**Difficulty:** Easy
+
+---
+
+## 4) Docs: Auto-Generated Changelog Setup
+
+**Goal:** Set up automated changelog generation from conventional commits.
+
+**Context:** No CHANGELOG.md exists. Conventional commits are preferred.
+
+**Acceptance:**
+- [ ] release-please or changesets configured
+- [ ] CHANGELOG.md created in root
+- [ ] GitHub Action generates changelog on release
+- [ ] CONTRIBUTING.md updated with commit format
+
+**Files:** `CHANGELOG.md`, `.github/workflows/`, `CONTRIBUTING.md`
+
+**Difficulty:** Medium
+
+---
+
+## 5) Agent Account: Sepolia Deployment
+
+**Goal:** Deploy the Agent Account contract to Sepolia testnet.
+
+**Context:** Contract is fully tested (110 tests) but not yet deployed.
+
+**Acceptance:**
+- [ ] Deployment script created at `contracts/agent-account/scripts/`
+- [ ] Contract deployed to Sepolia
+- [ ] Deployed address documented in README
+- [ ] Basic interaction script verifying deployment works
+
+**Files:** `contracts/agent-account/scripts/`, `contracts/agent-account/README.md`
+
+**Difficulty:** Medium
+
+---
+
+## 6) Package: Expand Test Coverage for starknet-a2a
+
+**Goal:** Add comprehensive unit tests for the A2A adapter.
+
+**Context:** Currently only has smoke tests. Needs mocked RPC calls and edge case coverage.
+
+**Acceptance:**
+- [ ] Mock starknet.js `Contract` and `RpcProvider`
+- [ ] Test `generateAgentCard()` with mocked contract calls
+- [ ] Test `getTaskStatus()` for all task states
+- [ ] Test `registerAgent()` with mocked account execution
+- [ ] `pnpm test` passes
+
+**Files:** `packages/starknet-a2a/__tests__/`
+
+**Difficulty:** Medium
+
+---
+
+## How to Contribute
+
+1. Pick an issue from above
+2. Comment on the GitHub issue (or open one referencing this doc)
+3. Fork and create a feature branch
+4. Implement with acceptance tests
+5. Open PR linking the issue
+
+Questions? Open a GitHub Discussion or ask in Discord #starknet-agentic.

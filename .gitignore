@@ -1,3 +1,6 @@
+# OS files
+.DS_Store
+
 # Logs
 logs
 *.log
@@ -142,10 +145,12 @@ vite.config.ts.timestamp-*
 target/
 *.sierra.json
 *.casm.json
+.snfoundry_cache/
 
 # Starknet
 deployed_addresses*.json
 .env.local
+.mcp.json
 
 # Claude Code
 .claude/settings.local.json

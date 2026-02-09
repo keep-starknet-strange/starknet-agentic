@@ -9,7 +9,7 @@
  * See: docs/SPECIFICATION.md section 5
  */
 
-import { RpcProvider, Contract, Account } from "starknet";
+import { RpcProvider, Contract, Account, shortString } from "starknet";
 import { z } from "zod";
 
 // ============================================================================
@@ -147,26 +147,21 @@ const VALIDATION_REGISTRY_ABI = [
 // ============================================================================
 
 /**
- * Convert felt252 to string
+ * Convert felt252 to string using starknet.js utilities.
  */
 function feltToString(felt: bigint): string {
-  const hex = felt.toString(16);
-  const bytes: number[] = [];
-
-  for (let i = 0; i < hex.length; i += 2) {
-    const byte = parseInt(hex.substr(i, 2), 16);
-    if (byte !== 0) bytes.push(byte);
+  try {
+    return shortString.decodeShortString("0x" + felt.toString(16));
+  } catch {
+    return "";
   }
-
-  return String.fromCharCode(...bytes);
 }
 
 /**
- * Convert string to felt252
+ * Convert string to felt252 using starknet.js utilities.
  */
 function stringToFelt(str: string): string {
-  const bytes = Buffer.from(str, "utf-8");
-  return "0x" + bytes.toString("hex");
+  return shortString.encodeShortString(str);
 }
 
 // ============================================================================
@@ -195,11 +190,11 @@ export class StarknetA2AAdapter {
    * Generate an A2A Agent Card from on-chain identity
    */
   async generateAgentCard(agentId: string): Promise<AgentCard> {
-    const identityRegistry = new Contract(
-      IDENTITY_REGISTRY_ABI,
-      this.identityRegistryAddress,
-      this.provider
-    );
+    const identityRegistry = new Contract({
+      abi: IDENTITY_REGISTRY_ABI,
+      address: this.identityRegistryAddress,
+      providerOrAccount: this.provider,
+    });
 
     try {
       // Fetch agent metadata from Identity Registry
@@ -215,21 +210,21 @@ export class StarknetA2AAdapter {
       let validationCount: number | undefined;
 
       if (this.reputationRegistryAddress) {
-        const reputationRegistry = new Contract(
-          REPUTATION_REGISTRY_ABI,
-          this.reputationRegistryAddress,
-          this.provider
-        );
+        const reputationRegistry = new Contract({
+          abi: REPUTATION_REGISTRY_ABI,
+          address: this.reputationRegistryAddress,
+          providerOrAccount: this.provider,
+        });
         const summary = await reputationRegistry.get_reputation_summary(agentId);
         reputationScore = Number(summary.average_score);
       }
 
       if (this.validationRegistryAddress) {
-        const validationRegistry = new Contract(
-          VALIDATION_REGISTRY_ABI,
-          this.validationRegistryAddress,
-          this.provider
-        );
+        const validationRegistry = new Contract({
+          abi: VALIDATION_REGISTRY_ABI,
+          address: this.validationRegistryAddress,
+          providerOrAccount: this.provider,
+        });
         const count = await validationRegistry.get_validation_count(agentId);
         validationCount = Number(count);
       }
@@ -275,11 +270,11 @@ export class StarknetA2AAdapter {
       capabilities?: string[];
     }
   ): Promise<string> {
-    const identityRegistry = new Contract(
-      IDENTITY_REGISTRY_ABI,
-      this.identityRegistryAddress,
-      account
-    );
+    const identityRegistry = new Contract({
+      abi: IDENTITY_REGISTRY_ABI,
+      address: this.identityRegistryAddress,
+      providerOrAccount: account,
+    });
 
     try {
       const capabilities = metadata.capabilities || [];
@@ -333,7 +328,8 @@ export class StarknetA2AAdapter {
     try {
       const receipt = await this.provider.getTransactionReceipt(taskId);
 
-      const executionStatus = (receipt as any).execution_status;
+      const receiptRecord = receipt as Record<string, unknown>;
+      const executionStatus = receiptRecord.execution_status as string | undefined;
       const state =
         executionStatus === "SUCCEEDED"
           ? TaskState.Completed
@@ -352,7 +348,7 @@ export class StarknetA2AAdapter {
             : undefined,
         error:
           state === TaskState.Failed
-            ? (receipt as any).revert_reason || "Transaction reverted"
+            ? (receiptRecord.revert_reason as string) || "Transaction reverted"
             : undefined,
         createdAt: 0,
         updatedAt: Date.now(),

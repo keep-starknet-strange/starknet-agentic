@@ -1,5 +1,5 @@
 // Minimal ABI needed for IdentityRegistry metadata calls.
-// Contract: packages/starknet-identity/erc8004-cairo/src/identity_registry.cairo
+// Contract: contracts/erc8004-cairo/src/identity_registry.cairo
 
 export const identityRegistryAbi = [
   {

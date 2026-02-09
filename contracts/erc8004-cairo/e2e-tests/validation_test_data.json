@@ -1,0 +1,153 @@
+{
+  "testRun": "2026-02-05T21:25:12.622Z",
+  "network": "Sepolia",
+  "accounts": {
+    "agentOwner": {
+      "address": "0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50"
+    },
+    "validator": {
+      "address": "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5"
+    }
+  },
+  "agent": {
+    "agentId": "8",
+    "owner": "0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50"
+  },
+  "validationOperations": [
+    {
+      "operation": "validation_request",
+      "requestNumber": 1,
+      "inputs": {
+        "validatorAddress": "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5",
+        "agentId": "8",
+        "requestUri": "ipfs://validation-req1.json",
+        "requestHash": "19c3a6ef32e"
+      },
+      "transactionHash": "0x77d6069c0ab732b215dbc7608856766704a7bac73f1892f71b435c1a71da5b0"
+    },
+    {
+      "operation": "validation_response",
+      "inputs": {
+        "requestHash": "19c3a6ef32e",
+        "agentId": "8",
+        "response": 1,
+        "responseUri": "ipfs://validation-resp1.json",
+        "responseHash": "19c2fc3568a",
+        "tag": "security-audit"
+      },
+      "transactionHash": "0x3ae5015236abfadce3b873a9680cf77193849c881fb77a8ea68e0060b15963f"
+    },
+    {
+      "operation": "validation_request",
+      "requestNumber": 2,
+      "inputs": {
+        "validatorAddress": "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5",
+        "agentId": "8",
+        "requestUri": "ipfs://validation-req2.json",
+        "requestHash": "19c3fa04946"
+      },
+      "transactionHash": "0x3596770be1d39d2ef8aee5198bdc7126d100c0d98175455c059e9d25062a4af"
+    },
+    {
+      "operation": "validation_response",
+      "inputs": {
+        "requestHash": "19c3fa04946",
+        "agentId": "8",
+        "response": 2,
+        "responseUri": "ipfs://validation-resp2.json",
+        "responseHash": "19c2fd4e2bb",
+        "tag": "compliance-check"
+      },
+      "transactionHash": "0x74eb4604d51e67a29372dcd3591e3866bcc0ef1e12b0cbf835b66ef7c516a5a"
+    }
+  ],
+  "readOperations": [
+    {
+      "operation": "get_identity_registry",
+      "outputs": {
+        "identityRegistry": "72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631"
+      }
+    },
+    {
+      "operation": "request_exists",
+      "inputs": {
+        "requestHash": "19c3a6ef32e"
+      },
+      "outputs": {
+        "exists": true
+      }
+    },
+    {
+      "operation": "get_request",
+      "inputs": {
+        "requestHash": "19c3a6ef32e"
+      },
+      "outputs": {
+        "validatorAddress": "4a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50",
+        "agentId": "8",
+        "timestamp": "1770326726"
+      }
+    },
+    {
+      "operation": "get_agent_validations",
+      "inputs": {
+        "agentId": "8"
+      },
+      "outputs": {
+        "validationCount": 1
+      }
+    },
+    {
+      "operation": "get_validator_requests",
+      "inputs": {
+        "validatorAddress": "0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50"
+      },
+      "outputs": {
+        "requestCount": 1
+      }
+    },
+    {
+      "operation": "get_validation_status",
+      "inputs": {
+        "requestHash": "19c3a6ef32e"
+      },
+      "outputs": {
+        "response": "1",
+        "timestamp": "1770326739",
+        "hasResponse": true
+      }
+    }
+  ],
+  "summaryOperations": [
+    {
+      "operation": "get_summary",
+      "inputs": {
+        "agentId": "8",
+        "validatorAddresses": [
+          "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5"
+        ],
+        "tagFilter": ""
+      },
+      "outputs": {
+        "count": "2",
+        "validCount": "1",
+        "invalidCount": "1"
+      }
+    },
+    {
+      "operation": "get_summary_filtered",
+      "inputs": {
+        "agentId": "8",
+        "validatorAddresses": [
+          "0x0065b981f8384a76db7277691421177cb896957f33ca7275a99344ec495ae3a5"
+        ],
+        "tagFilter": "security-audit"
+      },
+      "outputs": {
+        "count": "1",
+        "validCount": "1",
+        "invalidCount": "0"
+      }
+    }
+  ]
+}

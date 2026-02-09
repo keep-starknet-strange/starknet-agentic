@@ -1,0 +1,5 @@
+mod test_identity_registry;
+mod test_reputation_registry;
+mod test_reputation_registry_fuzz;
+mod test_validation_registry;
+mod test_validation_registry_fuzz;

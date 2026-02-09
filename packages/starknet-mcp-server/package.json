@@ -7,19 +7,21 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "dev": "tsup src/index.ts --format esm --watch",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "starknet": "^8.9.1",
     "@avnu/avnu-sdk": "^4.0.1",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@starknet-agentic/x402-starknet": "workspace:*",
+    "starknet": "^8.9.1",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.9.0",
+    "@vitest/coverage-v8": "^2.0.0",
     "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
     "vitest": "^2.0.0"
   }
 }

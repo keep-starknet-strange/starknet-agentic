@@ -34,6 +34,20 @@ Preferred:
 - [ ] `pnpm -r test` passes (or scoped test target documented)
 - [ ] No unrelated refactors
 
+## Commit messages
+
+Use [conventional commits](https://www.conventionalcommits.org/):
+
+```
+feat: add starknet_get_events MCP tool
+fix: handle zero-balance tokens in batch query
+docs: update deployment guide for Sepolia
+chore: bump starknet.js to 8.10.0
+test: add edge case coverage for arb scanner
+```
+
+Common prefixes: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `ci`.
+
 ## Style
 
 - Keep PRs small (one logical change).
@@ -44,3 +58,14 @@ Preferred:
 
 - Never commit real private keys or secrets.
 - Use `.env.example` only.
+
+## Security Guardrails
+
+- Do not ship "stubbed security success". If verification or authorization is not implemented yet:
+  - revert/panic explicitly, or
+  - store/emit explicit unverified state (`verified = false`).
+  Never default to success (`verified = true`) behind a TODO.
+- If you change auth/signature/verification/session-key logic, include tests for both:
+  - expected allow path, and
+  - expected deny/reject path.
+- Keep security claims in docs/readmes aligned with current code behavior.
