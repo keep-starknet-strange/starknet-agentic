@@ -84,7 +84,7 @@ pub mod QuantumVault {
         ) -> felt252 {
             self.ownable.assert_only_owner();
 
-            assert(to != Zeroable::zero(), 'Zero target address');
+            assert(to != Zero::zero(), 'Zero target address');
 
             assert(delay_seconds >= MIN_DELAY, 'Delay too short');
             assert(delay_seconds <= MAX_DELAY, 'Delay too long');
