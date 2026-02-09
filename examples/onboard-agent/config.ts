@@ -14,9 +14,9 @@ export interface NetworkConfig {
 
 export const NETWORKS: Record<string, NetworkConfig> = {
   sepolia: {
-    factory: "", // TODO: fill after deploying AgentAccountFactory to Sepolia
-    registry: "", // TODO: fill after deploying IdentityRegistry to Sepolia
-    rpc: "https://starknet-sepolia.public.blastapi.io",
+    factory: "0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e",
+    registry: "0x7856876f4c8e1880bc0a2e4c15f4de3085bc2bad5c7b0ae472740f8f558e417",
+    rpc: "https://starknet-sepolia-rpc.publicnode.com",
     explorer: "https://sepolia.voyager.online",
   },
   mainnet: {
