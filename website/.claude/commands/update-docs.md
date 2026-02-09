@@ -24,7 +24,7 @@ git diff --stat <baseline_commit>..HEAD
 
 Use the Task tool with `subagent_type=Explore` to thoroughly research:
 - Changes to MCP server tools (packages/starknet-mcp-server/)
-- Changes to Cairo contracts (packages/starknet-identity/erc8004-cairo/)
+- Changes to Cairo contracts (contracts/erc8004-cairo/, contracts/agent-account/, contracts/huginn-registry/)
 - Changes to skills (skills/)
 - Changes to examples (examples/)
 - Changes to packages (packages/)
@@ -92,10 +92,12 @@ Options:
 
 Only after user confirms everything is good:
 
-1. Stage and commit all changes:
+1. Stage and commit all documentation changes (excluding CLAUDE.md):
 ```bash
-git add website/
-git commit -m "docs(website): Update website docs to reflect latest changes
+git add website/app/data/docs.ts website/content/docs/
+git commit -m "docs(website): update documentation using the update-docs command
+
+<summary of changes>
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
@@ -107,11 +109,15 @@ git rev-parse HEAD
 
 3. Update the `docs-last-updated` field in `website/CLAUDE.md` with the new commit hash
 
-4. Amend the commit to include the CLAUDE.md update:
+4. Make a separate commit for the CLAUDE.md tracking update (do NOT amend):
 ```bash
 git add website/CLAUDE.md
-git commit --amend --no-edit
+git commit -m "chore(website): update docs-last-updated tracking field
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
+
+**Note:** We use a separate commit instead of amending because amending changes the commit hash, creating a chicken-and-egg problem where the hash in CLAUDE.md would never match the final commit.
 
 ## Documentation Style Guidelines
 
