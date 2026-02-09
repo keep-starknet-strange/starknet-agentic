@@ -25,6 +25,7 @@ pub mod HuginnRegistry {
     struct Storage {
         verifier: ContractAddress,
         agents: Map<ContractAddress, AgentProfile>,
+        thought_owner: Map<u256, ContractAddress>,
         thought_proofs: Map<u256, Proof>,
     }
 
@@ -98,9 +99,18 @@ pub mod HuginnRegistry {
 
         fn log_thought(ref self: ContractState, thought_hash: u256) {
             let caller = get_caller_address();
-            
+
             let profile = self.agents.read(caller);
             assert(profile.name != '', 'Agent not registered');
+
+            // First logger becomes canonical owner for this thought hash.
+            // Same-owner re-log is idempotent; different owner is rejected.
+            let owner = self.thought_owner.read(thought_hash);
+            if owner.is_zero() {
+                self.thought_owner.write(thought_hash, caller);
+            } else {
+                assert(owner == caller, 'Thought already claimed');
+            }
 
             self.emit(Event::RavenFlight(RavenFlight { agent_id: caller, thought_hash }));
         }
@@ -111,6 +121,10 @@ pub mod HuginnRegistry {
             let profile = self.agents.read(caller);
             assert(profile.name != '', 'Agent not registered');
             assert(proof.len() > 0, 'Empty proof');
+
+            let owner = self.thought_owner.read(thought_hash);
+            assert(!owner.is_zero(), 'Thought not logged');
+            assert(owner == caller, 'Not thought owner');
 
             // Replay policy: one proof per thought hash.
             // A thought hash cannot be overwritten once submitted.

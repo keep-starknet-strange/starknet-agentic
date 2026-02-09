@@ -47,6 +47,39 @@ fn test_log_thought() {
 }
 
 #[test]
+fn test_log_thought_same_owner_relog_is_idempotent() {
+    let contract_address = deploy_contract(test_address());
+    let dispatcher = IHuginnRegistryDispatcher { contract_address };
+
+    let caller = 0x1.try_into().unwrap();
+    start_cheat_caller_address(contract_address, caller);
+
+    dispatcher.register_agent('thinker', "ipfs://meta");
+    dispatcher.log_thought(7_u256);
+    dispatcher.log_thought(7_u256);
+
+    stop_cheat_caller_address(contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Thought already claimed')]
+fn test_log_thought_different_owner_cannot_claim_same_hash() {
+    let contract_address = deploy_contract(test_address());
+    let dispatcher = IHuginnRegistryDispatcher { contract_address };
+
+    let agent_a = 0x1.try_into().unwrap();
+    start_cheat_caller_address(contract_address, agent_a);
+    dispatcher.register_agent('agent_a', "ipfs://a");
+    dispatcher.log_thought(8_u256);
+    stop_cheat_caller_address(contract_address);
+
+    let agent_b = 0x2.try_into().unwrap();
+    start_cheat_caller_address(contract_address, agent_b);
+    dispatcher.register_agent('agent_b', "ipfs://b");
+    dispatcher.log_thought(8_u256);
+}
+
+#[test]
 #[should_panic(expected: 'Agent not registered')]
 fn test_log_thought_unregistered() {
     let contract_address = deploy_contract(test_address());
@@ -70,6 +103,7 @@ fn test_prove_thought_success_with_valid_verifier_response() {
     start_cheat_caller_address(contract_address, caller);
 
     dispatcher.register_agent('prover', "ipfs://meta");
+    dispatcher.log_thought(99_u256);
     let proof: Array<felt252> = array![1, 2, 3];
     dispatcher.prove_thought(99_u256, proof.span());
 
@@ -95,13 +129,41 @@ fn test_prove_thought_unregistered() {
 }
 
 #[test]
-fn test_get_agent_unregistered_returns_zero() {
-    let contract_address = deploy_contract(test_address());
+#[should_panic(expected: 'Thought not logged')]
+fn test_prove_thought_rejects_unlogged_hash() {
+    let verifier = test_address();
+    start_mock_call(verifier, VERIFY_SELECTOR, true);
+
+    let contract_address = deploy_contract(verifier);
     let dispatcher = IHuginnRegistryDispatcher { contract_address };
 
-    let unknown = 0x999.try_into().unwrap();
-    let (name, _metadata) = dispatcher.get_agent(unknown);
-    assert(name == 0, 'should be zero');
+    let caller = 0x1.try_into().unwrap();
+    start_cheat_caller_address(contract_address, caller);
+    dispatcher.register_agent('prover', "ipfs://meta");
+    let proof: Array<felt252> = array![1, 2, 3];
+    dispatcher.prove_thought(77_u256, proof.span());
+}
+
+#[test]
+#[should_panic(expected: 'Not thought owner')]
+fn test_prove_thought_rejects_non_owner_for_logged_thought() {
+    let verifier = test_address();
+    start_mock_call(verifier, VERIFY_SELECTOR, true);
+
+    let contract_address = deploy_contract(verifier);
+    let dispatcher = IHuginnRegistryDispatcher { contract_address };
+
+    let agent_a = 0x1.try_into().unwrap();
+    start_cheat_caller_address(contract_address, agent_a);
+    dispatcher.register_agent('agent_a', "ipfs://a");
+    dispatcher.log_thought(9_u256);
+    stop_cheat_caller_address(contract_address);
+
+    let agent_b = 0x2.try_into().unwrap();
+    start_cheat_caller_address(contract_address, agent_b);
+    dispatcher.register_agent('agent_b', "ipfs://b");
+    let proof: Array<felt252> = array![1, 2, 3];
+    dispatcher.prove_thought(9_u256, proof.span());
 }
 
 #[test]
@@ -117,6 +179,7 @@ fn test_prove_thought_rejects_empty_proof() {
     start_cheat_caller_address(contract_address, caller);
 
     dispatcher.register_agent('prover', "ipfs://meta");
+    dispatcher.log_thought(99_u256);
     let proof: Array<felt252> = array![];
     dispatcher.prove_thought(99_u256, proof.span());
 }
@@ -134,13 +197,16 @@ fn test_prove_thought_reverts_when_verifier_returns_false() {
     start_cheat_caller_address(contract_address, caller);
 
     dispatcher.register_agent('prover', "ipfs://meta");
+    dispatcher.log_thought(99_u256);
     let proof: Array<felt252> = array![1, 2, 3];
     dispatcher.prove_thought(99_u256, proof.span());
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected: 'ENTRYPOINT_NOT_FOUND')]
 fn test_prove_thought_reverts_when_verifier_call_reverts() {
+    // No mocked call means test_address() has no `verify` entrypoint.
+    // The verifier dispatcher call should revert deterministically.
     let verifier = test_address();
     let contract_address = deploy_contract(verifier);
     let dispatcher = IHuginnRegistryDispatcher { contract_address };
@@ -149,6 +215,7 @@ fn test_prove_thought_reverts_when_verifier_call_reverts() {
     start_cheat_caller_address(contract_address, caller);
 
     dispatcher.register_agent('prover', "ipfs://meta");
+    dispatcher.log_thought(99_u256);
     let proof: Array<felt252> = array![1, 2, 3];
     dispatcher.prove_thought(99_u256, proof.span());
 }
@@ -166,7 +233,18 @@ fn test_prove_thought_rejects_replay_for_same_thought_hash() {
     start_cheat_caller_address(contract_address, caller);
 
     dispatcher.register_agent('prover', "ipfs://meta");
+    dispatcher.log_thought(99_u256);
     let proof: Array<felt252> = array![1, 2, 3];
     dispatcher.prove_thought(99_u256, proof.span());
     dispatcher.prove_thought(99_u256, proof.span());
+}
+
+#[test]
+fn test_get_agent_unregistered_returns_zero() {
+    let contract_address = deploy_contract(test_address());
+    let dispatcher = IHuginnRegistryDispatcher { contract_address };
+
+    let unknown = 0x999.try_into().unwrap();
+    let (name, _metadata) = dispatcher.get_agent(unknown);
+    assert(name == 0, 'should be zero');
 }
