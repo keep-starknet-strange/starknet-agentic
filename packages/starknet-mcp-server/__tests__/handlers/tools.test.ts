@@ -23,6 +23,9 @@ const mockEstimateInvokeFee = vi.fn();
 const mockWaitForTransaction = vi.fn();
 const mockCallContract = vi.fn();
 const mockBalanceOf = vi.fn();
+const mockValidateAndParseAddress = vi.fn((addr: string) =>
+  addr.toLowerCase().padStart(66, "0x".padEnd(66, "0"))
+);
 
 vi.mock("starknet", () => ({
   Account: vi.fn().mockImplementation(() => ({
@@ -48,7 +51,7 @@ vi.mock("starknet", () => ({
   ETransactionVersion: {
     V3: "0x3",
   },
-  validateAndParseAddress: vi.fn((addr) => addr.toLowerCase().padStart(66, "0x".padEnd(66, "0"))),
+  validateAndParseAddress: mockValidateAndParseAddress,
   uint256: {
     uint256ToBN: vi.fn((val) => {
       if (typeof val === "bigint") return val;
@@ -436,6 +439,85 @@ describe("MCP Tool Handlers", () => {
           }),
         }),
       );
+    });
+  });
+
+  // ---- Input validation tests ----
+
+  describe("input validation", () => {
+    it("rejects invalid recipient address in starknet_transfer", async () => {
+      mockValidateAndParseAddress.mockImplementationOnce(() => {
+        throw new Error("Invalid address format");
+      });
+
+      const response = await callTool("starknet_transfer", {
+        recipient: "not_an_address",
+        token: "ETH",
+        amount: "1",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toMatch(/not a valid Starknet address/);
+    });
+
+    it("rejects invalid contractAddress in starknet_call_contract", async () => {
+      mockValidateAndParseAddress.mockImplementationOnce(() => {
+        throw new Error("Invalid address format");
+      });
+
+      const response = await callTool("starknet_call_contract", {
+        contractAddress: "garbage",
+        entrypoint: "get_owner",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toMatch(/not a valid Starknet address/);
+    });
+
+    it("rejects invalid contractAddress in starknet_invoke_contract", async () => {
+      mockValidateAndParseAddress.mockImplementationOnce(() => {
+        throw new Error("Invalid address format");
+      });
+
+      const response = await callTool("starknet_invoke_contract", {
+        contractAddress: "garbage",
+        entrypoint: "set_value",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toMatch(/not a valid Starknet address/);
+    });
+
+    it("rejects malformed amount in starknet_transfer", async () => {
+      const response = await callTool("starknet_transfer", {
+        recipient: "0x0111111111111111111111111111111111111111111111111111111111111111",
+        token: "ETH",
+        amount: "1e18",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toMatch(/Invalid amount/);
+    });
+
+    it("rejects negative amount in starknet_transfer", async () => {
+      const response = await callTool("starknet_transfer", {
+        recipient: "0x0111111111111111111111111111111111111111111111111111111111111111",
+        token: "ETH",
+        amount: "-5",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toMatch(/Invalid amount/);
     });
   });
 
