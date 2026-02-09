@@ -151,3 +151,7 @@ target/
 deployed_addresses*.json
 .env.local
 .mcp.json
+
+# Scarb lock files
+Scarb.lock
+*.lock
