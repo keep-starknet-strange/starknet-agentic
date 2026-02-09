@@ -59,6 +59,22 @@ importers:
         specifier: ^8.9.1
         version: 8.9.2
 
+  examples/onboard-agent:
+    dependencies:
+      dotenv:
+        specifier: ^16.4.0
+        version: 16.6.1
+      starknet:
+        specifier: ^8.9.1
+        version: 8.9.2
+    devDependencies:
+      tsx:
+        specifier: ^4.7.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   packages/prediction-arb-scanner:
     dependencies:
       zod:

@@ -1,0 +1,20 @@
+{
+  "name": "@starknet-agentic/onboard-agent-example",
+  "version": "0.1.0",
+  "private": true,
+  "description": "E2E agent onboarding flow: deploy account + register identity + verify",
+  "type": "module",
+  "scripts": {
+    "onboard": "npx tsx run.ts",
+    "onboard:sepolia": "npx tsx run.ts --network sepolia",
+    "onboard:verify": "npx tsx run.ts --network sepolia --verify-tx"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "starknet": "^8.9.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.0"
+  }
+}
