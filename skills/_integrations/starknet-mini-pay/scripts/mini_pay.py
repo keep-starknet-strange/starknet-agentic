@@ -92,29 +92,42 @@ class MiniPay:
         tx = await self.account.execute([call], auto_estimate=True)
         return {"tx_hash": hex(tx.transaction_hash), "status": "submitted"}
 
+    def _u256_to_int(self, low: int, high: int) -> int:
+        """Convert Uint256 (low, high) limbs to Python int."""
+        return low + (high << 128)
+
+    def _int_to_u256(self, value: int) -> tuple:
+        """Convert Python int to Uint256 (low, high) limbs for calldata."""
+        low = value & ((1 << 128) - 1)
+        high = value >> 128
+        return (low, high)
+
     async def get_balance(self, address: str, token: str = "ETH") -> int:
+        """Get token balance. Returns balance as integer (wei)."""
         addr_int = int(address, 16)
-        if token == "ETH":
-            call = Call(to_addr=MAINNET_TOKENS["ETH"], selector=get_selector_from_name("balanceOf"), calldata=[addr_int])
-            result = await self._call_contract(call)
-            return result[0] if result else 0
         token_address = MAINNET_TOKENS.get(token)
         if not token_address:
             raise ValueError(f"Unsupported token: {token}")
         call = Call(to_addr=token_address, selector=get_selector_from_name("balanceOf"), calldata=[addr_int])
         result = await self._call_contract(call)
-        return result[0] if result else 0
+        if not result or len(result) < 2:
+            return 0
+        # balanceOf returns Uint256 as (low, high) limbs
+        return self._u256_to_int(result[0], result[1])
 
     async def transfer(self, to_address: str, amount: int, token: str = "ETH") -> TransferResult:
+        """Transfer tokens. ETH/STRK/USDC all use ERC20 transfer on Starknet."""
         to_int = int(to_address, 16)
-        if token == "ETH":
-            call = Call(to_addr=to_int, selector=get_selector_from_name("__execute__"), calldata=[])
-            result = await self._invoke(call)
-            return TransferResult(tx_hash=result["tx_hash"], status=result["status"])
         token_address = MAINNET_TOKENS.get(token)
         if not token_address:
             raise ValueError(f"Unsupported token: {token}")
-        call = Call(to_addr=token_address, selector=get_selector_from_name("transfer"), calldata=[to_int, amount])
+        # Encode amount as Uint256 (low, high) for ERC20 transfer
+        amount_low, amount_high = self._int_to_u256(amount)
+        call = Call(
+            to_addr=token_address,
+            selector=get_selector_from_name("transfer"),
+            calldata=[to_int, amount_low, amount_high]
+        )
         result = await self._invoke(call)
         return TransferResult(tx_hash=result["tx_hash"], status=result["status"])
 

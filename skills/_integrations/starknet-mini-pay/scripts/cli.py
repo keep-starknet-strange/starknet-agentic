@@ -54,25 +54,49 @@ def get_private_key():
     return key
 
 
+def get_mini_pay(rpc_url: str) -> MiniPay:
+    """Construct MiniPay only when sender credentials are needed."""
+    private_key = get_private_key()
+    address = os.environ.get("MINI_PAY_ADDRESS")
+    if not address:
+        raise ValueError("Set MINI_PAY_ADDRESS env variable")
+    return MiniPay(rpc_url, private_key, address)
+
+
 async def main_async():
     args = parse_args()
     if not args.command:
         print("No command specified")
         sys.exit(1)
-    
+
     rpc_url = args.rpc or NETWORKS.get(args.network)
-    private_key = get_private_key()
-    address = os.environ.get("MINI_PAY_ADDRESS", "")
-    
-    pay = MiniPay(rpc_url, private_key, address)
-    
+
     if args.command == "balance":
-        bal = await pay.get_balance(args.address, args.token)
-        print(f"Balance: {bal} wei")
+        # Balance check only needs RPC, not sender credentials
+        from starknet_py.net.full_node_client import FullNodeClient
+        from starknet_py.net.client_models import Call
+        from starknet_py.hash.selector import get_selector_from_name
+
+        client = FullNodeClient(node_url=rpc_url)
+        addr_int = int(args.address, 16)
+        # Use mainnet ETH address for now
+        token_addr = 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7
+        call = Call(to_addr=token_addr, selector=get_selector_from_name("balanceOf"), calldata=[addr_int])
+        result = await client.call_contract(call=call, block_number="latest")
+        if result and len(result) >= 2:
+            balance = result[0] + (result[1] << 128)
+        else:
+            balance = 0
+        print(f"Balance: {balance} wei")
     elif args.command == "send":
+        pay = get_mini_pay(rpc_url)
         amount_wei = int(args.amount * 10**18)
         result = await pay.transfer(args.address, amount_wei, args.token)
         print(f"Tx: {result.tx_hash}")
+    elif args.command == "qr":
+        qr = QRGenerator()
+        await qr.generate_qr(args.address, args.output)
+        print(f"QR saved to {args.output}")
 
 
 def main():
