@@ -11,14 +11,14 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "starknet": "^8.9.1"
+    "starknet": "^9.2.1"
   },
   "devDependencies": {
-    "@types/node": "^22.13.0",
-    "eslint": "^9.19.0",
-    "@eslint/js": "^9.19.0",
+    "@types/node": "^25.2.2",
+    "eslint": "^10.0.0",
+    "@eslint/js": "^10.0.1",
     "typescript": "^5.9.0",
     "tsup": "^8.5.0",
-    "vitest": "^2.1.9"
+    "vitest": "^4.0.18"
   }
 }
