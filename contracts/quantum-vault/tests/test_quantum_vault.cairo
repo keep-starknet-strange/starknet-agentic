@@ -20,6 +20,10 @@ fn owner_address() -> ContractAddress {
     0x123456789ABCDEF.try_into().unwrap()
 }
 
+fn non_owner_address() -> ContractAddress {
+    0xDEAD.try_into().unwrap()
+}
+
 #[test]
 fn test_create_time_lock() {
     let addr = deploy_vault();
@@ -192,8 +196,56 @@ fn test_create_time_lock_zero_address() {
     let addr = deploy_vault();
     let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
     let zero_address: ContractAddress = 0.try_into().unwrap();
-    
+
     start_cheat_caller_address(addr, owner_address());
     dispatcher.create_time_lock(zero_address, 0x1, 0x1111, 3600);
     stop_cheat_caller_address(addr);
+}
+
+// ─── Non-owner access control tests ────────────────────────────────────
+
+#[test]
+#[should_panic(expected: ('Caller is not the owner',))]
+fn test_create_non_owner_rejected() {
+    let addr = deploy_vault();
+    let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
+    let target: ContractAddress = 0xABC.try_into().unwrap();
+
+    start_cheat_caller_address(addr, non_owner_address());
+    dispatcher.create_time_lock(target, 0x1, 0x1111, 3600);
+}
+
+#[test]
+#[should_panic(expected: ('Caller is not the owner',))]
+fn test_execute_non_owner_rejected() {
+    let addr = deploy_vault();
+    let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
+    let target: ContractAddress = 0xABC.try_into().unwrap();
+
+    // Create as owner
+    start_cheat_caller_address(addr, owner_address());
+    let lock_id = dispatcher.create_time_lock(target, 0x1, 0x1111, 300);
+    stop_cheat_caller_address(addr);
+
+    // Try to execute as non-owner
+    start_cheat_block_timestamp(addr, 300 + 100);
+    start_cheat_caller_address(addr, non_owner_address());
+    dispatcher.execute_time_lock(lock_id);
+}
+
+#[test]
+#[should_panic(expected: ('Caller is not the owner',))]
+fn test_cancel_non_owner_rejected() {
+    let addr = deploy_vault();
+    let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
+    let target: ContractAddress = 0xABC.try_into().unwrap();
+
+    // Create as owner
+    start_cheat_caller_address(addr, owner_address());
+    let lock_id = dispatcher.create_time_lock(target, 0x1, 0x1111, 3600);
+    stop_cheat_caller_address(addr);
+
+    // Try to cancel as non-owner
+    start_cheat_caller_address(addr, non_owner_address());
+    dispatcher.cancel_time_lock(lock_id);
 }
