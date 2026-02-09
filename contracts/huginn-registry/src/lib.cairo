@@ -4,16 +4,28 @@ pub trait IHuginnRegistry<TContractState> {
     fn log_thought(ref self: TContractState, thought_hash: u256);
     fn prove_thought(ref self: TContractState, thought_hash: u256, proof: Span<felt252>);
     fn get_agent(self: @TContractState, agent_id: starknet::ContractAddress) -> (felt252, ByteArray);
+    fn get_proof(self: @TContractState, thought_hash: u256) -> (u256, bool, starknet::ContractAddress);
+    fn get_verifier(self: @TContractState) -> starknet::ContractAddress;
+}
+
+#[starknet::interface]
+pub trait IThoughtVerifier<TContractState> {
+    fn verify(self: @TContractState, thought_hash: u256, proof: Span<felt252>) -> bool;
 }
 
 #[starknet::contract]
 pub mod HuginnRegistry {
+    use core::num::traits::Zero;
+    use core::poseidon::poseidon_hash_span;
     use starknet::storage::*;
     use starknet::{ContractAddress, get_caller_address};
+    use super::{IThoughtVerifierDispatcher, IThoughtVerifierDispatcherTrait};
 
     #[storage]
     struct Storage {
+        verifier: ContractAddress,
         agents: Map<ContractAddress, AgentProfile>,
+        thought_owner: Map<u256, ContractAddress>,
         thought_proofs: Map<u256, Proof>,
     }
 
@@ -30,6 +42,7 @@ pub mod HuginnRegistry {
         proof_hash: u256,
         verified: bool,
         agent_id: ContractAddress,
+        submitted: bool,
     }
 
     #[event]
@@ -62,6 +75,12 @@ pub mod HuginnRegistry {
         pub proof_verified: bool,
     }
 
+    #[constructor]
+    fn constructor(ref self: ContractState, verifier_address: ContractAddress) {
+        assert(!verifier_address.is_zero(), 'Invalid verifier');
+        self.verifier.write(verifier_address);
+    }
+
     #[abi(embed_v0)]
     impl HuginnRegistryImpl of super::IHuginnRegistry<ContractState> {
         fn register_agent(ref self: ContractState, name: felt252, metadata_url: ByteArray) {
@@ -80,44 +99,87 @@ pub mod HuginnRegistry {
 
         fn log_thought(ref self: ContractState, thought_hash: u256) {
             let caller = get_caller_address();
-            
+
             let profile = self.agents.read(caller);
             assert(profile.name != '', 'Agent not registered');
+
+            // First logger becomes canonical owner for this thought hash.
+            // Same-owner re-log is idempotent; different owner is rejected.
+            let owner = self.thought_owner.read(thought_hash);
+            if owner.is_zero() {
+                self.thought_owner.write(thought_hash, caller);
+            } else {
+                assert(owner == caller, 'Thought already claimed');
+            }
 
             self.emit(Event::RavenFlight(RavenFlight { agent_id: caller, thought_hash }));
         }
 
         fn prove_thought(ref self: ContractState, thought_hash: u256, proof: Span<felt252>) {
             let caller = get_caller_address();
-            
+
             let profile = self.agents.read(caller);
             assert(profile.name != '', 'Agent not registered');
+            assert(proof.len() > 0, 'Empty proof');
 
-            // Fail-closed until real verifier integration lands.
-            // Never record or emit verified=true from a stub path.
-            assert(false, 'Verification not implemented');
+            let owner = self.thought_owner.read(thought_hash);
+            assert(!owner.is_zero(), 'Thought not logged');
+            assert(owner == caller, 'Not thought owner');
+
+            // Replay policy: one proof per thought hash.
+            // A thought hash cannot be overwritten once submitted.
+            let existing = self.thought_proofs.read(thought_hash);
+            assert(!existing.submitted, 'Proof already submitted');
+
+            let verifier = IThoughtVerifierDispatcher {
+                contract_address: self.verifier.read(),
+            };
+            let is_valid = verifier.verify(thought_hash, proof);
+            assert(is_valid, 'Invalid proof');
+
+            let proof_hash = self._hash_proof(proof);
+            self
+                .thought_proofs
+                .write(
+                    thought_hash,
+                    Proof {
+                        thought_hash,
+                        proof_hash,
+                        verified: true,
+                        agent_id: caller,
+                        submitted: true,
+                    },
+                );
+
+            self
+                .emit(
+                    Event::MimirWisdom(
+                        MimirWisdom { agent_id: caller, thought_hash, proof_verified: true },
+                    ),
+                );
         }
 
         fn get_agent(self: @ContractState, agent_id: ContractAddress) -> (felt252, ByteArray) {
             let profile = self.agents.read(agent_id);
             (profile.name, profile.metadata_url)
         }
+
+        fn get_proof(self: @ContractState, thought_hash: u256) -> (u256, bool, ContractAddress) {
+            let proof = self.thought_proofs.read(thought_hash);
+            (proof.proof_hash, proof.verified, proof.agent_id)
+        }
+
+        fn get_verifier(self: @ContractState) -> ContractAddress {
+            self.verifier.read()
+        }
     }
 
     #[generate_trait]
     impl InternalFunctions of InternalFunctionsTrait {
         fn _hash_proof(self: @ContractState, proof: Span<felt252>) -> u256 {
-            // Simple hash for now - replace with actual STWO verification
-            let mut hash: u256 = 0;
-            let mut i = 0;
-            loop {
-                if i >= proof.len() {
-                    break;
-                }
-                hash = hash + (*proof.at(i)).into();
-                i += 1;
-            };
-            hash
+            // Deterministic proof transcript hash for indexing/storage.
+            // Proof validity is still sourced from the external verifier call.
+            poseidon_hash_span(proof).into()
         }
     }
 }
