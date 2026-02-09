@@ -16,40 +16,12 @@
 import {
   ec,
   CallData,
-  Contract,
+  byteArray,
   type RpcProvider,
   type Account,
   encode,
 } from "starknet";
 import type { NetworkConfig } from "../config.js";
-
-// Minimal ABI for AgentAccountFactory.deploy_account
-const FACTORY_ABI = [
-  {
-    type: "interface",
-    name: "agent_account::interfaces::IAgentAccountFactory",
-    items: [
-      {
-        type: "function",
-        name: "deploy_account",
-        inputs: [
-          { name: "public_key", type: "core::felt252" },
-          { name: "salt", type: "core::felt252" },
-          {
-            name: "token_uri",
-            type: "core::byte_array::ByteArray",
-          },
-        ],
-        outputs: [
-          {
-            type: "(core::starknet::contract_address::ContractAddress, core::integer::u256)",
-          },
-        ],
-        state_mutability: "external",
-      },
-    ],
-  },
-];
 
 export interface DeployAccountResult {
   accountAddress: string;
@@ -81,20 +53,19 @@ export async function deployAccount(args: {
     args.salt || "0x" + encode.buf2hex(ec.starkCurve.utils.randomPrivateKey());
   console.log(`  Salt: ${salt}`);
 
-  // --- Call factory ---
-  const factory = new Contract({
-    abi: FACTORY_ABI,
-    address: networkConfig.factory,
-    providerOrAccount: deployerAccount,
-  });
-
   console.log(`  Calling factory.deploy_account()...`);
 
-  const result = await factory.invoke("deploy_account", [
-    publicKey,
+  const calldata = CallData.compile({
+    public_key: publicKey,
     salt,
-    tokenUri,
-  ]);
+    token_uri: byteArray.byteArrayFromString(tokenUri),
+  });
+
+  const result = await deployerAccount.execute({
+    contractAddress: networkConfig.factory,
+    entrypoint: "deploy_account",
+    calldata,
+  });
 
   console.log(`  Waiting for tx: ${result.transaction_hash}...`);
   const receipt = await provider.waitForTransaction(result.transaction_hash);
@@ -110,23 +81,17 @@ export async function deployAccount(args: {
     // The AccountDeployed event has: account, public_key, agent_id (u256 = low + high), registry
     // It's typically the last event emitted by the factory
     for (const event of events) {
-      // AccountDeployed event has 4 keys (selector + account + public_key) and data (agent_id_low, agent_id_high, registry)
-      // We look for an event from the factory address
+      // AccountDeployed fields in data:
+      // [account, public_key, agent_id.low, agent_id.high, registry]
       if (
-        event.from_address?.toLowerCase() ===
-        networkConfig.factory.toLowerCase()
+        event.from_address?.toLowerCase() === networkConfig.factory.toLowerCase() &&
+        event.data &&
+        event.data.length >= 4
       ) {
-        // In Starknet events: keys[0] = selector, keys[1..] = indexed params
-        // data = non-indexed params
-        if (event.keys && event.keys.length >= 2) {
-          accountAddress = event.keys[1]; // account address (first indexed param after selector)
-        }
-        if (event.data && event.data.length >= 2) {
-          // agent_id is u256 = (low, high)
-          const low = BigInt(event.data[0]);
-          const high = BigInt(event.data[1]);
-          agentId = (low + (high << 128n)).toString();
-        }
+        accountAddress = event.data[0];
+        const low = BigInt(event.data[2]);
+        const high = BigInt(event.data[3]);
+        agentId = (low + (high << 128n)).toString();
         break;
       }
     }
