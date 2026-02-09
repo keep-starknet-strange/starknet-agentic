@@ -10,6 +10,12 @@ fn deploy_vault() -> ContractAddress {
     addr
 }
 
+fn deploy_mock_target() -> ContractAddress {
+    let contract = declare("MockTarget").unwrap().contract_class();
+    let (addr, _) = contract.deploy(@array![]).unwrap();
+    addr
+}
+
 fn owner_address() -> ContractAddress {
     0x123456789ABCDEF.try_into().unwrap()
 }
@@ -41,25 +47,25 @@ fn test_create_time_lock() {
 fn test_execute_time_lock() {
     let addr = deploy_vault();
     let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
-    let target: ContractAddress = 0xABC.try_into().unwrap();
-    let selector: felt252 = 0x1234;
+    let target = deploy_mock_target();
+    let selector = selector!("execute");
     let calldata_hash: felt252 = 0x5678;
     let delay: u64 = 300;
-    
+
     // Create lock
     start_cheat_caller_address(addr, owner_address());
     let lock_id = dispatcher.create_time_lock(target, selector, calldata_hash, delay);
     stop_cheat_caller_address(addr);
-    
+
     // Fast forward time to within grace period (unlock + 12 hours)
-    start_cheat_block_timestamp(addr, 300 + 43200);  // unlock_at + 12h
-    
+    start_cheat_block_timestamp(addr, 300 + 43200);
+
     // Execute as owner
     start_cheat_caller_address(addr, owner_address());
     dispatcher.execute_time_lock(lock_id);
     stop_cheat_caller_address(addr);
     stop_cheat_block_timestamp(addr);
-    
+
     // Verify executed
     let (_, _, _, status) = dispatcher.get_time_lock(lock_id);
     assert(status == 1, 'Should be executed (1)');
