@@ -59,6 +59,11 @@ vi.mock("starknet", () => ({
     }),
   },
   byteArray: {
+    byteArrayFromString: vi.fn((v: string) => ({
+      data: [`encoded:${v}`],
+      pending_word: "0x0",
+      pending_word_len: 0,
+    })),
     stringFromByteArray: vi.fn((ba) => "TEST"),
   },
 }));
@@ -682,6 +687,91 @@ describe("MCP Tool Handlers", () => {
     });
   });
 
+  describe("starknet_deploy_agent_account", () => {
+    beforeEach(async () => {
+      process.env.AGENT_ACCOUNT_FACTORY_ADDRESS =
+        "0x0fabcde01234567890abcdef01234567890abcdef01234567890abcdef01234";
+
+      vi.resetModules();
+      await import("../../src/index.js");
+    });
+
+    afterEach(() => {
+      delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
+    });
+
+    it("deploys via factory and returns tx receipt-derived data", async () => {
+      mockExecute.mockResolvedValue({ transaction_hash: "0xdeploy123" });
+      mockWaitForTransaction.mockResolvedValue({
+        events: [
+          {
+            from_address: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
+            // account, public_key, agent_id.low, agent_id.high, registry
+            data: ["0xabc", "0x1234", "0x2a", "0x0", "0xregistry"],
+          },
+        ],
+      });
+
+      const response = await callTool("starknet_deploy_agent_account", {
+        public_key: "0x1234",
+        token_uri: "ipfs://agent.json",
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.transactionHash).toBe("0xdeploy123");
+      expect(result.accountAddress).toBe("0xabc");
+      expect(result.agentId).toBe("42");
+      expect(result.factoryAddress).toBe(process.env.AGENT_ACCOUNT_FACTORY_ADDRESS);
+
+      expect(mockExecute).toHaveBeenCalledTimes(1);
+      const callArg = mockExecute.mock.calls[0][0];
+      expect(callArg.contractAddress).toBe(process.env.AGENT_ACCOUNT_FACTORY_ADDRESS);
+      expect(callArg.entrypoint).toBe("deploy_account");
+    });
+
+    it("returns clear error for zero public key", async () => {
+      const response = await callTool("starknet_deploy_agent_account", {
+        public_key: "0x0",
+        token_uri: "ipfs://agent.json",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("public_key must be non-zero felt");
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it("propagates tx reverts", async () => {
+      mockExecute.mockRejectedValue(new Error("factory revert: duplicate salt"));
+
+      const response = await callTool("starknet_deploy_agent_account", {
+        public_key: "0x1234",
+        token_uri: "ipfs://agent.json",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("factory revert");
+    });
+
+    it("returns clear error when factory env is missing", async () => {
+      delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
+      vi.resetModules();
+      await import("../../src/index.js");
+
+      const response = await callTool("starknet_deploy_agent_account", {
+        public_key: "0x1234",
+        token_uri: "ipfs://agent.json",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("AGENT_ACCOUNT_FACTORY_ADDRESS not configured");
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+  });
+
   describe("unknown tool", () => {
     it("returns error for unknown tool", async () => {
       const response = await callTool("unknown_tool", {});
@@ -769,5 +859,26 @@ describe("Tool list", () => {
     expect(toolNames).toContain("starknet_get_quote");
     expect(toolNames).toContain("starknet_estimate_fee");
     expect(toolNames).toContain("x402_starknet_sign_payment_required");
+  });
+
+  it("includes deploy tool when factory env is set", async () => {
+    process.env.AGENT_ACCOUNT_FACTORY_ADDRESS =
+      "0x0fabcde01234567890abcdef01234567890abcdef01234567890abcdef01234";
+
+    console.error = vi.fn();
+    vi.resetModules();
+    await import("../../src/index.js");
+    console.error = originalConsoleError;
+
+    if (!capturedListHandler) {
+      throw new Error("List handler not captured");
+    }
+
+    const response = await capturedListHandler();
+    const toolNames = response.tools.map((t: any) => t.name);
+    expect(toolNames).toContain("starknet_deploy_agent_account");
+    expect(response.tools).toHaveLength(10);
+
+    delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
   });
 });

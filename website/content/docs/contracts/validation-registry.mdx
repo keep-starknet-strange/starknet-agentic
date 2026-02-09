@@ -1,0 +1,549 @@
+---
+title: Validation Registry
+description: Third-party validator assessments for AI agents with request/response flow
+---
+
+# Validation Registry
+
+The **ValidationRegistry** enables third-party validators to assess agents and publish scored evaluations. Validators can be security auditors, performance testers, zkML verifiers, or any entity providing agent assessments.
+
+## Overview
+
+The ValidationRegistry provides:
+
+- **Request/Response flow** - Agent owners request validation from specific validators
+- **Immutable requests** - Request hashes cannot be overwritten
+- **Progressive validation** - Multiple responses possible per request
+- **Tag-based categorization** - Filter validations by type
+- **On-chain aggregation** - Query validation summaries
+
+## Data Structures
+
+### Request
+
+Represents a validation request.
+
+```cairo
+pub struct Request {
+    pub validator_address: ContractAddress, // Designated validator
+    pub agent_id: u256,                      // Agent being validated
+    pub request_uri: ByteArray,              // URI to request details
+    pub request_hash: u256,                  // Unique request identifier
+    pub timestamp: u64,                      // When request was created
+}
+```
+
+### Response
+
+Represents a validation response.
+
+```cairo
+pub struct Response {
+    pub validator_address: ContractAddress, // Validator who responded
+    pub agent_id: u256,                      // Agent that was validated
+    pub response: u8,                        // Score from 0-100
+    pub tag: u256,                           // Validation category
+    pub last_update: u64,                    // When response was submitted
+}
+```
+
+## Events
+
+### ValidationRequest
+
+Emitted when a validation is requested.
+
+```cairo
+pub struct ValidationRequest {
+    #[key]
+    pub validator_address: ContractAddress,
+    #[key]
+    pub agent_id: u256,
+    pub request_uri: ByteArray,
+    pub request_hash: u256,
+}
+```
+
+### ValidationResponse
+
+Emitted when a validator responds.
+
+```cairo
+pub struct ValidationResponse {
+    #[key]
+    pub validator_address: ContractAddress,
+    #[key]
+    pub agent_id: u256,
+    pub request_hash: u256,
+    pub response: u8,
+    pub response_uri: ByteArray,
+    pub response_hash: u256,
+    pub tag: u256,
+}
+```
+
+## Interface
+
+### IValidationRegistry
+
+```cairo
+#[starknet::interface]
+pub trait IValidationRegistry<TContractState> {
+    // Write functions
+    fn validation_request(
+        ref self: TContractState,
+        validator_address: ContractAddress,
+        agent_id: u256,
+        request_uri: ByteArray,
+        request_hash: u256
+    );
+
+    fn validation_response(
+        ref self: TContractState,
+        request_hash: u256,
+        response: u8,
+        response_uri: ByteArray,
+        response_hash: u256,
+        tag: u256
+    );
+
+    // Read functions
+    fn get_validation_status(
+        self: @TContractState,
+        request_hash: u256
+    ) -> (ContractAddress, u256, u8, u256, u256, u64);
+
+    fn get_summary(
+        self: @TContractState,
+        agent_id: u256,
+        validator_addresses: Span<ContractAddress>,
+        tag: u256
+    ) -> (u64, u8);
+
+    fn get_summary_paginated(
+        self: @TContractState,
+        agent_id: u256,
+        validator_addresses: Span<ContractAddress>,
+        tag: u256,
+        request_offset: u64,
+        request_limit: u64
+    ) -> (u64, u8, bool);
+
+    fn get_agent_validations(
+        self: @TContractState,
+        agent_id: u256
+    ) -> Array<u256>;
+
+    fn get_validator_requests(
+        self: @TContractState,
+        validator_address: ContractAddress
+    ) -> Array<u256>;
+
+    fn request_exists(self: @TContractState, request_hash: u256) -> bool;
+
+    fn get_request(
+        self: @TContractState,
+        request_hash: u256
+    ) -> (ContractAddress, u256, ByteArray, u64);
+
+    fn get_identity_registry(self: @TContractState) -> ContractAddress;
+}
+```
+
+## Functions
+
+### validation_request
+
+Request validation from a designated validator.
+
+```cairo
+fn validation_request(
+    ref self: TContractState,
+    validator_address: ContractAddress,
+    agent_id: u256,
+    request_uri: ByteArray,
+    request_hash: u256
+)
+```
+
+**Parameters:**
+- `validator_address` - Address of the validator to request
+- `agent_id` - Agent's token ID
+- `request_uri` - URI to validation request details (IPFS, Arweave)
+- `request_hash` - Unique identifier (0 for auto-generation)
+
+**Access Control:** Only the agent owner or approved operator
+
+**Validation:**
+- Agent must exist in IdentityRegistry
+- Caller must be owner or approved
+- Validator cannot be the agent owner (no self-validation)
+- If `request_hash` is 0, one is auto-generated
+
+**Example:**
+
+```typescript
+import { Account, CallData, constants } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: rpcUrl });
+const account = new Account(provider, address, privateKey, undefined, constants.TRANSACTION_VERSION.V3);
+
+// Request validation with auto-generated hash
+await account.execute({
+  contractAddress: validationRegistryAddress,
+  entrypoint: "validation_request",
+  calldata: CallData.compile({
+    validator_address: validatorAddress,
+    agent_id: agentId,
+    request_uri: "ipfs://QmValidationRequestDetails",
+    request_hash: 0, // Auto-generate
+  }),
+});
+```
+
+### validation_response
+
+Submit a validation response.
+
+```cairo
+fn validation_response(
+    ref self: TContractState,
+    request_hash: u256,
+    response: u8,
+    response_uri: ByteArray,
+    response_hash: u256,
+    tag: u256
+)
+```
+
+**Parameters:**
+- `request_hash` - The request being responded to
+- `response` - Score from 0-100
+- `response_uri` - URI to detailed validation report
+- `response_hash` - Hash of the validation report
+- `tag` - Validation category (e.g., "security", "performance")
+
+**Access Control:** Only the designated validator for the request
+
+**Validation:**
+- Request must exist
+- Caller must be the designated validator
+- Response score must be 0-100
+
+**Example:**
+
+```typescript
+// Validator responds to request
+await validatorAccount.execute({
+  contractAddress: validationRegistryAddress,
+  entrypoint: "validation_response",
+  calldata: CallData.compile({
+    request_hash: requestHash,
+    response: 92,
+    response_uri: "ipfs://QmSecurityAuditReport",
+    response_hash: reportHash,
+    tag: encodeTag("security"),
+  }),
+});
+```
+
+### get_validation_status
+
+Get the status of a validation request.
+
+```cairo
+fn get_validation_status(
+    self: @TContractState,
+    request_hash: u256
+) -> (ContractAddress, u256, u8, u256, u256, u64)
+```
+
+**Returns:** Tuple of (validator_address, agent_id, response_score, response_hash, tag, last_update)
+
+**Note:** If no response has been submitted yet, response_score and last_update will be 0.
+
+**Example:**
+
+```typescript
+const registry = new Contract(abi, validationRegistryAddress, provider);
+
+const [validator, agentId, score, tag, lastUpdate] =
+  await registry.get_validation_status(requestHash);
+
+if (score === 0n && lastUpdate === 0n) {
+  console.log("Validation pending...");
+} else {
+  console.log(`Validation score: ${score}/100`);
+}
+```
+
+### get_summary
+
+Get aggregated validation summary for an agent.
+
+```cairo
+fn get_summary(
+    self: @TContractState,
+    agent_id: u256,
+    validator_addresses: Span<ContractAddress>,
+    tag: u256
+) -> (u64, u8)
+```
+
+**Parameters:**
+- `agent_id` - Agent's token ID
+- `validator_addresses` - Filter to specific validators (empty for all)
+- `tag` - Filter by tag (0 for all)
+
+**Returns:** Tuple of (validation count, average score)
+
+**Example:**
+
+```typescript
+// Get overall validation summary
+const [count, avgScore] = await registry.get_summary(agentId, [], 0);
+console.log(`${count} validations, average: ${avgScore}/100`);
+
+// Filter by security tag
+const [securityCount, securityAvg] = await registry.get_summary(
+  agentId,
+  [],
+  encodeTag("security")
+);
+```
+
+### get_summary_paginated
+
+Get aggregated validation with pagination for gas-bounded queries.
+
+```cairo
+fn get_summary_paginated(
+    self: @TContractState,
+    agent_id: u256,
+    validator_addresses: Span<ContractAddress>,
+    tag: u256,
+    request_offset: u64,
+    request_limit: u64
+) -> (u64, u8, bool)
+```
+
+**Parameters:**
+- `agent_id` - Agent's token ID
+- `validator_addresses` - Filter to specific validators (empty for all)
+- `tag` - Filter by tag (0 for all)
+- `request_offset` - Skip first N requests
+- `request_limit` - Max requests to process
+
+**Returns:** Tuple of (count, average_response, truncated)
+
+The `truncated` flag indicates if additional data exists outside the pagination window.
+
+**Example:**
+
+```typescript
+// Paginated query with 100 requests max
+const [count, avgResponse, truncated] = await registry.get_summary_paginated(
+  agentId,
+  [],
+  0,   // tag
+  0,   // request_offset
+  100  // request_limit
+);
+
+if (truncated) {
+  // More data exists - make another call with offset
+  const [count2, avg2, truncated2] = await registry.get_summary_paginated(
+    agentId, [], 0, 100, 100
+  );
+}
+```
+
+### get_agent_validations
+
+Get all request hashes for an agent.
+
+```cairo
+fn get_agent_validations(self: @TContractState, agent_id: u256) -> Array<u256>
+```
+
+**Returns:** Array of request hashes
+
+### get_validator_requests
+
+Get all request hashes assigned to a validator.
+
+```cairo
+fn get_validator_requests(
+    self: @TContractState,
+    validator_address: ContractAddress
+) -> Array<u256>
+```
+
+**Returns:** Array of request hashes
+
+### request_exists
+
+Check if a request exists.
+
+```cairo
+fn request_exists(self: @TContractState, request_hash: u256) -> bool
+```
+
+### get_request
+
+Get request details.
+
+```cairo
+fn get_request(
+    self: @TContractState,
+    request_hash: u256
+) -> (ContractAddress, u256, ByteArray, u64)
+```
+
+**Returns:** Tuple of (validator_address, agent_id, request_uri, timestamp)
+
+## Request Hash Generation
+
+When `request_hash` is set to 0, the contract auto-generates one using Poseidon:
+
+```cairo
+let auto_hash = poseidon_hash_span(
+    array![
+        validator_address.into(),
+        agent_id.low.into(),
+        agent_id.high.into(),
+        // request_uri bytes...
+        caller.into()
+    ].span()
+);
+```
+
+This ensures unique hashes per (validator, agent, requester) tuple.
+
+## Validation Flow
+
+<Steps>
+<Step number={1} title="Agent Owner Requests Validation">
+The agent owner calls `validation_request` specifying:
+- Which validator should assess the agent
+- Details about what to validate (via URI)
+- Optional request hash (or 0 for auto-generation)
+</Step>
+
+<Step number={2} title="Validator Reviews Request">
+The validator:
+- Monitors for `ValidationRequest` events
+- Retrieves request details from `request_uri`
+- Performs the validation assessment
+</Step>
+
+<Step number={3} title="Validator Submits Response">
+The validator calls `validation_response` with:
+- Score (0-100)
+- Detailed report (via URI)
+- Validation category tag
+</Step>
+
+<Step number={4} title="Results Available On-Chain">
+Anyone can now query:
+- Individual validation status
+- Agent's validation summary
+- Filter by validator or category
+</Step>
+</Steps>
+
+## Validator Types
+
+Common validator categories:
+
+| Validator Type | Tag | Description |
+|----------------|-----|-------------|
+| Security Auditor | `security` | Code audits, vulnerability assessments |
+| Performance Tester | `performance` | Benchmarks, load testing |
+| Compliance Checker | `compliance` | Regulatory compliance verification |
+| zkML Verifier | `zkml` | Zero-knowledge ML model verification |
+| TEE Attestor | `tee` | Trusted execution environment attestation |
+| Staker | `stake` | Economic stake-based validation |
+
+## Security Considerations
+
+<Callout type="warning" title="Security Model">
+- **Self-validation prevention** - Validator cannot be the agent owner
+- **Request immutability** - Once created, request hashes cannot be overwritten
+- **Validator authorization** - Only the designated validator can respond
+- **Owner-only requests** - Only agent owner or approved operator can request
+- **Reentrancy guards** - All state-changing functions are protected
+</Callout>
+
+## Complete Example
+
+```typescript
+import { Account, RpcProvider, Contract, CallData, constants } from "starknet";
+
+// Setup
+const provider = new RpcProvider({ nodeUrl: rpcUrl });
+const ownerAccount = new Account(provider, ownerAddress, ownerPrivateKey, undefined, constants.TRANSACTION_VERSION.V3);
+const validatorAccount = new Account(provider, validatorAddress, validatorPrivateKey, undefined, constants.TRANSACTION_VERSION.V3);
+
+// 1. Owner requests security audit
+const { transaction_hash: requestTx } = await ownerAccount.execute({
+  contractAddress: validationRegistryAddress,
+  entrypoint: "validation_request",
+  calldata: CallData.compile({
+    validator_address: validatorAddress,
+    agent_id: agentId,
+    request_uri: "ipfs://QmSecurityAuditRequest",
+    request_hash: 0,
+  }),
+});
+
+const requestReceipt = await ownerAccount.waitForTransaction(requestTx);
+// Parse request_hash from ValidationRequest event
+
+// 2. Validator performs audit and submits response
+await validatorAccount.execute({
+  contractAddress: validationRegistryAddress,
+  entrypoint: "validation_response",
+  calldata: CallData.compile({
+    request_hash: requestHash,
+    response: 95,
+    response_uri: "ipfs://QmSecurityAuditReport",
+    response_hash: reportHash,
+    tag: encodeTag("security"),
+  }),
+});
+
+// 3. Query validation results
+const registry = new Contract(abi, validationRegistryAddress, provider);
+
+// Check specific validation
+const [validator, agentId, score, tag, lastUpdate] =
+  await registry.get_validation_status(requestHash);
+console.log(`Security audit score: ${score}/100`);
+
+// Get agent's overall validation summary
+const [totalCount, avgScore] = await registry.get_summary(agentId, [], 0);
+console.log(`Agent has ${totalCount} validations, average: ${avgScore}/100`);
+
+// Get all validation request hashes for agent
+const requestHashes = await registry.get_agent_validations(agentId);
+console.log(`Total validation requests: ${requestHashes.length}`);
+```
+
+## Use Cases
+
+### Security Audits
+
+Security firms can offer on-chain verifiable audits. Agent owners request audits, auditors publish findings, and users can verify an agent has been audited before trusting it.
+
+### Performance Certification
+
+Performance testing services can certify that agents meet certain benchmarks. The scores remain on-chain as verifiable credentials.
+
+### Compliance Verification
+
+Compliance validators can attest that agents meet regulatory requirements. These attestations are queryable by other parties before engaging with agents.
+
+### Decentralized Validator Networks
+
+Multiple validators can assess the same agent, providing a more robust trust signal through averaged scores and diverse perspectives.

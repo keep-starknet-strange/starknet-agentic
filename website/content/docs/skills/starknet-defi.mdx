@@ -1,0 +1,162 @@
+---
+title: DeFi Skill
+description: Execute token swaps, DCA orders, staking, and DeFi operations
+---
+
+# DeFi Skill
+
+The `starknet-defi` skill enables AI agents to execute DeFi operations on Starknet using the AVNU aggregator. Swap tokens with best-price routing, set up DCA orders, stake STRK, and interact with lending protocols.
+
+<Callout type="tip" title="Best Price Routing">
+AVNU aggregates liquidity across all Starknet DEXs (Ekubo, JediSwap, etc.) to find the optimal route for every swap.
+</Callout>
+
+## Example Usages
+
+<Collapsible title="Execute a token swap" defaultOpen={true}>
+
+**Prompt:**
+> Swap 0.1 ETH for STRK
+
+**AI uses:** `starknet_swap` with sellToken="ETH", buyToken="STRK", amount="0.1"
+
+**Response:**
+> Swap executed successfully!
+> - Sold: 0.1 ETH
+> - Received: 234.56 STRK
+> - Price impact: 0.15%
+> - Transaction: 0x7f3a...
+
+</Collapsible>
+
+<Collapsible title="Get a swap quote">
+
+**Prompt:**
+> Get a quote for swapping 100 USDC to ETH
+
+**AI uses:** `starknet_get_quote` with sellToken="USDC", buyToken="ETH", amount="100"
+
+**Response:**
+> Quote for 100 USDC → ETH:
+> - You'll receive: ~0.0312 ETH
+> - Price impact: 0.08%
+> - Route: 100% via Ekubo
+> - Gas estimate: ~$0.02
+
+</Collapsible>
+
+<Collapsible title="Set up DCA orders">
+
+**Prompt:**
+> Set up a DCA to buy 10 USDC worth of STRK every day for 10 days
+
+**AI uses:** DCA creation with amount, frequency, and duration
+
+**Response:**
+> DCA order created!
+> - Total: 100 USDC over 10 days
+> - Frequency: Daily
+> - Buy: STRK
+> - First order: Scheduled for tomorrow
+
+</Collapsible>
+
+<Collapsible title="Stake STRK">
+
+**Prompt:**
+> Stake 100 STRK
+
+**AI uses:** Staking function with amount
+
+**Response:**
+> Staking complete!
+> - Staked: 100 STRK
+> - Current APY: 8.5%
+> - Transaction: 0x2bc1...
+
+</Collapsible>
+
+<Collapsible title="Check staking APY">
+
+**Prompt:**
+> What's the current APY for STRK staking?
+
+**AI uses:** Staking info query
+
+**Response:**
+> Current STRK staking info:
+> - APY: 8.5%
+> - TVL: 45M STRK
+> - Minimum stake: 1 STRK
+> - Unbonding period: 21 days
+
+</Collapsible>
+
+<Collapsible title="Claim and restake rewards">
+
+**Prompt:**
+> Claim my staking rewards and restake them
+
+**AI uses:** Claim rewards with restake option
+
+**Response:**
+> Rewards claimed and restaked!
+> - Claimed: 12.34 STRK
+> - New staked total: 112.34 STRK
+> - Transaction: 0x9af2...
+
+</Collapsible>
+
+<Collapsible title="View active DCA orders">
+
+**Prompt:**
+> Show me my active DCA orders
+
+**AI uses:** DCA orders query
+
+**Response:**
+> Active DCA orders:
+> 1. USDC → STRK: 5/10 orders complete, next in 18 hours
+> 2. ETH → USDC: 2/7 orders complete, next in 6 hours
+
+</Collapsible>
+
+## MCP Tools
+
+| Tool | Purpose |
+|------|---------|
+| `starknet_swap` | Execute token swap via AVNU |
+| `starknet_get_quote` | Get swap quote without executing |
+
+## Protocol Reference
+
+| Protocol | Operations | Notes |
+|----------|-----------|-------|
+| **AVNU** | Swap aggregation, DCA, gasless | Best-price routing across all DEXs |
+| **Ekubo** | AMM, concentrated liquidity | Highest TVL on Starknet |
+| **JediSwap** | AMM, classic pools | V2 with concentrated liquidity |
+| **zkLend** | Lending, borrowing | Variable and stable rates |
+| **Nostra** | Lending, borrowing | Multi-asset pools |
+
+## AVNU URL Reference
+
+| Network | API URL | Paymaster URL |
+|---------|---------|---------------|
+| Mainnet | `https://starknet.api.avnu.fi` | `https://starknet.paymaster.avnu.fi` |
+| Sepolia | `https://sepolia.api.avnu.fi` | `https://sepolia.paymaster.avnu.fi` |
+
+## Error Handling
+
+| Error | Cause | Resolution |
+|-------|-------|------------|
+| `INSUFFICIENT_BALANCE` | Not enough tokens | Check balance before swap |
+| `SLIPPAGE_EXCEEDED` | Price moved too much | Retry with higher slippage |
+| `QUOTE_EXPIRED` | Quote too old | Get fresh quote |
+| `NO_ROUTES_FOUND` | Can't find swap path | Try different token pair or smaller amount |
+
+## References
+
+- [AVNU SDK Documentation](https://docs.avnu.fi/)
+- [Ekubo Protocol](https://docs.ekubo.org/)
+- [zkLend Documentation](https://docs.zklend.com/)
+- [Nostra Finance](https://docs.nostra.finance/)

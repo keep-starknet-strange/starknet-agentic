@@ -1,0 +1,17 @@
+{
+  "name": "starknet-agentic",
+  "owner": {
+    "name": "keep-starknet-strange"
+  },
+  "metadata": {
+    "description": "Starknet skills for AI agents: wallets, DeFi, identity, payments, and more",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "starknet-skills",
+      "source": "./",
+      "description": "Complete Starknet agent toolkit: wallet management, DeFi operations, on-chain identity, P2P payments, and anonymous transactions"
+    }
+  ]
+}

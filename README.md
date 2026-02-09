@@ -92,6 +92,15 @@ Example:
 npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 ```
 
+## Examples
+
+| Example | Description | Path |
+|---------|-------------|------|
+| [DeFi Agent](./examples/defi-agent/) | Autonomous triangular arbitrage agent with risk management | `examples/defi-agent/` |
+| Hello Agent | Minimal E2E proof of concept | `examples/hello-agent/` |
+
+The **DeFi Agent** is the flagship example demonstrating how to build production-ready autonomous agents on Starknet. It monitors ETH↔STRK prices and executes profitable arbitrage trades.
+
 ## Repository Layout
 
 ```text

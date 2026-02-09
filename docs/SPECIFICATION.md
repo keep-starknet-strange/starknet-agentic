@@ -22,8 +22,10 @@ This specification describes both implemented features and planned designs:
 |-----------|--------|-------|
 | Agent Account Contract | **Tested** | 110 tests across 4 test suites |
 | Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on Sepolia |
+| Huginn Registry Contract | **Functional** | Starknet-native reasoning registry at `contracts/huginn-registry/` |
 | MCP Server | **Production** | 9 tools implemented |
 | A2A Adapter | **Functional** | Basic implementation complete |
+| Skills | **Mixed** | 6 skills in repo (complete + template + onboarding) |
 | Framework Extensions | **Planned** | Deferred to v2.0 |
 
 See [ROADMAP.md](ROADMAP.md) for detailed implementation plan.
@@ -131,7 +133,7 @@ struct SessionPolicy {
 }
 ```
 
-### 3.2 Agent Registry Contract
+### 3.2 Agent Registry Contract (ERC-8004 Core)
 
 Based on ERC-8004, with Starknet-specific enhancements:
 
@@ -140,7 +142,14 @@ Based on ERC-8004, with Starknet-specific enhancements:
 - Integrates with Agent Account contract for automated identity binding
 - Leverages Starknet's native signature verification (SNIP-6)
 
-### 3.3 ERC-8004 Compatibility Matrix (Parity vs Extension)
+### 3.3 Starknet-Only Contract Extensions
+
+In addition to ERC-8004 registries, this repo includes Starknet-native contracts:
+
+- `contracts/agent-account/`: AA-native account contract with session keys, policy enforcement, and timelocked upgrades.
+- `contracts/huginn-registry/`: Starknet-native registry for Huginn integration (outside ERC-8004 core scope).
+
+### 3.4 ERC-8004 Compatibility Matrix (Parity vs Extension)
 
 This section is the in-repo source of truth for ERC-8004 compatibility decisions.
 `Parity` means behavior is intentionally aligned with ERC-8004 Solidity semantics.
@@ -184,7 +193,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
 | `read_all_feedback` | Full dataset read by filters | Full dataset read by filters | Implemented | Parity | O(n) read; use bounded summary for large sets |
 
-### 3.4 Workstream D Note: Cross-Chain Hash Interoperability
+### 3.5 Workstream D Note: Cross-Chain Hash Interoperability
 
 Cross-chain onboarding must assume hash algorithm differences by default:
 
@@ -199,7 +208,7 @@ Recommended convention for cross-chain portability:
 3. Document hash provenance in off-chain metadata (e.g., `hash_algorithm: keccak256|poseidon`) for indexers.
 4. For v1 migration demos, prefer explicit hash injection and deterministic replay-safe signatures over implicit auto-hash paths.
 
-### 3.5 Operational Notes (Validation/Reputation)
+### 3.6 Operational Notes (Validation/Reputation)
 
 - Progressive overwrite behavior:
   - `validation_response` is latest-state storage by design.
@@ -211,7 +220,7 @@ Recommended convention for cross-chain portability:
   - On large datasets, clients should prefer paginated summary functions (`get_summary_paginated`) and bounded off-chain indexing.
   - Avoid relying on unbounded full-array reads for latency-sensitive production paths.
 
-### 3.6 Contract Deployment Plan
+### 3.7 Contract Deployment Plan
 
 1. Deploy IdentityRegistry (standalone)
 2. Deploy ReputationRegistry (links to IdentityRegistry)
@@ -219,31 +228,45 @@ Recommended convention for cross-chain portability:
 4. Deploy AgentAccount class (template for new agent wallets)
 5. Create factory for deploying new AgentAccount instances linked to the registry
 
+### 3.8 Huginn Registry Semantics (v1)
+
+This section clarifies v1 invariants for `contracts/huginn-registry/`:
+
+- Verifier mutability:
+  - The verifier address is constructor-set and immutable in v1.
+  - If verifier logic must change, deploy a new registry instance and migrate clients.
+
+- Proof record invariant:
+  - Invalid proofs revert and are not stored.
+  - Therefore stored records satisfy: `submitted => verified = true`.
+  - `verified = false` is not a persisted runtime state in v1.
+  - `proof_exists(thought_hash)` should be used by clients for explicit existence checks.
+  - Proof payloads are bounded (`MAX_PROOF_WORDS`) to avoid oversized calldata/hash/verifier griefing.
+
+- Ownership and replay:
+  - First logger of a `thought_hash` becomes canonical thought owner.
+  - Same owner may re-log idempotently; different owner is rejected.
+  - Only thought owner can submit proof for that hash.
+  - One submitted proof per `thought_hash` (replay blocked).
+  - Tradeoff: first-logger semantics can be front-run if `thought_hash` is predictable. Clients should include caller-specific salting/domain separation in hash construction.
+
 ## 4. MCP Server
 
 **Status:** Production-ready at `packages/starknet-mcp-server/` (1,600+ lines, 9 tools implemented).
 
 ### 4.1 Tool Definitions
 
-Each tool follows the MCP tool schema:
+Current registered tool inventory in `packages/starknet-mcp-server/src/index.ts`:
 
-```typescript
-{
-  name: "starknet_swap",
-  description: "Execute a token swap on Starknet using avnu aggregator",
-  inputSchema: {
-    type: "object",
-    properties: {
-      sellToken: { type: "string", description: "Address of token to sell" },
-      buyToken: { type: "string", description: "Address of token to buy" },
-      amount: { type: "string", description: "Amount to sell in wei" },
-      slippage: { type: "number", description: "Max slippage (0.01 = 1%)", default: 0.01 },
-      gasless: { type: "boolean", description: "Use paymaster for gas", default: false },
-    },
-    required: ["sellToken", "buyToken", "amount"],
-  },
-}
-```
+1. `starknet_get_balance`
+2. `starknet_get_balances`
+3. `starknet_transfer`
+4. `starknet_call_contract`
+5. `starknet_invoke_contract`
+6. `starknet_swap`
+7. `starknet_get_quote`
+8. `starknet_estimate_fee`
+9. `x402_starknet_sign_payment_required`
 
 ### 4.2 Transport
 
@@ -298,9 +321,30 @@ A2A tasks map to Starknet transactions:
 | `failed` | Transaction reverted |
 | `canceled` | Not applicable (immutable) |
 
+### 5.3 Package Classification (Infrastructure vs Application)
+
+Current monorepo packages:
+
+| Package | Role | Layer |
+|---------|------|-------|
+| `starknet-mcp-server` | Tool execution surface (MCP) | Core infrastructure |
+| `starknet-a2a` | A2A protocol adapter | Core infrastructure |
+| `starknet-agent-passport` | ERC-8004 identity helper/ABI wrapper | Core infrastructure |
+| `x402-starknet` | x402 payment integration | Core infrastructure |
+| `prediction-arb-scanner` | Prediction-market scanner application | App-layer package |
+
 ## 6. Skills Marketplace
 
-**Status:** 5 skills in `skills/` directory. 3 complete (wallet, mini-pay, anonymous-wallet), 2 templates (defi, identity).
+**Status:** 6 skills in `skills/` directory.
+
+Current skill directories:
+
+- `huginn-onboard`
+- `starknet-anonymous-wallet`
+- `starknet-defi`
+- `starknet-identity`
+- `starknet-mini-pay`
+- `starknet-wallet`
 
 ### 6.1 Skill Directory Structure
 
@@ -328,7 +372,7 @@ user-invocable: boolean # Can users explicitly invoke
 ---
 ```
 
-### 6.3 Planned Skills
+### 6.3 Planned Additional Skills
 
 | Skill | Description | Priority |
 |-------|-------------|----------|

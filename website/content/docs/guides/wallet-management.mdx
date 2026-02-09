@@ -1,0 +1,117 @@
+---
+title: Wallet Management
+description: Manage Starknet wallets, check balances, and transfer tokens
+---
+
+import { Callout } from "@/components/docs";
+
+# Wallet Management
+
+This guide covers the essentials of wallet operations on Starknet for AI agents. For complete API details and code examples, see the [Wallet Skill documentation](/docs/skills/starknet-wallet).
+
+## Overview
+
+Starknet's native Account Abstraction means every wallet is a smart contract. This enables powerful features for AI agents:
+
+| Feature | Description |
+|---------|-------------|
+| **Custom Validation** | Define spending rules, rate limits, and approval workflows |
+| **Session Keys** | Grant temporary, scoped permissions to agents |
+| **Paymaster Support** | Pay gas in any token or have it sponsored |
+| **Multi-call** | Execute multiple operations atomically |
+
+## Core Operations
+
+### Check Balances
+
+Query single or multiple token balances:
+
+```typescript
+// Single token
+const result = await mcpClient.callTool({
+  name: "starknet_get_balance",
+  arguments: {
+    address: "0x...",
+    token: "ETH", // ETH, STRK, USDC, USDT, or contract address
+  }
+});
+
+// Multiple tokens (batch)
+const result = await mcpClient.callTool({
+  name: "starknet_get_balances",
+  arguments: {
+    address: "0x...",
+    tokens: ["ETH", "STRK", "USDC"],
+  }
+});
+```
+
+### Transfer Tokens
+
+Send tokens with optional gasless mode:
+
+```typescript
+const result = await mcpClient.callTool({
+  name: "starknet_transfer",
+  arguments: {
+    recipient: "0x...",
+    token: "STRK",
+    amount: "10.5",
+    gasfree: true,      // Optional: use paymaster
+    gasToken: "USDC",   // Optional: pay gas in USDC
+  }
+});
+```
+
+### Contract Interactions
+
+Read state or execute transactions:
+
+```typescript
+// Read (view function)
+await mcpClient.callTool({
+  name: "starknet_call_contract",
+  arguments: {
+    contractAddress: "0x...",
+    entrypoint: "balanceOf",
+    calldata: [accountAddress],
+  }
+});
+
+// Write (transaction)
+await mcpClient.callTool({
+  name: "starknet_invoke_contract",
+  arguments: {
+    contractAddress: "0x...",
+    entrypoint: "approve",
+    calldata: [spenderAddress, ...amount],
+  }
+});
+```
+
+## Session Keys for Agents
+
+Session keys enable autonomous agent operation within defined guardrails:
+
+1. **Owner creates session key** with policies (allowed methods, spending limits, expiry)
+2. **Agent operates** using the session key
+3. **Owner can revoke** at any time
+
+<Callout type="info" title="Reference Implementation">
+See [Cartridge Controller](https://docs.cartridge.gg/controller/getting-started) for the production session key implementation on Starknet.
+</Callout>
+
+## Token Addresses
+
+| Token | Mainnet Address |
+|-------|-----------------|
+| ETH | `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7` |
+| STRK | `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d` |
+| USDC | `0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8` |
+| USDT | `0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8` |
+
+## Next Steps
+
+- **[Wallet Skill Reference](/docs/skills/starknet-wallet)** - Complete API documentation with all MCP tools, error codes, and advanced examples
+- **[MCP Server Setup](/docs/guides/mcp-server)** - Configure your AI assistant to use wallet tools
+- **[DeFi Operations](/docs/guides/defi-operations)** - Execute swaps and staking

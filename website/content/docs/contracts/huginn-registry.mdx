@@ -1,0 +1,335 @@
+---
+title: Huginn Registry
+description: On-chain thought provenance and ZK proof verification for AI agents
+---
+
+import { Callout, Steps, Step } from "@/components/docs";
+
+# Huginn Registry
+
+The **HuginnRegistry** is a thought provenance contract that enables AI agents to log their reasoning on-chain and submit zero-knowledge proofs of computation. Named after Odin's raven Huginn (meaning "thought"), it creates an immutable record of agent cognition.
+
+<Callout type="warning" title="Proof Verification Not Yet Implemented">
+The `prove_thought` function is currently fail-closed, meaning it asserts false and never records `verified=true`. This is intentional until the STWO verifier integration is complete. Thoughts can still be logged and indexed off-chain.
+</Callout>
+
+## Overview
+
+The HuginnRegistry provides:
+
+- **Agent registration** - Register agents with name and metadata URL
+- **Thought logging** - Record thought hashes on-chain for provenance
+- **Proof submission** - Submit ZK proofs for thought verification (pending STWO integration)
+- **Event-based indexing** - Norse mythology themed events for off-chain indexing
+
+## Data Structures
+
+### AgentProfile
+
+Represents a registered agent.
+
+```cairo
+pub struct AgentProfile {
+    pub name: felt252,           // Agent name (short identifier)
+    pub metadata_url: ByteArray, // URL to full agent metadata
+    pub registered_at: u64,      // Unix timestamp of registration
+}
+```
+
+### Proof
+
+Represents a proof submission for a thought.
+
+```cairo
+pub struct Proof {
+    pub thought_hash: u256,      // Hash of the thought being proven
+    pub proof_hash: felt252,     // Hash of the submitted proof
+    pub verified: bool,          // Whether proof passed verification
+    pub agent_id: ContractAddress, // Agent who submitted the proof
+}
+```
+
+## Events
+
+### OdinEye
+
+Emitted when an agent registers (Odin's all-seeing eye watches).
+
+```cairo
+pub struct OdinEye {
+    #[key]
+    pub agent_id: ContractAddress,
+    pub name: felt252,
+    pub metadata_url: ByteArray,
+}
+```
+
+### RavenFlight
+
+Emitted when a thought is logged (the raven carries the thought).
+
+```cairo
+pub struct RavenFlight {
+    #[key]
+    pub agent_id: ContractAddress,
+    #[key]
+    pub thought_hash: u256,
+    pub timestamp: u64,
+}
+```
+
+### MimirWisdom
+
+Emitted when a proof is submitted (Mimir judges the wisdom).
+
+```cairo
+pub struct MimirWisdom {
+    #[key]
+    pub agent_id: ContractAddress,
+    #[key]
+    pub thought_hash: u256,
+    pub verified: bool,
+    pub proof_hash: felt252,
+}
+```
+
+## Interface
+
+### IHuginnRegistry
+
+```cairo
+#[starknet::interface]
+pub trait IHuginnRegistry<TContractState> {
+    // Agent registration
+    fn register_agent(
+        ref self: TContractState,
+        name: felt252,
+        metadata_url: ByteArray
+    );
+
+    // Thought logging
+    fn log_thought(ref self: TContractState, thought_hash: u256);
+
+    // Proof submission (fail-closed until STWO integration)
+    fn prove_thought(
+        ref self: TContractState,
+        thought_hash: u256,
+        proof: Span<felt252>
+    );
+
+    // Query functions
+    fn get_agent(
+        self: @TContractState,
+        agent_id: ContractAddress
+    ) -> (felt252, ByteArray);
+}
+```
+
+## Functions
+
+### register_agent
+
+Register an agent with the Huginn registry.
+
+```cairo
+fn register_agent(ref self: TContractState, name: felt252, metadata_url: ByteArray)
+```
+
+**Parameters:**
+- `name` - Short agent identifier (felt252)
+- `metadata_url` - URL to full agent metadata (IPFS, Arweave, etc.)
+
+**Events:** Emits `OdinEye`
+
+**Example:**
+
+```typescript
+import { Account, CallData, constants } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
+const account = new Account(
+  { nodeUrl: provider },
+  accountAddress,
+  privateKey,
+  undefined,
+  constants.TRANSACTION_VERSION.V3
+);
+
+await account.execute({
+  contractAddress: huginnRegistryAddress,
+  entrypoint: "register_agent",
+  calldata: CallData.compile({
+    name: "0x4465466941676e74", // "DefiAgent" as felt
+    metadata_url: "ipfs://QmAgentMetadata",
+  }),
+});
+```
+
+### log_thought
+
+Log a thought hash on-chain for provenance.
+
+```cairo
+fn log_thought(ref self: TContractState, thought_hash: u256)
+```
+
+**Parameters:**
+- `thought_hash` - Hash of the thought/reasoning to log (Poseidon recommended)
+
+**Events:** Emits `RavenFlight`
+
+**Example:**
+
+```typescript
+import { hash } from "starknet";
+
+// Hash the thought content
+const thoughtContent = "Analyzed market conditions. Recommend swap USDC->ETH.";
+const thoughtHash = hash.computePoseidonHashOnElements([
+  ...thoughtContent.split('').map(c => BigInt(c.charCodeAt(0)))
+]);
+
+await account.execute({
+  contractAddress: huginnRegistryAddress,
+  entrypoint: "log_thought",
+  calldata: CallData.compile({
+    thought_hash: { low: thoughtHash, high: 0 },
+  }),
+});
+```
+
+### prove_thought
+
+Submit a ZK proof for a thought.
+
+```cairo
+fn prove_thought(ref self: TContractState, thought_hash: u256, proof: Span<felt252>)
+```
+
+**Parameters:**
+- `thought_hash` - Hash of the thought being proven
+- `proof` - ZK proof data (format TBD pending STWO integration)
+
+**Events:** Emits `MimirWisdom`
+
+<Callout type="error" title="Fail-Closed">
+This function currently asserts false with message "Verification not implemented". It will never record `verified=true` until the STWO verifier is integrated.
+</Callout>
+
+### get_agent
+
+Query an agent's profile.
+
+```cairo
+fn get_agent(self: @TContractState, agent_id: ContractAddress) -> (felt252, ByteArray)
+```
+
+**Parameters:**
+- `agent_id` - Agent's contract address
+
+**Returns:** Tuple of (name, metadata_url)
+
+## Use Cases
+
+### Reasoning Provenance
+
+Agents can log each step of their reasoning process, creating an immutable audit trail:
+
+```typescript
+// Agent reasoning flow
+const thoughts = [
+  "Received user request: swap 100 USDC to ETH",
+  "Checking current prices via avnu...",
+  "Best rate: 0.0284 ETH per USDC",
+  "Executing swap with 1% slippage tolerance",
+];
+
+for (const thought of thoughts) {
+  const thoughtHash = hashThought(thought);
+  await logThought(huginnRegistry, thoughtHash);
+}
+```
+
+### Verifiable AI
+
+Once STWO integration is complete, agents can prove their computations were performed correctly:
+
+```typescript
+// Future: submit ZK proof of computation
+await account.execute({
+  contractAddress: huginnRegistryAddress,
+  entrypoint: "prove_thought",
+  calldata: CallData.compile({
+    thought_hash: thoughtHash,
+    proof: stwoproof,
+  }),
+});
+```
+
+### Off-Chain Indexing
+
+Use events for off-chain indexing and analysis:
+
+```typescript
+// Index RavenFlight events
+const events = await provider.getEvents({
+  address: huginnRegistryAddress,
+  keys: [
+    hash.getSelectorFromName("RavenFlight"),
+    agentAddress, // Filter by agent
+  ],
+});
+
+// Build thought timeline
+for (const event of events.events) {
+  console.log(`Thought ${event.data[0]} at ${event.data[1]}`);
+}
+```
+
+## Architecture
+
+```text
++-------------------------------------------------------------+
+|                     Huginn Registry                         |
++-------------------------------------------------------------+
+|  +-------------------+   +-------------------+               |
+|  |   Agent Profiles  |   |   Thought Proofs  |               |
+|  |   (by address)    |   |  (by thought_hash)|               |
+|  +-------------------+   +-------------------+               |
++-------------------------------------------------------------+
+|  Operations:                                                 |
+|  - register_agent() -> OdinEye event                        |
+|  - log_thought() -> RavenFlight event                       |
+|  - prove_thought() -> MimirWisdom event (fail-closed)       |
++-------------------------------------------------------------+
+|  Future: STWO Verifier Integration                          |
+|  - ZK proof verification for agent reasoning                |
+|  - Trustless computation attestation                        |
++-------------------------------------------------------------+
+```
+
+## Roadmap
+
+<Steps>
+<Step number={1} title="Basic Registry">
+Agent registration and thought logging (complete).
+</Step>
+
+<Step number={2} title="Event Indexing">
+Off-chain indexer for thought provenance queries.
+</Step>
+
+<Step number={3} title="STWO Integration">
+ZK proof verification for agent computations.
+</Step>
+
+<Step number={4} title="Cross-Agent Verification">
+Agents verifying each other's reasoning chains.
+</Step>
+</Steps>
+
+## Related Documentation
+
+- [Agent Account](/docs/contracts/agent-account) - Smart contract account for agents
+- [ERC-8004 Overview](/docs/contracts/erc-8004-overview) - Agent identity standard
+- [Identity Registry](/docs/contracts/identity-registry) - Agent NFT registration

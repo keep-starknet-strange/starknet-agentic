@@ -57,6 +57,47 @@
   .section-padding {
     @apply px-6 md:px-12 lg:px-20 py-20 md:py-28;
   }
+
+  /* Documentation prose styles */
+  .prose-neo {
+    @apply text-neo-dark/80;
+  }
+
+  .prose-neo h2 {
+    @apply text-2xl font-heading font-semibold text-neo-dark mt-10 mb-4 pb-2 border-b border-neo-dark/10;
+  }
+
+  .prose-neo h3 {
+    @apply text-xl font-heading font-semibold text-neo-dark mt-8 mb-3;
+  }
+
+  .prose-neo p {
+    @apply leading-relaxed mb-4;
+  }
+
+  .prose-neo ul {
+    @apply list-disc list-inside space-y-2 mb-4 pl-2;
+  }
+
+  .prose-neo ol {
+    @apply list-decimal list-inside space-y-2 mb-4 pl-2;
+  }
+
+  .prose-neo a {
+    @apply text-neo-purple hover:text-neo-purple/80 underline underline-offset-2 transition-colors;
+  }
+
+  .prose-neo code:not(pre code) {
+    @apply bg-neo-dark/5 text-neo-dark px-1.5 py-0.5 rounded text-sm font-mono border border-neo-dark/10;
+  }
+
+  .prose-neo pre {
+    @apply bg-[#0d1117] text-gray-100 rounded-lg p-4 overflow-x-auto my-6 text-sm font-mono border-2 border-black shadow-neo;
+  }
+
+  .prose-neo blockquote {
+    @apply border-l-4 border-neo-yellow pl-4 py-2 my-4 bg-neo-yellow/5 italic text-neo-dark/70;
+  }
 }
 
 @layer utilities {
@@ -122,4 +163,17 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* Force monospace font on code blocks - override shiki inline styles */
+.prose-neo pre,
+.prose-neo pre code,
+.prose-neo pre span {
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
+  letter-spacing: 0 !important;
+  word-spacing: 0 !important;
+  font-variant-ligatures: none !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }

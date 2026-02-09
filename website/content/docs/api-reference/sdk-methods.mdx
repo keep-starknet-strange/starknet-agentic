@@ -1,0 +1,66 @@
+---
+title: SDK Methods
+description: TypeScript SDK reference for Starknet Agentic
+---
+
+import { Callout } from "@/components/docs";
+
+# SDK Methods
+
+<Callout type="warning" title="Coming Soon">
+The unified TypeScript SDK is currently in development. This page will document the SDK methods once released.
+</Callout>
+
+## Current Options
+
+While the unified SDK is being developed, you can use these existing tools:
+
+### MCP Server
+
+The MCP server provides the most complete interface for AI agents. See the [MCP Tools Reference](/docs/api-reference/mcp-tools) for all available tools:
+
+- Balance queries (`starknet_get_balance`, `starknet_get_balances`)
+- Token transfers (`starknet_transfer`)
+- DeFi operations (`starknet_get_quote`, `starknet_swap`)
+- Contract interactions (`starknet_call_contract`, `starknet_invoke_contract`)
+
+### A2A Adapter
+
+For agent-to-agent communication, see the [A2A Protocol Reference](/docs/api-reference/a2a-protocol):
+
+- Agent Card generation
+- Discovery via `/.well-known/agent.json`
+- Task tracking for transactions
+
+### Direct starknet.js
+
+For custom integrations, use starknet.js directly:
+
+```typescript
+import { Account, RpcProvider, Contract } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
+const account = new Account(provider, address, privateKey);
+
+// Execute transactions
+const { transaction_hash } = await account.execute({
+  contractAddress: "0x...",
+  entrypoint: "transfer",
+  calldata: [...],
+});
+```
+
+## Planned SDK Features
+
+The unified SDK will provide:
+
+- **Wallet abstraction** - Simplified balance, transfer, and contract interaction APIs
+- **DeFi helpers** - High-level swap and staking functions with built-in quote fetching
+- **Identity management** - ERC-8004 registration and reputation queries
+- **Session key support** - Easy session key creation and management
+- **Paymaster integration** - Gasless transaction support
+
+## Stay Updated
+
+- Watch the [GitHub repository](https://github.com/keep-starknet-strange/starknet-agentic) for SDK releases
+- Join the discussion on [Telegram](https://t.me/starknet_agentic)

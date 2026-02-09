@@ -1,0 +1,476 @@
+---
+title: MCP Server Setup
+description: Connect AI assistants to Starknet using the Model Context Protocol
+---
+
+import { Callout, Steps, Step, Collapsible } from "@/components/docs";
+
+# MCP Server Setup
+
+The Starknet MCP Server enables AI assistants to interact with Starknet through the **Model Context Protocol (MCP)**. Once configured, your AI can check balances, execute swaps, transfer tokens, and call smart contracts.
+
+## What is MCP?
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open standard developed by Anthropic that allows AI assistants to connect to external data sources and tools. Instead of the AI generating code that you run manually, MCP lets the AI execute operations directly.
+
+**Traditional Approach:**
+```
+You: "Transfer 10 USDC to 0x123..."
+AI: "Here's the code to do that: ..."
+You: *copy, paste, run code manually*
+```
+
+**With MCP:**
+```
+You: "Transfer 10 USDC to 0x123..."
+AI: *executes starknet_transfer tool*
+AI: "Done! Transaction hash: 0xabc..."
+```
+
+## Why Starknet + MCP?
+
+Starknet's native account abstraction makes it ideal for AI agent operations:
+
+| Feature | Benefit |
+|---------|---------|
+| **Account Abstraction** | Every account is a smart contract with custom validation logic |
+| **Session Keys** | Temporary keys with spending limits and time bounds |
+| **Paymaster Support** | Gas fees paid in any token, or sponsored entirely |
+| **Low Fees** | Execute complex operations affordably |
+| **V3 Transactions** | Modern transaction format with STRK fee payments |
+
+## Architecture
+
+```text
++-------------------------------------------------------------+
+|                      AI Assistant                           |
+|            (Claude, Cursor, ChatGPT, etc.)                  |
++-----------------------------+-------------------------------+
+                              | MCP Protocol (stdio)
+                              v
++-------------------------------------------------------------+
+|                   Starknet MCP Server                       |
+|                                                             |
+|   +-------------+  +-------------+  +-------------+         |
+|   |   Balance   |  |  Transfer   |  |    Swap     |         |
+|   |    Tools    |  |    Tool     |  |    Tools    |         |
+|   +------+------+  +------+------+  +------+------+         |
+|          |                |                |                |
+|   +------+----------------+----------------+------+         |
+|   |            Token Service (caching)            |         |
+|   +------------------------+----------------------+         |
++----------------------------|--------------------------------+
+                             |
+            +----------------+----------------+
+            |                |                |
+            v                v                v
+      +----------+     +----------+     +----------+
+      | Starknet |     |   avnu   |     | Balance  |
+      |   RPC    |     |   API    |     | Checker  |
+      +----------+     +----------+     +----------+
+```
+
+## Prerequisites
+
+Before configuring any AI client, you need:
+
+1. **Node.js 18+** - [Download](https://nodejs.org/)
+2. **A Starknet Account** - With private key access
+3. **RPC Endpoint** - From [Alchemy](https://www.alchemy.com/), [Infura](https://infura.io/), or [Blast](https://blastapi.io/)
+4. **The MCP Server Built** - See installation below
+
+## Installation
+
+<Steps>
+<Step number={1} title="Clone the repository">
+
+```bash
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+cd starknet-agentic
+```
+
+</Step>
+
+<Step number={2} title="Install dependencies">
+
+```bash
+pnpm install
+```
+
+</Step>
+
+<Step number={3} title="Build the MCP server">
+
+```bash
+pnpm build
+```
+
+The built server will be at `packages/starknet-mcp-server/dist/index.js`.
+
+</Step>
+
+<Step number={4} title="Note the absolute path">
+
+You'll need the full path to the server for configuration:
+
+```bash
+# Get the absolute path
+echo "$(pwd)/packages/starknet-mcp-server/dist/index.js"
+```
+
+</Step>
+</Steps>
+
+## Configuration
+
+Choose your AI assistant below:
+
+### Claude Desktop
+
+<Callout type="info" title="Config Location">
+  **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+  **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+  **Linux:** `~/.config/Claude/claude_desktop_config.json`
+</Callout>
+
+Create or edit the config file:
+
+```json
+{
+  "mcpServers": {
+    "starknet": {
+      "command": "node",
+      "args": ["/absolute/path/to/starknet-agentic/packages/starknet-mcp-server/dist/index.js"],
+      "env": {
+        "STARKNET_RPC_URL": "https://starknet-sepolia.g.alchemy.com/v2/YOUR_API_KEY",
+        "STARKNET_ACCOUNT_ADDRESS": "0x0123456789abcdef...",
+        "STARKNET_PRIVATE_KEY": "0x..."
+      }
+    }
+  }
+}
+```
+
+<Callout type="warning" title="Security">
+  The private key is stored in plaintext. For production, consider using environment variables or a secrets manager.
+</Callout>
+
+**Restart Claude Desktop** after saving the config. You should see "starknet" appear in the MCP servers list.
+
+### Claude Code (CLI)
+
+Claude Code reads MCP configuration from `.mcp.json` in your project or home directory.
+
+<Callout type="info" title="Config Location">
+  **Project-level:** `.mcp.json` in your project root
+
+  **Global:** `~/.mcp.json` in your home directory
+</Callout>
+
+Create `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "starknet": {
+      "command": "node",
+      "args": ["/absolute/path/to/starknet-agentic/packages/starknet-mcp-server/dist/index.js"],
+      "env": {
+        "STARKNET_RPC_URL": "https://starknet-sepolia.g.alchemy.com/v2/YOUR_API_KEY",
+        "STARKNET_ACCOUNT_ADDRESS": "0x0123456789abcdef...",
+        "STARKNET_PRIVATE_KEY": "0x..."
+      }
+    }
+  }
+}
+```
+
+The server connects automatically when Claude Code starts. Verify with:
+
+```bash
+claude /mcp
+```
+
+### Cursor
+
+Cursor supports MCP through its settings.
+
+<Steps>
+<Step number={1} title="Open Cursor Settings">
+
+Press `Cmd+,` (macOS) or `Ctrl+,` (Windows/Linux), then search for "MCP".
+
+</Step>
+
+<Step number={2} title="Add MCP Server">
+
+In the MCP configuration section, add:
+
+```json
+{
+  "starknet": {
+    "command": "node",
+    "args": ["/absolute/path/to/starknet-agentic/packages/starknet-mcp-server/dist/index.js"],
+    "env": {
+      "STARKNET_RPC_URL": "https://starknet-sepolia.g.alchemy.com/v2/YOUR_API_KEY",
+      "STARKNET_ACCOUNT_ADDRESS": "0x...",
+      "STARKNET_PRIVATE_KEY": "0x..."
+    }
+  }
+}
+```
+
+</Step>
+
+<Step number={3} title="Restart Cursor">
+
+Restart the editor to load the MCP server.
+
+</Step>
+</Steps>
+
+### ChatGPT Desktop
+
+ChatGPT desktop app now natively supports MCP. OpenAI adopted MCP in March 2025 and integrated it across their products.
+
+<Callout type="info" title="Native MCP Support">
+  ChatGPT desktop has built-in MCP support. See the [OpenAI MCP documentation](https://developers.openai.com/codex/mcp/) for configuration instructions.
+</Callout>
+
+### VS Code with Continue
+
+[Continue](https://continue.dev/) is an open-source AI code assistant that supports MCP.
+
+Edit `~/.continue/config.json`:
+
+```json
+{
+  "mcpServers": [
+    {
+      "name": "starknet",
+      "command": "node",
+      "args": ["/absolute/path/to/starknet-agentic/packages/starknet-mcp-server/dist/index.js"],
+      "env": {
+        "STARKNET_RPC_URL": "https://starknet-sepolia.g.alchemy.com/v2/YOUR_API_KEY",
+        "STARKNET_ACCOUNT_ADDRESS": "0x...",
+        "STARKNET_PRIVATE_KEY": "0x..."
+      }
+    }
+  ]
+}
+```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `STARKNET_RPC_URL` | Yes | Starknet JSON-RPC endpoint |
+| `STARKNET_ACCOUNT_ADDRESS` | Yes | Your Starknet account address |
+| `STARKNET_PRIVATE_KEY` | Yes | Private key for signing transactions |
+| `AVNU_BASE_URL` | No | avnu API URL (defaults to mainnet) |
+| `AVNU_PAYMASTER_URL` | No | avnu Paymaster URL for gasfree transactions |
+| `AVNU_PAYMASTER_API_KEY` | No | API key for sponsored (fully gasless) transactions |
+
+### Network Configuration
+
+**Mainnet (default):**
+```bash
+STARKNET_RPC_URL=https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY
+AVNU_BASE_URL=https://starknet.api.avnu.fi
+AVNU_PAYMASTER_URL=https://starknet.paymaster.avnu.fi
+```
+
+**Sepolia Testnet:**
+```bash
+STARKNET_RPC_URL=https://starknet-sepolia.g.alchemy.com/v2/YOUR_KEY
+AVNU_BASE_URL=https://sepolia.api.avnu.fi
+AVNU_PAYMASTER_URL=https://sepolia.paymaster.avnu.fi
+```
+
+## Gasfree Transactions
+
+The MCP server supports **gasfree mode** where transaction fees are paid in ERC-20 tokens instead of requiring ETH/STRK for gas.
+
+### User-Pays Mode (No API Key)
+
+Without an API key, users pay gas in their chosen token:
+
+```
+"Transfer 10 USDC to 0x123... using gasfree mode"
+```
+
+The server will deduct a small amount of USDC (or specified gasToken) to cover fees.
+
+### Sponsored Mode (With API Key)
+
+With `AVNU_PAYMASTER_API_KEY`, the dApp sponsor pays all gas fees:
+
+```
+"Swap 100 USDC to ETH with gasfree enabled"
+```
+
+The user pays nothing for gas—the API key holder covers the cost.
+
+## Verifying the Connection
+
+After configuration, test the connection:
+
+**In Claude Desktop/Claude Code:**
+> Check my ETH balance on Starknet
+
+**Expected response:**
+> Using starknet_get_balance tool...
+> Your ETH balance is 0.5 ETH (500000000000000000 wei)
+
+**In Cursor:**
+Open the AI chat and ask:
+> What's my STRK balance?
+
+## Available Tools
+
+The MCP server exposes 9 tools:
+
+| Tool | Description |
+|------|-------------|
+| `starknet_get_balance` | Get single token balance |
+| `starknet_get_balances` | Get multiple token balances (batch) |
+| `starknet_transfer` | Transfer tokens to another address |
+| `starknet_swap` | Swap tokens via avnu aggregator |
+| `starknet_get_quote` | Get swap quote without executing |
+| `starknet_call_contract` | Call read-only contract function |
+| `starknet_invoke_contract` | Execute state-changing contract function |
+| `starknet_estimate_fee` | Estimate transaction fee |
+| `x402_starknet_sign_payment_required` | Sign X-402 payment header |
+
+For complete parameter documentation, see the [MCP Tools Reference](/docs/api-reference/mcp-tools).
+
+## Example Interactions
+
+<Collapsible title="Check multiple balances" defaultOpen={true}>
+
+**Prompt:**
+> Show me my ETH, STRK, and USDC balances
+
+**AI uses:** `starknet_get_balances` with tokens `["ETH", "STRK", "USDC"]`
+
+**Response:**
+> Here are your balances:
+> - ETH: 0.5 ETH
+> - STRK: 1,234.56 STRK
+> - USDC: 100.00 USDC
+
+</Collapsible>
+
+<Collapsible title="Execute a token swap">
+
+**Prompt:**
+> Swap 50 USDC for ETH with 1% slippage
+
+**AI uses:** `starknet_swap` with sellToken="USDC", buyToken="ETH", amount="50", slippage=0.01
+
+**Response:**
+> Swap executed successfully!
+> - Sold: 50 USDC
+> - Received: 0.0142 ETH
+> - Transaction: 0x7f3a...
+
+</Collapsible>
+
+<Collapsible title="Transfer tokens">
+
+**Prompt:**
+> Send 25 STRK to 0x04f3e8d17b41b1e82b13...
+
+**AI uses:** `starknet_transfer` with recipient, token="STRK", amount="25"
+
+**Response:**
+> Transfer complete!
+> - Sent: 25 STRK
+> - To: 0x04f3e8d17b41b1e82b13...
+> - Transaction: 0x2bc1...
+
+</Collapsible>
+
+<Collapsible title="Call a contract (read-only)">
+
+**Prompt:**
+> Read the name of token contract 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7
+
+**AI uses:** `starknet_call_contract` with entrypoint="name"
+
+**Response:**
+> The token name is "Ether"
+
+</Collapsible>
+
+## Troubleshooting
+
+<Collapsible title="Server not appearing in Claude Desktop">
+
+1. Check the config file path is correct for your OS
+2. Verify the JSON is valid (no trailing commas)
+3. Ensure the `args` path is absolute, not relative
+4. Restart Claude Desktop completely (quit, not just close window)
+
+</Collapsible>
+
+<Collapsible title="'Cannot find module' error">
+
+The server hasn't been built. Run:
+
+```bash
+cd starknet-agentic
+pnpm install
+pnpm build
+```
+
+</Collapsible>
+
+<Collapsible title="'Invalid account address' error">
+
+Your `STARKNET_ACCOUNT_ADDRESS` must be:
+- A hex string starting with `0x`
+- A valid Starknet address (typically 64 hex characters after 0x)
+
+</Collapsible>
+
+<Collapsible title="'Invalid private key' error">
+
+Your `STARKNET_PRIVATE_KEY` must be:
+- A hex string starting with `0x`
+- The actual private key, not a seed phrase
+
+</Collapsible>
+
+<Collapsible title="RPC connection errors">
+
+- Verify your `STARKNET_RPC_URL` is correct
+- Check your API key is valid and not rate-limited
+- Ensure you're using the right network (mainnet vs sepolia)
+
+</Collapsible>
+
+<Collapsible title="Swap fails with 'No routes found'">
+
+The avnu aggregator couldn't find a path between tokens. This can happen with:
+- Very low liquidity token pairs
+- Tokens not listed on any DEX
+- Extremely large swap amounts
+
+Try a smaller amount or different token pair.
+
+</Collapsible>
+
+<Collapsible title="'Insufficient balance' for gasfree">
+
+Even in gasfree mode, you need enough of the gasToken (or the token being sold) to cover the fee portion. Check your balance of the gas payment token.
+
+</Collapsible>
+
+## Next Steps
+
+- [MCP Tools Reference](/docs/api-reference/mcp-tools) - Complete tool documentation
+- [DeFi Operations](/docs/guides/defi-operations) - Swaps, liquidity, yield strategies
+- [Agent Identity](/docs/guides/agent-identity) - Register your agent on-chain with ERC-8004

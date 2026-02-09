@@ -18,38 +18,34 @@ Core infrastructure features required for v1.0 release. MVP definition: MCP serv
 
 ---
 
-### 1.0 ~~Upgrade starknet.js to v8 Across All Packages~~ DONE
-
-All TypeScript packages are already standardized on starknet.js ^8.9.1.
-
----
-
-### 1.1 ~~Enable and Write MCP Server Tests~~ DONE
-
-MCP server tests are fully implemented with 7 test files covering handlers, tools, services, providers, and utils. Vitest is configured with 80% coverage thresholds.
-
----
-
 ### 1.2 Publish Skills to Distribution Channels
 
-**Description**: Publish all complete skills to GitHub, ClawHub, and npm for maximum distribution.
+**Description**: Publish all complete skills to GitHub, ClawHub, and other channels for maximum distribution.
 
 **Requirements**:
-- [ ] Create npm packages for each skill (as installable dependencies)
-- [ ] Register `@starknet-agentic/skill-wallet` on npm
-- [ ] Register `@starknet-agentic/skill-defi` on npm
-- [ ] Register `@starknet-agentic/skill-identity` on npm
-- [ ] Register `@starknet-agentic/skill-mini-pay` on npm
-- [ ] Register `@starknet-agentic/skill-anonymous-wallet` on npm
-- [ ] Publish skills to ClawHub for OpenClaw/MoltBook users
-- [ ] Update skills README with installation instructions for all channels
-- [ ] Set up automated publishing in CI workflow
+- [x] Register/Setup Publication for `@starknet-agentic/skill-wallet`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-defi`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-identity`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-mini-pay`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-anonymous-wallet`
+- [x] Register/Setup Publication for `@starknet-agentic/huginn-onboard`
+- [ ] Publish skills to ClawHub for OpenClaw/MoltBook users (blocked: CLI not on npm, publishing workflow undocumented)
+- [x] Update skills README with installation instructions for all channels
+- [x] Set up automated publishing in CI workflow
 
 **Implementation Notes**:
-- Skills are complete in `skills/` directory
-- ClawHub publication requires OpenClaw account setup
-- npm packages should include SKILL.md, references/, and scripts/
-- Consider scoped packages under `@starknet-agentic` org
+- Skills are complete in `skills/` directory with standardized frontmatter
+- Claude Code plugin manifest at `.claude-plugin/marketplace.json`
+- CI validation workflow added to `.github/workflows/ci.yml`
+- Skills README at `skills/README.md` with installation instructions
+- Monorepo approach chosen: all skills in one repo, installable individually or together
+- ClawHub blocked: CLI not published to npm, publishing workflow not documented
+
+**Distribution Channels**:
+- GitHub: `npx skills add keep-starknet-strange/starknet-agentic`
+- Claude Code: `/plugin marketplace add keep-starknet-strange/starknet-agentic`
+- skills.sh: Auto-indexed from GitHub
+- ClawHub: Blocked (check clawhub.ai for updates)
 
 ---
 
@@ -69,27 +65,6 @@ MCP server tests are fully implemented with 7 test files covering handlers, tool
 - `packages/starknet-agent-passport/` already implements the client
 - Standardize on capability categories: `defi`, `trading`, `identity`, `messaging`, `payments`
 - Capability metadata stored in ERC-8004 IdentityRegistry via `setMetadata`
-
----
-
-### 1.4 Flagship DeFi Agent Documentation
-
-**Description**: Promote defi-agent as the flagship demo with comprehensive documentation and tutorials.
-
-**Requirements**:
-- [ ] Create detailed README.md for `examples/defi-agent/`
-- [ ] Add architecture diagram showing agent components
-- [ ] Document configuration options (trade size, profit thresholds, intervals)
-- [ ] Add step-by-step setup guide for beginners
-- [ ] Create video tutorial or GIF walkthrough
-- [ ] Link prominently from main README.md and website
-- [ ] Add production deployment guide (systemd, Docker, cloud)
-
-**Implementation Notes**:
-- defi-agent is ~337 lines demonstrating arbitrage patterns
-- Demonstrates triangular arbitrage with ETH/STRK
-- Includes risk management (spending limits, min profit thresholds)
-- Good showcase for Starknet's low fees enabling high-frequency strategies
 
 ---
 
@@ -253,7 +228,7 @@ Features that enhance the platform but are not required for v1.0 release.
 - [x] ~~Add snforge test execution to CI~~ — done in `ci.yml`
 - [x] ~~Add automated npm publishing on release~~ — done in `publish.yml`
 - [ ] Add starknet.js version consistency check
-- [ ] Add dependency vulnerability scanning
+- [x] ~~Add dependency vulnerability scanning~~
 - [ ] Add automated ClawHub publishing on release
 - [ ] Add test coverage reporting
 
