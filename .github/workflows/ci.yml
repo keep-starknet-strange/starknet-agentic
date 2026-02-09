@@ -292,7 +292,7 @@ jobs:
         run: pnpm install
 
       - name: Install onboarding example dependencies
-        run: pnpm --dir examples/onboard-agent install --no-frozen-lockfile
+        run: pnpm --dir examples/onboard-agent install --frozen-lockfile
 
       - name: Run onboarding smoke checks
         run: pnpm --dir examples/onboard-agent smoke
