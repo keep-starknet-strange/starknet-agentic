@@ -34,14 +34,16 @@ pub trait IQuantumVault<TState> {
 
 #[starknet::contract]
 mod QuantumVault {
+    use core::num::traits::Zero;
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::storage::*;
     use starknet::SyscallResultTrait;
     use openzeppelin::access::ownable::OwnableComponent;
 
     // ─── Constants ───────────────────────────────────────────────────────
-    const MIN_DELAY: u64 = 300;      // 5 minutes
-    const MAX_DELAY: u64 = 2592000;  // 30 days
+    const MIN_DELAY: u64 = 300;        // 5 minutes minimum
+    const MAX_DELAY: u64 = 2592000;    // 30 days maximum
+    const GRACE_PERIOD: u64 = 86400;   // 24 hours grace period after expiry
 
     // ─── Components ─────────────────────────────────────────────────────
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -57,6 +59,9 @@ mod QuantumVault {
     struct Storage {
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
+        // Reentrancy guard
+        executing: bool,
+        // Time-lock storage
         lock_to: Map<felt252, ContractAddress>,
         lock_selector: Map<felt252, felt252>,
         lock_calldata: Map<felt252, felt252>,
@@ -74,6 +79,7 @@ mod QuantumVault {
         TimeLockCreated: TimeLockCreated,
         TimeLockExecuted: TimeLockExecuted,
         TimeLockCancelled: TimeLockCancelled,
+        LockExpired: LockExpired,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -82,6 +88,7 @@ mod QuantumVault {
         to: ContractAddress,
         selector: felt252,
         unlock_at: u64,
+        expires_at: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -94,10 +101,17 @@ mod QuantumVault {
         lock_id: felt252,
     }
 
+    #[derive(Drop, starknet::Event)]
+    struct LockExpired {
+        lock_id: felt252,
+        expires_at: u64,
+    }
+
     // ─── Constructor ────────────────────────────────────────────────────
     #[constructor]
     fn constructor(ref self: ContractState, owner: ContractAddress) {
         self.ownable.initializer(owner);
+        self.executing.write(false);
     }
 
     // ─── External Functions ─────────────────────────────────────────────
@@ -112,12 +126,19 @@ mod QuantumVault {
             delay_seconds: u64
         ) -> felt252 {
             self.ownable.assert_only_owner();
+            
+            // Zero-address validation
+            assert(to != Zeroable::zero(), 'Zero target address');
+            
+            // Delay bounds
             assert(delay_seconds >= MIN_DELAY, 'Delay too short');
             assert(delay_seconds <= MAX_DELAY, 'Delay too long');
             
             let unlock_at = get_block_timestamp() + delay_seconds;
+            let expires_at = unlock_at + GRACE_PERIOD;
             let lock_id = self.lock_count.read() + 1;
             
+            // Storage writes
             self.lock_to.write(lock_id, to);
             self.lock_selector.write(lock_id, selector);
             self.lock_calldata.write(lock_id, calldata_hash);
@@ -125,7 +146,8 @@ mod QuantumVault {
             self.lock_status.write(lock_id, 0);  // Pending
             self.lock_count.write(lock_id);
             
-            self.emit(TimeLockCreated { lock_id, to, selector, unlock_at });
+            // Emit event with expiry info
+            self.emit(TimeLockCreated { lock_id, to, selector, unlock_at, expires_at });
             
             lock_id
         }
@@ -133,9 +155,23 @@ mod QuantumVault {
         fn execute_time_lock(ref self: ContractState, lock_id: felt252) {
             self.ownable.assert_only_owner();
             
+            // Reentrancy guard
+            assert(!self.executing.read(), 'Already executing');
+            self.executing.write(true);
+            
             let status = self.lock_status.read(lock_id);
             assert(status == 0, 'Not pending');
-            assert(get_block_timestamp() >= self.lock_unlock_at.read(lock_id), 'Not unlocked yet');
+            
+            let now = get_block_timestamp();
+            let unlock_at = self.lock_unlock_at.read(lock_id);
+            let expires_at = unlock_at + GRACE_PERIOD;
+            
+            // Time checks
+            assert(now >= unlock_at, 'Not unlocked yet');
+            assert(now <= expires_at, 'Grace period expired');
+            
+            // Emit expiry event
+            self.emit(LockExpired { lock_id, expires_at });
             
             // Execute the actual call
             let to = self.lock_to.read(lock_id);
@@ -147,6 +183,8 @@ mod QuantumVault {
             let _ = starknet::syscalls::call_contract_syscall(to, selector, calldata)
                 .unwrap_syscall();
             
+            // Update status AFTER successful execution
+            self.executing.write(false);
             self.emit(TimeLockExecuted { lock_id });
             self.lock_status.write(lock_id, 1);  // Executed
         }
@@ -178,7 +216,9 @@ mod QuantumVault {
         }
 
         fn is_lock_expired(self: @ContractState, lock_id: felt252) -> bool {
-            get_block_timestamp() >= self.lock_unlock_at.read(lock_id)
+            let unlock_at = self.lock_unlock_at.read(lock_id);
+            let expires_at = unlock_at + GRACE_PERIOD;
+            get_block_timestamp() >= expires_at
         }
     }
 }

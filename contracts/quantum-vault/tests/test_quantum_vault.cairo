@@ -49,8 +49,8 @@ fn test_execute_time_lock() {
     let lock_id = dispatcher.create_time_lock(target, selector, calldata_hash, delay);
     stop_cheat_caller_address(addr);
     
-    // Fast forward time past unlock
-    start_cheat_block_timestamp(addr, 200);
+    // Fast forward time to within grace period (unlock + 12 hours)
+    start_cheat_block_timestamp(addr, 100 + 43200);  // unlock_at + 12h
     
     // Execute as owner
     start_cheat_caller_address(addr, OWNER_ADDRESS);
@@ -109,13 +109,39 @@ fn test_is_lock_expired() {
     let lock_id = dispatcher.create_time_lock(target, 0x1, 0x1111, delay);
     stop_cheat_caller_address(addr);
     
-    // Not expired yet
-    assert(!dispatcher.is_lock_expired(lock_id), 'Should not be expired');
+    // Not expired yet (within grace period)
+    assert(!dispatcher.is_lock_expired(lock_id), 'Should not be expired yet');
     
-    // Fast forward time
-    start_cheat_block_timestamp(addr, 200);
+    // Fast forward past grace period (24h + 1s)
+    start_cheat_block_timestamp(addr, 100 + 86400 + 1);
     assert(dispatcher.is_lock_expired(lock_id), 'Should be expired');
     stop_cheat_block_timestamp(addr);
+}
+
+#[test]
+fn test_grace_period_expired() {
+    let addr = deploy_vault();
+    let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
+    let target: ContractAddress = 0xABC.try_into().unwrap();
+    let delay: u64 = 100;
+    
+    // Create lock
+    start_cheat_caller_address(addr, OWNER_ADDRESS);
+    let lock_id = dispatcher.create_time_lock(target, 0x1, 0x1111, delay);
+    stop_cheat_caller_address(addr);
+    
+    // Fast forward past grace period
+    start_cheat_block_timestamp(addr, 100 + 86400 + 1);  // After grace period
+    
+    // Try to execute - should fail
+    start_cheat_caller_address(addr, OWNER_ADDRESS);
+    dispatcher.execute_time_lock(lock_id);
+    stop_cheat_caller_address(addr);
+    stop_cheat_block_timestamp(addr);
+    
+    // Verify still pending (execution failed)
+    let (_, _, _, status) = dispatcher.get_time_lock(lock_id);
+    assert(status == 0, 'Should still be pending');
 }
 
 #[test]
@@ -154,5 +180,17 @@ fn test_execute_cancelled_lock() {
     let lock_id = dispatcher.create_time_lock(target, 0x1, 0x1111, 3600);
     dispatcher.cancel_time_lock(lock_id);
     dispatcher.execute_time_lock(lock_id);  // Already cancelled
+    stop_cheat_caller_address(addr);
+}
+
+#[test]
+#[should_panic(expected: ('Zero target address',))]
+fn test_create_time_lock_zero_address() {
+    let addr = deploy_vault();
+    let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
+    let zero_address: ContractAddress = 0.try_into().unwrap();
+    
+    start_cheat_caller_address(addr, OWNER_ADDRESS);
+    dispatcher.create_time_lock(zero_address, 0x1, 0x1111, 3600);
     stop_cheat_caller_address(addr);
 }
