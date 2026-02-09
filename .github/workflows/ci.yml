@@ -271,10 +271,36 @@ jobs:
 
           echo "Plugin manifest validated successfully!"
 
+  onboarding-smoke:
+    name: Onboarding Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install root dependencies
+        run: pnpm install
+
+      - name: Install onboarding example dependencies
+        run: pnpm --dir examples/onboard-agent install --no-frozen-lockfile
+
+      - name: Run onboarding smoke checks
+        run: pnpm --dir examples/onboard-agent smoke
+
   all-checks:
     name: All Checks Passed
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, test, cairo-check, cairo-test-erc8004, cairo-test-agent-account, cairo-test-huginn, website-build, validate-skills]
+    needs: [typecheck, lint, test, cairo-check, cairo-test-erc8004, cairo-test-agent-account, cairo-test-huginn, website-build, validate-skills, onboarding-smoke]
     steps:
       - name: Success
         run: echo "All CI checks passed!"

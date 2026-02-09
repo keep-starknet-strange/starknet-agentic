@@ -7,7 +7,8 @@
   "scripts": {
     "onboard": "npx tsx run.ts",
     "onboard:sepolia": "npx tsx run.ts --network sepolia",
-    "onboard:verify": "npx tsx run.ts --network sepolia --verify-tx"
+    "onboard:verify": "npx tsx run.ts --network sepolia --verify-tx",
+    "smoke": "npx tsx smoke.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.0",
