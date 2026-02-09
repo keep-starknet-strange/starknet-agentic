@@ -20,24 +20,32 @@ Core infrastructure features required for v1.0 release. MVP definition: MCP serv
 
 ### 1.2 Publish Skills to Distribution Channels
 
-**Description**: Publish all complete skills to GitHub, ClawHub, and npm for maximum distribution.
+**Description**: Publish all complete skills to GitHub, ClawHub, and other channels for maximum distribution.
 
 **Requirements**:
-- [ ] Create npm packages for each skill (as installable dependencies)
-- [ ] Register `@starknet-agentic/skill-wallet` on npm
-- [ ] Register `@starknet-agentic/skill-defi` on npm
-- [ ] Register `@starknet-agentic/skill-identity` on npm
-- [ ] Register `@starknet-agentic/skill-mini-pay` on npm
-- [ ] Register `@starknet-agentic/skill-anonymous-wallet` on npm
-- [ ] Publish skills to ClawHub for OpenClaw/MoltBook users
-- [ ] Update skills README with installation instructions for all channels
-- [ ] Set up automated publishing in CI workflow
+- [x] Register/Setup Publication for `@starknet-agentic/skill-wallet`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-defi`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-identity`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-mini-pay`
+- [x] Register/Setup Publication for `@starknet-agentic/skill-anonymous-wallet`
+- [x] Register/Setup Publication for `@starknet-agentic/huginn-onboard`
+- [ ] Publish skills to ClawHub for OpenClaw/MoltBook users (requires OAuth setup)
+- [x] Update skills README with installation instructions for all channels
+- [x] Set up automated publishing in CI workflow
 
 **Implementation Notes**:
-- Skills are complete in `skills/` directory
-- ClawHub publication requires OpenClaw account setup
-- npm packages should include SKILL.md, references/, and scripts/
-- Consider scoped packages under `@starknet-agentic` org
+- Skills are complete in `skills/` directory with standardized frontmatter
+- Claude Code plugin manifest at `.claude-plugin/marketplace.json`
+- CI validation workflow added to `.github/workflows/ci.yml`
+- Skills README at `skills/README.md` with installation instructions
+- Monorepo approach chosen: all skills in one repo, installable individually or together
+- ClawHub publication pending OpenClaw account setup
+
+**Distribution Channels**:
+- GitHub: `npx skills add keep-starknet-strange/starknet-agentic`
+- Claude Code: `/plugin marketplace add keep-starknet-strange/starknet-agentic`
+- skills.sh: Auto-indexed from GitHub
+- ClawHub: Pending account setup
 
 ---
 

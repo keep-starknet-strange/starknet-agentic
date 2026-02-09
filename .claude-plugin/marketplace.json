@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "pluginRoot": "./skills",
+    "name": "starknet-agentic",
+    "description": "Starknet skills for AI agents: wallets, DeFi, identity, payments, and more",
+    "author": "keep-starknet-strange",
+    "version": "1.0.0",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/keep-starknet-strange/starknet-agentic",
+    "homepage": "https://starknet-agentic.xyz"
+  },
+  "plugins": [
+    {
+      "name": "starknet-skills",
+      "description": "Complete Starknet agent toolkit: wallet management, DeFi operations, on-chain identity, P2P payments, and anonymous transactions",
+      "skills": [
+        "./starknet-wallet",
+        "./starknet-defi",
+        "./starknet-identity",
+        "./starknet-mini-pay",
+        "./starknet-anonymous-wallet",
+        "./huginn-onboard"
+      ]
+    },
+    {
+      "name": "starknet-wallet",
+      "description": "Starknet wallet management with session keys and gasless transactions",
+      "skills": ["./starknet-wallet"]
+    },
+    {
+      "name": "starknet-defi",
+      "description": "DeFi operations: swaps, staking, lending via avnu aggregator",
+      "skills": ["./starknet-defi"]
+    },
+    {
+      "name": "starknet-identity",
+      "description": "ERC-8004 on-chain agent identity and reputation",
+      "skills": ["./starknet-identity"]
+    },
+    {
+      "name": "starknet-payments",
+      "description": "P2P payments with QR codes and Telegram bot",
+      "skills": ["./starknet-mini-pay"]
+    },
+    {
+      "name": "starknet-privacy",
+      "description": "Anonymous wallet creation via Typhoon",
+      "skills": ["./starknet-anonymous-wallet"]
+    },
+    {
+      "name": "huginn-onboard",
+      "description": "Bridge to Starknet and register with Huginn registry",
+      "skills": ["./huginn-onboard"]
+    }
+  ]
+}
