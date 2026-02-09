@@ -14,6 +14,7 @@ One-command path to deploy a Starknet agent account with ERC-8004 identity regis
 - Node.js 20+
 - An existing Starknet account with funds (to pay gas for the deploy)
 - Contracts deployed (AgentAccountFactory + IdentityRegistry). See `contracts/agent-account/scripts/deploy.js`
+- Optional for gasfree deploy: AVNU paymaster key (`AVNU_PAYMASTER_API_KEY`)
 
 ## Get funds on Starknet
 
@@ -38,6 +39,9 @@ pnpm onboard
 
 # With options
 npx tsx run.ts --network sepolia --token-uri "ipfs://QmYourMetadata" --verify-tx
+
+# Gasfree deploy (sponsored paymaster)
+npx tsx run.ts --network sepolia --token-uri "ipfs://QmYourMetadata" --gasfree
 
 # Custom salt (deterministic address)
 npx tsx run.ts --token-uri "ipfs://QmYourMetadata" --salt 0x1234

@@ -30,12 +30,12 @@ import {
 import {
   Account,
   RpcProvider,
+  PaymasterRpc,
   CallData,
   cairo,
   byteArray,
   ETransactionVersion,
   type Call,
-  type PaymasterDetails,
 } from "starknet";
 import { randomBytes } from "node:crypto";
 import {
@@ -67,12 +67,20 @@ const envSchema = z.object({
   AGENT_ACCOUNT_FACTORY_ADDRESS: z.string().startsWith("0x").optional(),
 });
 
+const isSepoliaRpc = (process.env.STARKNET_RPC_URL || "").toLowerCase().includes("sepolia");
+const defaultAvnuApiUrl = isSepoliaRpc
+  ? "https://sepolia.api.avnu.fi"
+  : "https://starknet.api.avnu.fi";
+const defaultAvnuPaymasterUrl = isSepoliaRpc
+  ? "https://sepolia.paymaster.avnu.fi"
+  : "https://starknet.paymaster.avnu.fi";
+
 const env = envSchema.parse({
   STARKNET_RPC_URL: process.env.STARKNET_RPC_URL,
   STARKNET_ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS,
   STARKNET_PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY,
-  AVNU_BASE_URL: process.env.AVNU_BASE_URL || "https://starknet.api.avnu.fi",
-  AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
+  AVNU_BASE_URL: process.env.AVNU_BASE_URL || defaultAvnuApiUrl,
+  AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || defaultAvnuPaymasterUrl,
   AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
   AGENT_ACCOUNT_FACTORY_ADDRESS: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
 });
@@ -88,6 +96,12 @@ const account = new Account({
 
 // Fee mode: sponsored (gasfree, dApp pays) vs default (user pays in gasToken)
 const isSponsored = !!env.AVNU_PAYMASTER_API_KEY;
+const paymaster = new PaymasterRpc({
+  nodeUrl: env.AVNU_PAYMASTER_URL,
+  headers: env.AVNU_PAYMASTER_API_KEY
+    ? { "x-paymaster-api-key": env.AVNU_PAYMASTER_API_KEY }
+    : {},
+});
 
 // Initialize TokenService with avnu base URL and RPC provider for on-chain fallback
 getTokenService(env.AVNU_BASE_URL);
@@ -160,16 +174,22 @@ async function executeTransaction(
   }
 
   const callsArray = Array.isArray(calls) ? calls : [calls];
-  const feeDetails: PaymasterDetails = isSponsored
-    ? { feeMode: { mode: "sponsored" } }
-    : { feeMode: { mode: "default", gasToken } };
+  const paymasterParams = isSponsored
+    ? {
+        version: "0x1" as const,
+        feeMode: { mode: "sponsored" as const },
+      }
+    : {
+        version: "0x1" as const,
+        feeMode: { mode: "default" as const, gasToken },
+      };
 
-  const estimation = await account.estimatePaymasterTransactionFee(callsArray, feeDetails);
-  const result = await account.executePaymasterTransaction(
-    callsArray,
-    feeDetails,
-    estimation.suggested_max_fee_in_gas_token
-  );
+  const result = await account.execute(callsArray, {
+    paymaster: {
+      provider: paymaster,
+      params: paymasterParams,
+    },
+  } as never);
 
   return result.transaction_hash;
 }

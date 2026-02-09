@@ -9,7 +9,7 @@
  *   4. Receipt  — emit onboarding_receipt.json
  *
  * Usage:
- *   npx tsx run.ts [--network sepolia] [--token-uri "ipfs://..."] [--verify-tx]
+ *   npx tsx run.ts [--network sepolia] [--token-uri "ipfs://..."] [--verify-tx] [--gasfree]
  *
  * Requires:
  *   - .env file with STARKNET_RPC_URL, DEPLOYER_ADDRESS, DEPLOYER_PRIVATE_KEY
@@ -32,12 +32,14 @@ function parseArgs(): {
   network: string;
   tokenUri: string;
   verifyTx: boolean;
+  gasfree: boolean;
   salt?: string;
 } {
   const args = process.argv.slice(2);
   let network = "sepolia";
   let tokenUri = "";
   let verifyTx = false;
+  let gasfree = false;
   let salt: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
@@ -50,6 +52,9 @@ function parseArgs(): {
         break;
       case "--verify-tx":
         verifyTx = true;
+        break;
+      case "--gasfree":
+        gasfree = true;
         break;
       case "--salt":
         salt = args[++i];
@@ -68,16 +73,17 @@ function parseArgs(): {
     );
   }
 
-  return { network, tokenUri, verifyTx, salt };
+  return { network, tokenUri, verifyTx, gasfree, salt };
 }
 
 async function main() {
-  const { network, tokenUri, verifyTx, salt } = parseArgs();
+  const { network, tokenUri, verifyTx, gasfree, salt } = parseArgs();
 
   console.log("=== Starknet Agent Onboarding ===\n");
   console.log(`Network: ${network}`);
   console.log(`Token URI: ${tokenUri}`);
   console.log(`Verify TX: ${verifyTx}`);
+  console.log(`Gasfree: ${gasfree}`);
   console.log("");
 
   // ==================== STEP 1: PREFLIGHT ====================
@@ -112,7 +118,11 @@ async function main() {
     provider: pre.provider,
     deployerAccount: pre.account,
     networkConfig: pre.networkConfig,
+    network,
     tokenUri,
+    gasfree,
+    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
+    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
     salt,
   });
 

@@ -20,8 +20,6 @@ const mockEnv = {
 // Mock starknet before importing the module
 const mockExecute = vi.fn();
 const mockEstimateInvokeFee = vi.fn();
-const mockEstimatePaymasterTransactionFee = vi.fn();
-const mockExecutePaymasterTransaction = vi.fn();
 const mockWaitForTransaction = vi.fn();
 const mockCallContract = vi.fn();
 const mockBalanceOf = vi.fn();
@@ -31,13 +29,12 @@ vi.mock("starknet", () => ({
     address: mockEnv.STARKNET_ACCOUNT_ADDRESS,
     execute: mockExecute,
     estimateInvokeFee: mockEstimateInvokeFee,
-    estimatePaymasterTransactionFee: mockEstimatePaymasterTransactionFee,
-    executePaymasterTransaction: mockExecutePaymasterTransaction,
   })),
   RpcProvider: vi.fn().mockImplementation(() => ({
     callContract: mockCallContract,
     waitForTransaction: mockWaitForTransaction,
   })),
+  PaymasterRpc: vi.fn().mockImplementation((opts) => opts || {}),
   Contract: vi.fn().mockImplementation(() => ({
     balanceOf: mockBalanceOf,
     get_balances: vi.fn(),
@@ -293,12 +290,7 @@ describe("MCP Tool Handlers", () => {
     });
 
     it("executes transfer with gasfree mode (no API key)", async () => {
-      mockEstimatePaymasterTransactionFee.mockResolvedValue({
-        suggested_max_fee_in_gas_token: "1000000",
-      });
-      mockExecutePaymasterTransaction.mockResolvedValue({
-        transaction_hash: "0xpaymaster456",
-      });
+      mockExecute.mockResolvedValue({ transaction_hash: "0xpaymaster456" });
       mockWaitForTransaction.mockResolvedValue({});
 
       const response = await callTool("starknet_transfer", {
@@ -313,7 +305,16 @@ describe("MCP Tool Handlers", () => {
       expect(result.success).toBe(true);
       expect(result.transactionHash).toBe("0xpaymaster456");
       expect(result.gasfree).toBe(true);
-      expect(mockExecutePaymasterTransaction).toHaveBeenCalled();
+      expect(mockExecute).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
+          paymaster: expect.objectContaining({
+            params: expect.objectContaining({
+              feeMode: expect.objectContaining({ mode: "default" }),
+            }),
+          }),
+        }),
+      );
     });
 
     it("handles decimal amounts correctly", async () => {
@@ -413,12 +414,7 @@ describe("MCP Tool Handlers", () => {
     });
 
     it("invokes contract with gasfree mode", async () => {
-      mockEstimatePaymasterTransactionFee.mockResolvedValue({
-        suggested_max_fee_in_gas_token: "500000",
-      });
-      mockExecutePaymasterTransaction.mockResolvedValue({
-        transaction_hash: "0xgasfree789",
-      });
+      mockExecute.mockResolvedValue({ transaction_hash: "0xgasfree789" });
       mockWaitForTransaction.mockResolvedValue({});
 
       const response = await callTool("starknet_invoke_contract", {
@@ -430,7 +426,16 @@ describe("MCP Tool Handlers", () => {
 
       const result = parseResponse(response);
       expect(result.success).toBe(true);
-      expect(result.gasfree).toBe(true);
+      expect(mockExecute).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
+          paymaster: expect.objectContaining({
+            params: expect.objectContaining({
+              feeMode: expect.objectContaining({ mode: "default" }),
+            }),
+          }),
+        }),
+      );
     });
   });
 
@@ -769,6 +774,43 @@ describe("MCP Tool Handlers", () => {
       const result = parseResponse(response);
       expect(result.message).toContain("AGENT_ACCOUNT_FACTORY_ADDRESS not configured");
       expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it("uses sponsored paymaster params when gasfree=true and API key is set", async () => {
+      process.env.AVNU_PAYMASTER_API_KEY = "test-sponsor-key";
+      vi.resetModules();
+      await import("../../src/index.js");
+
+      mockExecute.mockResolvedValue({ transaction_hash: "0xdeploy-sponsored" });
+      mockWaitForTransaction.mockResolvedValue({
+        events: [
+          {
+            from_address: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
+            data: ["0xabc", "0x1234", "0x2a", "0x0", "0xregistry"],
+          },
+        ],
+      });
+
+      const response = await callTool("starknet_deploy_agent_account", {
+        public_key: "0x1234",
+        token_uri: "ipfs://agent.json",
+        gasfree: true,
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(mockExecute).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
+          paymaster: expect.objectContaining({
+            params: expect.objectContaining({
+              feeMode: expect.objectContaining({ mode: "sponsored" }),
+            }),
+          }),
+        }),
+      );
+
+      delete process.env.AVNU_PAYMASTER_API_KEY;
     });
   });
 

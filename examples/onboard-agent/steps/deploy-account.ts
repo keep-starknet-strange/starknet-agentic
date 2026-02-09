@@ -17,6 +17,7 @@ import {
   ec,
   CallData,
   byteArray,
+  PaymasterRpc,
   type RpcProvider,
   type Account,
   encode,
@@ -35,10 +36,23 @@ export async function deployAccount(args: {
   provider: RpcProvider;
   deployerAccount: Account;
   networkConfig: NetworkConfig;
+  network: string;
   tokenUri: string;
+  gasfree?: boolean;
+  paymasterUrl?: string;
+  paymasterApiKey?: string;
   salt?: string;
 }): Promise<DeployAccountResult> {
-  const { provider, deployerAccount, networkConfig, tokenUri } = args;
+  const {
+    provider,
+    deployerAccount,
+    networkConfig,
+    network,
+    tokenUri,
+    gasfree = false,
+    paymasterUrl,
+    paymasterApiKey,
+  } = args;
 
   // --- Generate keypair locally ---
   const privateKeyBytes = ec.starkCurve.utils.randomPrivateKey();
@@ -61,11 +75,42 @@ export async function deployAccount(args: {
     token_uri: byteArray.byteArrayFromString(tokenUri),
   });
 
-  const result = await deployerAccount.execute({
+  const deployCall = {
     contractAddress: networkConfig.factory,
     entrypoint: "deploy_account",
     calldata,
-  });
+  };
+
+  let result: { transaction_hash: string };
+  if (!gasfree) {
+    result = await deployerAccount.execute(deployCall);
+  } else {
+    const effectivePaymasterUrl =
+      paymasterUrl ||
+      (network === "sepolia"
+        ? "https://sepolia.paymaster.avnu.fi"
+        : "https://starknet.paymaster.avnu.fi");
+    const apiKey = paymasterApiKey;
+    if (!apiKey) {
+      throw new Error(
+        "Gasfree mode requires AVNU_PAYMASTER_API_KEY in environment."
+      );
+    }
+    const paymaster = new PaymasterRpc({
+      nodeUrl: effectivePaymasterUrl,
+      headers: { "x-paymaster-api-key": apiKey },
+    });
+
+    result = await deployerAccount.execute([deployCall], {
+      paymaster: {
+        provider: paymaster,
+        params: {
+          version: "0x1",
+          feeMode: { mode: "sponsored" },
+        },
+      },
+    } as never);
+  }
 
   console.log(`  Waiting for tx: ${result.transaction_hash}...`);
   const receipt = await provider.waitForTransaction(result.transaction_hash);

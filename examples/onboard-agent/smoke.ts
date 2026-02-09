@@ -54,6 +54,7 @@ async function testDeployAccountParsesFactoryEvent() {
         rpc: "https://starknet-sepolia-rpc.publicnode.com",
         explorer: "https://sepolia.voyager.online",
       },
+      network: "sepolia",
       tokenUri: "https://example.com/agent.json",
       salt: "0x1234",
     });
@@ -105,11 +106,64 @@ async function testDeployAccountNoEventFallback() {
       rpc: "https://starknet-sepolia-rpc.publicnode.com",
       explorer: "https://sepolia.voyager.online",
     },
+    network: "sepolia",
     tokenUri: "https://example.com/agent.json",
     salt: "0x1234",
   });
 
   assert.equal(result.accountAddress, "check_explorer");
+}
+
+async function testDeployAccountGasfreeUsesPaymasterPath() {
+  let executeDetails: unknown;
+  const mockDeployerAccount = {
+    execute: async (
+      call: { contractAddress: string; entrypoint: string; calldata: string[] }[],
+      details?: unknown,
+    ) => {
+      assert.equal(call.length, 1);
+      assert.equal(call[0].entrypoint, "deploy_account");
+      executeDetails = details;
+      return { transaction_hash: "0xgasfree" };
+    },
+  };
+
+  const mockProvider = {
+    waitForTransaction: async () => ({
+      events: [
+        {
+          from_address:
+            "0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e",
+          data: ["0xacc", "0xpub", "0x2", "0x0", "0xreg"],
+        },
+      ],
+    }),
+  };
+
+  await deployAccount({
+    provider: mockProvider as never,
+    deployerAccount: mockDeployerAccount as never,
+    networkConfig: {
+      factory:
+        "0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e",
+      registry:
+        "0x7856876f4c8e1880bc0a2e4c15f4de3085bc2bad5c7b0ae472740f8f558e417",
+      rpc: "https://starknet-sepolia-rpc.publicnode.com",
+      explorer: "https://sepolia.voyager.online",
+    },
+    network: "sepolia",
+    tokenUri: "https://example.com/agent.json",
+    gasfree: true,
+    paymasterUrl: "https://sepolia.paymaster.avnu.fi",
+    paymasterApiKey: "test-key",
+    salt: "0x1234",
+  });
+
+  assert.ok(executeDetails);
+  const details = executeDetails as {
+    paymaster?: { params?: { feeMode?: { mode?: string } } };
+  };
+  assert.equal(details.paymaster?.params?.feeMode?.mode, "sponsored");
 }
 
 async function testFirstActionBalanceReadOnlyFlow() {
@@ -160,6 +214,7 @@ async function testPreflightRejectsUnknownNetwork() {
 async function main() {
   await testDeployAccountParsesFactoryEvent();
   await testDeployAccountNoEventFallback();
+  await testDeployAccountGasfreeUsesPaymasterPath();
   await testFirstActionBalanceReadOnlyFlow();
   await testPreflightRejectsUnknownNetwork();
   console.log("onboard-agent smoke: all checks passed");
