@@ -240,12 +240,15 @@ This section clarifies v1 invariants for `contracts/huginn-registry/`:
   - Invalid proofs revert and are not stored.
   - Therefore stored records satisfy: `submitted => verified = true`.
   - `verified = false` is not a persisted runtime state in v1.
+  - `proof_exists(thought_hash)` should be used by clients for explicit existence checks.
+  - Proof payloads are bounded (`MAX_PROOF_WORDS`) to avoid oversized calldata/hash/verifier griefing.
 
 - Ownership and replay:
   - First logger of a `thought_hash` becomes canonical thought owner.
   - Same owner may re-log idempotently; different owner is rejected.
   - Only thought owner can submit proof for that hash.
   - One submitted proof per `thought_hash` (replay blocked).
+  - Tradeoff: first-logger semantics can be front-run if `thought_hash` is predictable. Clients should include caller-specific salting/domain separation in hash construction.
 
 ## 4. MCP Server
 

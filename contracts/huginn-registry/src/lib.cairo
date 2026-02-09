@@ -5,6 +5,7 @@ pub trait IHuginnRegistry<TContractState> {
     fn prove_thought(ref self: TContractState, thought_hash: u256, proof: Span<felt252>);
     fn get_agent(self: @TContractState, agent_id: starknet::ContractAddress) -> (felt252, ByteArray);
     fn get_proof(self: @TContractState, thought_hash: u256) -> (u256, bool, starknet::ContractAddress);
+    fn proof_exists(self: @TContractState, thought_hash: u256) -> bool;
     fn get_verifier(self: @TContractState) -> starknet::ContractAddress;
 }
 
@@ -20,6 +21,9 @@ pub mod HuginnRegistry {
     use starknet::storage::*;
     use starknet::{ContractAddress, get_caller_address};
     use super::{IThoughtVerifierDispatcher, IThoughtVerifierDispatcherTrait};
+
+    // Defensive bound to limit calldata hashing and verifier-call payload size.
+    const MAX_PROOF_WORDS: usize = 1024;
 
     #[storage]
     struct Storage {
@@ -125,6 +129,7 @@ pub mod HuginnRegistry {
             let profile = self.agents.read(caller);
             assert(profile.name != '', 'Agent not registered');
             assert(proof.len() > 0, 'Empty proof');
+            assert(proof.len() <= MAX_PROOF_WORDS, 'Proof too large');
 
             let owner = self.thought_owner.read(thought_hash);
             assert(!owner.is_zero(), 'Thought not logged');
@@ -171,6 +176,10 @@ pub mod HuginnRegistry {
         fn get_proof(self: @ContractState, thought_hash: u256) -> (u256, bool, ContractAddress) {
             let proof = self.thought_proofs.read(thought_hash);
             (proof.proof_hash, proof.verified, proof.agent_id)
+        }
+
+        fn proof_exists(self: @ContractState, thought_hash: u256) -> bool {
+            self.thought_proofs.read(thought_hash).submitted
         }
 
         fn get_verifier(self: @ContractState) -> ContractAddress {

@@ -7,12 +7,23 @@ use huginn_registry::IHuginnRegistryDispatcher;
 use huginn_registry::IHuginnRegistryDispatcherTrait;
 
 const VERIFY_SELECTOR: felt252 = selector!("verify");
+const MAX_PROOF_WORDS: usize = 1024;
 
 fn deploy_contract(verifier_address: ContractAddress) -> ContractAddress {
     let contract = declare("HuginnRegistry").unwrap().contract_class();
     let calldata = array![verifier_address.into()];
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     contract_address
+}
+
+fn make_proof(len: usize) -> Array<felt252> {
+    let mut proof: Array<felt252> = ArrayTrait::new();
+    let mut i: usize = 0;
+    while i < len {
+        proof.append(i.into());
+        i += 1;
+    };
+    proof
 }
 
 #[test]
@@ -119,6 +130,7 @@ fn test_prove_thought_success_with_valid_verifier_response() {
     assert(proof_hash != 0, 'proof hash should be set');
     assert(verified, 'proof should be verified');
     assert(agent_id == caller, 'agent should match prover');
+    assert(dispatcher.proof_exists(99_u256), 'proof should exist');
 
     stop_cheat_caller_address(contract_address);
 }
@@ -193,6 +205,24 @@ fn test_prove_thought_rejects_empty_proof() {
 }
 
 #[test]
+#[should_panic(expected: 'Proof too large')]
+fn test_prove_thought_rejects_oversized_proof() {
+    let verifier = test_address();
+    start_mock_call(verifier, VERIFY_SELECTOR, true);
+
+    let contract_address = deploy_contract(verifier);
+    let dispatcher = IHuginnRegistryDispatcher { contract_address };
+
+    let caller = 0x1.try_into().unwrap();
+    start_cheat_caller_address(contract_address, caller);
+
+    dispatcher.register_agent('prover', "ipfs://meta");
+    dispatcher.log_thought(100_u256);
+    let proof = make_proof(MAX_PROOF_WORDS + 1);
+    dispatcher.prove_thought(100_u256, proof.span());
+}
+
+#[test]
 #[should_panic(expected: 'Invalid proof')]
 fn test_prove_thought_reverts_when_verifier_returns_false() {
     let verifier = test_address();
@@ -255,4 +285,24 @@ fn test_get_agent_unregistered_returns_zero() {
     let unknown = 0x999.try_into().unwrap();
     let (name, _metadata) = dispatcher.get_agent(unknown);
     assert(name == 0, 'should be zero');
+}
+
+#[test]
+fn test_proof_exists_false_before_and_true_after_submit() {
+    let verifier = test_address();
+    start_mock_call(verifier, VERIFY_SELECTOR, true);
+
+    let contract_address = deploy_contract(verifier);
+    let dispatcher = IHuginnRegistryDispatcher { contract_address };
+
+    assert(!dispatcher.proof_exists(123_u256), 'proof should not exist yet');
+
+    let caller = 0x1.try_into().unwrap();
+    start_cheat_caller_address(contract_address, caller);
+    dispatcher.register_agent('prover', "ipfs://meta");
+    dispatcher.log_thought(123_u256);
+    let proof: Array<felt252> = array![1, 2, 3];
+    dispatcher.prove_thought(123_u256, proof.span());
+
+    assert(dispatcher.proof_exists(123_u256), 'proof should exist after submit');
 }
