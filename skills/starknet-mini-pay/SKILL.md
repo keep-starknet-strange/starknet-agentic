@@ -1,11 +1,8 @@
 ---
 name: starknet-mini-pay
-description: Simple P2P payments on Starknet. Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC. Like Lightning, but native.
-license: Apache-2.0
-metadata:
-  author: starknet-agentic
-  version: "1.0.0"
-  org: keep-starknet-strange
+description: >
+  Simple P2P payments on Starknet. Like Lightning, but native.
+  Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC.
 keywords:
   - starknet
   - payments
@@ -362,3 +359,59 @@ mod PaymentRequest {
 - [starknet-py](https://github.com/starknet-io/starknet-py)
 - [Argent X](https://www.argent.xyz/argent-x/)
 - [Braavos](https://braavos.app/)
+
+## Overview
+
+starknet-mini-pay provides Lightning Network-style fast payments on Starknet. Enables instant payments via prepaid vouchers that can be claimed asynchronously, with self-custody and predictable fees.
+
+### Key Features
+- Instant prepaid voucher payments
+- Asynchronous claim flow
+- Self-custody (user controls funds)
+- Payment links and QR codes
+- Invoice creation and management
+
+## Workflow
+
+### 1. Create Payment Link
+```bash
+python scripts/link_builder.py create --amount 0.01 --description "Coffee" --address 0x...
+```
+
+### 2. Share Link
+Send the generated link/QR to the payer.
+
+### 3. Payer Creates Voucher
+```bash
+python scripts/mini_pay.py create-voucher --link <payment_link> --amount 0.01 --token ETH
+```
+
+### 4. Recipient Claims
+```bash
+python scripts/mini_pay.py claim --voucher <voucher_id> --address 0x...
+```
+
+## Examples
+
+### Create Invoice
+```python
+async with InvoiceManager() as manager:
+    invoice = await manager.create(
+        payer_address="0xpayer...",
+        amount=25.00,
+        token="USDC",
+        description="Payment for consulting"
+    )
+    print(f"Invoice: {invoice.id}")
+    print(f"Payment URL: {manager.create_payment_url(invoice)}")
+```
+
+### Check Balance
+```python
+balance = await get_balance(
+    address="0x...",
+    token="ETH",
+    network="mainnet"
+)
+print(f"Balance: {balance} ETH")
+```

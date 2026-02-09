@@ -1,11 +1,10 @@
 ---
 name: starknet-identity
-description: Register AI agents on-chain using the ERC-8004 Trustless Agents standard. Manage agent identity as NFTs, build reputation through feedback, and request third-party validation.
-license: Apache-2.0
-metadata:
-  author: starknet-agentic
-  version: "1.0.0"
-  org: keep-starknet-strange
+description: >
+  Register AI agents on-chain using the ERC-8004 Trustless Agents standard
+  on Starknet. Manage agent identity as NFTs, build reputation through
+  feedback, and request third-party validation. Provides verifiable
+  on-chain identity for autonomous agents.
 keywords:
   - starknet
   - identity
@@ -314,3 +313,38 @@ Serve at `/.well-known/agent.json` for A2A discovery.
 - [ERC-8004 Cairo Implementation](https://github.com/Akashneelesh/erc8004-cairo)
 - [A2A Protocol](https://a2a-protocol.org/latest/)
 - [Starknet Account Abstraction](https://www.starknet.io/blog/native-account-abstraction/)
+
+## Workflow
+
+### 1. Setup
+Configure the skill by editing `references/config.json`:
+```json
+{
+  "network": "mainnet",
+  "rpc_url": "https://starknet-mainnet.public.blastapi.io/rpc/v0.6",
+  "identity_registry_address": "0x...",
+  "reputation_registry_address": "0x...",
+  "validation_registry_address": "0x..."
+}
+```
+
+### 2. Register Agent
+```bash
+python scripts/identity.py register --name "MyAgent" --metadata ipfs://Qm...
+```
+
+### 3. Query Identity
+```bash
+python scripts/identity.py lookup --agent-id 42
+python scripts/identity.py whois --address 0x...
+```
+
+### 4. Update Reputation
+```bash
+python scripts/identity.py feedback --agent-id 42 --score 85
+```
+
+### 5. Request Validation
+```bash
+python scripts/identity.py validate --agent-id 42 --validator 0x...
+```

@@ -7,12 +7,19 @@ import json
 import time
 import uuid
 import hashlib
+import logging
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from datetime import datetime
 import aiosqlite
 import os
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 class InvoiceStatus(Enum):
@@ -98,38 +105,43 @@ class InvoiceManager:
     
     async def initialize(self):
         """Initialize database"""
-        self.db = await aiosqlite.connect(self.db_path)
-        
-        # Create invoices table
-        await self.db.execute("""
-            CREATE TABLE IF NOT EXISTS invoices (
-                id TEXT PRIMARY KEY,
-                recipient_address TEXT NOT NULL,
-                payer_address TEXT,
-                amount REAL NOT NULL,
-                token TEXT NOT NULL,
-                memo TEXT,
-                status TEXT NOT NULL,
-                created_at INTEGER NOT NULL,
-                expires_at INTEGER NOT NULL,
-                paid_at INTEGER,
-                tx_hash TEXT
-            )
-        """)
-        
-        # Create index on recipient_address
-        await self.db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_recipient 
-            ON invoices(recipient_address)
-        """)
-        
-        # Create index on status
-        await self.db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_status 
-            ON invoices(status)
-        """)
-        
-        await self.db.commit()
+        try:
+            self.db = await aiosqlite.connect(self.db_path)
+            
+            # Create invoices table
+            await self.db.execute("""
+                CREATE TABLE IF NOT EXISTS invoices (
+                    id TEXT PRIMARY KEY,
+                    recipient_address TEXT NOT NULL,
+                    payer_address TEXT,
+                    amount REAL NOT NULL,
+                    token TEXT NOT NULL,
+                    memo TEXT,
+                    status TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    expires_at INTEGER NOT NULL,
+                    paid_at INTEGER,
+                    tx_hash TEXT
+                )
+            """)
+            
+            # Create index on recipient_address
+            await self.db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_recipient 
+                ON invoices(recipient_address)
+            """)
+            
+            # Create index on status
+            await self.db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_status 
+                ON invoices(status)
+            """)
+            
+            await self.db.commit()
+            logger.info("Invoice database initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize invoice database: {e}")
+            raise
     
     async def close(self):
         """Close database connection"""
@@ -159,30 +171,35 @@ class InvoiceManager:
         Returns:
             Invoice object
         """
-        # Generate unique invoice ID
-        invoice_id = self._generate_invoice_id(payer_address, amount)
-        
-        # Calculate expiry
-        now = int(time.time())
-        expiry = expiry_seconds or self.default_expiry
-        expires_at = now + expiry
-        
-        invoice = Invoice(
-            id=invoice_id,
-            recipient_address=recipient_address or payer_address,
-            payer_address=payer_address,
-            amount=amount,
-            token=token.upper(),
-            memo=description or "",
-            status=InvoiceStatus.PENDING.value,
-            created_at=now,
-            expires_at=expires_at,
-        )
-        
-        # Save to database
-        await self._save_invoice(invoice)
-        
-        return invoice
+        try:
+            # Generate unique invoice ID
+            invoice_id = self._generate_invoice_id(payer_address, amount)
+            
+            # Calculate expiry
+            now = int(time.time())
+            expiry = expiry_seconds or self.default_expiry
+            expires_at = now + expiry
+            
+            invoice = Invoice(
+                id=invoice_id,
+                recipient_address=recipient_address or payer_address,
+                payer_address=payer_address,
+                amount=amount,
+                token=token.upper(),
+                memo=description or "",
+                status=InvoiceStatus.PENDING.value,
+                created_at=now,
+                expires_at=expires_at,
+            )
+            
+            # Save to database
+            await self._save_invoice(invoice)
+            
+            logger.info(f"Invoice created: {invoice_id}")
+            return invoice
+        except Exception as e:
+            logger.error(f"Failed to create invoice: {e}")
+            raise
     
     async def get(self, invoice_id: str) -> Optional[Invoice]:
         """Get invoice by ID"""

@@ -1,11 +1,9 @@
 ---
 name: starknet-defi
-description: Execute DeFi operations on Starknet including token swaps via avnu aggregator, DCA recurring buys, STRK staking, and lending/borrowing. Supports gasless transactions.
-license: Apache-2.0
-metadata:
-  author: starknet-agentic
-  version: "1.0.0"
-  org: keep-starknet-strange
+description: >
+  Execute DeFi operations on Starknet: token swaps with best-price routing
+  via avnu aggregator, DCA recurring buys, STRK staking, lending/borrowing,
+  and liquidity provision. Supports gasless and gasfree transactions.
 keywords:
   - starknet
   - defi
@@ -338,6 +336,25 @@ async function safeSwap(account, quote, slippage = 0.01) {
 }
 ```
 
+## Python Scripts
+
+Alternative Python implementation for CLI usage:
+
+### scripts/router.py
+```bash
+python scripts/router.py swap -i ETH -o USDC --amount 1000000000000000000 \
+  --account 0x... --key 0x...
+```
+Multi-DEX routing (Avnu, Jediswap, Ekubo) with best price finding.
+
+### scripts/yield.py
+```bash
+python scripts/yield.py pools                    # List all pools
+python scripts/yield.py apr --pool jediswap_eth_usdc --amount 1000e18 --days 30
+python scripts/yield.py report                   # Generate report
+```
+Yield farming, LP positions, and APR calculations.
+
 ## References
 
 - [avnu SDK Documentation](https://docs.avnu.fi/)
@@ -345,3 +362,37 @@ async function safeSwap(account, quote, slippage = 0.01) {
 - [Ekubo Protocol](https://docs.ekubo.org/)
 - [zkLend Documentation](https://docs.zklend.com/)
 - [Nostra Finance](https://docs.nostra.finance/)
+
+## Overview
+
+starknet-defi provides DeFi operations on Starknet: token swaps via avnu aggregator, DCA recurring buys, STRK staking, lending/borrowing, and liquidity provision. Supports gasless and gasfree transactions.
+
+### Key Features
+- Best-price swap aggregation (avnu, Ekubo, Jediswap)
+- DCA order creation and management
+- STRK staking with rewards
+- Lending and borrowing protocols
+- Gasless transactions via paymaster
+
+## Workflow
+
+### 1. Setup
+```bash
+npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
+```
+Configure environment variables in `references/config.json`.
+
+### 2. Get Quote
+```bash
+python scripts/router.py quote --token-in ETH --token-out USDC --amount 1e18
+```
+
+### 3. Execute Swap
+```bash
+python scripts/router.py swap --token-in ETH --token-out USDC --amount 1e18 --account 0x... --key 0x...
+```
+
+### 4. Check Yield
+```bash
+python scripts/yield.py pools
+```
