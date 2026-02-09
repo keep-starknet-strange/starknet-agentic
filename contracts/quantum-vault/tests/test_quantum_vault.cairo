@@ -1,6 +1,5 @@
-use quantum_vault::quantum_vault::QuantumVault;
 use quantum_vault::interfaces::{IQuantumVaultDispatcher, IQuantumVaultDispatcherTrait};
-use snforge_std::{ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address, start_cheat_block_timestamp, stop_cheat_block_timestamp};
+use snforge_std::{ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address, stop_cheat_caller_address, start_cheat_block_timestamp, stop_cheat_block_timestamp};
 use starknet::ContractAddress;
 
 const OWNER: felt252 = 0x123456789ABCDEF;
