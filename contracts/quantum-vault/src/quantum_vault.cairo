@@ -87,6 +87,12 @@ fn constructor(ref self: ContractState, owner: ContractAddress) {
 #[abi(embed_v0)]
 impl QuantumVaultImpl of IQuantumVault<ContractState> {
 
+    /// Creates a time-locked transaction proposal.
+    /// @param to Target contract address
+    /// @param selector Function selector to call
+    /// @param calldata_hash Hash of the calldata (hash-commitment scheme)
+    /// @param delay_seconds Delay before execution (minimum 300 seconds)
+    /// @return lock_id The unique ID of the created time lock
     fn create_time_lock(
         ref self: ContractState,
         to: ContractAddress,
@@ -147,7 +153,11 @@ impl QuantumVaultImpl of IQuantumVault<ContractState> {
         let selector = self.lock_selector.read(lock_id);
         let calldata_hash = self.lock_calldata.read(lock_id);
         
-        // Real call_contract_syscall
+        // NOTE: This contract uses a HASH-COMMITMENT scheme for calldata.
+        // The target contract should expect the original calldata hash as its single argument
+        // and verify that the provided data matches the committed hash.
+        // Example: target function should be: fn execute_with_proof(data: felt252, proof: felt252)
+        // For full calldata storage, modify lock_calldata to use a Span<felt252> instead.
         let calldata = array![calldata_hash].span();
         let _ = starknet::syscalls::call_contract_syscall(to, selector, calldata)
             .unwrap_syscall();

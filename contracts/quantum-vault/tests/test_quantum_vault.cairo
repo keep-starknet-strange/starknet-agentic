@@ -45,7 +45,7 @@ fn test_execute_time_lock() {
     let target: ContractAddress = 0xABC.try_into().unwrap();
     let selector: felt252 = 0x1234;
     let calldata_hash: felt252 = 0x5678;
-    let delay: u64 = 100;
+    let delay: u64 = 300;
     
     // Create lock
     start_cheat_caller_address(addr, owner_address());
@@ -53,7 +53,7 @@ fn test_execute_time_lock() {
     stop_cheat_caller_address(addr);
     
     // Fast forward time to within grace period (unlock + 12 hours)
-    start_cheat_block_timestamp(addr, 100 + 43200);  // unlock_at + 12h
+    start_cheat_block_timestamp(addr, 300 + 43200);  // unlock_at + 12h
     
     // Execute as owner
     start_cheat_caller_address(addr, owner_address());
@@ -106,7 +106,7 @@ fn test_is_lock_expired() {
     let addr = deploy_vault();
     let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
     let target: ContractAddress = 0xABC.try_into().unwrap();
-    let delay: u64 = 100;
+    let delay: u64 = 300;
     
     start_cheat_caller_address(addr, owner_address());
     let lock_id = dispatcher.create_time_lock(target, 0x1, 0x1111, delay);
@@ -115,8 +115,8 @@ fn test_is_lock_expired() {
     // Not expired yet (within grace period)
     assert(!dispatcher.is_lock_expired(lock_id), 'Should not be expired yet');
     
-    // Fast forward time
-    start_cheat_block_timestamp(addr, 200);
+    // Fast forward time (300 delay + 86400 grace + 1 second)
+    start_cheat_block_timestamp(addr, 300 + 86400 + 1);
     assert(dispatcher.is_lock_expired(lock_id), 'Should be expired');
     stop_cheat_block_timestamp(addr);
 }
@@ -126,15 +126,15 @@ fn test_grace_period_expired() {
     let addr = deploy_vault();
     let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
     let target: ContractAddress = 0xABC.try_into().unwrap();
-    let delay: u64 = 100;
+    let delay: u64 = 300;
     
     // Create lock
     start_cheat_caller_address(addr, owner_address());
     let lock_id = dispatcher.create_time_lock(target, 0x1, 0x1111, delay);
     stop_cheat_caller_address(addr);
     
-    // Fast forward past grace period
-    start_cheat_block_timestamp(addr, 100 + 86400 + 1);  // After grace period
+    // Fast forward past grace period (300 delay + 86400 grace + 1 second)
+    start_cheat_block_timestamp(addr, 300 + 86400 + 1);
     
     // Try to execute - should fail
     start_cheat_caller_address(addr, owner_address());
