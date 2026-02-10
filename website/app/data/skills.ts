@@ -123,6 +123,30 @@ export const SKILLS: Skill[] = [
       "TypedData signing",
     ],
   },
+  {
+    slug: "huginn-onboard",
+    name: "huginn-onboard",
+    title: "Huginn Onboard",
+    description:
+      "Bridge assets to Starknet and register with the Huginn thought provenance registry. Complete onboarding for verifiable AI agents.",
+    keywords: [
+      "huginn",
+      "onboarding",
+      "bridge",
+      "registration",
+      "thought-provenance",
+      "zk-proofs",
+    ],
+    icon: "🐦‍⬛",
+    color: "bg-neo-orange",
+    features: [
+      "Asset bridging",
+      "Huginn registration",
+      "Thought logging",
+      "ZK proof submission",
+      "Agent metadata",
+    ],
+  },
 ];
 
 // Get all unique keywords from all skills
