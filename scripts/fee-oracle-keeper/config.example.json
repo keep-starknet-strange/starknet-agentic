@@ -1,5 +1,5 @@
 {
-    "starknet_rpc": "https://starknet-mainnet.public.blastapi.io/v2/rpc/v0.8",
+    "starknet_rpc": "https://starknet-mainnet.public.blastapi.io/v2/r2/rpc/v0.8",
     "fee_smoothing_address": "0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
     "account_address": "0xFEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210",
     "private_key": "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
@@ -8,32 +8,13 @@
     "sources": {
         "binance": {
             "enabled": true,
-            "weight": 0.30,
+            "weight": 0.55,
             "symbol": "STRKUSDT"
         },
         "coinbase": {
             "enabled": true,
-            "weight": 0.25,
+            "weight": 0.45,
             "symbol": "STRK-USD"
-        },
-        "jediswap": {
-            "enabled": true,
-            "weight": 0.125,
-            "pool_address": "0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
-        },
-        "myswap": {
-            "enabled": true,
-            "weight": 0.125,
-            "pool_address": "0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
-        },
-        "ekubo": {
-            "enabled": true,
-            "weight": 0.10,
-            "pool_address": "0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
-        },
-        "avnu": {
-            "enabled": true,
-            "weight": 0.10
         }
     }
 }

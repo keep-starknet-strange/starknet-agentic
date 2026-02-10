@@ -467,18 +467,17 @@ class FeeSmoothingKeeper:
         logger.info("Initializing FeeSmoothing Keeper...")
         
         # Initialize account
-        # FIX: Use RpcProvider with proper chain_id, not RPC URL
-        from starknet_py.net import RpcProvider
+        # FIX: Use Account.from_address() with RpcProvider (AccountClient deprecated)
+        from starknet_py.net import RpcProvider, Account
         from starknet_py.constants import StarknetChainId
         
         provider = RpcProvider(rpc_url=self.config.starknet_rpc)
-        self.account = AccountClient(
-            provider=provider,
+        self.account = Account.from_address(
             address=self.config.account_address,
+            provider=provider,
             key_pair=PrivateKeyKeyPair.from_private_key(
                 int(self.config.private_key, 16)
-            ),
-            chain=StarknetChainId.STRK_MAINNET
+            )
         )
         
         # Load contract
@@ -501,11 +500,10 @@ class FeeSmoothingKeeper:
                 symbol="STRK-USD",
                 weight=0.45  # 45% weight (CEX-only)
             ),
-            # JediSwapSource disabled - stub returning None
-            # MySwapSource disabled - stub returning None  
-            # EkuboSource disabled - stub returning None
-        ]),
-            AVNUSource()
+            # DEX sources disabled - uncomment when implemented
+            # JediSwapSource(pool_address="..."),
+            # MySwapSource(pool_address="..."),
+            # EkuboSource(pool_address="..."),
         ])
         
         logger.info("Initialization complete")
