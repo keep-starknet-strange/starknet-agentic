@@ -1,6 +1,6 @@
-# OFM Keeper - Oracle Fee Smoothing Keeper
+# OFS Keeper - Oracle Fee Smoothing Keeper
 
-Scripts for running the oracle keeper that updates OFM price feeds.
+Scripts for running the oracle keeper that updates OFS price feeds.
 
 ## Installation
 
@@ -19,7 +19,7 @@ vim config.json
 
 Required fields:
 - `starknet_rpc`: RPC endpoint URL
-- `fee_smoothing_address`: Deployed OFM contract address
+- `fee_smoothing_address`: Deployed OFS contract address
 - `account_address`: Oracle account address
 - `private_key`: Oracle account private key (hex, no 0x prefix)
 
@@ -86,7 +86,7 @@ Create `/etc/systemd/system/ofm-keeper.service`:
 
 ```ini
 [Unit]
-Description=OFM Oracle Keeper
+Description=OFS Oracle Keeper
 After=network.target
 
 [Service]

@@ -1,4 +1,4 @@
-# OFM - Oracle Fee Smoothing
+# OFS - Oracle Fee Smoothing
 
 **Oracle-based fee smoothing solution for Starknet.**
 
@@ -15,7 +15,7 @@ Provides predictable USD-denominated fees while smoothing STRK price volatility 
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   OFM Contract (Cairo)                            │
+│                   OFS Contract (Cairo)                            │
 │   ├── Price Oracle (validated updates)                           │
 │   ├── TWAP Accumulator (24h window)                             │
 │   ├── Fee Calculator (USD ↔ STRK)                               │

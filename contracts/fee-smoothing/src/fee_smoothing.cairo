@@ -1,6 +1,6 @@
 #[starknet::contract]
 pub mod FeeSmoothing {
-    use ofm_oracle_fee_smoothing::interfaces::{IFeeSmoothing, IFeeSmoothingAdmin};
+    use ofs_fee_smoothing::interfaces::{IFeeSmoothing, IFeeSmoothingAdmin};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use starknet::storage::*;
     use openzeppelin::access::ownable::OwnableComponent;

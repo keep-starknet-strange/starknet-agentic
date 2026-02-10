@@ -1,4 +1,4 @@
-use ofm_oracle_fee_smoothing::interfaces::{IFeeSmoothingDispatcher, IFeeSmoothingDispatcherTrait, IFeeSmoothingAdminDispatcher, IFeeSmoothingAdminDispatcherTrait};
+use ofs_fee_smoothing::interfaces::{IFeeSmoothingDispatcher, IFeeSmoothingDispatcherTrait, IFeeSmoothingAdminDispatcher, IFeeSmoothingAdminDispatcherTrait};
 use snforge_std::{ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address, stop_cheat_caller_address, start_cheat_block_timestamp, stop_cheat_block_timestamp};
 use starknet::ContractAddress;
 
