@@ -267,7 +267,7 @@ export interface FirstActionResult {
 }
 
 export async function firstActionBalances(args: {
-  provider: ProviderLike;
+  provider: RpcProvider;
   tokens: Record<string, string>;
   accountAddress: string;
   privateKey: string;
@@ -286,7 +286,7 @@ export async function firstActionBalances(args: {
       "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
 
     const account = new Account({
-      provider: args.provider as unknown as RpcProvider,
+      provider: args.provider,
       address: args.accountAddress,
       signer: args.privateKey,
       transactionVersion: ETransactionVersion.V3,
