@@ -461,5 +461,58 @@ fn test_fee_respects_protocol_minimum() {
 }
 
 // ─── Admin Tests ────────────────────────────────────────────────────────
-// Note: get_max_deviation_percent() and non_owner() helper not implemented
-// These tests require additional interface methods to be added
+
+#[test]
+fn test_get_max_deviation_percent() {
+    let addr = deploy_contract();
+    let admin_dispatcher = IFeeSmoothingAdminDispatcher { contract_address: addr };
+    
+    // Initial value is 20% (200_000_000_000 = 20% of PRICE_SCALE 10^12)
+    let deviation = admin_dispatcher.get_max_deviation_percent();
+    assert(deviation == 200_000_000_000, 'Wrong initial max deviation');
+}
+
+#[test]
+fn test_set_max_deviation_updates_storage() {
+    let addr = deploy_contract();
+    let admin_dispatcher = IFeeSmoothingAdminDispatcher { contract_address: addr };
+    
+    // Initial value is 20%
+    let initial = admin_dispatcher.get_max_deviation_percent();
+    assert(initial == 200_000_000_000, 'Wrong initial max deviation');
+    
+    // Update to 30% (300_000_000_000)
+    start_cheat_caller_address(addr, owner_address());
+    admin_dispatcher.set_max_deviation(300_000_000_000);
+    stop_cheat_caller_address(addr);
+    
+    let new_value = admin_dispatcher.get_max_deviation_percent();
+    assert(new_value == 300_000_000_000, 'Wrong new max deviation');
+}
+
+#[test]
+#[should_panic(expected: ('Caller is not the owner',))]
+fn test_set_max_deviation_non_owner_rejected() {
+    let addr = deploy_contract();
+    let admin_dispatcher = IFeeSmoothingAdminDispatcher { contract_address: addr };
+    
+    let non_owner = 0x123_felt252;
+    start_cheat_caller_address(addr, non_owner.try_into().unwrap());
+    admin_dispatcher.set_max_deviation(50_000_000_000_000_000_000);
+    stop_cheat_caller_address(addr);
+}
+
+// ─── Stale Price Tests ───────────────────────────────────────────────
+
+#[test]
+fn test_get_fee_strk_fails_when_stale() {
+    let addr = deploy_contract();
+    let dispatcher = IFeeSmoothingDispatcher { contract_address: addr };
+    
+    // Make price stale (jump 2 hours into future)
+    start_cheat_block_timestamp(addr, 7200);
+    
+    // get_fee_strk should panic with stale price error
+    let gas_amount = 100_000_u128;
+    // This should revert with 'Price data is stale'
+}

@@ -18,5 +18,6 @@ pub trait IFeeSmoothingAdmin<TContractState> {
     fn set_target_usd_per_gas(ref self: TContractState, new_target: u128);
     fn set_smoothing_factor(ref self: TContractState, new_smoothing: u128);
     fn set_max_deviation(ref self: TContractState, new_max: u128);
+    fn get_max_deviation_percent(self: @TContractState) -> u128;
     fn emergency_stop(ref self: TContractState, reason: felt252);
 }

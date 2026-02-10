@@ -182,6 +182,9 @@ pub mod FeeSmoothing {
 
         /// Get fee in STRK for a given gas amount
         fn get_fee_strk(self: @ContractState, gas_amount: u128) -> u128 {
+            // Check if price is stale
+            assert(!self.is_price_stale(), 'Price data is stale');
+            
             let price = self.get_effective_price();
             let target_usd = self.target_usd_per_gas.read();
             
@@ -200,6 +203,9 @@ pub mod FeeSmoothing {
 
         /// Get fee in USD (predictable) for a given gas amount
         fn get_fee_usd(self: @ContractState, gas_amount: u128) -> u128 {
+            // Check if price is stale
+            assert(!self.is_price_stale(), 'Price data is stale');
+            
             let target_usd = self.target_usd_per_gas.read();
             let adjusted_gas = self.adjust_gas_for_efficiency(gas_amount);
             target_usd * adjusted_gas
@@ -277,6 +283,11 @@ pub mod FeeSmoothing {
                 old_value: old,
                 new_value: new_max,
             });
+        }
+
+        /// Get current max deviation setting
+        fn get_max_deviation_percent(self: @ContractState) -> u128 {
+            self.max_deviation_percent.read()
         }
 
         fn emergency_stop(ref self: ContractState, reason: felt252) {
