@@ -1,13 +1,20 @@
 ---
 name: starknet-privacy
 description: |
+  ⚠️ EXPERIMENTAL - NOT PRODUCTION READY ⚠️
   Privacy protocols for Starknet: shielded pools using ZK-SNARKs with Circom and snarkjs.
   Generates zero-knowledge proofs for confidential transactions.
+  Requires cryptographic audit before mainnet use.
 version: 2.1.0
 updated: 2026-02-10
 ---
 
-# Starknet Privacy Skill
+# ⚠️ Starknet Privacy Skill - EXPERIMENTAL ⚠️
+
+**This skill is for educational and experimental purposes only.**
+- NOT production ready - requires cryptographic audit
+- Integration tests included but full verification pending
+- Use only on testnet until security review complete
 
 Privacy-preserving shielded pool for Starknet using ZK-SNARKs.
 
