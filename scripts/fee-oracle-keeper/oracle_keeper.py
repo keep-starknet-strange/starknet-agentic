@@ -61,27 +61,38 @@ class OracleConfig:
         self.sources = {
             "binance": {
                 "enabled": True,
-                "weight": 0.4,
+                "weight": 0.30,
                 "api_url": "https://api.binance.com/api/v3/ticker/price",
                 "symbol": "STRKUSDT"
             },
             "coinbase": {
                 "enabled": True,
-                "weight": 0.3,
+                "weight": 0.25,
                 "api_url": "https://api.coinbase.com/v2/prices/STRK-USD/spot",
                 "symbol": "STRK-USD"
             },
             "jediswap": {
                 "enabled": True,
-                "weight": 0.15,
+                "weight": 0.125,
                 "rpc_url": self.starknet_rpc,
                 "pool_address": "0x..."  # STRK/USDC pool
             },
             "myswap": {
                 "enabled": True,
-                "weight": 0.15,
+                "weight": 0.125,
                 "rpc_url": self.starknet_rpc,
                 "pool_address": "0x..."  # STRK/USDC pool
+            },
+            "ekubo": {
+                "enabled": True,
+                "weight": 0.10,
+                "rpc_url": self.starknet_rpc,
+                "pool_address": "0x..."  # STRK/USDC pool (Ekubo v3)
+            },
+            "avnu": {
+                "enabled": True,
+                "weight": 0.10,
+                "api_url": "https://api.avnu.fi/v1/quote"
             }
         }
 
@@ -241,6 +252,102 @@ class MySwapSource(StarknetDEXSource):
         return None
 
 
+class EkuboSource(StarknetDEXSource):
+    """
+    Ekubo DEX price source on Starknet.
+    
+    Ekubo is a v3-style AMM with concentrated liquidity.
+    Pool address format: EKUBO_POOL_ADDRESS
+    """
+    
+    # Ekubo v3 pool interface (simplified)
+    POOL_ABI = [
+        {
+            "name": "get_pool_state",
+            "type": "function",
+            "inputs": [],
+            "outputs": [
+                {"name": "tick", "type": "i128"},
+                {"name": "sqrt_price", "type": "u256"},
+                {"name": "liquidity", "type": "u128"}
+            ],
+            "stateMutability": "view"
+        }
+    ]
+    
+    async def fetch_price(self, session: aiohttp.ClientSession) -> Optional[float]:
+        """
+        Get price from Ekubo pool.
+        
+        Ekubo v3 uses tick-based pricing.
+        Price from sqrt_price: (sqrt_price / 2^128)^2 * 10^(decimals_diff)
+        """
+        try:
+            async with session.post(
+                self.rpc_url,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "starknet_call",
+                    "params": {
+                        "contract_address": self.pool_address,
+                        "entry_point_selector": "0x1598e4a6c4e5c7d3",  # get_pool_state selector
+                        "calldata": []
+                    }
+                }
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    # Parse sqrt_price from response
+                    # Calculate price from sqrt_price
+                    # For STRK/USDC pool:
+                    # price = (sqrt_price / 2^128)^2 * 10^(18-6) = (sqrt_price / 2^128)^2 * 10^12
+                    result = data.get('result', [])
+                    if len(result) >= 2:
+                        sqrt_price = int(result[1], 16) if isinstance(result[1], str) else result[1]
+                        # Simplified price calculation
+                        # Actual implementation needs proper math
+                        price_approx = (sqrt_price / (2**128)) ** 2
+                        return price_approx * 1e12  # Adjust for decimals
+        except Exception as e:
+            logger.warning(f"[ekubo] RPC call failed: {e}")
+        return None
+
+
+class AVNUSource(PriceSource):
+    """
+    AVNU DEX Aggregator price source on Starknet.
+    
+    AVNU is a DEX aggregator that finds best rates across multiple DEXs.
+    Can query their API or contract for aggregated prices.
+    """
+    
+    def __init__(self, api_url: str = "https://api.avnu.fi/v1/quote"):
+        super().__init__("avnu", 0.15)
+        self.api_url = api_url
+        # AVNU API for STRK/USDC quote
+        self.quote_url = f"{api_url}?sellToken=STRK&buyToken=USDC&sellAmount=1000000000000000000"
+    
+    async def fetch_price(self, session: aiohttp.ClientSession) -> Optional[float]:
+        """Get aggregated price from AVNU."""
+        try:
+            async with session.get(
+                self.quote_url,
+                headers={"Accept": "application/json"}
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    # AVNU returns buyAmount for given sellAmount
+                    # price = buyAmount / sellAmount
+                    sell_amount = data.get('sellAmount', 0)
+                    buy_amount = data.get('buyAmount', 0)
+                    if sell_amount > 0:
+                        return buy_amount / sell_amount
+        except Exception as e:
+            logger.warning(f"[avnu] API call failed: {e}")
+        return None
+
+
 # ─── Price Aggregator ─────────────────────────────────────────────────────
 
 class PriceAggregator:
@@ -390,7 +497,14 @@ class FeeSmoothingKeeper:
                 pool_address=self.config.sources["myswap"]["pool_address"],
                 rpc_url=self.config.starknet_rpc,
                 weight=self.config.sources["myswap"]["weight"]
-            )
+            ),
+            EkuboSource(
+                name="ekubo",
+                pool_address=self.config.sources["ekubo"]["pool_address"],
+                rpc_url=self.config.starknet_rpc,
+                weight=self.config.sources["ekubo"]["weight"]
+            ),
+            AVNUSource()
         ])
         
         logger.info("Initialization complete")

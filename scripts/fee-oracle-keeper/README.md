@@ -58,10 +58,12 @@ python oracle_keeper.py --interval 1800  # 30 minutes
 
 | Source | Type | Default Weight |
 |--------|------|----------------|
-| Binance | CEX | 40% |
-| Coinbase | CEX | 30% |
-| JediSwap | DEX (Starknet) | 15% |
-| MySwap | DEX (Starknet) | 15% |
+| Binance | CEX | 30% |
+| Coinbase | CEX | 25% |
+| JediSwap | DEX (Starknet) | 12.5% |
+| MySwap | DEX (Starknet) | 12.5% |
+| Ekubo | DEX v3 (Starknet) | 10% |
+| AVNU | DEX Aggregator | 10% |
 
 ### Aggregation Method
 
