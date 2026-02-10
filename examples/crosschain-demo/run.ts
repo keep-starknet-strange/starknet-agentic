@@ -83,7 +83,7 @@ function parseArgs(): Args {
   return parsed;
 }
 
-function createSharedUri(input: {
+export function createSharedUri(input: {
   name: string;
   description: string;
   evmAgentId: string;
@@ -115,7 +115,10 @@ function createSharedUri(input: {
   return `data:application/json;utf8,${encodeURIComponent(JSON.stringify(payload))}`;
 }
 
-function extractMintedTokenId(receipt: { logs: Array<{ topics: string[]; data: string }> }, iface: Interface): bigint | null {
+export function extractMintedTokenId(
+  receipt: { logs: Array<{ topics: string[]; data: string }> },
+  iface: Interface,
+): bigint | null {
   for (const log of receipt.logs) {
     try {
       const parsed = iface.parseLog(log);
@@ -132,6 +135,25 @@ function extractMintedTokenId(receipt: { logs: Array<{ topics: string[]; data: s
     }
   }
   return null;
+}
+
+export function resolveEvmAgentId(args: {
+  predictedAgentId: bigint;
+  receipt: { logs: Array<{ topics: string[]; data: string }> };
+  iface: Interface;
+}): bigint {
+  return extractMintedTokenId(args.receipt, args.iface) ?? args.predictedAgentId;
+}
+
+function formatEthWei(wei: bigint): string {
+  const base = 10n ** 18n;
+  const whole = wei / base;
+  const frac = wei % base;
+  if (frac === 0n) {
+    return `${whole.toString()}.0`;
+  }
+  const fracStr = frac.toString().padStart(18, "0").slice(0, 6).replace(/0+$/, "");
+  return fracStr ? `${whole.toString()}.${fracStr}` : `${whole.toString()}.0`;
 }
 
 async function updateStarknetUri(args: {
@@ -248,6 +270,17 @@ async function main() {
   const evmIdentity = new Contract(evmRegistry, EVM_IDENTITY_ABI, evmWallet);
   console.log(`  EVM signer: ${evmWallet.address}`);
 
+  const minEvmBalanceWei = BigInt(process.env.MIN_EVM_BALANCE_WEI || "300000000000000");
+  const evmBalanceWei = await evmProvider.getBalance(evmWallet.address);
+  if (evmBalanceWei < minEvmBalanceWei) {
+    throw new Error(
+      `Insufficient EVM gas balance for ${evmWallet.address}: ` +
+        `${formatEthWei(evmBalanceWei)} ETH < required ${formatEthWei(minEvmBalanceWei)} ETH. ` +
+        "Fund the Base Sepolia wallet before running cross-chain demo.",
+    );
+  }
+  console.log(`  EVM balance: ${formatEthWei(evmBalanceWei)} ETH`);
+
   // ---------- Starknet preflight ----------
   console.log("[2/6] Starknet preflight...");
   const starknetPreflight = await preflight({
@@ -258,38 +291,36 @@ async function main() {
   });
   console.log("  Starknet preflight passed");
 
-  // ---------- Starknet deploy ----------
-  console.log("[3/6] Deploying Starknet agent account...");
-  const starknetDeploy = await deployAccount({
-    provider: starknetPreflight.provider,
-    deployerAccount: starknetPreflight.account,
-    networkConfig: starknetPreflight.networkConfig,
-    network: args.starknetNetwork,
-    tokenUri: PLACEHOLDER_URI,
-    gasfree: args.gasfree,
-    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
-    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
-    salt: args.salt,
-  });
-  console.log(`  Starknet account: ${starknetDeploy.accountAddress}`);
-  console.log(`  Starknet agentId: ${starknetDeploy.agentId}`);
-
   // ---------- EVM register ----------
-  console.log("[4/6] Registering EVM identity...");
+  console.log("[3/6] Registering EVM identity...");
   const predictedEvmAgentId: bigint = await evmIdentity.register.staticCall(PLACEHOLDER_URI);
   const registerTx = await evmIdentity.register(PLACEHOLDER_URI);
   const registerReceipt = await registerTx.wait();
   if (!registerReceipt) {
     throw new Error("No receipt returned for EVM register tx");
   }
-  const mintedTokenId = extractMintedTokenId(registerReceipt as { logs: Array<{ topics: string[]; data: string }> }, evmIdentity.interface);
-  const evmAgentId = mintedTokenId ?? predictedEvmAgentId;
+  const evmAgentId = resolveEvmAgentId({
+    predictedAgentId: predictedEvmAgentId,
+    receipt: registerReceipt as { logs: Array<{ topics: string[]; data: string }> },
+    iface: evmIdentity.interface,
+  });
 
   console.log(`  EVM agentId: ${evmAgentId.toString()}`);
   console.log(`  EVM register tx: ${registerTx.hash}`);
 
+  // ---------- Predict Starknet next agent id ----------
+  const totalAgentsResult = await starknetPreflight.provider.callContract({
+    contractAddress: starknetPreflight.networkConfig.registry,
+    entrypoint: "total_agents",
+    calldata: [],
+  });
+  const totalLow = BigInt(totalAgentsResult[0] || "0");
+  const totalHigh = BigInt(totalAgentsResult[1] || "0");
+  const currentTotalAgents = totalLow + (totalHigh << 128n);
+  const predictedStarknetAgentId = (currentTotalAgents + 1n).toString();
+
   // ---------- Link via shared URI ----------
-  console.log("[5/6] Updating shared registration URI on both chains...");
+  console.log("[4/6] Deploying Starknet account with shared URI...");
   const sharedUri =
     args.sharedUri ||
     createSharedUri({
@@ -298,29 +329,39 @@ async function main() {
       evmAgentId: evmAgentId.toString(),
       evmRegistry,
       evmChainId: evmConfig.chainId,
-      starknetAgentId: starknetDeploy.agentId,
+      starknetAgentId: predictedStarknetAgentId,
       starknetRegistry: starknetPreflight.networkConfig.registry,
       starknetNetwork: args.starknetNetwork,
     });
+
+  const starknetDeploy = await deployAccount({
+    provider: starknetPreflight.provider,
+    deployerAccount: starknetPreflight.account,
+    networkConfig: starknetPreflight.networkConfig,
+    network: args.starknetNetwork,
+    tokenUri: sharedUri,
+    gasfree: args.gasfree,
+    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
+    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
+    salt: args.salt,
+  });
+  console.log(`  Starknet account: ${starknetDeploy.accountAddress}`);
+  console.log(`  Starknet agentId: ${starknetDeploy.agentId}`);
+
+  if (starknetDeploy.agentId !== predictedStarknetAgentId) {
+    throw new Error(
+      `Predicted Starknet agent_id ${predictedStarknetAgentId} but deployed ${starknetDeploy.agentId}. ` +
+        "Re-run the flow (likely concurrent registration changed ordering).",
+    );
+  }
+
+  console.log("[5/6] Updating shared registration URI on EVM...");
 
   const evmSetUriTx = await evmIdentity.setAgentURI(evmAgentId, sharedUri);
   const evmSetUriReceipt = await evmSetUriTx.wait();
   if (!evmSetUriReceipt) {
     throw new Error("No receipt returned for EVM setAgentURI tx");
   }
-
-  const starknetSetUriTxHash = await updateStarknetUri({
-    provider: starknetPreflight.provider,
-    accountAddress: starknetDeploy.accountAddress,
-    privateKey: starknetDeploy.privateKey,
-    registry: starknetPreflight.networkConfig.registry,
-    agentId: starknetDeploy.agentId,
-    uri: sharedUri,
-    gasfree: args.gasfree,
-    network: args.starknetNetwork,
-    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
-    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
-  });
 
   // ---------- First action ----------
   console.log("[6/6] Verifying Starknet account operations...");
@@ -343,7 +384,7 @@ async function main() {
       account_address: starknetDeploy.accountAddress,
       agent_id: starknetDeploy.agentId,
       deploy_tx_hash: starknetDeploy.deployTxHash,
-      set_agent_uri_tx_hash: starknetSetUriTxHash,
+      set_agent_uri_tx_hash: null,
       first_action_tx_hash: action.verifyTxHash,
       balances: action.balances,
     },
@@ -369,13 +410,20 @@ async function main() {
   console.log(
     `Starknet tx (deploy): ${starknetPreflight.networkConfig.explorer}/tx/${starknetDeploy.deployTxHash}`,
   );
-  console.log(
-    `Starknet tx (set URI): ${starknetPreflight.networkConfig.explorer}/tx/${starknetSetUriTxHash}`,
-  );
 }
 
-main().catch((error) => {
-  console.error("\nCROSS-CHAIN DEMO FAILED\n");
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+function isDirectExecution(): boolean {
+  const entry = process.argv[1];
+  if (!entry) {
+    return false;
+  }
+  return path.resolve(entry) === path.resolve(fileURLToPath(import.meta.url));
+}
+
+if (isDirectExecution()) {
+  main().catch((error) => {
+    console.error("\nCROSS-CHAIN DEMO FAILED\n");
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}
