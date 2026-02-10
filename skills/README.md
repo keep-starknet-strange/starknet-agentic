@@ -55,9 +55,49 @@ cd starknet-agentic/skills
 ls -la
 ```
 
-### Option 4: ClawHub (Coming Soon)
+### Option 4: ClawHub (OpenClaw / MoltBook)
 
-ClawHub integration is planned for OpenClaw and MoltBook users. Publishing workflow is not yet publicly documented - check [clawhub.ai](https://clawhub.ai) for updates.
+ClawHub is the primary distribution channel for OpenClaw and MoltBook users.
+
+```bash
+# Install ClawHub CLI
+npm install -g clawhub
+
+# Login
+claw login
+
+# Discover
+claw search starknet
+
+# Install
+claw add starknet-wallet
+```
+
+Maintainer publishing should follow the official ClawHub upload workflow:
+`https://github.com/RhysLad/clawhub`.
+
+If ClawHub distribution is unavailable for your environment, use Option 5.
+
+### Option 5: OpenClaw Direct (Stable GitHub Fallback)
+
+OpenClaw loads skills from `~/.openclaw/skills`. You can install directly from this repo:
+
+```bash
+mkdir -p ~/.openclaw/skills/starknet-wallet
+curl -fsSL https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-wallet/SKILL.md \
+  -o ~/.openclaw/skills/starknet-wallet/SKILL.md
+```
+
+You can also point OpenClaw to the full local folder if you want bundled scripts:
+
+```bash
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+cp -R starknet-agentic/skills/starknet-wallet ~/.openclaw/skills/starknet-wallet
+```
+
+Security note:
+- Install from trusted publishers only.
+- Review `SKILL.md` and scripts before enabling execution in autonomous agents.
 
 ## Updating Skills
 
@@ -177,6 +217,9 @@ See the main [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 
 - [Starknet Agentic Docs](https://starknet-agentic.xyz)
 - [Agent Skills Specification](https://agentskills.io/)
+- [OpenClaw Skill Format](https://docs.openclaw.ai/guide/skills)
+- [ClawHub User Guide](https://docs.openclaw.ai/guide/clawhub)
+- [ClawHub Repository](https://github.com/RhysLad/clawhub)
 - [Starknet Documentation](https://docs.starknet.io/)
 - [avnu SDK](https://docs.avnu.fi/)
 - [ERC-8004 Standard](https://eips.ethereum.org/EIPS/eip-8004)

@@ -99,6 +99,22 @@ Example:
 npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 ```
 
+OpenClaw / MoltBook fallback install (stable GitHub path):
+
+```bash
+mkdir -p ~/.openclaw/skills/starknet-wallet
+curl -fsSL https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-wallet/SKILL.md \
+  -o ~/.openclaw/skills/starknet-wallet/SKILL.md
+```
+
+OpenClaw / MoltBook via ClawHub:
+
+```bash
+npm install -g clawhub
+claw login
+claw add starknet-wallet
+```
+
 ## Examples
 
 | Example | Description | Path |
