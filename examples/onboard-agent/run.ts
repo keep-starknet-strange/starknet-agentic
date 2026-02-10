@@ -33,6 +33,7 @@ function parseArgs(): {
   tokenUri: string;
   verifyTx: boolean;
   gasfree: boolean;
+  printPrivateKey: boolean;
   salt?: string;
 } {
   const args = process.argv.slice(2);
@@ -40,6 +41,7 @@ function parseArgs(): {
   let tokenUri = "";
   let verifyTx = false;
   let gasfree = false;
+  let printPrivateKey = false;
   let salt: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
@@ -55,6 +57,9 @@ function parseArgs(): {
         break;
       case "--gasfree":
         gasfree = true;
+        break;
+      case "--print-private-key":
+        printPrivateKey = true;
         break;
       case "--salt":
         salt = args[++i];
@@ -73,11 +78,11 @@ function parseArgs(): {
     );
   }
 
-  return { network, tokenUri, verifyTx, gasfree, salt };
+  return { network, tokenUri, verifyTx, gasfree, printPrivateKey, salt };
 }
 
 async function main() {
-  const { network, tokenUri, verifyTx, gasfree, salt } = parseArgs();
+  const { network, tokenUri, verifyTx, gasfree, printPrivateKey, salt } = parseArgs();
 
   console.log("=== Starknet Agent Onboarding ===\n");
   console.log(`Network: ${network}`);
@@ -165,11 +170,38 @@ async function main() {
 
   console.log("=== Onboarding Complete ===\n");
   console.log("Receipt saved to: onboarding_receipt.json\n");
-  console.log("IMPORTANT: Save these credentials securely!");
-  console.log(`  Account address: ${deploy.accountAddress}`);
-  console.log(`  Public key:      ${deploy.publicKey}`);
-  console.log(`  Private key:     ${deploy.privateKey}`);
-  console.log(`  Agent ID:        ${deploy.agentId}`);
+  console.log("Credentials:");
+  console.log(`  Account address:  ${deploy.accountAddress}`);
+  console.log(`  Public key:       ${deploy.publicKey}`);
+  console.log(`  Agent ID:         ${deploy.agentId}`);
+
+  const secretsPath = path.join(__dirname, "onboarding_secrets.json");
+  const secrets = {
+    version: "1",
+    generated_at: new Date().toISOString(),
+    network,
+    chain_id: pre.chainId,
+    account_address: deploy.accountAddress,
+    public_key: deploy.publicKey,
+    private_key: deploy.privateKey,
+    agent_id: deploy.agentId,
+  };
+  fs.writeFileSync(secretsPath, JSON.stringify(secrets, null, 2));
+  try {
+    // Best-effort hardening: ensure secrets are user-readable only on POSIX.
+    fs.chmodSync(secretsPath, 0o600);
+  } catch {
+    // Ignore on non-POSIX or restricted environments.
+  }
+  console.log("");
+  console.log("Private key saved to: onboarding_secrets.json");
+  if (printPrivateKey) {
+    console.log("");
+    console.log("WARNING: printing a private key to stdout is risky.");
+    console.log(`  Private key:      ${deploy.privateKey}`);
+  } else {
+    console.log("Note: private key is not printed by default. Use --print-private-key to print it once.");
+  }
   console.log("");
   console.log(
     `View on explorer: ${pre.networkConfig.explorer}/contract/${deploy.accountAddress}`

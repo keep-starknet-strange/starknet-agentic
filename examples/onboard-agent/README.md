@@ -7,7 +7,7 @@ One-command path to deploy a Starknet agent account with ERC-8004 identity regis
 1. **Preflight** -- validates env, RPC, chain ID, deployer balance
 2. **Deploy** -- generates a new Stark keypair locally, calls `AgentAccountFactory.deploy_account()` which atomically deploys an account contract and registers an ERC-8004 identity
 3. **Verify** -- reads the new account's balances; optionally sends a 0-value self-transfer to prove tx plumbing
-4. **Receipt** -- emits `onboarding_receipt.json` with all addresses, tx hashes, and credentials
+4. **Receipt** -- emits `onboarding_receipt.json` (public info) + `onboarding_secrets.json` (private key)
 
 ## Prerequisites
 
@@ -45,11 +45,16 @@ npx tsx run.ts --network sepolia --token-uri "ipfs://QmYourMetadata" --gasfree
 
 # Custom salt (deterministic address)
 npx tsx run.ts --token-uri "ipfs://QmYourMetadata" --salt 0x1234
+
+# If you really need to print the private key once (not recommended):
+npx tsx run.ts --network sepolia --token-uri "ipfs://QmYourMetadata" --print-private-key
 ```
 
 ## Output
 
-The script prints credentials to stdout and saves `onboarding_receipt.json`:
+The script saves:
+- `onboarding_receipt.json` (safe to share: addresses + tx hashes)
+- `onboarding_secrets.json` (DO NOT SHARE: contains the private key)
 
 ```json
 {
@@ -69,7 +74,7 @@ The script prints credentials to stdout and saves `onboarding_receipt.json`:
 }
 ```
 
-**Save the private key securely!** It is printed once and not stored anywhere.
+`onboarding_secrets.json` is written with best-effort `0600` permissions on POSIX systems.
 
 ## Next steps
 
