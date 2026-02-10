@@ -83,7 +83,7 @@ function parseArgs(): Args {
   return parsed;
 }
 
-function createSharedUri(input: {
+export function createSharedUri(input: {
   name: string;
   description: string;
   evmAgentId: string;
@@ -115,7 +115,10 @@ function createSharedUri(input: {
   return `data:application/json;utf8,${encodeURIComponent(JSON.stringify(payload))}`;
 }
 
-function extractMintedTokenId(receipt: { logs: Array<{ topics: string[]; data: string }> }, iface: Interface): bigint | null {
+export function extractMintedTokenId(
+  receipt: { logs: Array<{ topics: string[]; data: string }> },
+  iface: Interface,
+): bigint | null {
   for (const log of receipt.logs) {
     try {
       const parsed = iface.parseLog(log);
@@ -132,6 +135,25 @@ function extractMintedTokenId(receipt: { logs: Array<{ topics: string[]; data: s
     }
   }
   return null;
+}
+
+export function resolveEvmAgentId(args: {
+  predictedAgentId: bigint;
+  receipt: { logs: Array<{ topics: string[]; data: string }> };
+  iface: Interface;
+}): bigint {
+  return extractMintedTokenId(args.receipt, args.iface) ?? args.predictedAgentId;
+}
+
+function formatEthWei(wei: bigint): string {
+  const base = 10n ** 18n;
+  const whole = wei / base;
+  const frac = wei % base;
+  if (frac === 0n) {
+    return `${whole.toString()}.0`;
+  }
+  const fracStr = frac.toString().padStart(18, "0").slice(0, 6).replace(/0+$/, "");
+  return fracStr ? `${whole.toString()}.${fracStr}` : `${whole.toString()}.0`;
 }
 
 async function updateStarknetUri(args: {
@@ -248,6 +270,17 @@ async function main() {
   const evmIdentity = new Contract(evmRegistry, EVM_IDENTITY_ABI, evmWallet);
   console.log(`  EVM signer: ${evmWallet.address}`);
 
+  const minEvmBalanceWei = BigInt(process.env.MIN_EVM_BALANCE_WEI || "300000000000000");
+  const evmBalanceWei = await evmProvider.getBalance(evmWallet.address);
+  if (evmBalanceWei < minEvmBalanceWei) {
+    throw new Error(
+      `Insufficient EVM gas balance for ${evmWallet.address}: ` +
+        `${formatEthWei(evmBalanceWei)} ETH < required ${formatEthWei(minEvmBalanceWei)} ETH. ` +
+        "Fund the Base Sepolia wallet before running cross-chain demo.",
+    );
+  }
+  console.log(`  EVM balance: ${formatEthWei(evmBalanceWei)} ETH`);
+
   // ---------- Starknet preflight ----------
   console.log("[2/6] Starknet preflight...");
   const starknetPreflight = await preflight({
@@ -282,8 +315,11 @@ async function main() {
   if (!registerReceipt) {
     throw new Error("No receipt returned for EVM register tx");
   }
-  const mintedTokenId = extractMintedTokenId(registerReceipt as { logs: Array<{ topics: string[]; data: string }> }, evmIdentity.interface);
-  const evmAgentId = mintedTokenId ?? predictedEvmAgentId;
+  const evmAgentId = resolveEvmAgentId({
+    predictedAgentId: predictedEvmAgentId,
+    receipt: registerReceipt as { logs: Array<{ topics: string[]; data: string }> },
+    iface: evmIdentity.interface,
+  });
 
   console.log(`  EVM agentId: ${evmAgentId.toString()}`);
   console.log(`  EVM register tx: ${registerTx.hash}`);
@@ -374,8 +410,18 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error("\nCROSS-CHAIN DEMO FAILED\n");
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+function isDirectExecution(): boolean {
+  const entry = process.argv[1];
+  if (!entry) {
+    return false;
+  }
+  return path.resolve(entry) === path.resolve(fileURLToPath(import.meta.url));
+}
+
+if (isDirectExecution()) {
+  main().catch((error) => {
+    console.error("\nCROSS-CHAIN DEMO FAILED\n");
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}
