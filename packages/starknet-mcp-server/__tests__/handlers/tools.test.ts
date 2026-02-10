@@ -938,6 +938,31 @@ describe("MCP Tool Handlers", () => {
 
       delete process.env.AVNU_PAYMASTER_API_KEY;
     });
+
+    it("returns clear error for out-of-range public key", async () => {
+      const tooLarge = (1n << 251n).toString(); // 2^251, one above max allowed
+      const response = await callTool("starknet_deploy_agent_account", {
+        public_key: tooLarge,
+        token_uri: "ipfs://demo",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("public_key must fit in 251 bits");
+    });
+
+    it("returns clear error for out-of-range salt", async () => {
+      const tooLarge = (1n << 251n).toString();
+      const response = await callTool("starknet_deploy_agent_account", {
+        public_key: "1",
+        token_uri: "ipfs://demo",
+        salt: tooLarge,
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("salt must fit in 251 bits");
+    });
   });
 
   describe("unknown tool", () => {
