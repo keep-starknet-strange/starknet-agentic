@@ -249,3 +249,32 @@ fn test_cancel_non_owner_rejected() {
     start_cheat_caller_address(addr, non_owner_address());
     dispatcher.cancel_time_lock(lock_id);
 }
+
+// ─── Boundary tests ─────────────────────────────────────────────────────
+
+#[test]
+#[should_panic(expected: ('Delay too long',))]
+fn test_create_max_delay_boundary() {
+    let addr = deploy_vault();
+    let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
+    let target: ContractAddress = 0xABC.try_into().unwrap();
+    
+    // MAX_DELAY + 1 should fail (30 days + 1 second)
+    start_cheat_caller_address(addr, owner_address());
+    dispatcher.create_time_lock(target, 0x1, 0x1111, 2592001);
+    stop_cheat_caller_address(addr);
+}
+
+#[test]
+fn test_create_max_delay_allowed() {
+    let addr = deploy_vault();
+    let dispatcher = IQuantumVaultDispatcher { contract_address: addr };
+    let target: ContractAddress = 0xABC.try_into().unwrap();
+    
+    // MAX_DELAY exactly should succeed (30 days = 2592000 seconds)
+    start_cheat_caller_address(addr, owner_address());
+    let lock_id = dispatcher.create_time_lock(target, 0x1, 0x1111, 2592000);
+    stop_cheat_caller_address(addr);
+    
+    assert(lock_id == 1, 'First lock should be id 1');
+}
