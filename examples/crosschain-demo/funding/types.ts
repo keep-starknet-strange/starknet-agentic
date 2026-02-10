@@ -1,9 +1,15 @@
-export type FundingProviderSelection = "auto" | "mock" | "skipped";
-export type FundingProviderName = "mock" | "skipped";
-export type FundingStatus = "mock" | "skipped";
+export type FundingProviderSelection = "auto" | "mock" | "skipped" | "starkgate-l1";
+export type FundingProviderName = "mock" | "skipped" | "starkgate-l1";
+export type FundingStatus = "mock" | "skipped" | "confirmed";
 
 export interface FundingConfig {
   minDeployerBalanceWei: bigint;
+  l1RpcUrl?: string;
+  l1PrivateKey?: string;
+  starkgateEthBridgeAddress?: string;
+  fundingTimeoutMs?: number;
+  fundingPollIntervalMs?: number;
+  l1GasBufferWei?: bigint;
 }
 
 export interface FundParams {
@@ -11,6 +17,8 @@ export interface FundParams {
   amountWei: bigint;
   token: "ETH";
   network: string;
+  requiredBalanceWei: bigint;
+  readTargetBalanceWei: () => Promise<bigint>;
 }
 
 export interface FundResult {
@@ -29,4 +37,3 @@ export interface FundingProvider {
   preflight(config: FundingConfig): Promise<void>;
   fund(params: FundParams): Promise<FundResult>;
 }
-

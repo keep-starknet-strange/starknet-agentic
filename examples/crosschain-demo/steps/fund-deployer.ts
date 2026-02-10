@@ -17,7 +17,7 @@ interface FundDeployerArgs {
   deployerAddress: string;
   providerSelection: FundingProviderSelection;
   config: FundingConfig;
-  resolveProvider?: (name: "mock" | "skipped") => FundingProvider;
+  resolveProvider?: (name: "mock" | "skipped" | "starkgate-l1") => FundingProvider;
 }
 
 export async function readTokenBalanceWei(args: {
@@ -62,16 +62,18 @@ export async function fundDeployer(args: FundDeployerArgs): Promise<{ funding: F
   }
 
   if (!alreadyFunded && args.providerSelection === "auto") {
-    throw new Error(
-      "Deployer balance is below MIN_STARKNET_DEPLOYER_BALANCE_WEI and no real funding provider is configured in PR1 scaffolding. " +
-        "Set FUNDING_PROVIDER=mock for dry-run testing, or top up the deployer balance.",
-    );
+    if (!args.config.l1RpcUrl || !args.config.l1PrivateKey) {
+      throw new Error(
+        "Deployer balance is below MIN_STARKNET_DEPLOYER_BALANCE_WEI and no real funding provider is configured. " +
+          "Set FUNDING_PROVIDER=mock for dry-run testing, or configure L1_RPC_URL + L1_PRIVATE_KEY for StarkGate funding.",
+      );
+    }
   }
 
   const selected =
     alreadyFunded || args.providerSelection === "skipped"
       ? resolver("skipped")
-      : resolver("mock");
+      : resolver(args.providerSelection === "auto" ? "starkgate-l1" : args.providerSelection);
 
   await selected.preflight(args.config);
   const funding = await selected.fund({
@@ -79,6 +81,14 @@ export async function fundDeployer(args: FundDeployerArgs): Promise<{ funding: F
     amountWei: topUpWei,
     token: "ETH",
     network: args.network,
+    requiredBalanceWei: args.config.minDeployerBalanceWei,
+    readTargetBalanceWei: () =>
+      readTokenBalanceWei({
+        provider: args.provider,
+        network: args.network,
+        accountAddress: args.deployerAddress,
+        token: "ETH",
+      }),
   });
 
   return { funding, balanceWei };

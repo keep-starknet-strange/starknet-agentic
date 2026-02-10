@@ -160,24 +160,36 @@ function formatEthWei(wei: bigint): string {
 
 export function parseFundingProvider(value: string | undefined): FundingProviderSelection {
   const parsed = (value || "auto").toLowerCase();
-  if (parsed === "auto" || parsed === "mock" || parsed === "skipped") {
+  if (parsed === "auto" || parsed === "mock" || parsed === "skipped" || parsed === "starkgate-l1") {
     return parsed;
   }
-  throw new Error(`Invalid FUNDING_PROVIDER "${value}". Expected one of: auto, mock, skipped.`);
+  throw new Error(`Invalid FUNDING_PROVIDER "${value}". Expected one of: auto, mock, skipped, starkgate-l1.`);
 }
 
 export function parseMinStarknetDeployerBalanceWei(value: string | undefined): bigint {
-  const raw = value || "5000000000000000";
+  return parseNonNegativeWei(value || "5000000000000000", "MIN_STARKNET_DEPLOYER_BALANCE_WEI");
+}
+
+export function parseNonNegativeWei(raw: string, varName: string): bigint {
   let parsed: bigint;
   try {
     parsed = BigInt(raw);
   } catch {
-    throw new Error(
-      `Invalid MIN_STARKNET_DEPLOYER_BALANCE_WEI "${raw}". Expected non-negative integer wei value.`,
-    );
+    throw new Error(`Invalid ${varName} "${raw}". Expected non-negative integer wei value.`);
   }
   if (parsed < 0n) {
-    throw new Error("MIN_STARKNET_DEPLOYER_BALANCE_WEI must be non-negative.");
+    throw new Error(`${varName} must be non-negative.`);
+  }
+  return parsed;
+}
+
+export function parsePositiveIntEnv(value: string | undefined, varName: string, defaultValue: number): number {
+  if (value === undefined || value === "") {
+    return defaultValue;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${varName} "${value}". Expected positive integer.`);
   }
   return parsed;
 }
@@ -273,6 +285,13 @@ async function main() {
     process.env.MIN_STARKNET_DEPLOYER_BALANCE_WEI,
   );
   const fundingProvider = parseFundingProvider(process.env.FUNDING_PROVIDER);
+  const fundingTimeoutMs = parsePositiveIntEnv(process.env.FUNDING_TIMEOUT_MS, "FUNDING_TIMEOUT_MS", 900000);
+  const fundingPollIntervalMs = parsePositiveIntEnv(
+    process.env.FUNDING_POLL_INTERVAL_MS,
+    "FUNDING_POLL_INTERVAL_MS",
+    5000,
+  );
+  const l1GasBufferWei = parseNonNegativeWei(process.env.L1_GAS_BUFFER_WEI || "1000000000000000", "L1_GAS_BUFFER_WEI");
 
   console.log("=== ERC-8004 Cross-Chain Demo ===\n");
   console.log(`Starknet network: ${args.starknetNetwork}`);
@@ -331,6 +350,12 @@ async function main() {
     providerSelection: fundingProvider,
     config: {
       minDeployerBalanceWei: minStarknetDeployerBalanceWei,
+      l1RpcUrl: process.env.L1_RPC_URL,
+      l1PrivateKey: process.env.L1_PRIVATE_KEY,
+      starkgateEthBridgeAddress: process.env.STARKGATE_ETH_BRIDGE_L1,
+      fundingTimeoutMs,
+      fundingPollIntervalMs,
+      l1GasBufferWei,
     },
   });
   console.log(

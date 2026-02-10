@@ -29,7 +29,12 @@ cp .env.example .env
 
 Funding-related vars (PR1 scaffolding):
 - `MIN_STARKNET_DEPLOYER_BALANCE_WEI` (default `0.005 ETH`)
-- `FUNDING_PROVIDER` (`auto`, `mock`, or `skipped`)
+- `FUNDING_PROVIDER` (`auto`, `mock`, `skipped`, or `starkgate-l1`)
+
+For real L1 automation (PR2a StarkGate path), set:
+- `L1_RPC_URL`
+- `L1_PRIVATE_KEY` (Ethereum Sepolia key used for StarkGate deposit)
+- optional overrides: `FUNDING_TIMEOUT_MS`, `FUNDING_POLL_INTERVAL_MS`, `L1_GAS_BUFFER_WEI`, `STARKGATE_ETH_BRIDGE_L1`
 
 ## Run
 
@@ -58,6 +63,8 @@ The script writes `crosschain_receipt.json` with:
 - Default EVM network is Base Sepolia (`eip155:84532`).
 - Default Starknet network is Sepolia (`starknet:SN_SEPOLIA`).
 - This is a v1 demo flow for identity linkage. Bridge automation is out of scope.
+- With `FUNDING_PROVIDER=starkgate-l1` (or `auto` + L1 vars configured), the runner deposits ETH from Ethereum Sepolia to the Starknet deployer address and waits for the L2 balance threshold before proceeding.
+- StarkGate L1->L2 settlement on Sepolia can take several minutes. The runner polls Starknet balance until timeout (default 15 minutes).
 
 ## How To Verify This Exact Run
 
