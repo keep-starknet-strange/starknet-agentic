@@ -1,0 +1,6 @@
+# Fee Oracle Keeper Dependencies
+# Install: pip install -r requirements.txt
+
+starknet-py>=0.21.0
+aiohttp>=3.9.0
+python-dateutil>=2.8.0

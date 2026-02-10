@@ -459,3 +459,34 @@ fn test_fee_respects_protocol_minimum() {
     let min_fee = 3_000_000_000 * 1_000_000;
     assert(fee >= min_fee, 'Protocol minimum respected');
 }
+
+// ─── Admin Tests ────────────────────────────────────────────────────────
+
+#[test]
+fn test_set_max_deviation_updates_storage() {
+    let addr = deploy_contract();
+    let admin_dispatcher = IFeeSmoothingAdminDispatcher { contract_address: addr };
+    
+    // Initial value is 20%
+    let initial = admin_dispatcher.get_max_deviation_percent();
+    assert(initial == 20_000_000_000_000_000_000, 'Wrong initial max deviation'); // 20% scaled
+    
+    // Update to 30%
+    start_cheat_caller_address(addr, owner_address());
+    admin_dispatcher.set_max_deviation(30_000_000_000_000_000_000); // 30% scaled
+    stop_cheat_caller_address(addr);
+    
+    let new_value = admin_dispatcher.get_max_deviation_percent();
+    assert(new_value == 30_000_000_000_000_000_000, 'Wrong new max deviation'); // 30% scaled
+}
+
+#[test]
+#[should_panic(expected: ('Caller is not the owner',))]
+fn test_set_max_deviation_non_owner_rejected() {
+    let addr = deploy_contract();
+    let admin_dispatcher = IFeeSmoothingAdminDispatcher { contract_address: addr };
+    
+    start_cheat_caller_address(addr, non_owner());
+    admin_dispatcher.set_max_deviation(50_000_000_000_000_000_000);
+    stop_cheat_caller_address(addr);
+}

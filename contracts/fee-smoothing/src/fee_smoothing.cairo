@@ -44,7 +44,9 @@ pub mod FeeSmoothing {
         // Price data (STRK/USD, scaled by PRICE_SCALE)
         current_price: u128,
         price_cumulative: u256,
+        price_cumulative_at_window: u256,  // TWAP sliding window checkpoint
         price_last_update: u64,
+        window_start_time: u64,            // TWAP sliding window start
         twap_24h: u128,
         
         // Smoothing parameters
@@ -300,16 +302,38 @@ pub mod FeeSmoothing {
         fn calculate_twap(self: @ContractState, now: u64) -> u128 {
             let last_time = self.price_last_update.read();
             let cumulative = self.price_cumulative.read();
+            let cumulative_at_window = self.price_cumulative_at_window.read();
+            let window_start_time = self.window_start_time.read();
             
-            if now - last_time >= TWAP_WINDOW_SECONDS {
-                // If enough time has passed, use cumulative directly
-                // TWAP = cumulative / window
-                let window = TWAP_WINDOW_SECONDS.into();
-                let avg = cumulative / window;
-                avg.try_into().unwrap()
+            let time_elapsed = now - last_time;
+            let window_time_elapsed = now - window_start_time;
+            
+            // Update cumulative price for this period
+            let period_cumulative = cumulative + (self.current_price.read() * time_elapsed.into());
+            
+            // Update window checkpoint if enough time has passed
+            if window_time_elapsed >= TWAP_WINDOW_SECONDS {
+                // Reset to sliding window - store checkpoint
+                self.price_cumulative_at_window.write(period_cumulative);
+                self.window_start_time.write(now);
+                self.price_cumulative.write(0);
+            }
+            
+            // Calculate TWAP using sliding window
+            let twap_cumulative = period_cumulative - cumulative_at_window;
+            let twap_window = if window_time_elapsed < TWAP_WINDOW_SECONDS {
+                window_time_elapsed
             } else {
-                // Not enough data for full TWAP, use weighted average
-                // This is a simplified fallback
+                TWAP_WINDOW_SECONDS
+            };
+            
+            if twap_window > 0 {
+                let twap = twap_cumulative / twap_window.into();
+                match twap.try_into() {
+                    Result::Ok(twap_u128) => twap_u128,
+                    Result::Err(_) => self.current_price.read(),
+                }
+            } else {
                 self.current_price.read()
             }
         }

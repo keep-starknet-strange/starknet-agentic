@@ -467,13 +467,18 @@ class FeeSmoothingKeeper:
         logger.info("Initializing FeeSmoothing Keeper...")
         
         # Initialize account
+        # FIX: Use RpcProvider with proper chain_id, not RPC URL
+        from starknet_py.net import RpcProvider
+        from starknet_py.constants import StarknetChainId
+        
+        provider = RpcProvider(rpc_url=self.config.starknet_rpc)
         self.account = AccountClient(
+            provider=provider,
             address=self.config.account_address,
             key_pair=PrivateKeyKeyPair.from_private_key(
                 int(self.config.private_key, 16)
             ),
-            chain=StarknetTransactionVersion.V1,
-            StarknetChainId=self.config.starknet_rpc
+            chain=StarknetChainId.STRK_MAINNET
         )
         
         # Load contract
@@ -483,27 +488,23 @@ class FeeSmoothingKeeper:
         )
         
         # Initialize price sources
+        # NOTE: DEX sources (JediSwap/MySwap/Ekubo) disabled - stubs returning None
+        # TODO: Implement proper DEX price fetching when Starknet AMM contracts are stable
         self.aggregator = PriceAggregator([
-            BinanceSource(),
-            CoinbaseSource(),
-            JediSwapSource(
-                name="jediswap",
-                pool_address=self.config.sources["jediswap"]["pool_address"],
-                rpc_url=self.config.starknet_rpc,
-                weight=self.config.sources["jediswap"]["weight"]
+            BinanceSource(
+                name="binance",
+                symbol="STRKUSDT",
+                weight=0.55  # 55% weight (CEX-only)
             ),
-            MySwapSource(
-                name="myswap",
-                pool_address=self.config.sources["myswap"]["pool_address"],
-                rpc_url=self.config.starknet_rpc,
-                weight=self.config.sources["myswap"]["weight"]
+            CoinbaseSource(
+                name="coinbase",
+                symbol="STRK-USD",
+                weight=0.45  # 45% weight (CEX-only)
             ),
-            EkuboSource(
-                name="ekubo",
-                pool_address=self.config.sources["ekubo"]["pool_address"],
-                rpc_url=self.config.starknet_rpc,
-                weight=self.config.sources["ekubo"]["weight"]
-            ),
+            # JediSwapSource disabled - stub returning None
+            # MySwapSource disabled - stub returning None  
+            # EkuboSource disabled - stub returning None
+        ]),
             AVNUSource()
         ])
         
