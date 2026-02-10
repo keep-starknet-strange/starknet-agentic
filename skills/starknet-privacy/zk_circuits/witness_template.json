@@ -1,9 +1,0 @@
-{
-  "nullifierPublic": 112444,
-  "merkleRootPublic": 12580,
-  "amountPublic": 100,
-  "salt": 12345,
-  "nullifierSecret": 99999,
-  "merklePath": [2, 7, 26, 100],
-  "merkleIndices": [0, 0, 0, 0]
-}

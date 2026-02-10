@@ -30,9 +30,9 @@ from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
 from starknet_py.contract import Contract
-from starknet_py.net import AccountClient
+from starknet_py.net import Account
 from starknet_py.net.models import StarknetTransactionVersion
-from starknet_py.key_key_pair import PrivateKeyKeyPair
+from starknet_py.net.signer import KeyPair
 
 # ─── Configuration ───────────────────────────────────────────────────────
 
@@ -171,183 +171,6 @@ class CoinbaseSource(PriceSource):
         return None
 
 
-class StarknetDEXSource(PriceSource):
-    """Base class for Starknet DEX price sources."""
-    
-    def __init__(self, name: str, pool_address: str, rpc_url: str, weight: float):
-        super().__init__(name, weight)
-        self.pool_address = pool_address
-        self.rpc_url = rpc_url
-
-
-class JediSwapSource(StarknetDEXSource):
-    """JediSwap DEX price source on Starknet."""
-    
-    # ERC-20 contract for getting token balances from pool
-    ERC20_ABI = [
-        {
-            "name": "balanceOf",
-            "type": "function",
-            "inputs": [{"name": "account", "type": "felt252"}],
-            "outputs": [{"name": "balance", "type": "felt252"}],
-            "stateMutability": "view"
-        }
-    ]
-    
-    async def fetch_price(self, session: aiohttp.ClientSession) -> Optional[float]:
-        """Get price from JediSwap pool using RPC."""
-        # JediSwap STRK/USDC pool typically holds both tokens
-        # Price = reserve_STRK / reserve_USDC
-        try:
-            # This is a simplified version - actual implementation
-            # would query the pool contract for reserves
-            async with session.post(
-                self.rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "starknet_call",
-                    "params": {
-                        "contract_address": self.pool_address,
-                        "entry_point_selector": "0x2e426fbb8",
-                        "calldata": []
-                    }
-                }
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    # Parse reserves from response
-                    # Return calculated price
-                    pass
-        except Exception as e:
-            logger.warning(f"[jediswap] RPC call failed: {e}")
-        return None
-
-
-class MySwapSource(StarknetDEXSource):
-    """MySwap DEX price source on Starknet."""
-    
-    async def fetch_price(self, session: aiohttp.ClientSession) -> Optional[float]:
-        """Get price from MySwap pool using RPC."""
-        try:
-            async with session.post(
-                self.rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "starknet_call",
-                    "params": {
-                        "contract_address": self.pool_address,
-                        "entry_point_selector": "0x...",
-                        "calldata": []
-                    }
-                }
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    # Parse and return price
-                    pass
-        except Exception as e:
-            logger.warning(f"[myswap] RPC call failed: {e}")
-        return None
-
-
-class EkuboSource(StarknetDEXSource):
-    """
-    Ekubo DEX price source on Starknet.
-    
-    Ekubo is a v3-style AMM with concentrated liquidity.
-    Pool address format: EKUBO_POOL_ADDRESS
-    """
-    
-    # Ekubo v3 pool interface (simplified)
-    POOL_ABI = [
-        {
-            "name": "get_pool_state",
-            "type": "function",
-            "inputs": [],
-            "outputs": [
-                {"name": "tick", "type": "i128"},
-                {"name": "sqrt_price", "type": "u256"},
-                {"name": "liquidity", "type": "u128"}
-            ],
-            "stateMutability": "view"
-        }
-    ]
-    
-    async def fetch_price(self, session: aiohttp.ClientSession) -> Optional[float]:
-        """
-        Get price from Ekubo pool.
-        
-        Ekubo v3 uses tick-based pricing.
-        Price from sqrt_price: (sqrt_price / 2^128)^2 * 10^(decimals_diff)
-        """
-        try:
-            async with session.post(
-                self.rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "starknet_call",
-                    "params": {
-                        "contract_address": self.pool_address,
-                        "entry_point_selector": "0x1598e4a6c4e5c7d3",  # get_pool_state selector
-                        "calldata": []
-                    }
-                }
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    # Parse sqrt_price from response
-                    # Calculate price from sqrt_price
-                    # For STRK/USDC pool:
-                    # price = (sqrt_price / 2^128)^2 * 10^(18-6) = (sqrt_price / 2^128)^2 * 10^12
-                    result = data.get('result', [])
-                    if len(result) >= 2:
-                        sqrt_price = int(result[1], 16) if isinstance(result[1], str) else result[1]
-                        # Simplified price calculation
-                        # Actual implementation needs proper math
-                        price_approx = (sqrt_price / (2**128)) ** 2
-                        return price_approx * 1e12  # Adjust for decimals
-        except Exception as e:
-            logger.warning(f"[ekubo] RPC call failed: {e}")
-        return None
-
-
-class AVNUSource(PriceSource):
-    """
-    AVNU DEX Aggregator price source on Starknet.
-    
-    AVNU is a DEX aggregator that finds best rates across multiple DEXs.
-    Can query their API or contract for aggregated prices.
-    """
-    
-    def __init__(self, api_url: str = "https://api.avnu.fi/v1/quote"):
-        super().__init__("avnu", 0.15)
-        self.api_url = api_url
-        # AVNU API for STRK/USDC quote
-        self.quote_url = f"{api_url}?sellToken=STRK&buyToken=USDC&sellAmount=1000000000000000000"
-    
-    async def fetch_price(self, session: aiohttp.ClientSession) -> Optional[float]:
-        """Get aggregated price from AVNU."""
-        try:
-            async with session.get(
-                self.quote_url,
-                headers={"Accept": "application/json"}
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    # AVNU returns buyAmount for given sellAmount
-                    # price = buyAmount / sellAmount
-                    sell_amount = data.get('sellAmount', 0)
-                    buy_amount = data.get('buyAmount', 0)
-                    if sell_amount > 0:
-                        return buy_amount / sell_amount
-        except Exception as e:
-            logger.warning(f"[avnu] API call failed: {e}")
-        return None
-
-
 # ─── Price Aggregator ─────────────────────────────────────────────────────
 
 class PriceAggregator:
@@ -444,7 +267,7 @@ class FeeSmoothingKeeper:
     def __init__(self, config: OracleConfig):
         self.config = config
         self.running = True
-        self.account: Optional[AccountClient] = None
+        self.account: Optional[Account] = None
         self.contract: Optional[Contract] = None
         self.aggregator: Optional[PriceAggregator] = None
         
@@ -475,7 +298,7 @@ class FeeSmoothingKeeper:
         self.account = Account.from_address(
             address=self.config.account_address,
             provider=provider,
-            key_pair=PrivateKeyKeyPair.from_private_key(
+            key_pair=KeyPair.from_private_key(
                 int(self.config.private_key, 16)
             )
         )
@@ -486,24 +309,18 @@ class FeeSmoothingKeeper:
             self.account.client
         )
         
-        # Initialize price sources
-        # NOTE: DEX sources (JediSwap/MySwap/Ekubo) disabled - stubs returning None
-        # TODO: Implement proper DEX price fetching when Starknet AMM contracts are stable
+        # Initialize price sources (CEX-only)
         self.aggregator = PriceAggregator([
             BinanceSource(
                 name="binance",
                 symbol="STRKUSDT",
-                weight=0.55  # 55% weight (CEX-only)
+                weight=0.55  # 55% weight
             ),
             CoinbaseSource(
                 name="coinbase",
                 symbol="STRK-USD",
-                weight=0.45  # 45% weight (CEX-only)
+                weight=0.45  # 45% weight
             ),
-            # DEX sources disabled - uncomment when implemented
-            # JediSwapSource(pool_address="..."),
-            # MySwapSource(pool_address="..."),
-            # EkuboSource(pool_address="..."),
         ])
         
         logger.info("Initialization complete")

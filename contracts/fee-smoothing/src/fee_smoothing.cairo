@@ -313,18 +313,18 @@ pub mod FeeSmoothing {
             let cumulative = self.price_cumulative.read();
             
             if now - last_time >= TWAP_WINDOW_SECONDS {
-                // If enough time has passed, use cumulative directly
+                // Full TWAP window available - use cumulative price
                 // TWAP = cumulative / window
                 let window = TWAP_WINDOW_SECONDS.into();
                 let avg = cumulative / window;
-                // Safe conversion with fallback to current_price
+                // Safe conversion with fallback
                 match avg.try_into() {
                     Option::Some(price) => price,
                     Option::None(_) => self.current_price.read(),
                 }
             } else {
-                // Not enough data for full TWAP, use weighted average
-                // Simplified fallback - use current price
+                // Not enough time for full TWAP - use weighted average from last update
+                // This is fallback behavior during warm-up
                 self.current_price.read()
             }
         }
