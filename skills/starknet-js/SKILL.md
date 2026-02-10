@@ -97,11 +97,17 @@ const value = await provider.getStorageAt(contractAddress, storageKey);
 
 **Step 1: Compute address**
 ```typescript
-import { hash, ec, stark, CallData } from 'starknet';
+import { hash, ec, encode, CallData } from 'starknet';
 
-const privateKey = stark.randomAddress();
+// IMPORTANT: `stark.randomAddress()` returns an address-like random felt and is NOT a private key.
+// Use a real stark curve private key generator.
+const privateKey = '0x' + encode.buf2hex(ec.starkCurve.utils.randomPrivateKey());
 const publicKey = ec.starkCurve.getStarkKey(privateKey);
-const classHash = '0x540d7f5ec7ecf317e68d48564934cb99259781b1ee3cedbbc37ec5337f8e688'; // OpenZeppelin
+
+// NOTE: account class hashes are network/account-type dependent.
+// Treat this as an example only (verify the correct class hash for your setup).
+const classHash = '0x540d7f5ec7ecf317e68d48564934cb99259781b1ee3cedbbc37ec5337f8e688'; // example
+
 const constructorCalldata = CallData.compile({ publicKey });
 const address = hash.calculateContractAddressFromHash(publicKey, classHash, constructorCalldata, 0);
 ```
@@ -112,6 +118,8 @@ const address = hash.calculateContractAddressFromHash(publicKey, classHash, cons
 ```typescript
 import { Account } from 'starknet';
 
+// NOTE: Account constructor signature varies across starknet.js versions.
+// If this doesn't typecheck for your version, refer to the official docs.
 const account = new Account({ provider, address, signer: privateKey, cairoVersion: '1' });
 const { transaction_hash } = await account.deployAccount({
   classHash,
@@ -388,10 +396,10 @@ await erc20.approve(spenderAddress, cairo.uint256(amount));
 ## Utility Functions
 
 ```typescript
-import { stark, ec, num, hash } from 'starknet';
+import { stark, ec, encode, num, hash } from 'starknet';
 
 // Key generation
-const privateKey = stark.randomAddress();
+const privateKey = '0x' + encode.buf2hex(ec.starkCurve.utils.randomPrivateKey());
 const publicKey = ec.starkCurve.getStarkKey(privateKey);
 
 // Number conversions
@@ -410,7 +418,7 @@ hash.calculateContractAddressFromHash(salt, classHash, calldata, deployer);
 const { transaction_hash, contract_address } = await account.deploy({
   classHash: '0x...',
   constructorCalldata: CallData.compile({ owner: account.address }),
-  salt: stark.randomAddress(),
+  salt: stark.randomAddress(), // random felt252 salt (not a private key)
   unique: true
 });
 
