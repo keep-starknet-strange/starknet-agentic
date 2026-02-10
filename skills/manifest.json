@@ -1,0 +1,63 @@
+{
+  "default_branch": "main",
+  "repo": "keep-starknet-strange/starknet-agentic",
+  "skills": [
+    {
+      "description": "Use when writing or optimizing Cairo functions \u2014 fixing slow loops, expensive arithmetic, integer splitting or limb assembly, modular reduction, storage slot packing, or BoundedInt type bounds.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-coding",
+      "name": "cairo-coding",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-coding/SKILL.md",
+      "repo_path": "skills/cairo-coding",
+      "skill_md_path": "skills/cairo-coding/SKILL.md"
+    },
+    {
+      "description": "Bridge to Starknet from any EVM chain and register with Huginn agent registry. Enables cross-chain agent onboarding with AVNU bridge integration.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/huginn-onboard",
+      "name": "huginn-onboard",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/huginn-onboard/SKILL.md",
+      "repo_path": "skills/huginn-onboard",
+      "skill_md_path": "skills/huginn-onboard/SKILL.md"
+    },
+    {
+      "description": "Create an anonymous Starknet wallet via Typhoon and interact with Starknet contracts. Privacy-focused wallet creation for agents requiring anonymity.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-anonymous-wallet",
+      "name": "starknet-anonymous-wallet",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-anonymous-wallet/SKILL.md",
+      "repo_path": "skills/starknet-anonymous-wallet",
+      "skill_md_path": "skills/starknet-anonymous-wallet/SKILL.md"
+    },
+    {
+      "description": "Execute DeFi operations on Starknet including token swaps via avnu aggregator, DCA recurring buys, STRK staking, and lending/borrowing. Supports gasless transactions.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-defi",
+      "name": "starknet-defi",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-defi/SKILL.md",
+      "repo_path": "skills/starknet-defi",
+      "skill_md_path": "skills/starknet-defi/SKILL.md"
+    },
+    {
+      "description": "Register AI agents on-chain using the ERC-8004 Trustless Agents standard. Manage agent identity as NFTs, build reputation through feedback, and request third-party validation.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-identity",
+      "name": "starknet-identity",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-identity/SKILL.md",
+      "repo_path": "skills/starknet-identity",
+      "skill_md_path": "skills/starknet-identity/SKILL.md"
+    },
+    {
+      "description": "Simple P2P payments on Starknet. Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC. Like Lightning, but native.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-mini-pay",
+      "name": "starknet-mini-pay",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-mini-pay/SKILL.md",
+      "repo_path": "skills/starknet-mini-pay",
+      "skill_md_path": "skills/starknet-mini-pay/SKILL.md"
+    },
+    {
+      "description": "Create and manage Starknet wallets for AI agents. Transfer tokens, check balances, manage session keys, deploy accounts, and interact with smart contracts using native Account Abstraction.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet",
+      "name": "starknet-wallet",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-wallet/SKILL.md",
+      "repo_path": "skills/starknet-wallet",
+      "skill_md_path": "skills/starknet-wallet/SKILL.md"
+    }
+  ],
+  "version": 1
+}

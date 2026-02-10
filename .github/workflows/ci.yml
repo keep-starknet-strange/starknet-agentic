@@ -250,6 +250,12 @@ jobs:
           echo ""
           echo "All skills validated successfully!"
 
+      - name: Validate skills manifest
+        run: |
+          echo "Validating skills/manifest.json..."
+          python3 scripts/skills_manifest.py --check
+          echo "skills/manifest.json: OK"
+
       - name: Validate plugin manifest
         run: |
           echo "Validating .claude-plugin/marketplace.json..."

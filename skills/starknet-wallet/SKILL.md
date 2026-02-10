@@ -2,29 +2,9 @@
 name: starknet-wallet
 description: Create and manage Starknet wallets for AI agents. Transfer tokens, check balances, manage session keys, deploy accounts, and interact with smart contracts using native Account Abstraction.
 license: Apache-2.0
-metadata:
-  author: starknet-agentic
-  version: "1.0.0"
-  org: keep-starknet-strange
-keywords:
-  - starknet
-  - wallet
-  - transfer
-  - balance
-  - session-keys
-  - account-abstraction
-  - paymaster
-  - gasless
-  - agent-wallet
-  - strk
-  - eth
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Glob
-  - Grep
-  - Task
+metadata: {"author":"starknet-agentic","version":"1.0.0","org":"keep-starknet-strange"}
+keywords: [starknet, wallet, transfer, balance, session-keys, account-abstraction, paymaster, gasless, agent-wallet, strk, eth]
+allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
 ---
 

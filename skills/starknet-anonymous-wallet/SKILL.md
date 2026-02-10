@@ -2,28 +2,9 @@
 name: starknet-anonymous-wallet
 description: Create an anonymous Starknet wallet via Typhoon and interact with Starknet contracts. Privacy-focused wallet creation for agents requiring anonymity.
 license: Apache-2.0
-metadata:
-  author: starknet-agentic
-  version: "1.0.0"
-  org: keep-starknet-strange
-keywords:
-  - starknet
-  - wallet
-  - anonymous
-  - transfer
-  - balance
-  - anonymous-agent-wallet
-  - strk
-  - eth
-  - privacy
-  - typhoon
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Glob
-  - Grep
-  - Task
+metadata: {"author":"starknet-agentic","version":"1.0.0","org":"keep-starknet-strange"}
+keywords: [starknet, wallet, anonymous, transfer, balance, anonymous-agent-wallet, strk, eth, privacy, typhoon]
+allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
 ---
 
@@ -281,4 +262,3 @@ Approve + action in one tx:
 ```bash
 node scripts/multicall.js '{"privateKeyPath":"...","accountAddress":"0x...","calls":[{"contractAddress":"0x...","method":"approve","args":["0xspender","123"]},{"contractAddress":"0x...","method":"...","args":[...]}]}'
 ```
-

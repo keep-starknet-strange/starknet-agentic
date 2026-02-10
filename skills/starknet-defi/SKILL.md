@@ -2,31 +2,9 @@
 name: starknet-defi
 description: Execute DeFi operations on Starknet including token swaps via avnu aggregator, DCA recurring buys, STRK staking, and lending/borrowing. Supports gasless transactions.
 license: Apache-2.0
-metadata:
-  author: starknet-agentic
-  version: "1.0.0"
-  org: keep-starknet-strange
-keywords:
-  - starknet
-  - defi
-  - swap
-  - dca
-  - staking
-  - lending
-  - avnu
-  - ekubo
-  - jediswap
-  - zklend
-  - nostra
-  - aggregator
-  - yield
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Glob
-  - Grep
-  - Task
+metadata: {"author":"starknet-agentic","version":"1.0.0","org":"keep-starknet-strange"}
+keywords: [starknet, defi, swap, dca, staking, lending, avnu, ekubo, jediswap, zklend, nostra, aggregator, yield]
+allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
 ---
 

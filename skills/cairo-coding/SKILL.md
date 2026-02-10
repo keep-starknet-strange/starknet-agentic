@@ -2,31 +2,9 @@
 name: cairo-coding
 description: Use when writing or optimizing Cairo functions — fixing slow loops, expensive arithmetic, integer splitting or limb assembly, modular reduction, storage slot packing, or BoundedInt type bounds.
 license: Apache-2.0
-metadata:
-  author: feltroidprime
-  contributors:
-    - starknet-agentic
-  version: "1.0.0"
-  org: keep-starknet-strange
-  upstream: https://github.com/feltroidprime/cairo-skills/tree/main/skills/cairo-coding
-keywords:
-  - cairo
-  - optimization
-  - gas
-  - bounded-int
-  - storage-packing
-  - arithmetic
-  - starknet
-  - smart-contracts
-  - performance
-  - garaga
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Glob
-  - Grep
-  - Task
+metadata: {"author":"feltroidprime","contributors":["starknet-agentic"],"version":"1.0.0","org":"keep-starknet-strange","upstream":"https://github.com/feltroidprime/cairo-skills/tree/main/skills/cairo-coding"}
+keywords: [cairo, optimization, gas, bounded-int, storage-packing, arithmetic, starknet, smart-contracts, performance, garaga]
+allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
 ---
 
