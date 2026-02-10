@@ -1,0 +1,21 @@
+{
+  "name": "@starknet-agentic/onboarding-utils",
+  "version": "0.1.0",
+  "description": "Shared onboarding utilities for Starknet Agentic examples (preflight, deploy via factory, first action checks).",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "starknet": "^8.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^2.1.9"
+  }
+}
+

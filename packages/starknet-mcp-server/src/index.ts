@@ -91,12 +91,6 @@ const env = envSchema.parse({
 
 // Initialize Starknet provider and account
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
-const account = new Account({
-  provider,
-  address: env.STARKNET_ACCOUNT_ADDRESS,
-  signer: env.STARKNET_PRIVATE_KEY,
-  transactionVersion: ETransactionVersion.V3,
-});
 
 // Fee mode: sponsored (gasfree, dApp pays) vs default (user pays in gasToken)
 const isSponsored = !!env.AVNU_PAYMASTER_API_KEY;
@@ -105,6 +99,14 @@ const paymaster = new PaymasterRpc({
   headers: env.AVNU_PAYMASTER_API_KEY
     ? { "x-paymaster-api-key": env.AVNU_PAYMASTER_API_KEY }
     : {},
+});
+
+const account = new Account({
+  provider,
+  address: env.STARKNET_ACCOUNT_ADDRESS,
+  signer: env.STARKNET_PRIVATE_KEY,
+  transactionVersion: ETransactionVersion.V3,
+  paymaster,
 });
 
 // Initialize TokenService with avnu base URL and RPC provider for on-chain fallback
@@ -210,22 +212,18 @@ async function executeTransaction(
   }
 
   const callsArray = Array.isArray(calls) ? calls : [calls];
-  const paymasterParams = isSponsored
-    ? {
-        version: "0x1" as const,
-        feeMode: { mode: "sponsored" as const },
-      }
-    : {
-        version: "0x1" as const,
-        feeMode: { mode: "default" as const, gasToken },
-      };
+  const paymasterDetails = isSponsored
+    ? { feeMode: { mode: "sponsored" as const } }
+    : { feeMode: { mode: "default" as const, gasToken } };
 
-  const result = await account.execute(callsArray, {
-    paymaster: {
-      provider: paymaster,
-      params: paymasterParams,
-    },
-  } as never);
+  // Prefer using starknet.js paymaster API (no unsafe casts).
+  // For default fee mode, passing the suggested max fee improves reliability.
+  const estimation = await account.estimatePaymasterTransactionFee(callsArray, paymasterDetails);
+  const result = await account.executePaymasterTransaction(
+    callsArray,
+    paymasterDetails,
+    estimation.suggested_max_fee_in_gas_token
+  );
 
   return result.transaction_hash;
 }

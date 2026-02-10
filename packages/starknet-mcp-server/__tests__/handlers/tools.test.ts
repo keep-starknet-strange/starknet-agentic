@@ -23,6 +23,8 @@ const mockEnv = {
 // Mock starknet before importing the module
 const mockExecute = vi.fn();
 const mockEstimateInvokeFee = vi.fn();
+const mockEstimatePaymasterTransactionFee = vi.fn();
+const mockExecutePaymasterTransaction = vi.fn();
 const mockWaitForTransaction = vi.fn();
 const mockCallContract = vi.fn();
 const mockBalanceOf = vi.fn();
@@ -35,6 +37,8 @@ vi.mock("starknet", () => ({
     address: mockEnv.STARKNET_ACCOUNT_ADDRESS,
     execute: mockExecute,
     estimateInvokeFee: mockEstimateInvokeFee,
+    estimatePaymasterTransactionFee: mockEstimatePaymasterTransactionFee,
+    executePaymasterTransaction: mockExecutePaymasterTransaction,
   })),
   RpcProvider: vi.fn().mockImplementation(() => ({
     callContract: mockCallContract,
@@ -142,6 +146,9 @@ const originalConsoleError = console.error;
 describe("MCP Tool Handlers", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    mockEstimatePaymasterTransactionFee.mockResolvedValue({
+      suggested_max_fee_in_gas_token: "0",
+    });
     capturedToolHandler = null;
     capturedListHandler = null;
 
@@ -343,7 +350,7 @@ describe("MCP Tool Handlers", () => {
     });
 
     it("executes transfer with gasfree mode (no API key)", async () => {
-      mockExecute.mockResolvedValue({ transaction_hash: "0xpaymaster456" });
+      mockExecutePaymasterTransaction.mockResolvedValue({ transaction_hash: "0xpaymaster456" });
       mockWaitForTransaction.mockResolvedValue({});
 
       const response = await callTool("starknet_transfer", {
@@ -358,15 +365,12 @@ describe("MCP Tool Handlers", () => {
       expect(result.success).toBe(true);
       expect(result.transactionHash).toBe("0xpaymaster456");
       expect(result.gasfree).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(
+      expect(mockExecutePaymasterTransaction).toHaveBeenCalledWith(
         expect.any(Array),
         expect.objectContaining({
-          paymaster: expect.objectContaining({
-            params: expect.objectContaining({
-              feeMode: expect.objectContaining({ mode: "default" }),
-            }),
-          }),
+          feeMode: expect.objectContaining({ mode: "default" }),
         }),
+        expect.anything(),
       );
     });
 
@@ -467,7 +471,12 @@ describe("MCP Tool Handlers", () => {
     });
 
     it("invokes contract with gasfree mode", async () => {
-      mockExecute.mockResolvedValue({ transaction_hash: "0xgasfree789" });
+      mockEstimatePaymasterTransactionFee.mockResolvedValue({
+        suggested_max_fee_in_gas_token: "0x0",
+      });
+      mockExecutePaymasterTransaction.mockResolvedValue({
+        transaction_hash: "0xgasfree789",
+      });
       mockWaitForTransaction.mockResolvedValue({});
 
       const response = await callTool("starknet_invoke_contract", {
@@ -479,15 +488,12 @@ describe("MCP Tool Handlers", () => {
 
       const result = parseResponse(response);
       expect(result.success).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(
+      expect(mockExecutePaymasterTransaction).toHaveBeenCalledWith(
         expect.any(Array),
         expect.objectContaining({
-          paymaster: expect.objectContaining({
-            params: expect.objectContaining({
-              feeMode: expect.objectContaining({ mode: "default" }),
-            }),
-          }),
+          feeMode: expect.objectContaining({ mode: "default" }),
         }),
+        expect.anything()
       );
     });
   });
@@ -914,7 +920,12 @@ describe("MCP Tool Handlers", () => {
       vi.resetModules();
       await import("../../src/index.js");
 
-      mockExecute.mockResolvedValue({ transaction_hash: "0xdeploy-sponsored" });
+      mockEstimatePaymasterTransactionFee.mockResolvedValue({
+        suggested_max_fee_in_gas_token: "0x0",
+      });
+      mockExecutePaymasterTransaction.mockResolvedValue({
+        transaction_hash: "0xdeploy-sponsored",
+      });
       mockWaitForTransaction.mockResolvedValue({
         events: [
           {
@@ -932,15 +943,12 @@ describe("MCP Tool Handlers", () => {
 
       const result = parseResponse(response);
       expect(result.success).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(
+      expect(mockExecutePaymasterTransaction).toHaveBeenCalledWith(
         expect.any(Array),
         expect.objectContaining({
-          paymaster: expect.objectContaining({
-            params: expect.objectContaining({
-              feeMode: expect.objectContaining({ mode: "sponsored" }),
-            }),
-          }),
+          feeMode: expect.objectContaining({ mode: "sponsored" }),
         }),
+        expect.anything()
       );
 
       delete process.env.AVNU_PAYMASTER_API_KEY;

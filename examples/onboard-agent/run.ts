@@ -107,6 +107,8 @@ async function main() {
     rpcUrl,
     accountAddress,
     privateKey,
+    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
+    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
   });
 
   console.log("  Preflight passed.\n");

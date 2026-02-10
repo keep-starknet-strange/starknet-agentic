@@ -27,6 +27,9 @@ async function testDeployAccountParsesFactoryEvent() {
       assert.ok(call.calldata.length > 0);
       return { transaction_hash: "0xabc" };
     },
+    executePaymasterTransaction: async () => {
+      throw new Error("executePaymasterTransaction should not be called in this test");
+    },
   };
 
   const mockProvider = {
@@ -45,8 +48,8 @@ async function testDeployAccountParsesFactoryEvent() {
 
   try {
     const result = await deployAccount({
-      provider: mockProvider as never,
-      deployerAccount: mockDeployerAccount as never,
+      provider: mockProvider,
+      deployerAccount: mockDeployerAccount,
       networkConfig: {
         factory: factoryAddress,
         registry:
@@ -90,14 +93,17 @@ async function testDeployAccountParsesFactoryEvent() {
 async function testDeployAccountNoEventFallback() {
   const mockDeployerAccount = {
     execute: async () => ({ transaction_hash: "0xdef" }),
+    executePaymasterTransaction: async () => {
+      throw new Error("executePaymasterTransaction should not be called in this test");
+    },
   };
   const mockProvider = {
     waitForTransaction: async () => ({ events: [] }),
   };
 
   const result = await deployAccount({
-    provider: mockProvider as never,
-    deployerAccount: mockDeployerAccount as never,
+    provider: mockProvider,
+    deployerAccount: mockDeployerAccount,
     networkConfig: {
       factory:
         "0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e",
@@ -115,15 +121,18 @@ async function testDeployAccountNoEventFallback() {
 }
 
 async function testDeployAccountGasfreeUsesPaymasterPath() {
-  let executeDetails: unknown;
+  let paymasterDetails: unknown;
   const mockDeployerAccount = {
-    execute: async (
-      call: { contractAddress: string; entrypoint: string; calldata: string[] }[],
-      details?: unknown,
+    execute: async () => {
+      throw new Error("execute should not be called in gasfree test");
+    },
+    executePaymasterTransaction: async (
+      calls: { contractAddress: string; entrypoint: string; calldata: string[] }[],
+      details: unknown,
     ) => {
-      assert.equal(call.length, 1);
-      assert.equal(call[0].entrypoint, "deploy_account");
-      executeDetails = details;
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].entrypoint, "deploy_account");
+      paymasterDetails = details;
       return { transaction_hash: "0xgasfree" };
     },
   };
@@ -141,8 +150,8 @@ async function testDeployAccountGasfreeUsesPaymasterPath() {
   };
 
   await deployAccount({
-    provider: mockProvider as never,
-    deployerAccount: mockDeployerAccount as never,
+    provider: mockProvider,
+    deployerAccount: mockDeployerAccount,
     networkConfig: {
       factory:
         "0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e",
@@ -159,11 +168,9 @@ async function testDeployAccountGasfreeUsesPaymasterPath() {
     salt: "0x1234",
   });
 
-  assert.ok(executeDetails);
-  const details = executeDetails as {
-    paymaster?: { params?: { feeMode?: { mode?: string } } };
-  };
-  assert.equal(details.paymaster?.params?.feeMode?.mode, "sponsored");
+  assert.ok(paymasterDetails);
+  const details = paymasterDetails as { feeMode?: { mode?: string } };
+  assert.equal(details.feeMode?.mode, "sponsored");
 }
 
 async function testFirstActionBalanceReadOnlyFlow() {
@@ -186,7 +193,7 @@ async function testFirstActionBalanceReadOnlyFlow() {
   };
 
   const result = await firstAction({
-    provider: mockProvider as never,
+    provider: mockProvider,
     accountAddress:
       "0x6c876f3f05e44fbe836a577c32c05640e4e3c4745c6cdac35c2b64253370071",
     privateKey: "0x1",

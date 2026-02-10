@@ -3,7 +3,8 @@
  * chain ID, and deployer balance.
  */
 
-import { RpcProvider, Account, ETransactionVersion } from "starknet";
+import { type Account, type RpcProvider } from "starknet";
+import { preflightStarknet } from "@starknet-agentic/onboarding-utils";
 import { NETWORKS, TOKENS, type NetworkConfig } from "../config.js";
 
 export interface PreflightResult {
@@ -20,6 +21,8 @@ export async function preflight(env: {
   rpcUrl?: string;
   accountAddress: string;
   privateKey: string;
+  paymasterUrl?: string;
+  paymasterApiKey?: string;
 }): Promise<PreflightResult> {
   const { network, accountAddress, privateKey } = env;
 
@@ -39,60 +42,21 @@ export async function preflight(env: {
     );
   }
 
-  // Allow RPC override via env
-  const rpcUrl = env.rpcUrl || networkConfig.rpc;
-
-  // --- Provider ---
-  const provider = new RpcProvider({ nodeUrl: rpcUrl });
-
-  const chainId = await provider.getChainId();
-  console.log(`  Chain ID: ${chainId}`);
-
-  // Sanity: if network is sepolia, chain should be SN_SEPOLIA
-  // starknet.js v8 returns hex-encoded chain IDs
-  const chainIdStr = String(chainId);
-  const isSepoliaChain =
-    chainIdStr === "0x534e5f5345504f4c4941" || chainIdStr === "SN_SEPOLIA";
-
-  if (network === "sepolia" && !isSepoliaChain) {
-    throw new Error(
-      `Network is "sepolia" but chain returned ${chainIdStr}. Check your RPC URL.`
-    );
-  }
-
-  // --- Account ---
-  const account = new Account({
-    provider,
-    address: accountAddress,
-    signer: privateKey,
-    transactionVersion: ETransactionVersion.V3,
+  const { provider, account, chainId, balances } = await preflightStarknet({
+    network,
+    networkConfig,
+    tokens: TOKENS[network] || {},
+    accountAddress,
+    privateKey,
+    paymasterUrl: env.paymasterUrl,
+    paymasterApiKey: env.paymasterApiKey,
+    rpcUrlOverride: env.rpcUrl,
   });
 
+  console.log(`  Chain ID: ${chainId}`);
   console.log(`  Deployer account: ${accountAddress}`);
-
-  // --- Balance check ---
-  const tokens = TOKENS[network] || {};
-  const balances: Record<string, string> = {};
-
-  for (const [symbol, tokenAddress] of Object.entries(tokens)) {
-    try {
-      const result = await provider.callContract({
-        contractAddress: tokenAddress,
-        entrypoint: "balance_of",
-        calldata: [accountAddress],
-      });
-      // balance_of returns u256 as two felts (low, high)
-      const low = BigInt(result[0]);
-      const high = BigInt(result[1]);
-      const raw = low + (high << 128n);
-      // Format with 18 decimals
-      const formatted = formatBalance(raw, 18);
-      balances[symbol] = formatted;
-      console.log(`  ${symbol} balance: ${formatted}`);
-    } catch {
-      balances[symbol] = "error";
-      console.log(`  ${symbol} balance: could not fetch`);
-    }
+  for (const [symbol, bal] of Object.entries(balances)) {
+    console.log(`  ${symbol} balance: ${bal}`);
   }
 
   // Warn if both balances are zero
@@ -115,19 +79,7 @@ export async function preflight(env: {
     account,
     networkConfig,
     network,
-    chainId: String(chainId),
+    chainId,
     balances,
   };
-}
-
-function formatBalance(raw: bigint, decimals: number): string {
-  if (raw === 0n) return "0";
-  const s = raw.toString();
-  if (s.length <= decimals) {
-    const frac = s.padStart(decimals, "0").replace(/0+$/, "");
-    return frac ? `0.${frac}` : "0";
-  }
-  const whole = s.slice(0, s.length - decimals);
-  const frac = s.slice(s.length - decimals).replace(/0+$/, "");
-  return frac ? `${whole}.${frac}` : whole;
 }

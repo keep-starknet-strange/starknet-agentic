@@ -206,11 +206,27 @@ async function updateStarknetUri(args: {
   paymasterApiKey?: string;
   paymasterUrl?: string;
 }): Promise<string> {
+  const paymasterUrl =
+    args.paymasterUrl ||
+    (args.network === "sepolia"
+      ? "https://sepolia.paymaster.avnu.fi"
+      : "https://starknet.paymaster.avnu.fi");
+
+  const paymaster = new PaymasterRpc({
+    nodeUrl: paymasterUrl,
+    headers: args.paymasterApiKey
+      ? {
+          "x-paymaster-api-key": args.paymasterApiKey,
+        }
+      : {},
+  });
+
   const account = new Account({
     provider: args.provider,
     address: args.accountAddress,
     signer: args.privateKey,
     transactionVersion: ETransactionVersion.V3,
+    paymaster,
   });
 
   const call = {
@@ -231,29 +247,9 @@ async function updateStarknetUri(args: {
   if (!args.paymasterApiKey) {
     throw new Error("--gasfree requires AVNU_PAYMASTER_API_KEY in .env");
   }
-
-  const paymasterUrl =
-    args.paymasterUrl ||
-    (args.network === "sepolia"
-      ? "https://sepolia.paymaster.avnu.fi"
-      : "https://starknet.paymaster.avnu.fi");
-
-  const paymaster = new PaymasterRpc({
-    nodeUrl: paymasterUrl,
-    headers: {
-      "x-paymaster-api-key": args.paymasterApiKey,
-    },
+  const tx = await account.executePaymasterTransaction([call], {
+    feeMode: { mode: "sponsored" },
   });
-
-  const tx = await account.execute([call], {
-    paymaster: {
-      provider: paymaster,
-      params: {
-        version: "0x1",
-        feeMode: { mode: "sponsored" },
-      },
-    },
-  } as never);
 
   await args.provider.waitForTransaction(tx.transaction_hash);
   return tx.transaction_hash;
@@ -338,6 +334,8 @@ async function main() {
     rpcUrl: process.env.STARKNET_RPC_URL,
     accountAddress: starknetDeployerAddress,
     privateKey: starknetDeployerPrivateKey,
+    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
+    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
   });
   console.log("  Starknet preflight passed");
 
