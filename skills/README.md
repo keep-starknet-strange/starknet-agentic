@@ -16,6 +16,11 @@ Production-ready skills for AI agents operating on Starknet. Built for the Agent
 
 ## Installation
 
+## Machine-Readable Index
+
+For agent platforms (including OpenClaw/MoltBook) and tooling that want to index skills programmatically, see:
+- `skills/manifest.json` (generated, stable format)
+
 ### Option 1: GitHub (Recommended)
 
 Install all skills or specific ones using the skills CLI:
