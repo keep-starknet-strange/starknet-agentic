@@ -46,6 +46,8 @@ pub mod FeeSmoothing {
         price_cumulative: u256,
         price_last_update: u64,
         twap_24h: u128,
+        twap_window_start: u64,         // TWAP sliding window start time
+        twap_cumulative_start: u256,      // Cumulative at window start for true TWAP
         
         // Smoothing parameters
         smoothing_factor: u128,         // TWAP weight (0-1 scaled)
@@ -120,6 +122,8 @@ pub mod FeeSmoothing {
         self.price_last_update.write(now);
         self.price_cumulative.write((initial_price.into() * now.into()));
         self.twap_24h.write(initial_price);
+        self.twap_window_start.write(now);
+        self.twap_cumulative_start.write((initial_price.into() * now.into()));
         self.last_oracle_update.write(now);
     }
 
@@ -152,12 +156,23 @@ pub mod FeeSmoothing {
                 'Price deviation too large'
             );
             
-            // Update cumulative for TWAP
-            if time_elapsed > 0 {
-                let cumulative = self.price_cumulative.read();
-                let new_cumulative = cumulative + (old_price.into() * time_elapsed.into());
-                self.price_cumulative.write(new_cumulative);
+            // Update cumulative for TWAP (sliding window approach)
+            let cumulative = self.price_cumulative.read();
+            let window_start = self.twap_window_start.read();
+            let cumulative_at_start = self.twap_cumulative_start.read();
+            let window_elapsed = now - window_start;
+            
+            // Accumulate for current period
+            let new_cumulative = cumulative + (old_price.into() * time_elapsed.into());
+            
+            // Reset sliding window if exceeded
+            if window_elapsed >= TWAP_WINDOW_SECONDS {
+                // Start new window
+                self.twap_window_start.write(now);
+                self.twap_cumulative_start.write(new_cumulative);
             }
+            
+            self.price_cumulative.write(new_cumulative);
             
             // Calculate new TWAP
             let twap = self.calculate_twap(now);
@@ -309,22 +324,22 @@ pub mod FeeSmoothing {
     impl InternalImpl of InternalTrait {
         
         fn calculate_twap(self: @ContractState, now: u64) -> u128 {
-            let last_time = self.price_last_update.read();
             let cumulative = self.price_cumulative.read();
+            let cumulative_at_start = self.twap_cumulative_start.read();
+            let window_start = self.twap_window_start.read();
+            let window_elapsed = now - window_start;
             
-            if now - last_time >= TWAP_WINDOW_SECONDS {
-                // Full TWAP window available - use cumulative price
-                // TWAP = cumulative / window
-                let window = TWAP_WINDOW_SECONDS.into();
-                let avg = cumulative / window;
-                // Safe conversion with fallback
-                match avg.try_into() {
+            // TWAP = (cumulative_now - cumulative_at_window_start) / window_elapsed
+            // This gives true time-weighted average price over the window
+            if window_elapsed > 0 {
+                let twap_cumulative = cumulative - cumulative_at_start;
+                let twap = twap_cumulative / window_elapsed.into();
+                
+                match twap.try_into() {
                     Option::Some(price) => price,
                     Option::None(_) => self.current_price.read(),
                 }
             } else {
-                // Not enough time for full TWAP - use weighted average from last update
-                // This is fallback behavior during warm-up
                 self.current_price.read()
             }
         }
