@@ -48,3 +48,16 @@ The script writes `crosschain_receipt.json` with:
 - Default EVM network is Base Sepolia (`eip155:84532`).
 - Default Starknet network is Sepolia (`starknet:SN_SEPOLIA`).
 - This is a v1 demo flow for identity linkage. Bridge automation is out of scope.
+
+## How To Verify This Exact Run
+
+The following transactions are from the reference run used in issue updates:
+
+- Base Sepolia register tx:  
+  https://sepolia.basescan.org/tx/0x2d6892459145512c91e914a408d27dfcc9bf180ce7fe4da8e5ab8bd8e50b528e
+- Base Sepolia setAgentURI tx:  
+  https://sepolia.basescan.org/tx/0x1345421e530bd634c07453e8e5a5e354601955405e699b2740b47acf6c2d3fa8
+- Starknet Sepolia deploy tx:  
+  https://sepolia.voyager.online/tx/0x54bd04b6396a16a9309cf3cbad17a7eecffc06a608d7de08ae0e7dd605d6bdb
+
+You can compare the tx hashes against the generated `crosschain_receipt.json`.
