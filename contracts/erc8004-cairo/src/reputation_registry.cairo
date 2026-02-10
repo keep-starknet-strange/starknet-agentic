@@ -103,6 +103,7 @@ pub mod ReputationRegistry {
     fn constructor(
         ref self: ContractState, owner: ContractAddress, identity_registry_address: ContractAddress,
     ) {
+        assert(!owner.is_zero(), 'Invalid owner');
         // Validate address is not zero
         assert(!identity_registry_address.is_zero(), 'bad identity');
 

@@ -66,6 +66,7 @@ const envSchema = z.object({
   AVNU_PAYMASTER_URL: z.string().url().optional(),
   AVNU_PAYMASTER_API_KEY: z.string().optional(),
   AGENT_ACCOUNT_FACTORY_ADDRESS: z.string().startsWith("0x").optional(),
+  ERC8004_IDENTITY_REGISTRY_ADDRESS: z.string().startsWith("0x").optional(),
 });
 
 const isSepoliaRpc = (process.env.STARKNET_RPC_URL || "").toLowerCase().includes("sepolia");
@@ -84,6 +85,7 @@ const env = envSchema.parse({
   AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || defaultAvnuPaymasterUrl,
   AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
   AGENT_ACCOUNT_FACTORY_ADDRESS: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
+  ERC8004_IDENTITY_REGISTRY_ADDRESS: process.env.ERC8004_IDENTITY_REGISTRY_ADDRESS,
 });
 
 // Initialize Starknet provider and account
@@ -494,6 +496,59 @@ if (env.AGENT_ACCOUNT_FACTORY_ADDRESS) {
       required: ["public_key", "token_uri"],
     },
   });
+}
+
+if (env.ERC8004_IDENTITY_REGISTRY_ADDRESS) {
+  tools.push({
+    name: "starknet_register_agent",
+    description:
+      "Register a new ERC-8004 agent identity in IdentityRegistry. Optionally provide token_uri. Returns tx hash and parsed agent_id (best-effort).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token_uri: {
+          type: "string",
+          description: "Optional token URI (e.g., ipfs://... or data:application/json;utf8,...)",
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
+          default: false,
+        },
+      },
+      required: [],
+    },
+  });
+}
+
+function parseIdentityRegisteredFromReceipt(
+  receipt: unknown,
+  identityRegistryAddress: string
+): { agentId: string | null } {
+  const events = (receipt as { events?: Array<{ from_address?: string; data?: string[] }> })?.events;
+  if (!events) {
+    return { agentId: null };
+  }
+
+  const identity = identityRegistryAddress.toLowerCase();
+  for (const event of events) {
+    const from = event.from_address?.toLowerCase();
+    const data = event.data;
+    if (from !== identity || !data || data.length < 2) {
+      continue;
+    }
+
+    try {
+      const agentIdLow = BigInt(data[0]);
+      const agentIdHigh = BigInt(data[1]);
+      const agentId = (agentIdLow + (agentIdHigh << 128n)).toString();
+      return { agentId };
+    } catch {
+      continue;
+    }
+  }
+
+  return { agentId: null };
 }
 
 
@@ -925,6 +980,60 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 accountAddress,
                 agentId,
               }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "starknet_register_agent": {
+        if (!env.ERC8004_IDENTITY_REGISTRY_ADDRESS) {
+          throw new Error("ERC8004_IDENTITY_REGISTRY_ADDRESS not configured");
+        }
+
+        const { token_uri, gasfree = false } = args as {
+          token_uri?: string;
+          gasfree?: boolean;
+        };
+
+        const identity = parseAddress(
+          "ERC8004_IDENTITY_REGISTRY_ADDRESS",
+          env.ERC8004_IDENTITY_REGISTRY_ADDRESS
+        );
+
+        const entrypoint =
+          token_uri && token_uri.length > 0 ? "register_with_token_uri" : "register";
+        const calldata =
+          token_uri && token_uri.length > 0
+            ? CallData.compile({ token_uri: byteArray.byteArrayFromString(token_uri) })
+            : [];
+
+        const call: Call = {
+          contractAddress: identity,
+          entrypoint,
+          calldata,
+        };
+
+        const transactionHash = await executeTransaction(call, gasfree);
+        const receipt = await provider.waitForTransaction(transactionHash, {
+          retries: TX_WAIT_RETRIES,
+          retryInterval: TX_WAIT_INTERVAL_MS,
+        });
+        const { agentId } = parseIdentityRegisteredFromReceipt(receipt, identity);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  transactionHash,
+                  identityRegistry: identity,
+                  agentId,
+                },
+                null,
+                2
+              ),
             },
           ],
         };

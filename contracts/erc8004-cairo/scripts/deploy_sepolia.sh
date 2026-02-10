@@ -6,14 +6,26 @@
 echo "🚀 Deploying ERC-8004 to Sepolia Testnet..."
 echo ""
 
-# Sepolia Configuration with Alchemy RPC (v0.9)
-RPC_URL="https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_9/r93j7Eo1Oub9N6Gs3p7fC"
-ACCOUNT_ADDRESS="0x04a6b1f403E879B54Ba3e68072FE4C3aAf8Eb3617a51d8fea59b769432AbBF50"
-PRIVATE_KEY="0x0038ea6d7f8df0f1d3d29004deb72390028c1d15be04f1b089f9841d235a7d33"
-ACCOUNT_NAME="sepolia_deployer"
+# ==================== Configuration ====================
+# SECURITY: do NOT hardcode private keys or paid RPC keys in repo scripts.
+# Provide these via environment variables (or a local .env you source manually).
+#
+# Required:
+#   STARKNET_RPC_URL
+#   DEPLOYER_ADDRESS
+#   DEPLOYER_PRIVATE_KEY
+#
+# Optional:
+#   DEPLOYER_ACCOUNT_NAME (default: sepolia_deployer)
+#   OWNER_ADDRESS (default: DEPLOYER_ADDRESS)
+
+RPC_URL="${STARKNET_RPC_URL:?STARKNET_RPC_URL is required}"
+ACCOUNT_ADDRESS="${DEPLOYER_ADDRESS:?DEPLOYER_ADDRESS is required}"
+PRIVATE_KEY="${DEPLOYER_PRIVATE_KEY:?DEPLOYER_PRIVATE_KEY is required}"
+ACCOUNT_NAME="${DEPLOYER_ACCOUNT_NAME:-sepolia_deployer}"
 
 # Owner address for the contracts (deployer is the owner)
-OWNER_ADDRESS="$ACCOUNT_ADDRESS"
+OWNER_ADDRESS="${OWNER_ADDRESS:-$ACCOUNT_ADDRESS}"
 
 echo "📡 RPC URL: $RPC_URL"
 echo "👤 Account: $ACCOUNT_ADDRESS"

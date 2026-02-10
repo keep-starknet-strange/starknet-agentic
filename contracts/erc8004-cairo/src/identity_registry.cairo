@@ -19,6 +19,7 @@
 #[starknet::contract]
 pub mod IdentityRegistry {
     use core::poseidon::poseidon_hash_span;
+    use core::num::traits::Zero;
     use core::to_byte_array::AppendFormattedToByteArray;
     use erc8004::interfaces::account::IAccountDispatcher;
     use erc8004::interfaces::account::IAccountDispatcherTrait;
@@ -163,6 +164,7 @@ pub mod IdentityRegistry {
     // ============ Constructor ============
     #[constructor]
     fn constructor(ref self: ContractState, owner: ContractAddress) {
+        assert(!owner.is_zero(), 'Invalid owner');
         // Initialize ERC721 with name "ERC-8004 Trustless Agent" and symbol "AGENT"
         self.erc721.initializer("ERC-8004 Trustless Agent", "AGENT", "");
 

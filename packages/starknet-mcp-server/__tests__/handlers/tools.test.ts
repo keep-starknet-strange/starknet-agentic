@@ -15,6 +15,8 @@ const mockEnv = {
   STARKNET_PRIVATE_KEY: "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
   AVNU_BASE_URL: "https://sepolia.api.avnu.fi",
   AVNU_PAYMASTER_URL: "https://sepolia.paymaster.avnu.fi",
+  ERC8004_IDENTITY_REGISTRY_ADDRESS:
+    "0x1111111111111111111111111111111111111111111111111111111111111111",
 };
 
 // Mock starknet before importing the module
@@ -230,6 +232,48 @@ describe("MCP Tool Handlers", () => {
       const result = parseResponse(response);
       expect(result.error).toBe(true);
       expect(result.tool).toBe("starknet_get_balance");
+    });
+  });
+
+  describe("starknet_register_agent", () => {
+    it("is listed when ERC8004_IDENTITY_REGISTRY_ADDRESS is configured", async () => {
+      if (!capturedListHandler) {
+        throw new Error("List handler not captured - did the module load correctly?");
+      }
+      const resp = await capturedListHandler();
+      const toolNames = resp.tools.map((t: any) => t.name);
+      expect(toolNames).toContain("starknet_register_agent");
+    });
+
+    it("registers with token_uri and parses agent_id from receipt event data[0..1]", async () => {
+      mockExecute.mockResolvedValue({ transaction_hash: "0xabc" });
+      mockWaitForTransaction.mockResolvedValue({
+        events: [
+          {
+            from_address: mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS,
+            // Registered event begins with agent_id.low, agent_id.high. Remaining fields ignored.
+            data: ["0x01", "0x00", "0xdead"],
+          },
+        ],
+      });
+
+      const response = await callTool("starknet_register_agent", {
+        token_uri: "ipfs://demo",
+        gasfree: false,
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.transactionHash).toBe("0xabc");
+      expect(result.agentId).toBe("1");
+
+      // Ensure the tool invoked IdentityRegistry with the expected entrypoint.
+      expect(mockExecute).toHaveBeenCalled();
+      const callArg = mockExecute.mock.calls[0][0];
+      expect(callArg.entrypoint).toBe("register_with_token_uri");
+      expect(callArg.contractAddress).toBe(mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS);
+      expect(Array.isArray(callArg.calldata)).toBe(true);
+      expect(callArg.calldata.length).toBeGreaterThan(0);
     });
   });
 
@@ -965,14 +1009,14 @@ describe("Tool list", () => {
     }
   });
 
-  it("lists all 9 tools", async () => {
+  it("lists all tools", async () => {
     if (!capturedListHandler) {
       throw new Error("List handler not captured");
     }
 
     const response = await capturedListHandler();
 
-    expect(response.tools).toHaveLength(9);
+    expect(response.tools).toHaveLength(10);
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_get_balance");
     expect(toolNames).toContain("starknet_get_balances");
@@ -981,6 +1025,7 @@ describe("Tool list", () => {
     expect(toolNames).toContain("starknet_invoke_contract");
     expect(toolNames).toContain("starknet_swap");
     expect(toolNames).toContain("starknet_get_quote");
+    expect(toolNames).toContain("starknet_register_agent");
     expect(toolNames).toContain("starknet_estimate_fee");
     expect(toolNames).toContain("x402_starknet_sign_payment_required");
   });
@@ -1001,7 +1046,7 @@ describe("Tool list", () => {
     const response = await capturedListHandler();
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_deploy_agent_account");
-    expect(response.tools).toHaveLength(10);
+    expect(response.tools).toHaveLength(11);
 
     delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
   });
