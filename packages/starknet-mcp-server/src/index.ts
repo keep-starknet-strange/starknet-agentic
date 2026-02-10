@@ -118,6 +118,12 @@ function parseFelt(name: string, value: string): bigint {
   if (parsed < 0n) {
     throw new Error(`${name} must be non-negative`);
   }
+  // Starknet felts are field elements; in practice most calldata values should fit in 251 bits.
+  // Enforce 251-bit bound to fail fast with a clear error instead of a provider/encoding failure.
+  const max251 = (1n << 251n) - 1n;
+  if (parsed > max251) {
+    throw new Error(`${name} must fit in 251 bits`);
+  }
   return parsed;
 }
 
