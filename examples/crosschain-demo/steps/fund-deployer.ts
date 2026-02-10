@@ -61,9 +61,17 @@ export async function fundDeployer(args: FundDeployerArgs): Promise<{ funding: F
     );
   }
 
-  const selected = alreadyFunded
-    ? resolver("skipped")
-    : resolver(args.providerSelection === "auto" ? "mock" : args.providerSelection);
+  if (!alreadyFunded && args.providerSelection === "auto") {
+    throw new Error(
+      "Deployer balance is below MIN_STARKNET_DEPLOYER_BALANCE_WEI and no real funding provider is configured in PR1 scaffolding. " +
+        "Set FUNDING_PROVIDER=mock for dry-run testing, or top up the deployer balance.",
+    );
+  }
+
+  const selected =
+    alreadyFunded || args.providerSelection === "skipped"
+      ? resolver("skipped")
+      : resolver("mock");
 
   await selected.preflight(args.config);
   const funding = await selected.fund({
@@ -75,4 +83,3 @@ export async function fundDeployer(args: FundDeployerArgs): Promise<{ funding: F
 
   return { funding, balanceWei };
 }
-

@@ -9,7 +9,8 @@ This example demonstrates one end-to-end flow:
 
 For v2 scaffolding, the flow also includes a pre-onboarding funding decision stage:
 - if deployer balance is above threshold, funding is skipped;
-- if below threshold, the mock provider path is used in PR1.
+- if below threshold and `FUNDING_PROVIDER=mock`, the mock provider path is used in PR1;
+- if below threshold and `FUNDING_PROVIDER=auto`, the script fails closed (no fake funding success).
 
 ## Prerequisites
 

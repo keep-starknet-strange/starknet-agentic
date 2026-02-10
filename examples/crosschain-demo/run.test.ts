@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { Interface, ZeroAddress } from "ethers";
-import { createSharedUri, parseFundingProvider, resolveEvmAgentId } from "./run.js";
+import {
+  createSharedUri,
+  parseFundingProvider,
+  parseMinStarknetDeployerBalanceWei,
+  resolveEvmAgentId,
+} from "./run.js";
 
 describe("crosschain-demo helpers", () => {
   it("builds a shared URI with both CAIP registrations", () => {
@@ -66,5 +71,15 @@ describe("crosschain-demo helpers", () => {
     expect(parseFundingProvider("mock")).toBe("mock");
     expect(parseFundingProvider("skipped")).toBe("skipped");
     expect(() => parseFundingProvider("starkgate")).toThrow("Invalid FUNDING_PROVIDER");
+  });
+
+  it("parses deployer min balance and rejects invalid values", () => {
+    expect(parseMinStarknetDeployerBalanceWei(undefined)).toBe(5000000000000000n);
+    expect(parseMinStarknetDeployerBalanceWei("0")).toBe(0n);
+    expect(parseMinStarknetDeployerBalanceWei("42")).toBe(42n);
+    expect(() => parseMinStarknetDeployerBalanceWei("-1")).toThrow("must be non-negative");
+    expect(() => parseMinStarknetDeployerBalanceWei("not-a-number")).toThrow(
+      "Invalid MIN_STARKNET_DEPLOYER_BALANCE_WEI",
+    );
   });
 });

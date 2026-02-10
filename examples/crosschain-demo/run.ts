@@ -166,6 +166,22 @@ export function parseFundingProvider(value: string | undefined): FundingProvider
   throw new Error(`Invalid FUNDING_PROVIDER "${value}". Expected one of: auto, mock, skipped.`);
 }
 
+export function parseMinStarknetDeployerBalanceWei(value: string | undefined): bigint {
+  const raw = value || "5000000000000000";
+  let parsed: bigint;
+  try {
+    parsed = BigInt(raw);
+  } catch {
+    throw new Error(
+      `Invalid MIN_STARKNET_DEPLOYER_BALANCE_WEI "${raw}". Expected non-negative integer wei value.`,
+    );
+  }
+  if (parsed < 0n) {
+    throw new Error("MIN_STARKNET_DEPLOYER_BALANCE_WEI must be non-negative.");
+  }
+  return parsed;
+}
+
 async function updateStarknetUri(args: {
   provider: RpcProvider;
   accountAddress: string;
@@ -253,8 +269,8 @@ async function main() {
   }
 
   const evmRegistry = process.env.EVM_IDENTITY_REGISTRY || evmConfig.identityRegistry;
-  const minStarknetDeployerBalanceWei = BigInt(
-    process.env.MIN_STARKNET_DEPLOYER_BALANCE_WEI || "5000000000000000",
+  const minStarknetDeployerBalanceWei = parseMinStarknetDeployerBalanceWei(
+    process.env.MIN_STARKNET_DEPLOYER_BALANCE_WEI,
   );
   const fundingProvider = parseFundingProvider(process.env.FUNDING_PROVIDER);
 

@@ -57,7 +57,7 @@ describe("fundDeployer", () => {
     expect(result.funding.skipped_reason).toBe("already_funded");
   });
 
-  it("uses mock provider when balance is below threshold and provider=auto", async () => {
+  it("uses mock provider when balance is below threshold and provider=mock", async () => {
     const min = 100n;
     const [low, high] = u256Words(40n);
     const selected: string[] = [];
@@ -70,7 +70,7 @@ describe("fundDeployer", () => {
       },
       network: "sepolia",
       deployerAddress: "0x123",
-      providerSelection: "auto",
+      providerSelection: "mock",
       config: { minDeployerBalanceWei: min },
       resolveProvider(name) {
         selected.push(name);
@@ -105,6 +105,24 @@ describe("fundDeployer", () => {
     expect(result.funding.amount_wei).toBe("60");
   });
 
+  it("fails closed when balance is below threshold and provider=auto", async () => {
+    const [low, high] = u256Words(10n);
+
+    await expect(
+      fundDeployer({
+        provider: {
+          async callContract() {
+            return [low, high];
+          },
+        },
+        network: "sepolia",
+        deployerAddress: "0x123",
+        providerSelection: "auto",
+        config: { minDeployerBalanceWei: 100n },
+      }),
+    ).rejects.toThrow("no real funding provider is configured in PR1 scaffolding");
+  });
+
   it("rejects forced skipped provider when deployer is under threshold", async () => {
     const [low, high] = u256Words(10n);
 
@@ -123,4 +141,3 @@ describe("fundDeployer", () => {
     ).rejects.toThrow("FUNDING_PROVIDER=skipped");
   });
 });
-
