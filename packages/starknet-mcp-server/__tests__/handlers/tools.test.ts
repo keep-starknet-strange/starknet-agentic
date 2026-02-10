@@ -804,28 +804,25 @@ describe("MCP Tool Handlers", () => {
       });
     });
 
-    it("uses provided params over env defaults", async () => {
+    it("ignores extra params and always signs with env-configured account", async () => {
       mockCreateStarknetPaymentSignatureHeader.mockResolvedValue({
         headerValue: "sig",
         payload: {},
       });
 
-      const customRpc = "https://custom.rpc.url";
-      const customAddress = "0xcustom";
-      const customKey = "0xprivate";
-
       await callTool("x402_starknet_sign_payment_required", {
         paymentRequiredHeader: "test",
-        rpcUrl: customRpc,
-        accountAddress: customAddress,
-        privateKey: customKey,
+        // These are intentionally ignored to avoid signing arbitrary key material.
+        rpcUrl: "https://custom.rpc.url",
+        accountAddress: "0xcustom",
+        privateKey: "0xprivate",
       });
 
       expect(mockCreateStarknetPaymentSignatureHeader).toHaveBeenCalledWith({
         paymentRequiredHeader: "test",
-        rpcUrl: customRpc,
-        accountAddress: customAddress,
-        privateKey: customKey,
+        rpcUrl: mockEnv.STARKNET_RPC_URL,
+        accountAddress: mockEnv.STARKNET_ACCOUNT_ADDRESS,
+        privateKey: mockEnv.STARKNET_PRIVATE_KEY,
       });
     });
   });
