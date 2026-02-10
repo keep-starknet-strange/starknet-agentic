@@ -45,10 +45,13 @@ starknet-agentic/
 │   ├── starknet-mini-pay/                # P2P payments + Telegram bot (COMPLETE)
 │   ├── starknet-anonymous-wallet/        # Privacy-focused wallet (COMPLETE)
 │   ├── starknet-defi/                    # DeFi operations skill (TEMPLATE)
-│   └── starknet-identity/                # Identity & reputation skill (TEMPLATE)
+│   ├── starknet-identity/                # Identity & reputation skill (TEMPLATE)
+│   └── huginn-onboard/                   # Cross-chain onboarding skill (COMPLETE)
 ├── examples/
 │   ├── hello-agent/                      # Minimal E2E proof (WORKING)
 │   ├── defi-agent/                       # Arbitrage bot example (~337 lines)
+│   ├── onboard-agent/                    # E2E agent onboarding flow (WORKING)
+│   ├── crosschain-demo/                  # Base Sepolia ↔ Starknet demo (WORKING)
 │   └── scaffold-stark-agentic/           # Frontend reference
 ├── references/
 │   ├── agentskills/                      # AgentSkills format specs
@@ -56,10 +59,15 @@ starknet-agentic/
 ├── docs/
 │   ├── ROADMAP.md                        # Detailed roadmap with MVP/Nice-to-have/Future
 │   ├── SPECIFICATION.md                  # Technical architecture & component specs
-│   └── AGENTIC_ECONOMY_PLAN.md           # Use cases, apps, token economy vision
+│   ├── AGENTIC_ECONOMY_PLAN.md           # Use cases, apps, token economy vision
+│   ├── ERC8004-PARITY.md                 # ERC-8004 cross-chain parity document
+│   ├── GETTING_STARTED.md                # Quick-start onboarding guide
+│   ├── GOOD_FIRST_ISSUES.md              # Contributor starter issues
+│   └── TROUBLESHOOTING.md                # Common issues and solutions
 ├── website/                              # Next.js documentation site (Vercel)
 ├── AGENT.md                              # Agent mission & ecosystem context
 ├── CLAUDE.md                             # This file
+├── agents.md                             # Multi-agent coordination guide
 └── package.json                          # Root monorepo (pnpm workspaces)
 ```
 
@@ -237,7 +245,11 @@ Metadata schema keys: `agentName`, `agentType`, `version`, `model`, `status`, `f
 | Starknet docs | `references/starknet-docs/` | Any Starknet architecture, Cairo, or AA questions |
 | Technical spec | `docs/SPECIFICATION.md` | Understanding planned architecture, interfaces, security model |
 | Economy plan | `docs/AGENTIC_ECONOMY_PLAN.md` | Understanding long-term vision and use cases |
+| ERC-8004 parity | `docs/ERC8004-PARITY.md` | Cross-chain compatibility, session keys, Starknet extensions |
+| Getting started | `docs/GETTING_STARTED.md` | New user onboarding, quick-start guide |
+| Troubleshooting | `docs/TROUBLESHOOTING.md` | Debugging common issues |
 | Agent mission | `AGENT.md` | Understanding project goals, existing assets, gaps |
+| Multi-agent coordination | `agents.md` | Delegating tasks across multiple agents |
 
 Always consult `references/` before relying on training data for Starknet-specific or AgentSkills-specific information.
 
@@ -255,16 +267,20 @@ Always consult `references/` before relying on training data for Starknet-specif
 | X-402 Starknet signing | **Functional** (110 lines) | `packages/x402-starknet/` |
 | Prediction arb scanner | **MVP** (296 lines) | `packages/prediction-arb-scanner/` |
 | Agent Account contract | **Tested** (~570 lines, 110 tests) | `contracts/agent-account/` |
+| Huginn Registry contract | **WIP** (thought provenance) | `contracts/huginn-registry/` |
 | Skill: starknet-wallet | **Complete** (465 lines) | `skills/starknet-wallet/` |
 | Skill: starknet-mini-pay | **Complete** (Python CLI + Telegram bot) | `skills/starknet-mini-pay/` |
 | Skill: starknet-anonymous-wallet | **Complete** (271 lines) | `skills/starknet-anonymous-wallet/` |
 | Skill: starknet-defi | **Template** (needs expansion) | `skills/starknet-defi/` |
 | Skill: starknet-identity | **Template** (needs expansion) | `skills/starknet-identity/` |
+| Skill: huginn-onboard | **Complete** (cross-chain onboarding) | `skills/huginn-onboard/` |
 | Example: hello-agent | **Working** (E2E proof) | `examples/hello-agent/` |
 | Example: defi-agent | **Working** (~337 lines, arb example) | `examples/defi-agent/` |
+| Example: onboard-agent | **Working** (E2E onboarding flow) | `examples/onboard-agent/` |
+| Example: crosschain-demo | **Working** (Base Sepolia ↔ Starknet) | `examples/crosschain-demo/` |
 | Website | **Scaffolded** (Next.js 16 + landing content) | `website/` |
-| Docs & specs | **Complete** (updated 2026-02-06) | `docs/` |
-| CI/CD | **Implemented** | `.github/workflows/` |
+| Docs & specs | **Complete** (updated 2026-02-10) | `docs/` |
+| CI/CD | **Implemented** (11 jobs: typecheck, lint, test, 3x cairo, website, skills, smoke) | `.github/workflows/` |
 | Framework extensions | **TODO** (deferred to v2.0) | Not yet created |
 | MCP identity tools | **TODO** (nice-to-have) | Not yet implemented |
 

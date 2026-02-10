@@ -18,53 +18,23 @@ Core infrastructure features required for v1.0 release. MVP definition: MCP serv
 
 ---
 
-### 1.1 Create `create-starknet-agent` CLI Scaffolding Tool
+### 1.1 Create `create-starknet-agent` CLI Scaffolding Tool ✅
 
-**Description**: The website (`website/app/data/get-started.ts`) advertises `npx create-starknet-agent@latest` as the primary onboarding command, but this package does not exist on npm. Create and publish the CLI scaffolding tool to match the documented experience.
+**Status**: COMPLETE (PR #134)
 
-**Requirements**:
-- [ ] Create `packages/create-starknet-agent/` directory
-- [ ] Implement CLI using `create-*` npm convention (runs via `npx create-starknet-agent`)
-- [ ] Add interactive prompts for project configuration:
-  - Project name
-  - RPC endpoint (Mainnet/Sepolia/custom)
-  - Agent framework (standalone, MCP server, A2A compatible)
-  - DeFi protocols to enable (avnu, zkLend, Nostra, etc.)
-  - Include example agent (hello-agent, defi-agent)
-- [ ] Generate project structure with:
-  - Pre-configured `package.json` with starknet.js v8.9.1
-  - Environment template (`.env.example`) with RPC, wallet placeholders
-  - Basic agent entry point importing MCP tools & skills
-  - TypeScript configuration (ESM, strict mode)
-  - README with next steps
-- [ ] Add `--template` flag for different starting points:
-  - `minimal` - Just wallet + basic tools
-  - `defi` - Wallet + avnu SDK + DeFi skill
-  - `full` - All skills + identity + A2A
-- [ ] Publish to npm as `create-starknet-agent`
+**Description**: CLI scaffolding tool at `packages/create-starknet-agent/` that generates new agent projects.
+
+**Implemented**:
+- [x] Create `packages/create-starknet-agent/` directory
+- [x] Implement CLI using `create-*` npm convention (runs via `npx create-starknet-agent`)
+- [x] Add interactive prompts for project configuration
+- [x] Generate project structure with pre-configured package.json, .env.example, agent entry point
+- [x] Add `--template` flag for different starting points (minimal, defi, full)
+- [x] Version 0.1.0 at `packages/create-starknet-agent/`
+- [ ] Publish to npm as `create-starknet-agent` (pending npm publish)
 - [ ] Add automated publishing to CI workflow (`publish.yml`)
-- [ ] Update website to reflect accurate install command status
 
-**Implementation Notes**:
-- Use `prompts` or `inquirer` for interactive CLI
-- Consider `degit` or template copying for project scaffolding
-- Reference implementations:
-  - `create-next-app` (Next.js)
-  - `create-vite` (Vite)
-  - `create-eth` (Scaffold-ETH 2)
-- Package should be lightweight (minimal dependencies)
-- Test with `npm link` before publishing
-- Version should start at 0.1.0 and sync with main repo releases
-
-**Acceptance Criteria**:
-```bash
-# These commands should work after implementation:
-npx create-starknet-agent@latest my-agent
-npx create-starknet-agent@latest --template defi my-defi-agent
-npx create-starknet-agent@latest --help
-```
-
-**Priority**: HIGH - Website is currently advertising a non-existent tool, creating a broken first-run experience.
+**Priority**: ~~HIGH~~ Mostly done -- only npm publishing remains.
 
 ---
 
@@ -381,18 +351,21 @@ Features that enhance the platform but are not required for v1.0 release.
 **Description**: Improve CI/CD pipeline with additional checks and automation.
 
 **Requirements**:
-- [x] ~~Add Cairo contract build verification to CI~~ — done in `ci.yml`
-- [x] ~~Add snforge test execution to CI~~ — done in `ci.yml`
+- [x] ~~Add Cairo contract build verification to CI~~ — done in `ci.yml` (erc8004, agent-account, huginn-registry)
+- [x] ~~Add snforge test execution to CI~~ — done in `ci.yml` (3 separate Cairo test jobs)
 - [x] ~~Add automated npm publishing on release~~ — done in `publish.yml`
-- [ ] Add starknet.js version consistency check
+- [x] ~~Add skill validation to CI~~ — done in `ci.yml` (`validate-skills` job)
+- [x] ~~Add onboarding smoke tests to CI~~ — done in `ci.yml` (`onboarding-smoke` job)
 - [x] ~~Add dependency vulnerability scanning~~
+- [x] ~~Add daily health check cron~~ — done in `health-check.yml`
+- [ ] Add starknet.js version consistency check
 - [ ] Add automated ClawHub publishing on release
 - [ ] Add test coverage reporting
 
 **Implementation Notes**:
-- CI pipeline at `.github/workflows/ci.yml` runs TS + Cairo builds + tests
-- `publish.yml` publishes 3 packages to npm on release
-- `health-check.yml` runs daily cron checks
+- CI pipeline at `.github/workflows/ci.yml` runs 11 jobs: typecheck, lint, test, 3x cairo-test, website-build, validate-skills, onboarding-smoke, all-checks
+- `publish.yml` publishes 3 packages to npm on release (mcp-server, a2a, agent-passport)
+- `health-check.yml` runs daily at 9:15 UTC, creates GitHub issues on failure
 
 ---
 
@@ -539,13 +512,36 @@ Long-term features and ecosystem expansion planned for v2.0+.
 
 ---
 
+### 1.9 Agent Onboarding E2E Flow
+
+**Status**: IN PROGRESS
+
+**Description**: End-to-end onboarding flow for new agents including account deployment, ERC-8004 registration, and first action. Demonstrated via `examples/onboard-agent/` and `examples/crosschain-demo/`.
+
+**Implemented**:
+- [x] `examples/onboard-agent/` -- E2E onboarding flow with network/gasfree/verify options
+- [x] `examples/crosschain-demo/` -- Base Sepolia ↔ Starknet ERC-8004 cross-chain flow
+- [x] AVNU-sponsored gasfree deploy path (PR #140)
+- [x] Cross-chain funding logic with threshold/skip+mock (PR #155)
+- [x] Onboarding smoke tests in CI (`onboarding-smoke` job)
+- [x] `skills/huginn-onboard/` -- Huginn onboarding skill
+- [ ] Production deployment of HuginnRegistry contract
+- [ ] Mainnet onboarding documentation
+
+**Implementation Notes**:
+- Onboard agent: preflight checks → account deployment → identity registration → first action
+- Crosschain demo: EVM funding → bridge → Starknet registration → URI update
+- Smoke tests run in CI to prevent regressions
+
+---
+
 ## Implementation Priority Summary
 
 | Phase | Target | Key Deliverables |
 |-------|--------|------------------|
-| **MVP (v1.0)** | Q1 2026 | starknet.js v8, MCP tests, skill publishing, defi-agent docs, changelog |
+| **MVP (v1.0)** | Q1 2026 | CLI scaffolding ✅, skill publishing, agent onboarding, defi/identity skill completion, changelog |
 | **Nice to Have (v1.x)** | Q2 2026 | Agent Account deployment, identity MCP tools, A2A expansion, messaging |
-| **Future (v2.0+)** | 2026+ | Framework extensions, economy apps, cross-chain, zkML |
+| **Future (v2.0+)** | 2026+ | Framework extensions, economy apps, cross-chain bridge, zkML |
 
 ---
 
@@ -555,4 +551,4 @@ Long-term features and ecosystem expansion planned for v2.0+.
 - `[x]` Complete
 - `[~]` In progress
 
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-10*

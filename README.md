@@ -15,17 +15,20 @@ If you are integrating agents, this repo gives you contract primitives + runtime
 
 ## What Works Today
 
-Snapshot at time of this README update:
+Snapshot as of 2026-02-10:
 
 | Area | Path | Status |
 |---|---|---|
 | Agent Account contract | `contracts/agent-account` | Active, tested (110 Cairo tests) |
 | ERC-8004 Cairo contracts | `contracts/erc8004-cairo` | Active, tested (131+ unit + 47 E2E tests) |
 | Huginn registry contract | `contracts/huginn-registry` | Active, tested (6 Cairo tests) |
-| MCP package | `packages/starknet-mcp-server` | Active |
+| MCP package | `packages/starknet-mcp-server` | Active (9 tools, input validation) |
 | A2A package | `packages/starknet-a2a` | Active |
+| CLI scaffolding | `packages/create-starknet-agent` | Complete (npm publish pending) |
 | Additional packages | `packages/*` | Active/MVP by package |
-| Skills | `skills/*` | Mixed (complete + template) |
+| Skills | `skills/*` | 3 complete + 2 template + 1 onboarding |
+| Onboarding examples | `examples/onboard-agent`, `crosschain-demo` | Working (with CI smoke tests) |
+| CI/CD | `.github/workflows/` | 11 jobs + daily health check |
 
 ## Architecture (Current)
 
@@ -76,7 +79,7 @@ Tracking issue: [#78](https://github.com/keep-starknet-strange/starknet-agentic/
 | `starknet-anonymous-wallet` | Privacy-focused wallet operations | Complete |
 | `starknet-defi` | DeFi actions (swaps/staking/lending/LP) | Template |
 | `starknet-identity` | ERC-8004 identity/reputation/validation workflows | Template |
-| `huginn-onboard` | Huginn onboarding flow | In Progress |
+| `huginn-onboard` | Cross-chain onboarding and Huginn registry integration | Complete |
 
 Full definitions and usage are in `skills/*/SKILL.md`.
 
@@ -102,27 +105,30 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 |---------|-------------|------|
 | [DeFi Agent](./examples/defi-agent/) | Autonomous triangular arbitrage agent with risk management | `examples/defi-agent/` |
 | Hello Agent | Minimal E2E proof of concept | `examples/hello-agent/` |
+| [Onboard Agent](./examples/onboard-agent/) | E2E agent onboarding: deploy account, register identity, first action | `examples/onboard-agent/` |
+| [Crosschain Demo](./examples/crosschain-demo/) | Base Sepolia ↔ Starknet ERC-8004 cross-chain registration flow | `examples/crosschain-demo/` |
 
-The **DeFi Agent** is the flagship example demonstrating how to build production-ready autonomous agents on Starknet. It monitors ETH↔STRK prices and executes profitable arbitrage trades.
+The **DeFi Agent** is the flagship example demonstrating how to build production-ready autonomous agents on Starknet. The **Onboard Agent** shows the full lifecycle from account deployment to identity registration with AVNU gasfree support.
 
 ## Repository Layout
 
 ```text
 starknet-agentic/
 ├── contracts/
-│   ├── agent-account/
-│   ├── erc8004-cairo/
-│   └── huginn-registry/
+│   ├── agent-account/                    # Agent account with session keys (110 tests)
+│   ├── erc8004-cairo/                    # Identity, reputation, validation (131+ unit + 47 E2E)
+│   └── huginn-registry/                  # Thought provenance registry
 ├── packages/
-│   ├── starknet-mcp-server/
-│   ├── starknet-a2a/
-│   ├── starknet-agent-passport/
-│   ├── x402-starknet/
-│   └── prediction-arb-scanner/
-├── skills/
-├── examples/
-├── docs/
-└── website/
+│   ├── create-starknet-agent/            # CLI scaffolding tool
+│   ├── starknet-mcp-server/              # MCP server (9 tools)
+│   ├── starknet-a2a/                     # A2A protocol adapter
+│   ├── starknet-agent-passport/          # Capability metadata client
+│   ├── x402-starknet/                    # X-402 payment protocol
+│   └── prediction-arb-scanner/           # Cross-venue arb detection
+├── skills/                               # 6 skills (3 complete, 2 template, 1 onboarding)
+├── examples/                             # 4 examples + scaffold reference
+├── docs/                                 # Roadmap, spec, getting started, troubleshooting
+└── website/                              # Next.js documentation site
 ```
 
 ## Quick Start

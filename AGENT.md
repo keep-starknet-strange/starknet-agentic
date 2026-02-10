@@ -8,11 +8,12 @@ Make Starknet the financial rails for the agentic era. Every AI agent -- regardl
 
 A consolidated infrastructure layer that provides:
 
-1. **Smart contracts** (Cairo) for agent wallets and on-chain identity
+1. **Smart contracts** (Cairo) for agent wallets, on-chain identity, and thought provenance
 2. **MCP server** for tool-based Starknet access from any agent
 3. **A2A adapter** for agent-to-agent discovery and communication
 4. **Skills marketplace** for Claude Code and OpenClaw agents
-5. **Framework extensions** for Daydreams and Lucid Agents
+5. **CLI scaffolding** (`create-starknet-agent`) for project bootstrapping
+6. **E2E onboarding examples** for cross-chain agent registration
 
 ## References
 
@@ -59,8 +60,12 @@ Starknet Agentic implements all three layers with Starknet as the settlement and
 | Agent Account contract | HIGH | **TESTED** (110 tests) - needs Sepolia deployment, see `contracts/agent-account/` |
 | Starknet MCP server with DeFi | HIGH | **DONE** - 9 tools implemented including swap, quote |
 | Starknet wallet skill | HIGH | **DONE** - complete at `skills/starknet-wallet/` |
+| CLI scaffolding tool | HIGH | **DONE** - `packages/create-starknet-agent/` (npm publish pending) |
+| Agent onboarding E2E flow | HIGH | **DONE** - `examples/onboard-agent/` + `examples/crosschain-demo/` |
+| Huginn onboarding skill | MEDIUM | **DONE** - `skills/huginn-onboard/` |
 | A2A support for Starknet agents | MEDIUM | **DONE** - functional at `packages/starknet-a2a/` |
 | MCP identity tools | MEDIUM | **TODO** - register_agent, reputation, validation |
+| Cross-chain ERC-8004 demo | MEDIUM | **DONE** - Base Sepolia ↔ Starknet flow at `examples/crosschain-demo/` |
 | Lucid Agents Starknet connector | LOW | **TODO** - deferred to v2.0 |
 | Daydreams DeFi extension | LOW | **TODO** - deferred to v2.0 |
 | MoltBook presence | LOW | **TODO** - Deploy Starknet ecosystem bot |
