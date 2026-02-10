@@ -14,6 +14,7 @@ pub mod AgentAccount {
     const QUERY_OFFSET: u256 = 0x100000000000000000000000000000000;
     /// Default timelock delay for upgrades (5 minutes).
     const DEFAULT_UPGRADE_DELAY: u64 = 300;
+    const MIN_UPGRADE_DELAY: u64 = 60;
 
     fn execute_calls(mut calls: Span<Call>) -> Array<Span<felt252>> {
         let mut res = array![];
@@ -561,6 +562,7 @@ pub mod AgentAccount {
 
         fn set_upgrade_delay(ref self: ContractState, new_delay: u64) {
             self.account.assert_only_self();
+            assert(new_delay >= MIN_UPGRADE_DELAY, 'Upgrade delay too small');
             let old_delay = self.upgrade_delay.read();
             self.upgrade_delay.write(new_delay);
 
