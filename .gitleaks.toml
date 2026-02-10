@@ -11,6 +11,14 @@ paths = [
   '''(?i)\.(?:bmp|gif|jpe?g|png|svg|tiff?)$''',
   '''(?i)\.(?:eot|[ot]tf|woff2?)$''',
   '''(?i)\.(?:docx?|xlsx?|pdf|bin|dll|exe|pdb)$''',
+  # dependencies / build output
+  '''(?:^|/)node_modules/''',
+  '''(?:^|/)dist/''',
+  '''(?:^|/)build/''',
+  '''(?:^|/)coverage/''',
+  '''(?:^|/)out/''',
+  '''(?:^|/)target/''',
+  '''(?:^|/)\.next/''',
   # local caches
   '''(?:^|/)\.cache/''',
 ]
@@ -118,4 +126,3 @@ keywords = ["a3t", "akia", "asia", "abia", "acca"]
 regexes = [
   '''.+EXAMPLE$''',
 ]
-
