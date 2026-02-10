@@ -68,6 +68,10 @@ vi.mock("starknet", () => ({
     })),
     stringFromByteArray: vi.fn((ba) => "TEST"),
   },
+  // Minimal selector helper used by receipt parsers.
+  hash: {
+    getSelectorFromName: vi.fn((name: string) => `selector:${name}`),
+  },
 }));
 
 // Mock avnu-sdk
@@ -245,14 +249,15 @@ describe("MCP Tool Handlers", () => {
       expect(toolNames).toContain("starknet_register_agent");
     });
 
-    it("registers with token_uri and parses agent_id from receipt event data[0..1]", async () => {
+    it("registers with token_uri and parses agent_id from receipt event keys (Registered)", async () => {
       mockExecute.mockResolvedValue({ transaction_hash: "0xabc" });
       mockWaitForTransaction.mockResolvedValue({
         events: [
           {
             from_address: mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS,
-            // Registered event begins with agent_id.low, agent_id.high. Remaining fields ignored.
-            data: ["0x01", "0x00", "0xdead"],
+            // Registered has agent_id as a #[key] u256, so it is encoded in event keys.
+            keys: ["selector:Registered", "0x01", "0x00"],
+            data: ["0xdead"],
           },
         ],
       });
@@ -837,6 +842,7 @@ describe("MCP Tool Handlers", () => {
         events: [
           {
             from_address: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
+            keys: ["selector:AccountDeployed"],
             // account, public_key, agent_id.low, agent_id.high, registry
             data: ["0xabc", "0x1234", "0x2a", "0x0", "0xregistry"],
           },

@@ -35,6 +35,7 @@ import {
   cairo,
   byteArray,
   ETransactionVersion,
+  hash,
   validateAndParseAddress,
   type Call,
 } from "starknet";
@@ -154,16 +155,27 @@ function parseDeployResultFromReceipt(
   receipt: unknown,
   factoryAddress: string
 ): { accountAddress: string | null; agentId: string | null } {
-  const events = (receipt as { events?: Array<{ from_address?: string; data?: string[] }> })?.events;
+  const events =
+    (receipt as { events?: Array<{ from_address?: string; keys?: string[]; data?: string[] }> })
+      ?.events;
   if (!events) {
     return { accountAddress: null, agentId: null };
   }
 
   const factory = factoryAddress.toLowerCase();
+  const accountDeployedSelector = hash.getSelectorFromName("AccountDeployed").toLowerCase();
   for (const event of events) {
     const from = event.from_address?.toLowerCase();
+    const keys = event.keys;
     const data = event.data;
-    if (from !== factory || !data || data.length < 4) {
+    if (
+      from !== factory ||
+      !keys ||
+      keys.length < 1 ||
+      keys[0]?.toLowerCase() !== accountDeployedSelector ||
+      !data ||
+      data.length < 4
+    ) {
       continue;
     }
 
@@ -531,22 +543,31 @@ function parseIdentityRegisteredFromReceipt(
   receipt: unknown,
   identityRegistryAddress: string
 ): { agentId: string | null } {
-  const events = (receipt as { events?: Array<{ from_address?: string; data?: string[] }> })?.events;
+  const events =
+    (receipt as { events?: Array<{ from_address?: string; keys?: string[]; data?: string[] }> })
+      ?.events;
   if (!events) {
     return { agentId: null };
   }
 
   const identity = identityRegistryAddress.toLowerCase();
+  const registeredSelector = hash.getSelectorFromName("Registered").toLowerCase();
   for (const event of events) {
     const from = event.from_address?.toLowerCase();
-    const data = event.data;
-    if (from !== identity || !data || data.length < 2) {
+    const keys = event.keys;
+    if (
+      from !== identity ||
+      !keys ||
+      keys.length < 3 ||
+      keys[0]?.toLowerCase() !== registeredSelector
+    ) {
       continue;
     }
 
     try {
-      const agentIdLow = BigInt(data[0]);
-      const agentIdHigh = BigInt(data[1]);
+      // `Registered` has `agent_id` as a #[key] u256 -> two felts in keys[1..2]
+      const agentIdLow = BigInt(keys[1]);
+      const agentIdHigh = BigInt(keys[2]);
       const agentId = (agentIdLow + (agentIdHigh << 128n)).toString();
       return { agentId };
     } catch {
