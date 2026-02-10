@@ -291,24 +291,8 @@ async function main() {
   });
   console.log("  Starknet preflight passed");
 
-  // ---------- Starknet deploy ----------
-  console.log("[3/6] Deploying Starknet agent account...");
-  const starknetDeploy = await deployAccount({
-    provider: starknetPreflight.provider,
-    deployerAccount: starknetPreflight.account,
-    networkConfig: starknetPreflight.networkConfig,
-    network: args.starknetNetwork,
-    tokenUri: PLACEHOLDER_URI,
-    gasfree: args.gasfree,
-    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
-    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
-    salt: args.salt,
-  });
-  console.log(`  Starknet account: ${starknetDeploy.accountAddress}`);
-  console.log(`  Starknet agentId: ${starknetDeploy.agentId}`);
-
   // ---------- EVM register ----------
-  console.log("[4/6] Registering EVM identity...");
+  console.log("[3/6] Registering EVM identity...");
   const predictedEvmAgentId: bigint = await evmIdentity.register.staticCall(PLACEHOLDER_URI);
   const registerTx = await evmIdentity.register(PLACEHOLDER_URI);
   const registerReceipt = await registerTx.wait();
@@ -324,8 +308,19 @@ async function main() {
   console.log(`  EVM agentId: ${evmAgentId.toString()}`);
   console.log(`  EVM register tx: ${registerTx.hash}`);
 
+  // ---------- Predict Starknet next agent id ----------
+  const totalAgentsResult = await starknetPreflight.provider.callContract({
+    contractAddress: starknetPreflight.networkConfig.registry,
+    entrypoint: "total_agents",
+    calldata: [],
+  });
+  const totalLow = BigInt(totalAgentsResult[0] || "0");
+  const totalHigh = BigInt(totalAgentsResult[1] || "0");
+  const currentTotalAgents = totalLow + (totalHigh << 128n);
+  const predictedStarknetAgentId = (currentTotalAgents + 1n).toString();
+
   // ---------- Link via shared URI ----------
-  console.log("[5/6] Updating shared registration URI on both chains...");
+  console.log("[4/6] Deploying Starknet account with shared URI...");
   const sharedUri =
     args.sharedUri ||
     createSharedUri({
@@ -334,29 +329,39 @@ async function main() {
       evmAgentId: evmAgentId.toString(),
       evmRegistry,
       evmChainId: evmConfig.chainId,
-      starknetAgentId: starknetDeploy.agentId,
+      starknetAgentId: predictedStarknetAgentId,
       starknetRegistry: starknetPreflight.networkConfig.registry,
       starknetNetwork: args.starknetNetwork,
     });
+
+  const starknetDeploy = await deployAccount({
+    provider: starknetPreflight.provider,
+    deployerAccount: starknetPreflight.account,
+    networkConfig: starknetPreflight.networkConfig,
+    network: args.starknetNetwork,
+    tokenUri: sharedUri,
+    gasfree: args.gasfree,
+    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
+    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
+    salt: args.salt,
+  });
+  console.log(`  Starknet account: ${starknetDeploy.accountAddress}`);
+  console.log(`  Starknet agentId: ${starknetDeploy.agentId}`);
+
+  if (starknetDeploy.agentId !== predictedStarknetAgentId) {
+    throw new Error(
+      `Predicted Starknet agent_id ${predictedStarknetAgentId} but deployed ${starknetDeploy.agentId}. ` +
+        "Re-run the flow (likely concurrent registration changed ordering).",
+    );
+  }
+
+  console.log("[5/6] Updating shared registration URI on EVM...");
 
   const evmSetUriTx = await evmIdentity.setAgentURI(evmAgentId, sharedUri);
   const evmSetUriReceipt = await evmSetUriTx.wait();
   if (!evmSetUriReceipt) {
     throw new Error("No receipt returned for EVM setAgentURI tx");
   }
-
-  const starknetSetUriTxHash = await updateStarknetUri({
-    provider: starknetPreflight.provider,
-    accountAddress: starknetDeploy.accountAddress,
-    privateKey: starknetDeploy.privateKey,
-    registry: starknetPreflight.networkConfig.registry,
-    agentId: starknetDeploy.agentId,
-    uri: sharedUri,
-    gasfree: args.gasfree,
-    network: args.starknetNetwork,
-    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
-    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
-  });
 
   // ---------- First action ----------
   console.log("[6/6] Verifying Starknet account operations...");
@@ -379,7 +384,7 @@ async function main() {
       account_address: starknetDeploy.accountAddress,
       agent_id: starknetDeploy.agentId,
       deploy_tx_hash: starknetDeploy.deployTxHash,
-      set_agent_uri_tx_hash: starknetSetUriTxHash,
+      set_agent_uri_tx_hash: null,
       first_action_tx_hash: action.verifyTxHash,
       balances: action.balances,
     },
@@ -404,9 +409,6 @@ async function main() {
   console.log(`Base tx (set URI):  ${evmConfig.explorer}/tx/${evmSetUriTx.hash}`);
   console.log(
     `Starknet tx (deploy): ${starknetPreflight.networkConfig.explorer}/tx/${starknetDeploy.deployTxHash}`,
-  );
-  console.log(
-    `Starknet tx (set URI): ${starknetPreflight.networkConfig.explorer}/tx/${starknetSetUriTxHash}`,
   );
 }
 
