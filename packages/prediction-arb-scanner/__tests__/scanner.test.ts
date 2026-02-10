@@ -223,6 +223,10 @@ describe("computeMid", () => {
   it("returns undefined when ask is missing", () => {
     expect(computeMid(0.4, undefined)).toBeUndefined();
   });
+
+  it("returns undefined for inverted bid/ask", () => {
+    expect(computeMid(0.6, 0.4)).toBeUndefined();
+  });
 });
 
 describe("computeSpreadBps", () => {
@@ -238,6 +242,10 @@ describe("computeSpreadBps", () => {
   it("returns undefined for zero bid/ask", () => {
     expect(computeSpreadBps(0, 0.5)).toBeUndefined();
     expect(computeSpreadBps(0.5, 0)).toBeUndefined();
+  });
+
+  it("returns undefined for inverted bid/ask", () => {
+    expect(computeSpreadBps(0.6, 0.4)).toBeUndefined();
   });
 });
 
