@@ -12,7 +12,8 @@ const TOKENS = {
 const mockEnv = {
   STARKNET_RPC_URL: "https://starknet-sepolia.example.com",
   STARKNET_ACCOUNT_ADDRESS: "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  STARKNET_PRIVATE_KEY: "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+  // Non-secret placeholder; tests only require a syntactically-valid string.
+  STARKNET_PRIVATE_KEY: "0x1",
   AVNU_BASE_URL: "https://sepolia.api.avnu.fi",
   AVNU_PAYMASTER_URL: "https://sepolia.paymaster.avnu.fi",
   ERC8004_IDENTITY_REGISTRY_ADDRESS:

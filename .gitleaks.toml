@@ -1,0 +1,121 @@
+title = "starknet-agentic secret scanning"
+
+# Keep this config intentionally high-signal for a blockchain codebase:
+# - Avoid broad "generic api key" heuristics that frequently false-positive on on-chain addresses.
+# - Catch the patterns that have actually burned us (hex private keys + common tokens).
+
+[allowlist]
+description = "global allow lists"
+paths = [
+  # binaries / images
+  '''(?i)\.(?:bmp|gif|jpe?g|png|svg|tiff?)$''',
+  '''(?i)\.(?:eot|[ot]tf|woff2?)$''',
+  '''(?i)\.(?:docx?|xlsx?|pdf|bin|dll|exe|pdb)$''',
+  # local caches
+  '''(?:^|/)\.cache/''',
+]
+
+[[rules]]
+id = "hex-private-key"
+description = "Hex private key or secret value assigned to a key-like variable (EVM/Starknet)."
+regex = '''(?i)(?:^|[^a-z0-9_])(private[_-]?key|starknet[_-]?private[_-]?key|deployer[_-]?private[_-]?key|l1[_-]?private[_-]?key|secret|mnemonic|seed)\s*(?:=|:)\s*["']?(0x[a-f0-9]{64}|[a-f0-9]{64})["']?(?:[\x60'"\s;]|\\[nr]|$)'''
+entropy = 2
+keywords = [
+  "private",
+  "private_key",
+  "starknet_private_key",
+  "deployer_private_key",
+  "l1_private_key",
+  "mnemonic",
+  "seed",
+  "secret",
+]
+
+[[rules]]
+id = "uuid-api-key"
+description = "UUID-like API key assigned to a key-like variable (e.g., paymaster/api keys)."
+regex = '''(?i)(?:api[_-]?key|paymaster[_-]?api[_-]?key|avnu[_-]?paymaster[_-]?api[_-]?key)\s*(?:=|:)\s*["']?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})["']?(?:[\x60'"\s;]|\\[nr]|$)'''
+entropy = 2
+keywords = ["api", "key", "paymaster"]
+
+[[rules]]
+id = "github-pat"
+description = "Uncovered a GitHub Personal Access Token, potentially leading to unauthorized repository access and sensitive content exposure."
+regex = '''ghp_[0-9a-zA-Z]{36}'''
+entropy = 3
+keywords = ["ghp_"]
+[[rules.allowlists]]
+paths = [
+  '''(?:^|/)@octokit/auth-token/README\.md$''',
+]
+
+[[rules]]
+id = "github-fine-grained-pat"
+description = "Found a GitHub Fine-Grained Personal Access Token, risking unauthorized repository access and code manipulation."
+regex = '''github_pat_\w{82}'''
+entropy = 3
+keywords = ["github_pat_"]
+
+[[rules]]
+id = "github-oauth"
+description = "Discovered a GitHub OAuth Access Token, posing a risk of compromised GitHub account integrations and data leaks."
+regex = '''gho_[0-9a-zA-Z]{36}'''
+entropy = 3
+keywords = ["gho_"]
+
+[[rules]]
+id = "github-refresh-token"
+description = "Detected a GitHub Refresh Token, which could allow prolonged unauthorized access to GitHub services."
+regex = '''ghr_[0-9a-zA-Z]{36}'''
+entropy = 3
+keywords = ["ghr_"]
+
+[[rules]]
+id = "github-app-token"
+description = "Identified a GitHub App Token, which may compromise GitHub application integrations and source code security."
+regex = '''(?:ghu|ghs)_[0-9a-zA-Z]{36}'''
+entropy = 3
+keywords = ["ghu_", "ghs_"]
+[[rules.allowlists]]
+paths = [
+  '''(?:^|/)@octokit/auth-token/README\.md$''',
+]
+
+[[rules]]
+id = "slack-bot-token"
+description = "Identified a Slack Bot token, which may compromise bot integrations and communication channel security."
+regex = '''xoxb-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*'''
+entropy = 3
+keywords = ["xoxb"]
+
+[[rules]]
+id = "slack-user-token"
+description = "Found a Slack User token, posing a risk of unauthorized user impersonation and data access within Slack workspaces."
+regex = '''xox[pe](?:-[0-9]{10,13}){3}-[a-zA-Z0-9-]{28,34}'''
+entropy = 2
+keywords = ["xoxp-", "xoxe-"]
+
+[[rules]]
+id = "slack-webhook-url"
+description = "Discovered a Slack Webhook, which could lead to unauthorized message posting and data leakage in Slack channels."
+regex = '''(?:https?://)?hooks.slack.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{43,56}'''
+keywords = ["hooks.slack.com"]
+
+[[rules]]
+id = "stripe-access-token"
+description = "Found a Stripe Access Token, posing a risk to payment processing services and sensitive financial data."
+regex = '''\b((?:sk|rk)_(?:test|live|prod)_[a-zA-Z0-9]{10,99})(?:[\x60'"\s;]|\\[nr]|$)'''
+entropy = 2
+keywords = ["sk_test", "sk_live", "sk_prod", "rk_test", "rk_live", "rk_prod"]
+
+[[rules]]
+id = "aws-access-token"
+description = "Identified a pattern that may indicate AWS credentials, risking unauthorized cloud resource access and data breaches on AWS platforms."
+regex = '''\b((?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z2-7]{16})\b'''
+entropy = 3
+keywords = ["a3t", "akia", "asia", "abia", "acca"]
+[[rules.allowlists]]
+regexes = [
+  '''.+EXAMPLE$''',
+]
+
