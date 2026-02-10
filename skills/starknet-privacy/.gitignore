@@ -1,0 +1,50 @@
+# Bytecode
+*.pyc
+__pycache__/
+*.class
+
+# Build artifacts
+*.r1cs
+*.wtns
+*.zkey
+*.vkey
+*.json
+!witness_template.json
+!package.json
+
+# Keys (never commit)
+proving.key
+verification.key
+
+# Node.js
+node_modules/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Cairo/Scarb
+Scarb.lock
+
+# ZK circuits
+*_js/
+witness.wtns
+proof.json
+public.json
+calldata.json
+verifier.sol
+
+# Test outputs
+*.test_result
+coverage/
