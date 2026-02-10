@@ -64,17 +64,20 @@ ClawHub is the primary distribution channel for OpenClaw and MoltBook users.
 npm install -g clawhub
 
 # Login
-claw login
+clawhub login
 
 # Discover
-claw search starknet
+clawhub search starknet
+
+# Tip: sort results
+clawhub search starknet --sort trending
 
 # Install
-claw add starknet-wallet
+clawhub install starknet-wallet
 ```
 
 Maintainer publishing should follow the official ClawHub upload workflow:
-`https://github.com/RhysLad/clawhub`.
+`https://github.com/openclaw/clawhub`.
 
 If ClawHub distribution is unavailable for your environment, use Option 5.
 
@@ -219,7 +222,7 @@ See the main [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 - [Agent Skills Specification](https://agentskills.io/)
 - [OpenClaw Skill Format](https://docs.openclaw.ai/guide/skills)
 - [ClawHub User Guide](https://docs.openclaw.ai/guide/clawhub)
-- [ClawHub Repository](https://github.com/RhysLad/clawhub)
+- [ClawHub Repository](https://github.com/openclaw/clawhub)
 - [Starknet Documentation](https://docs.starknet.io/)
 - [avnu SDK](https://docs.avnu.fi/)
 - [ERC-8004 Standard](https://eips.ethereum.org/EIPS/eip-8004)

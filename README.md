@@ -111,8 +111,8 @@ OpenClaw / MoltBook via ClawHub:
 
 ```bash
 npm install -g clawhub
-claw login
-claw add starknet-wallet
+clawhub login
+clawhub install starknet-wallet
 ```
 
 ## Examples
