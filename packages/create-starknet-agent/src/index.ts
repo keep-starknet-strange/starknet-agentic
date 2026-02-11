@@ -16,8 +16,17 @@ import type {
   Template,
   DeFiProtocol,
   ExampleType,
+  DetectedPlatform,
+  PlatformType,
 } from "./types.js";
 import { generateProject } from "./templates.js";
+import {
+  detectPlatforms,
+  formatDetectedPlatforms,
+  getPlatformByType,
+  getPlatformDisplayName,
+  isValidPlatformType,
+} from "./platform.js";
 
 const VERSION = "0.1.0";
 
@@ -36,33 +45,54 @@ ${pc.bold("Usage:")}
   npx create-starknet-agent [project-name] [options]
 
 ${pc.bold("Options:")}
-  --template <name>   Template to use (minimal, defi, full)
-  --network <name>    Network (mainnet, sepolia)
-  --yes, -y           Skip prompts and use defaults
-  --help, -h          Show this help message
-  --version, -v       Show version number
+  --template <name>     Template to use (minimal, defi, full)
+  --network <name>      Network (mainnet, sepolia)
+  --platform <name>     Target platform (openclaw, claude-code, cursor, daydreams, generic-mcp, standalone)
+  --detect-only         Detect platforms and exit (useful for debugging)
+  --yes, -y             Skip prompts and use defaults
+  --help, -h            Show this help message
+  --version, -v         Show version number
+
+${pc.bold("Platform Modes:")}
+  The CLI auto-detects your agent platform and provides the appropriate setup:
+
+  ${pc.cyan("openclaw")}       OpenClaw/MoltBook - MCP config + skills
+  ${pc.cyan("claude-code")}    Claude Code - CLAUDE.md + MCP settings
+  ${pc.cyan("cursor")}         Cursor - MCP config in .cursor/
+  ${pc.cyan("daydreams")}      Daydreams - daydreams.config integration
+  ${pc.cyan("generic-mcp")}    Generic MCP - mcp.json configuration
+  ${pc.cyan("standalone")}     Full project scaffold (default if no platform detected)
 
 ${pc.bold("Examples:")}
   npx create-starknet-agent my-agent
   npx create-starknet-agent my-agent --template defi
   npx create-starknet-agent my-agent --template full --network sepolia
+  npx create-starknet-agent my-agent --platform claude-code
+  npx create-starknet-agent --detect-only
   npx create-starknet-agent my-agent -y
 `);
 }
 
-// Parse CLI arguments
-function parseArgs(args: string[]): {
+// Parsed CLI arguments interface
+interface ParsedArgs {
   projectName?: string;
   template?: Template;
   network?: Network;
+  platform?: PlatformType;
+  detectOnly: boolean;
   skipPrompts: boolean;
   showHelp: boolean;
   showVersion: boolean;
-} {
-  const result = {
-    projectName: undefined as string | undefined,
-    template: undefined as Template | undefined,
-    network: undefined as Network | undefined,
+}
+
+// Parse CLI arguments
+function parseArgs(args: string[]): ParsedArgs {
+  const result: ParsedArgs = {
+    projectName: undefined,
+    template: undefined,
+    network: undefined,
+    platform: undefined,
+    detectOnly: false,
     skipPrompts: false,
     showHelp: false,
     showVersion: false,
@@ -77,6 +107,8 @@ function parseArgs(args: string[]): {
       result.showVersion = true;
     } else if (arg === "--yes" || arg === "-y") {
       result.skipPrompts = true;
+    } else if (arg === "--detect-only") {
+      result.detectOnly = true;
     } else if (arg === "--template" && args[i + 1]) {
       const template = args[++i];
       if (["minimal", "defi", "full"].includes(template)) {
@@ -86,6 +118,13 @@ function parseArgs(args: string[]): {
       const network = args[++i];
       if (["mainnet", "sepolia", "custom"].includes(network)) {
         result.network = network as Network;
+      }
+    } else if (arg === "--platform" && args[i + 1]) {
+      const platform = args[++i];
+      if (isValidPlatformType(platform)) {
+        result.platform = platform;
+      } else {
+        console.log(pc.yellow(`Warning: Unknown platform "${platform}". Using auto-detection.`));
       }
     } else if (!arg.startsWith("-") && !result.projectName) {
       result.projectName = arg;
@@ -100,13 +139,136 @@ function isValidProjectName(name: string): boolean {
   return /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name);
 }
 
+/**
+ * Platform descriptions for wizard display
+ */
+const PLATFORM_DESCRIPTIONS: Record<PlatformType, string> = {
+  "openclaw": "OpenClaw/MoltBook agent platform",
+  "claude-code": "Claude Code CLI integration",
+  "cursor": "Cursor AI editor",
+  "daydreams": "Daydreams agent framework",
+  "generic-mcp": "Generic MCP configuration",
+  "standalone": "Full project scaffold (advanced)",
+};
+
+/**
+ * All possible platform types for selection
+ */
+const ALL_PLATFORM_TYPES: PlatformType[] = [
+  "openclaw",
+  "claude-code",
+  "cursor",
+  "daydreams",
+  "generic-mcp",
+  "standalone",
+];
+
+/**
+ * Select platform from detected platforms
+ * Returns the selected platform, prompting user if multiple are detected
+ */
+async function selectPlatform(
+  detectedPlatforms: DetectedPlatform[],
+  platformOverride?: PlatformType,
+  skipPrompts = false
+): Promise<DetectedPlatform> {
+  // If --platform flag provided, use that
+  if (platformOverride) {
+    const match = getPlatformByType(platformOverride);
+    if (match) {
+      return match;
+    }
+    // Shouldn't reach here due to validation in parseArgs, but handle gracefully
+    console.log(pc.yellow(`Platform "${platformOverride}" not found, using standalone.`));
+    return detectedPlatforms.find((p) => p.type === "standalone")!;
+  }
+
+  // Non-interactive mode: use first detected platform
+  if (skipPrompts || !process.stdin.isTTY) {
+    return detectedPlatforms[0];
+  }
+
+  // Create a set of detected platform types for quick lookup
+  const detectedTypes = new Set(detectedPlatforms.map((p) => p.type));
+
+  // Build choices for all platforms, showing detected ones first
+  const detectedChoices: Array<{ title: string; value: PlatformType }> = [];
+  const undetectedChoices: Array<{ title: string; value: PlatformType }> = [];
+
+  for (const platformType of ALL_PLATFORM_TYPES) {
+    const isDetected = detectedTypes.has(platformType);
+    const description = PLATFORM_DESCRIPTIONS[platformType];
+
+    if (isDetected) {
+      const isFirst = detectedChoices.length === 0 && platformType !== "standalone";
+      const label = isFirst
+        ? pc.green(platformType) + pc.dim(` - ${description}`)
+        : platformType + pc.dim(` - ${description}`);
+      detectedChoices.push({ title: label, value: platformType });
+    } else {
+      const label = pc.dim(platformType) + pc.dim(` - ${description}`) + pc.yellow(" (not detected)");
+      undetectedChoices.push({ title: label, value: platformType });
+    }
+  }
+
+  // Combine: detected first, then undetected
+  const choices = [...detectedChoices, ...undetectedChoices];
+
+  // Cancel handler
+  const onCancel = () => {
+    console.log(pc.red("\nOperation cancelled."));
+    process.exit(0);
+  };
+
+  const response = await prompts(
+    {
+      type: "select",
+      name: "platform",
+      message: "Select target platform:",
+      choices,
+      initial: 0,
+    },
+    { onCancel }
+  );
+
+  // Find the selected platform from detected, or create one for undetected
+  const selected = detectedPlatforms.find((p) => p.type === response.platform);
+  if (selected) {
+    return selected;
+  }
+
+  // For undetected platforms, get a fresh platform config
+  const freshPlatform = getPlatformByType(response.platform);
+  return freshPlatform || detectedPlatforms.find((p) => p.type === "standalone")!;
+}
+
 // Interactive prompts
 async function getProjectConfig(
   initialName?: string,
   initialTemplate?: Template,
   initialNetwork?: Network,
+  initialPlatform?: PlatformType,
   skipPrompts = false
 ): Promise<ProjectConfig | null> {
+  // Detect platforms
+  const detectedPlatforms = detectPlatforms();
+
+  // Show detected platforms
+  if (!skipPrompts && process.stdin.isTTY) {
+    const nonStandalone = detectedPlatforms.filter((p) => p.type !== "standalone");
+    if (nonStandalone.length > 0) {
+      console.log(pc.dim("Detected platforms:"));
+      for (const platform of nonStandalone) {
+        const icon = platform.confidence === "high" ? "●" : "◐";
+        console.log(pc.dim(`  ${icon} ${platform.name} (${platform.detectedBy})`));
+      }
+      console.log();
+    }
+  }
+
+  // Select platform (first step in wizard)
+  const selectedPlatform = await selectPlatform(detectedPlatforms, initialPlatform, skipPrompts);
+
   // If skipping prompts, use defaults
   if (skipPrompts) {
     const projectName = initialName || "my-starknet-agent";
@@ -117,6 +279,7 @@ async function getProjectConfig(
       defiProtocols: initialTemplate === "minimal" ? [] : ["avnu"],
       includeExample: "none",
       installDeps: true,
+      platform: selectedPlatform,
     };
   }
 
@@ -128,8 +291,8 @@ async function getProjectConfig(
 
   const questions: prompts.PromptObject[] = [];
 
-  // Project name
-  if (!initialName) {
+  // Project name (only for standalone mode)
+  if (!initialName && selectedPlatform.type === "standalone") {
     questions.push({
       type: "text",
       name: "projectName",
@@ -140,8 +303,8 @@ async function getProjectConfig(
     });
   }
 
-  // Template selection
-  if (!initialTemplate) {
+  // Template selection (only for standalone mode)
+  if (!initialTemplate && selectedPlatform.type === "standalone") {
     questions.push({
       type: "select",
       name: "template",
@@ -194,8 +357,16 @@ async function getProjectConfig(
     responses = await prompts(questions, { onCancel });
   }
 
-  const projectName = initialName || (responses.projectName as string);
-  const template = initialTemplate || (responses.template as Template);
+  // For non-standalone platforms, use a default project name based on platform
+  const projectName = initialName ||
+    (responses.projectName as string) ||
+    (selectedPlatform.type !== "standalone" ? "starknet-config" : "my-starknet-agent");
+
+  // For non-standalone platforms, default to minimal template
+  const template = initialTemplate ||
+    (responses.template as Template) ||
+    (selectedPlatform.type !== "standalone" ? "minimal" : "minimal");
+
   const network = initialNetwork || (responses.network as Network);
 
   // Custom RPC URL if needed
@@ -214,9 +385,9 @@ async function getProjectConfig(
     customRpcUrl = customResponse.customRpcUrl as string;
   }
 
-  // DeFi protocols (only for defi/full templates)
+  // DeFi protocols (only for defi/full templates in standalone mode)
   let defiProtocols: DeFiProtocol[] = [];
-  if (template === "defi" || template === "full") {
+  if (selectedPlatform.type === "standalone" && (template === "defi" || template === "full")) {
     const protocolResponse = await prompts(
       {
         type: "multiselect",
@@ -235,16 +406,20 @@ async function getProjectConfig(
     defiProtocols = protocolResponse.protocols as DeFiProtocol[];
   }
 
-  // Install dependencies
-  const installResponse = await prompts(
-    {
-      type: "confirm",
-      name: "installDeps",
-      message: "Install dependencies with pnpm/npm?",
-      initial: true,
-    },
-    { onCancel }
-  );
+  // Install dependencies (only for standalone mode)
+  let installDeps = false;
+  if (selectedPlatform.type === "standalone") {
+    const installResponse = await prompts(
+      {
+        type: "confirm",
+        name: "installDeps",
+        message: "Install dependencies with pnpm/npm?",
+        initial: true,
+      },
+      { onCancel }
+    );
+    installDeps = installResponse.installDeps as boolean;
+  }
 
   return {
     projectName,
@@ -253,7 +428,8 @@ async function getProjectConfig(
     template,
     defiProtocols,
     includeExample: "none" as ExampleType,
-    installDeps: installResponse.installDeps as boolean,
+    installDeps,
+    platform: selectedPlatform,
   };
 }
 
@@ -369,11 +545,34 @@ async function main() {
     process.exit(0);
   }
 
+  // Handle --detect-only flag
+  if (parsed.detectOnly) {
+    const platforms = detectPlatforms();
+    console.log(pc.bold("Detected Platforms:"));
+    console.log();
+    console.log(formatDetectedPlatforms(platforms));
+    console.log(pc.dim("Legend: ● high confidence, ◐ medium confidence, ○ low confidence"));
+    console.log();
+
+    // Print summary
+    const nonStandalone = platforms.filter((p) => p.type !== "standalone");
+    if (nonStandalone.length > 0) {
+      console.log(pc.green(`Found ${nonStandalone.length} platform(s) for integration mode.`));
+      console.log(pc.dim(`Run without --detect-only to configure Starknet for your platform.`));
+    } else {
+      console.log(pc.yellow("No agent platforms detected."));
+      console.log(pc.dim("The CLI will scaffold a standalone project."));
+    }
+
+    process.exit(0);
+  }
+
   // Get project configuration
   const config = await getProjectConfig(
     parsed.projectName,
     parsed.template,
     parsed.network,
+    parsed.platform,
     parsed.skipPrompts
   );
 
@@ -381,8 +580,29 @@ async function main() {
     process.exit(1);
   }
 
-  // Create the project
-  await createProject(config);
+  // Create the project (for now, only standalone mode creates files)
+  // Platform-specific setup will be implemented in Phase 0.2
+  if (config.platform?.type === "standalone") {
+    await createProject(config);
+  } else {
+    // Placeholder for platform-specific setup (Phase 0.2)
+    console.log();
+    console.log(pc.cyan(`Setting up Starknet for ${config.platform?.name}...`));
+    console.log();
+    console.log(pc.yellow("Platform-specific setup will be implemented in Phase 0.2."));
+    console.log(pc.dim(`Selected platform: ${config.platform?.type}`));
+    console.log(pc.dim(`Config path: ${config.platform?.configPath}`));
+    if (config.platform?.skillsPath) {
+      console.log(pc.dim(`Skills path: ${config.platform.skillsPath}`));
+    }
+    if (config.platform?.secretsPath) {
+      console.log(pc.dim(`Secrets path: ${config.platform.secretsPath}`));
+    }
+    console.log();
+    console.log(pc.bold("Network:"), config.network);
+    console.log();
+    console.log(pc.dim("For now, please use --platform standalone to create a full project."));
+  }
 }
 
 main().catch((error) => {

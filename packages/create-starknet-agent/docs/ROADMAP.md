@@ -96,27 +96,58 @@ Enable the CLI to detect the user's agent platform and provide the appropriate l
     isAgentInitiated: boolean; // True if CLI was invoked by an agent
   }
   ```
-- [ ] Add `--platform <name>` flag to override detection
-- [ ] Add `--detect-only` flag to print detected platform and exit
+- [ ] Add `--detect-only` flag to print detected platform(s) and exit
+- [ ] Add step to setup wizard to select platform to use ( ordered based on detections )
+- [ ] Do not auto-select a platform unless flag provided
+- [ ] Add `--platform <name>` flag to override detection and skip wizard step to select platform
 
 **Detection Heuristics**:
 ```typescript
-// Priority order for detection
-const detectPlatform = (): DetectedPlatform => {
-  // 1. Check explicit env vars (most reliable)
-  if (process.env.OPENCLAW_HOME) return openclawPlatform();
-  if (process.env.CLAUDE_CODE) return claudeCodePlatform();
+// Returns all detected platforms, ordered by confidence
+const detectPlatforms = (): DetectedPlatform[] => {
+  const detected: DetectedPlatform[] = [];
 
-  // 2. Check config file existence
-  if (existsSync(expandHome('~/.openclaw/'))) return openclawPlatform();
-  if (existsSync('.claude/settings.json')) return claudeCodePlatform();
-  if (existsSync('mcp.json')) return genericMcpPlatform();
+  // 1. Check explicit env vars (highest confidence)
+  if (process.env.OPENCLAW_HOME) detected.push(openclawPlatform());
+  if (process.env.CLAUDE_CODE) detected.push(claudeCodePlatform());
 
-  // 3. Check if running non-interactively (likely agent-initiated)
-  if (!process.stdin.isTTY) return { ...genericMcpPlatform(), isAgentInitiated: true };
+  // 2. Check config file existence (medium confidence)
+  if (existsSync(expandHome('~/.openclaw/'))) detected.push(openclawPlatform());
+  if (existsSync('.claude/settings.json')) detected.push(claudeCodePlatform());
+  if (existsSync('.cursor/')) detected.push(cursorPlatform());
+  if (existsSync('mcp.json')) detected.push(genericMcpPlatform());
 
-  // 4. Default to standalone
-  return standalonePlatform();
+  // Deduplicate by platform type, keeping first occurrence (highest confidence)
+  const seen = new Set<string>();
+  const unique = detected.filter(p => {
+    if (seen.has(p.type)) return false;
+    seen.add(p.type);
+    return true;
+  });
+
+  // Always include standalone as final option
+  unique.push(standalonePlatform());
+
+  return unique;
+};
+
+// Platform selection logic
+const selectPlatform = (detected: DetectedPlatform[], flags: Flags): DetectedPlatform => {
+  // --platform flag overrides detection and skips wizard
+  if (flags.platform) {
+    const match = detected.find(p => p.type === flags.platform);
+    if (match) return match;
+    throw new Error(`Unknown platform: ${flags.platform}`);
+  }
+
+  // Non-interactive mode: use first detected (or error if ambiguous?)
+  if (flags.nonInteractive || !process.stdin.isTTY) {
+    return detected[0];
+  }
+
+  // Interactive: prompt user to select from detected platforms
+  // (wizard presents options ordered by detection confidence)
+  return promptPlatformSelection(detected);
 };
 ```
 
