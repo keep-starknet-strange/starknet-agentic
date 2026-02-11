@@ -15,6 +15,34 @@ import {
 
 export type ProviderLike = Pick<RpcProvider, "getChainId" | "callContract" | "waitForTransaction">;
 
+export async function waitForTransactionWithTimeout<TReceipt = unknown>(args: {
+  provider: ProviderLike;
+  txHash: string;
+  timeoutMs: number;
+}): Promise<TReceipt> {
+  const { provider, txHash, timeoutMs } = args;
+
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error("timeoutMs must be a positive number");
+  }
+
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return (await Promise.race([
+      provider.waitForTransaction(txHash) as Promise<TReceipt>,
+      new Promise<TReceipt>((_resolve, reject) => {
+        timeout = setTimeout(() => {
+          reject(new Error(`waitForTransaction timed out after ${timeoutMs}ms (${txHash})`));
+        }, timeoutMs);
+      }),
+    ])) as TReceipt;
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
+
 // Structural interface used by examples + unit tests (we only require tx hash back).
 export interface DeployerAccountLike {
   execute(calls: Call | Call[]): Promise<{ transaction_hash: string }>;
@@ -217,6 +245,7 @@ export async function deployAccountViaFactory(args: {
   tokenUri: string;
   gasfree?: boolean;
   requireEvent?: boolean;
+  waitForTxTimeoutMs?: number;
   salt?: string;
 }): Promise<DeployAccountResult> {
   const { privateKey, publicKey } = createRandomKeypair();
@@ -245,7 +274,11 @@ export async function deployAccountViaFactory(args: {
     txHash = res.transaction_hash;
   }
 
-  const receipt = await args.provider.waitForTransaction(txHash);
+  const receipt = await waitForTransactionWithTimeout({
+    provider: args.provider,
+    txHash,
+    timeoutMs: args.waitForTxTimeoutMs ?? 300_000,
+  });
   const { accountAddress, agentId } = parseFactoryAccountDeployedEvent({
     factoryAddress: args.factoryAddress,
     receipt,
@@ -272,6 +305,7 @@ export async function firstActionBalances(args: {
   accountAddress: string;
   privateKey: string;
   verifyTx: boolean;
+  waitForTxTimeoutMs?: number;
 }): Promise<FirstActionResult> {
   const balances = await getTokenBalances({
     provider: args.provider,
@@ -301,7 +335,11 @@ export async function firstActionBalances(args: {
       }),
     });
 
-    await args.provider.waitForTransaction(tx.transaction_hash);
+    await waitForTransactionWithTimeout({
+      provider: args.provider,
+      txHash: tx.transaction_hash,
+      timeoutMs: args.waitForTxTimeoutMs ?? 300_000,
+    });
     verifyTxHash = tx.transaction_hash;
   }
 

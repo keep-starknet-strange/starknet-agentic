@@ -13,6 +13,7 @@ import {
   cairo,
 } from "starknet";
 import { Contract, Interface, JsonRpcProvider, Wallet, ZeroAddress } from "ethers";
+import { waitForTransactionWithTimeout } from "@starknet-agentic/onboarding-utils";
 import { preflight } from "./steps/preflight.js";
 import { deployAccount } from "./steps/deploy-account.js";
 import { fundDeployer } from "./steps/fund-deployer.js";
@@ -240,7 +241,11 @@ async function updateStarknetUri(args: {
 
   if (!args.gasfree) {
     const tx = await account.execute(call);
-    await args.provider.waitForTransaction(tx.transaction_hash);
+    await waitForTransactionWithTimeout({
+      provider: args.provider as any,
+      txHash: tx.transaction_hash,
+      timeoutMs: 300_000,
+    });
     return tx.transaction_hash;
   }
 
@@ -251,7 +256,11 @@ async function updateStarknetUri(args: {
     feeMode: { mode: "sponsored" },
   });
 
-  await args.provider.waitForTransaction(tx.transaction_hash);
+  await waitForTransactionWithTimeout({
+    provider: args.provider as any,
+    txHash: tx.transaction_hash,
+    timeoutMs: 300_000,
+  });
   return tx.transaction_hash;
 }
 

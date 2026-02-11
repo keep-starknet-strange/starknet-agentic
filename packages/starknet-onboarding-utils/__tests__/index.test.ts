@@ -1,12 +1,76 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CallData, byteArray, ec } from "starknet";
 import {
   deployAccountViaFactory,
   formatBalance,
   parseFactoryAccountDeployedEvent,
+  waitForTransactionWithTimeout,
 } from "../src/index.js";
 
 describe("@starknet-agentic/onboarding-utils", () => {
+  describe("waitForTransactionWithTimeout", () => {
+    it("resolves when the receipt arrives before timeout", async () => {
+      vi.useFakeTimers();
+      try {
+        const provider = {
+          async waitForTransaction() {
+            return await new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 50));
+          },
+          async callContract() {
+            throw new Error("not used");
+          },
+          async getChainId() {
+            throw new Error("not used");
+          },
+        };
+
+        const p = waitForTransactionWithTimeout({
+          provider: provider as any,
+          txHash: "0xabc",
+          timeoutMs: 1000,
+        });
+
+        await vi.advanceTimersByTimeAsync(60);
+        await expect(p).resolves.toEqual({ ok: true });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("rejects with a clear error when timeout is exceeded", async () => {
+      vi.useFakeTimers();
+      try {
+        const provider = {
+          async waitForTransaction() {
+            return await new Promise(() => {
+              // never resolves
+            });
+          },
+          async callContract() {
+            throw new Error("not used");
+          },
+          async getChainId() {
+            throw new Error("not used");
+          },
+        };
+
+        const p = waitForTransactionWithTimeout({
+          provider: provider as any,
+          txHash: "0xdead",
+          timeoutMs: 100,
+        });
+        const handled = p.catch((e) => e);
+
+        await vi.advanceTimersByTimeAsync(200);
+        const err = await handled;
+        expect(String((err as Error)?.message || err)).toContain("waitForTransaction timed out");
+        expect(String((err as Error)?.message || err)).toContain("0xdead");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   describe("formatBalance", () => {
     it("formats 0", () => {
       expect(formatBalance(0n, 18)).toBe("0");
@@ -194,4 +258,3 @@ describe("@starknet-agentic/onboarding-utils", () => {
     });
   });
 });
-
