@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@starknet-agentic/onboarding-utils": "workspace:*",
-    "dotenv": "^16.4.0",
-    "starknet": "^8.9.1"
+    "dotenv": "^17.2.4",
+    "starknet": "^9.2.1"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
