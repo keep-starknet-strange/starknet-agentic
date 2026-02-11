@@ -74,115 +74,39 @@ Enable the CLI to detect the user's agent platform and provide the appropriate l
 
 ---
 
-### 0.1 Platform Detection System
-
-**Description**: Detect which agent platform the CLI is running inside and adapt behavior accordingly.
-
-**Requirements**:
-- [ ] Create platform detector that checks for:
-  - OpenClaw/MoltBook: `~/.openclaw/`, `moltbook.config.*`, env vars
-  - Claude Code: `CLAUDE_CODE` env var, `.claude/` directory
-  - Cursor: `.cursor/` directory, cursor config files
-  - Daydreams: `daydreams.config.*`, workspace markers
-  - Generic MCP: `mcp.json`, `claude_desktop_config.json`
-  - None detected: Offer standalone scaffold
-- [ ] Return structured platform info:
-  ```typescript
-  interface DetectedPlatform {
-    type: 'openclaw' | 'claude-code' | 'cursor' | 'daydreams' | 'generic-mcp' | 'standalone';
-    configPath: string;        // Where to write MCP config
-    skillsPath?: string;       // Where skills are installed
-    secretsPath?: string;      // Where credentials are stored
-    isAgentInitiated: boolean; // True if CLI was invoked by an agent
-  }
-  ```
-- [ ] Add `--detect-only` flag to print detected platform(s) and exit
-- [ ] Add step to setup wizard to select platform to use ( ordered based on detections )
-- [ ] Do not auto-select a platform unless flag provided
-- [ ] Add `--platform <name>` flag to override detection and skip wizard step to select platform
-
-**Detection Heuristics**:
-```typescript
-// Returns all detected platforms, ordered by confidence
-const detectPlatforms = (): DetectedPlatform[] => {
-  const detected: DetectedPlatform[] = [];
-
-  // 1. Check explicit env vars (highest confidence)
-  if (process.env.OPENCLAW_HOME) detected.push(openclawPlatform());
-  if (process.env.CLAUDE_CODE) detected.push(claudeCodePlatform());
-
-  // 2. Check config file existence (medium confidence)
-  if (existsSync(expandHome('~/.openclaw/'))) detected.push(openclawPlatform());
-  if (existsSync('.claude/settings.json')) detected.push(claudeCodePlatform());
-  if (existsSync('.cursor/')) detected.push(cursorPlatform());
-  if (existsSync('mcp.json')) detected.push(genericMcpPlatform());
-
-  // Deduplicate by platform type, keeping first occurrence (highest confidence)
-  const seen = new Set<string>();
-  const unique = detected.filter(p => {
-    if (seen.has(p.type)) return false;
-    seen.add(p.type);
-    return true;
-  });
-
-  // Always include standalone as final option
-  unique.push(standalonePlatform());
-
-  return unique;
-};
-
-// Platform selection logic
-const selectPlatform = (detected: DetectedPlatform[], flags: Flags): DetectedPlatform => {
-  // --platform flag overrides detection and skips wizard
-  if (flags.platform) {
-    const match = detected.find(p => p.type === flags.platform);
-    if (match) return match;
-    throw new Error(`Unknown platform: ${flags.platform}`);
-  }
-
-  // Non-interactive mode: use first detected (or error if ambiguous?)
-  if (flags.nonInteractive || !process.stdin.isTTY) {
-    return detected[0];
-  }
-
-  // Interactive: prompt user to select from detected platforms
-  // (wizard presents options ordered by detection confidence)
-  return promptPlatformSelection(detected);
-};
-```
-
----
-
-### 0.2 Platform-Specific Wizards
+### 0.2 Platform-Specific Wizards ✅ COMPLETE
 
 **Description**: Provide tailored setup flows for each detected platform.
 
 **Requirements**:
-- [ ] Create wizard router based on detected platform
-- [ ] Implement OpenClaw/MoltBook wizard:
-  - [ ] Generate MCP server config for `~/.openclaw/mcp/starknet.json`
-  - [ ] Install skills via OpenClaw's skill system
-  - [ ] Create `.env` template or prompt for secrets setup
-  - [ ] Print verification command: "Ask your agent to check your ETH balance"
-- [ ] Implement Claude Code wizard:
-  - [ ] Generate `CLAUDE.md` with skill references
-  - [ ] Add MCP server to Claude Code settings
-  - [ ] Create `.env.example` with required variables
-- [ ] Implement Cursor wizard:
-  - [ ] Configure MCP in Cursor settings
-  - [ ] Add CLAUDE.md for in-editor guidance
-- [ ] Implement generic MCP wizard:
-  - [ ] Generate `mcp.json` or update existing
-  - [ ] Install skills to local directory
-- [ ] Implement standalone wizard:
-  - [ ] Full scaffold (existing Phase 1 behavior)
-  - [ ] Position as "advanced" option
+- [x] Create wizard router based on detected/selected platform
+- [x] Implement OpenClaw/MoltBook wizard:
+  - [x] Generate MCP server config for `~/.openclaw/mcp/starknet.json`
+  - [x] Install skills via OpenClaw's skill system
+  - [x] Create `.env` template or prompt for secrets setup
+  - [x] Print verification command: "Ask your agent to check your ETH balance"
+- [x] Implement Claude Code wizard:
+  - [x] Generate `CLAUDE.md` with skill references
+  - [x] Add MCP server to Claude Code settings
+  - [x] Create `.env.example` with required variables
+- [x] Implement Cursor wizard:
+  - [x] Configure MCP in Cursor settings
+  - [x] Add CLAUDE.md for in-editor guidance
+- [x] Implement generic MCP wizard:
+  - [x] Generate `mcp.json` or update existing
+  - [x] Install skills to local directory
+- [x] Implement standalone wizard:
+  - [x] Full scaffold (existing Phase 1 behavior)
+  - [x] Position as "advanced" option
+- [x] Implement Daydreams wizard:
+  - [x] Configure MCP in daydreams.config.json
+  - [x] Create `.env.example` with required variables
 
 **Interactive Flow**:
 ```
 $ npx create-starknet-agent@latest
 
-✓ Detected: OpenClaw (MoltBook)
+✓ Platform: OpenClaw (MoltBook)
 
 ? What would you like to set up?
   > Full Starknet integration (MCP + skills) [recommended]

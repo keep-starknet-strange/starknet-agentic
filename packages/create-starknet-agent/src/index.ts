@@ -24,11 +24,11 @@ import {
   detectPlatforms,
   formatDetectedPlatforms,
   getPlatformByType,
-  getPlatformDisplayName,
   isValidPlatformType,
 } from "./platform.js";
+import { runWizard } from "./wizards.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 // CLI banner
 function printBanner() {
@@ -327,8 +327,8 @@ async function getProjectConfig(
     });
   }
 
-  // Network selection
-  if (!initialNetwork) {
+  // Network selection (only for standalone - wizards handle their own network selection)
+  if (!initialNetwork && selectedPlatform.type === "standalone") {
     questions.push({
       type: "select",
       name: "network",
@@ -367,11 +367,12 @@ async function getProjectConfig(
     (responses.template as Template) ||
     (selectedPlatform.type !== "standalone" ? "minimal" : "minimal");
 
-  const network = initialNetwork || (responses.network as Network);
+  // Network is handled by wizards for non-standalone platforms
+  const network = initialNetwork || (responses.network as Network) || "sepolia";
 
-  // Custom RPC URL if needed
+  // Custom RPC URL if needed (standalone only)
   let customRpcUrl: string | undefined;
-  if (network === "custom") {
+  if (selectedPlatform.type === "standalone" && network === "custom") {
     const customResponse = await prompts(
       {
         type: "text",
@@ -580,28 +581,13 @@ async function main() {
     process.exit(1);
   }
 
-  // Create the project (for now, only standalone mode creates files)
-  // Platform-specific setup will be implemented in Phase 0.2
+  // Route to appropriate setup flow based on platform
   if (config.platform?.type === "standalone") {
+    // Standalone mode creates a full project scaffold
     await createProject(config);
-  } else {
-    // Placeholder for platform-specific setup (Phase 0.2)
-    console.log();
-    console.log(pc.cyan(`Setting up Starknet for ${config.platform?.name}...`));
-    console.log();
-    console.log(pc.yellow("Platform-specific setup will be implemented in Phase 0.2."));
-    console.log(pc.dim(`Selected platform: ${config.platform?.type}`));
-    console.log(pc.dim(`Config path: ${config.platform?.configPath}`));
-    if (config.platform?.skillsPath) {
-      console.log(pc.dim(`Skills path: ${config.platform.skillsPath}`));
-    }
-    if (config.platform?.secretsPath) {
-      console.log(pc.dim(`Secrets path: ${config.platform.secretsPath}`));
-    }
-    console.log();
-    console.log(pc.bold("Network:"), config.network);
-    console.log();
-    console.log(pc.dim("For now, please use --platform standalone to create a full project."));
+  } else if (config.platform) {
+    // Platform-specific wizards for lightweight integration
+    await runWizard(config.platform, parsed.skipPrompts, config.network);
   }
 }
 
