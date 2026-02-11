@@ -517,6 +517,109 @@ describe("MCP Tool Handlers", () => {
     });
   });
 
+  describe("starknet_build_calls", () => {
+    const contractAddress = "0x0222222222222222222222222222222222222222222222222222222222222222";
+
+    it("returns validated unsigned calls", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          {
+            contractAddress,
+            entrypoint: "transfer",
+            calldata: ["0x123", "0x64"],
+          },
+        ],
+      });
+
+      const result = parseResponse(response);
+      expect(result.calls).toHaveLength(1);
+      expect(result.calls[0].contractAddress).toBe(contractAddress);
+      expect(result.calls[0].entrypoint).toBe("transfer");
+      expect(result.calls[0].calldata).toEqual(["0x123", "0x64"]);
+      expect(result.callCount).toBe(1);
+      expect(result.note).toContain("Unsigned");
+      // Must NOT trigger execution
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it("handles multiple calls (multicall)", async () => {
+      const addr2 = "0x0333333333333333333333333333333333333333333333333333333333333333";
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress, entrypoint: "approve", calldata: ["0xabc", "0x100"] },
+          { contractAddress: addr2, entrypoint: "swap", calldata: ["0x1"] },
+        ],
+      });
+
+      const result = parseResponse(response);
+      expect(result.calls).toHaveLength(2);
+      expect(result.callCount).toBe(2);
+      expect(result.calls[0].entrypoint).toBe("approve");
+      expect(result.calls[1].entrypoint).toBe("swap");
+    });
+
+    it("normalizes decimal calldata to hex", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress, entrypoint: "set_value", calldata: ["100"] },
+        ],
+      });
+
+      const result = parseResponse(response);
+      expect(result.calls[0].calldata).toEqual(["0x64"]);
+    });
+
+    it("rejects empty calls array", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [],
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("must not be empty");
+    });
+
+    it("rejects invalid contract address", async () => {
+      mockValidateAndParseAddress.mockImplementationOnce(() => {
+        throw new Error("Invalid address format");
+      });
+
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress: "bad", entrypoint: "foo" },
+        ],
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+    });
+
+    it("rejects invalid calldata felt", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress, entrypoint: "foo", calldata: ["0xnotafelt"] },
+        ],
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+    });
+
+    it("allows calls without calldata", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress, entrypoint: "get_count" },
+        ],
+      });
+
+      const result = parseResponse(response);
+      expect(result.calls).toHaveLength(1);
+      expect(result.calls[0].calldata).toEqual([]);
+    });
+  });
+
   // ---- Input validation tests ----
 
   describe("input validation", () => {
@@ -1225,7 +1328,7 @@ describe("Tool list", () => {
 
     const response = await capturedListHandler();
 
-    expect(response.tools).toHaveLength(12);
+    expect(response.tools).toHaveLength(13);
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_get_balance");
     expect(toolNames).toContain("starknet_get_balances");
@@ -1234,6 +1337,7 @@ describe("Tool list", () => {
     expect(toolNames).toContain("starknet_invoke_contract");
     expect(toolNames).toContain("starknet_swap");
     expect(toolNames).toContain("starknet_get_quote");
+    expect(toolNames).toContain("starknet_build_calls");
     expect(toolNames).toContain("starknet_register_agent");
     expect(toolNames).toContain("starknet_set_agent_metadata");
     expect(toolNames).toContain("starknet_get_agent_metadata");
@@ -1257,7 +1361,7 @@ describe("Tool list", () => {
     const response = await capturedListHandler();
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_deploy_agent_account");
-    expect(response.tools).toHaveLength(13);
+    expect(response.tools).toHaveLength(14);
 
     delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
   });
