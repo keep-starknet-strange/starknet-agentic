@@ -12,7 +12,9 @@ user-invocable: true
 
 Security patterns and common vulnerabilities for Cairo smart contracts on Starknet. Sourced from 30+ public audit reports including Nethermind, ConsenSys Diligence, Code4rena, and Nethermind AuditAgent, plus the [Cairo Book security chapter](https://book.cairo-lang.org/ch104-01-general-recommendations.html), [Crytic's Not So Smart Contracts](https://github.com/crytic/building-secure-contracts/tree/master/not-so-smart-contracts/cairo), [Oxor.io Cairo Security Flaws](https://oxor.io/blog/2024-08-16-cairo-security-flaws/), and [FuzzingLabs Top 4 Vulnerabilities](https://fuzzinglabs.com/top-4-vulnerability-cairo-starknet-smart-contract/).
 
-> **Versions:** This skill targets **Cairo 2.12.4** (latest stable; 2.16.0-rc is pre-release), **Scarb 2.15.1**, **Starknet Foundry 0.56.0**, **OpenZeppelin Contracts for Cairo 3.0.0** (v4.0.0-alpha.0 is pre-release), and **Starknet v0.14.1** (mainnet Dec 2025, includes BLAKE hash migration). All code examples and import paths are verified against these versions.
+> **Versions:** This skill targets **Cairo 2.12.4** (latest stable tagged on GitHub; v2.15.0 exists but 2.12.4 carries the "Latest" tag), **Scarb 2.15.1**, **Starknet Foundry 0.56.0**, **OpenZeppelin Contracts for Cairo 3.0.0** (v4.0.0-alpha.0 is pre-release, uses Scarb 2.15.1 / snforge 0.55.0), and **Starknet v0.14.1** (mainnet Dec 2025). All code examples and import paths are verified against these versions.
+
+> **Cairo Editions:** Cairo v2.15.0 introduced `edition 2025_12`, which changes snapshot/member access syntax (e.g., `(@a).b` returns desnapped value). If your `Scarb.toml` specifies this edition, test code that accesses struct members through snapshots — the number of `@` levels needed may differ from pre-2025_12 behavior.
 
 > **Workflow:** Use this skill as a review pass after your contract compiles and tests pass. Not a replacement for a professional audit.
 
@@ -65,6 +67,11 @@ Before any mainnet deployment:
 - [ ] ERC-4626 vault first-depositor protection applied (minimum liquidity lock) if applicable
 - [ ] `PausableComponent` integrated with exclusions for liquidation/risk functions
 - [ ] Public key inputs validated to lie on the STARK curve
+- [ ] No legacy v0/v1/v2 transaction assumptions (deprecated since v0.14.0)
+- [ ] Time-dependent logic recalibrated for ~6s block time (v0.14.0)
+- [ ] Global validation functions scoped correctly — no cross-contamination where unrelated state failures block valid operations
+- [ ] Per-asset risk parameters (not one-size-fits-all) for price staleness, funding caps, collateral factors
+- [ ] `AccessControlDefaultAdminRulesComponent` used for admin role transfer delay
 
 ---
 
@@ -974,15 +981,24 @@ When combining SNIP-9 with session keys (Section 13), the session key's `execute
 
 ## 15. Starknet Protocol Security Considerations
 
-*Source: [Starknet v0.14.0 "Grinta" Announcement](https://starknet.io/blog/starknet-grinta-the-architecture-of-a-more-decentralized-future), [Starknet Fees Docs](https://docs.starknet.io/learn/protocol/fees)*
+*Source: [Starknet Version Notes](https://docs.starknet.io/learn/cheatsheets/version-notes), [Starknet v0.14.0 "Grinta" Announcement](https://starknet.io/blog/starknet-grinta-the-architecture-of-a-more-decentralized-future)*
 
-### Starknet v0.14.0 "Grinta" (Sep 2025) — Decentralized Sequencer
+### Starknet v0.14.0 "Grinta" (Sep 1, 2025) — Breaking Changes
 
-Grinta introduced multi-sequencer architecture (three independent sequencers), a mempool, fee market, and subsecond pre-confirmations. Security implications:
+Grinta introduced multi-sequencer architecture (three independent sequencers with Tendermint consensus), a mempool, fee market, and subsecond pre-confirmations.
 
-- **MEV risk** — with a mempool and multiple sequencers, transaction ordering is no longer deterministic. Contracts sensitive to execution ordering (DEXes, liquidations) should implement slippage protection and deadline checks
-- **Fee market** — L2 gas now has a base price (minimum 3 gFri). Contracts that estimate gas costs should use current pricing, not hardcoded values
+**Breaking changes that affect deployed contracts:**
+
+- **v0, v1, v2 transactions are no longer supported.** Any contracts or tooling relying on legacy transaction types will fail. Accounts that lack `__validate__` must be called via the new `meta_tx_v0` syscall through v3 transactions. This is a hard break.
+- **Block time shortened from ~30s to ~6s.** All time-dependent logic (funding rate calculations, price staleness windows, oracle freshness checks, time-locked operations) must be recalibrated. A 10-block window went from ~5 minutes to ~1 minute.
+- **L2 gas fee market (EIP-1559 style).** L2 gas now has a dynamic base price. Contracts that estimate or hardcode gas costs will be wrong. Use current pricing from `get_execution_info`.
+- **Transactions with internal calls to `__execute__` are reverted.** If your contract makes calls to an entry point literally named `__execute__`, those transactions will revert under v0.14.0.
+
+**Security implications:**
+
+- **MEV risk** — with a mempool and multiple sequencers, transaction ordering is no longer deterministic. Contracts sensitive to execution ordering (DEXes, liquidations) must implement slippage protection and deadline checks
 - **Sequencer reorgs** — the Sep 2, 2025 incident showed reorgs are possible when sequencers diverge. Design for idempotent operations where possible
+- **L1 handler failures** — failed L1 handlers are now included as `REVERTED` in blocks (bounded execution resources). Contracts relying on L1 handlers must handle reverts gracefully
 
 ### Starknet v0.14.1 (Dec 2025) — BLAKE Hash Migration
 
@@ -1042,6 +1058,9 @@ OZ Cairo Contracts before v0.16.0: `renounce_ownership` could be used to transfe
 - **L-03 — Owner account overwrite:** Missing validation allows owner to be overwritten without proper authorization flow.
 - **L-04 — Missing curve validation for public keys:** Public keys in `new_position` not validated against the Stark curve. Always verify that public keys lie on the STARK curve; an invalid key creates permanently unusable state.
 - **L-05 — Liquidation blocked by pause:** Applying `assert_not_paused()` to liquidation blocked risk management during emergencies. Liquidation must always be available. (See Section 11, "Pause Mechanism — Don't Pause Liquidations.")
+- **L-06 — Global validation DoS:** `validate_assets_integrity()` checks ALL active assets, blocking operations on unrelated assets when one has stale data. (See Section 18, "DeFi Protocol Security Patterns.")
+- **L-07 — Stale prices for inactive assets:** Inactive assets can't have prices updated but their last price is still used for settlement with no freshness check.
+- **L-08 — Collateral-only users blocked:** Users with zero synthetic exposure blocked from withdrawing collateral because global validation ran unconditionally.
 
 **Pattern:** Storage reads that return default values (zero) on missing keys are a Cairo-specific footgun. Always explicitly check that a storage read returned a non-default value.
 
@@ -1093,6 +1112,8 @@ Nethermind has published 25+ Cairo/Starknet-specific audit reports covering core
 
 OZ Cairo provides core security components. Use them instead of rolling your own.
 
+> **OZ v3.0.0 Import Path Migration (breaking):** In v3.0.0, `execute_single_call`, `execute_calls`, and `assert_valid_signature` moved from `openzeppelin_account::utils` to `openzeppelin_utils::execution`. If you're upgrading from v2.x, update these imports or compilation will fail. The `openzeppelin_interfaces` package versioning is now decoupled from the main umbrella package.
+
 **Exact import paths (OZ Cairo 3.0.0):**
 ```cairo
 use openzeppelin_security::InitializableComponent;
@@ -1100,7 +1121,9 @@ use openzeppelin_security::PausableComponent;
 use openzeppelin_security::ReentrancyGuardComponent;
 use openzeppelin_access::ownable::OwnableComponent;
 use openzeppelin_access::accesscontrol::AccessControlComponent;
+use openzeppelin_access::accesscontrol::default_admin_rules::AccessControlDefaultAdminRulesComponent;
 use openzeppelin_upgrades::UpgradeableComponent;
+use openzeppelin_utils::execution::{execute_single_call, execute_calls, assert_valid_signature};
 ```
 
 ### Initializable — One-Shot Constructor
@@ -1195,10 +1218,75 @@ OZ Cairo 3.x includes a full governance suite. Key security patterns:
 2. Timelock minimum delay should be non-trivial (24-48h minimum) to give users time to react.
 3. Governor executor must be the Timelock contract, NOT an arbitrary address.
 4. For upgradeable contracts, the upgrade function should be behind the Timelock, not a single owner.
+5. `GovernorComponent` proposal state at snapshot timepoint changed from Active to **Pending** in v3.0.0 — verify your governance UIs match this.
+6. `VotesComponent` now supports customizable clock mechanisms via `ERC6372Clock` — ensure your voting token implements the correct clock source.
+
+### AccessControlDefaultAdminRulesComponent (OZ v3.0.0)
+
+*Source: [OZ v3.0.0 Release](https://github.com/OpenZeppelin/cairo-contracts/releases/tag/v3.0.0)*
+
+New in v3.0.0. Enforces a **transfer delay** on `DEFAULT_ADMIN_ROLE`, preventing instant admin transfers that could be exploited in governance attacks. This is the recommended way to handle admin roles in production.
+
+```cairo
+use openzeppelin_access::accesscontrol::default_admin_rules::AccessControlDefaultAdminRulesComponent;
+
+// Key features:
+// - Admin transfer requires a two-step process with a configurable delay
+// - MAXIMUM_DEFAULT_ADMIN_TRANSFER_DELAY exposed in ImmutableConfig
+// - Prevents social engineering attacks where admin is transferred in a single tx
+```
+
+**Rule:** For any contract with `AccessControlComponent`, prefer `AccessControlDefaultAdminRulesComponent` for the admin role to enforce transfer delays.
+
+### MetaTransactionV0 Preset (OZ v3.0.0)
+
+New in v3.0.0. Provides a meta-transaction preset with built-in replay protection. Relevant for relayer architectures and paymaster integrations. Uses SNIP-12 for signature validation. If you're building a meta-transaction relay, use this instead of rolling your own.
 
 ---
 
-## 18. Security Tooling
+## 18. DeFi Protocol Security Patterns
+
+*Source: [Code4rena Starknet Perpetual (2025)](https://code4rena.com/reports/2025-03-starknet-perpetual)*
+
+These patterns are specific to DeFi protocols (DEXes, lending, perpetuals, vaults) and emerge from the largest Cairo-specific competitive audit to date.
+
+### Global Validation DoS (C4 L-06, L-08)
+
+**Pattern:** A global validation function that checks ALL state (all asset prices, all funding rates) blocks operations that only involve a subset of state. If one unrelated asset has stale data, ALL operations fail — including unrelated withdrawals.
+
+```cairo
+// BAD — global validation blocks unrelated operations
+fn reduce_position(ref self: ContractState, asset_id: felt252) {
+    self._validate_all_assets_integrity(); // Checks ALL assets, fails if ANY is stale
+    // User can't reduce their position because an unrelated asset has stale data
+}
+
+// GOOD — scope validation to affected assets only
+fn reduce_position(ref self: ContractState, asset_id: felt252) {
+    self._validate_asset_integrity(asset_id); // Only checks the relevant asset
+    // User can proceed even if unrelated assets are stale
+}
+```
+
+**Also from L-08:** Users with zero synthetic exposure were blocked from withdrawing collateral because validation ran unconditionally. **Rule:** Scope validation to the user's actual exposure — don't gate collateral-only operations on synthetic asset health.
+
+### Stale Prices for Inactive Assets (C4 L-07)
+
+When deactivating assets, ensure settlement/wind-down functions either: (a) allow governance to update inactive prices, or (b) validate price freshness explicitly. In the C4 finding, inactive assets couldn't have prices updated (the setter rejected them), but their last price was still used for settlement calculations with no freshness check.
+
+### Liquidation Must Not Flip Position Direction (C4 M-02)
+
+A liquidator can purchase more synthetic than the liquidated user holds, forcing them from long to short (or vice versa) without consent. **Rule:** Cap liquidation amounts at the existing synthetic balance. Use the same `_validate_imposed_reduction_trade()` pattern as deleverage to prevent direction flips.
+
+### Per-Asset Parameterization (C4 L-01, L-02)
+
+Using a single global `max_price_interval` or `max_funding_rate` for all synthetic assets is a design anti-pattern. Different asset classes have different volatility profiles. BTC and a long-tail memecoin should not share the same staleness threshold.
+
+**Rule:** All risk parameters (price staleness windows, funding rate caps, collateral factors, liquidation thresholds) must be configurable per asset.
+
+---
+
+## 19. Security Tooling
 
 *Source: [Caracal](https://github.com/crytic/caracal), [FuzzingLabs](https://github.com/FuzzingLabs), [Cairo Book ch104-03](https://book.cairo-lang.org/ch104-03-static-analysis-tools.html)*
 
@@ -1268,7 +1356,7 @@ These tools made important contributions to the Cairo security ecosystem and the
 
 ---
 
-## 19. Upgrade Safety
+## 20. Upgrade Safety
 
 ### Before Upgrading
 
@@ -1286,7 +1374,7 @@ These tools made important contributions to the Cairo security ecosystem and the
 
 ---
 
-## 20. Audit Preparation
+## 21. Audit Preparation
 
 ### What Auditors Look For
 
@@ -1313,7 +1401,7 @@ Provide:
 
 ---
 
-## 21. Production Operations
+## 22. Production Operations
 
 ### Monitoring
 
@@ -1374,9 +1462,12 @@ Provide:
 - [Starknet Docs — Paymaster](https://docs.starknet.io/build/applications/paymaster)
 
 ### Protocol Changes
+- [Starknet Version Notes (official, all versions)](https://docs.starknet.io/learn/cheatsheets/version-notes)
 - [Starknet v0.14.0 "Grinta" — Decentralized Sequencer](https://starknet.io/blog/starknet-grinta-the-architecture-of-a-more-decentralized-future)
 - [Starknet Version Releases](https://www.starknet.io/developers/version-releases/)
 - [Starknet Fees Documentation](https://docs.starknet.io/learn/protocol/fees)
+- [Starknet Compatibility Tables](https://docs.starknet.io/learn/cheatsheets/compatibility)
+- [Cairo v2.15.0 Release (edition 2025_12)](https://github.com/starkware-libs/cairo/releases/tag/v2.15.0)
 
 ### Cairo Core Library
 - [Cairo Core Integer Module (overflow/wrapping/saturating)](https://docs.cairo-lang.org/core/core-integer.html)
