@@ -436,6 +436,22 @@ describe("MCP Tool Handlers", () => {
       });
     });
 
+    it("normalizes decimal calldata to 0x-prefixed felt", async () => {
+      mockCallContract.mockResolvedValue({ result: ["0x1"] });
+
+      await callTool("starknet_call_contract", {
+        contractAddress,
+        entrypoint: "balanceOf",
+        calldata: ["100"],
+      });
+
+      expect(mockCallContract).toHaveBeenCalledWith({
+        contractAddress,
+        entrypoint: "balanceOf",
+        calldata: ["0x64"],
+      });
+    });
+
     it("handles result wrapped in object", async () => {
       mockCallContract.mockResolvedValue({ result: ["0x42"] });
 
@@ -482,7 +498,10 @@ describe("MCP Tool Handlers", () => {
       const response = await callTool("starknet_invoke_contract", {
         contractAddress,
         entrypoint: "transfer",
-        calldata: ["0xrecipient", "100"],
+        calldata: [
+          "0x0111111111111111111111111111111111111111111111111111111111111111",
+          "100",
+        ],
         gasfree: true,
       });
 
@@ -548,6 +567,34 @@ describe("MCP Tool Handlers", () => {
       const result = parseResponse(response);
       expect(result.error).toBe(true);
       expect(result.message).toMatch(/not a valid Starknet address/);
+    });
+
+    it("rejects invalid calldata felt in starknet_call_contract", async () => {
+      const response = await callTool("starknet_call_contract", {
+        contractAddress: "0x0222222222222222222222222222222222222222222222222222222222222222",
+        entrypoint: "balanceOf",
+        calldata: ["0xrecipient"],
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toMatch(/calldata\[0\]/);
+      expect(result.message).toMatch(/valid felt/);
+    });
+
+    it("rejects too-large calldata arrays in starknet_invoke_contract", async () => {
+      const big = Array.from({ length: 300 }, () => "0x1");
+      const response = await callTool("starknet_invoke_contract", {
+        contractAddress: "0x0333333333333333333333333333333333333333333333333333333333333333",
+        entrypoint: "set_value",
+        calldata: big,
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toMatch(/calldata too large/i);
     });
 
     it("rejects malformed amount in starknet_transfer", async () => {

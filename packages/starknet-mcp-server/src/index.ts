@@ -143,6 +143,29 @@ function parseAddress(name: string, value: string): string {
   }
 }
 
+const MAX_CALLDATA_LEN = 256;
+
+function parseCalldata(name: string, calldata: string[]): string[] {
+  if (!Array.isArray(calldata)) {
+    throw new Error(`${name} must be an array of felts`);
+  }
+  if (calldata.length > MAX_CALLDATA_LEN) {
+    throw new Error(`${name} too large (max ${MAX_CALLDATA_LEN} items)`);
+  }
+
+  return calldata.map((raw, i) => {
+    if (typeof raw !== "string") {
+      throw new Error(`${name}[${i}] must be a string felt`);
+    }
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) {
+      throw new Error(`${name}[${i}] must be a valid felt`);
+    }
+    const felt = parseFelt(`${name}[${i}]`, trimmed);
+    return `0x${felt.toString(16)}`;
+  });
+}
+
 // Transaction wait config: ~120 s total (40 retries x 3 s interval).
 const TX_WAIT_RETRIES = 40;
 const TX_WAIT_INTERVAL_MS = 3_000;
@@ -702,10 +725,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const validatedContractAddress = parseAddress("contractAddress", contractAddress);
+        const validatedCalldata = parseCalldata("calldata", calldata);
         const result = await provider.callContract({
           contractAddress: validatedContractAddress,
           entrypoint,
-          calldata,
+          calldata: validatedCalldata,
         });
 
         return {
@@ -732,8 +756,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const validatedContractAddress = parseAddress("contractAddress", contractAddress);
+        const validatedCalldata = parseCalldata("calldata", calldata);
         const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : TOKENS.STRK;
-        const invokeCall: Call = { contractAddress: validatedContractAddress, entrypoint, calldata };
+        const invokeCall: Call = {
+          contractAddress: validatedContractAddress,
+          entrypoint,
+          calldata: validatedCalldata,
+        };
 
         const transactionHash = await executeTransaction(invokeCall, gasfree, gasTokenAddress);
         await provider.waitForTransaction(transactionHash, { retries: TX_WAIT_RETRIES, retryInterval: TX_WAIT_INTERVAL_MS });
