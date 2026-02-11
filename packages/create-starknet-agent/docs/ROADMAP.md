@@ -39,9 +39,9 @@ Let's continue with implementing:
 
 ---
 
-## Current State (v0.3.0)
+## Current State (v0.4.0)
 
-The CLI now provides platform-aware setup with non-interactive mode for agent self-setup.
+The CLI now provides platform-aware setup with non-interactive mode for agent self-setup and secure credential configuration.
 
 **Completed in v0.2.0**:
 - Platform detection (0.1): OpenClaw, Claude Code, Cursor, Daydreams, Generic MCP
@@ -49,6 +49,9 @@ The CLI now provides platform-aware setup with non-interactive mode for agent se
 
 **Completed in v0.3.0**:
 - Agent-initiated setup (0.3): Non-interactive mode with JSON output for agents
+
+**Completed in v0.4.0**:
+- Credential setup helpers (0.4): Secure `credentials` subcommand with platform-aware storage
 
 The CLI also scaffolds standalone TypeScript projects with 3 templates:
 
@@ -83,108 +86,41 @@ Enable the CLI to detect the user's agent platform and provide the appropriate l
 
 ---
 
-### 0.3 Agent-Initiated Setup (Non-Interactive Mode) ✓ COMPLETE
-
-**Description**: Enable agents to run the CLI and self-configure without human interaction.
-
-**Requirements**:
-- [x] Detect non-interactive execution (no TTY, or `--non-interactive` flag)
-- [x] Accept all configuration via CLI flags:
-  ```bash
-  npx create-starknet-agent@latest \
-    --platform openclaw \
-    --skills starknet-wallet,starknet-defi \
-    --network sepolia \
-    --non-interactive
-  ```
-- [x] Use sensible defaults when flags not provided:
-  - Platform: auto-detect
-  - Skills: `starknet-wallet,starknet-defi` (for non-standalone)
-  - Network: `sepolia`
-- [x] Output machine-readable results (JSON) when `--json` flag provided
-- [x] Return proper exit codes:
-  - 0: Success
-  - 1: Configuration error
-  - 2: Missing required credentials
-  - 3: Platform not supported
-- [x] Create setup verification command:
-  ```bash
-  npx create-starknet-agent@latest --verify
-  # Checks: MCP config exists, credentials set, network detection
-  ```
-
-**Agent Self-Setup Flow**:
-```
-User: "I want you to be able to use Starknet"
-
-Agent: I'll set up Starknet capabilities for myself.
-
-*Agent runs:*
-npx create-starknet-agent@latest --non-interactive --json
-
-*Output:*
-{
-  "success": true,
-  "platform": "openclaw",
-  "configured": {
-    "mcp": "~/.openclaw/mcp/starknet.json",
-    "skills": ["starknet-wallet", "starknet-defi"]
-  },
-  "pendingSetup": {
-    "credentials": ["STARKNET_PRIVATE_KEY", "STARKNET_ACCOUNT_ADDRESS"]
-  },
-  "nextSteps": [
-    "Add credentials to ~/.openclaw/secrets/starknet/",
-    "Restart agent to load new MCP server"
-  ]
-}
-
-Agent: Done! I've configured Starknet integration. I can now use these tools:
-- Check balances (ETH, STRK, USDC)
-- Transfer tokens
-- Swap tokens via AVNU
-
-Before I can execute transactions, you'll need to add your wallet credentials.
-Would you like me to walk you through that?
-```
-
-**Implementation Notes**:
-- Check `process.stdin.isTTY` to detect non-interactive mode
-- Use `--json` output for agent parsing
-- Include `pendingSetup` array for things the agent can't do (add private keys)
-- Provide `nextSteps` as human-readable instructions the agent can relay
-
----
-
-### 0.4 Credential Setup Helpers
+### 0.4 Credential Setup Helpers ✓ COMPLETE (v0.4.0)
 
 **Description**: Provide secure credential setup without exposing private keys in CLI history.
 
 **Requirements**:
-- [ ] Create `npx create-starknet-agent credentials` subcommand
-- [ ] Implement secure input mode (no echo, no history)
-- [ ] Support multiple credential storage backends:
-  - OpenClaw: `~/.openclaw/secrets/starknet/<address>`
+- [x] Create `npx create-starknet-agent credentials` subcommand
+- [x] Implement secure input mode (no echo, no history)
+- [x] Support multiple credential storage backends:
+  - OpenClaw: `~/.openclaw/secrets/starknet/<address>.json`
   - Claude Code/Cursor: `.env` file (gitignored)
   - Generic: `.env` or environment variables
-- [ ] Validate credentials before saving:
+- [x] Validate credentials before saving:
   - Check address format (0x + 1-64 hex chars)
   - Check private key format
-  - Optionally verify against RPC (can derive address from key)
-- [ ] Add `--from-env` flag to copy from current environment
-- [ ] Add `--from-ready` / `--from-braavos` with wallet export guide
+  - Check RPC URL format
+- [x] Add `--from-env` flag to copy from current environment
+- [x] Add `--from-ready` / `--from-braavos` with wallet export guide
+- [x] Add RPC endpoint input as part of credentials
+- [x] Add link to docs for account setup before prompts
 
 **Credential Flow**:
 ```
 $ npx create-starknet-agent credentials
 
+  Don't have a Starknet account? Follow the guide:
+  https://www.starknet-agentic.com/docs/getting-started/quick-start#getting-your-credentials
+
+? Starknet RPC URL: https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY
 ? Starknet account address: 0x1234...
 ? Private key: ********** (hidden)
 
 Validating credentials...
 ✓ Address format valid
 ✓ Private key format valid
-✓ Account exists on Sepolia (balance: 0.1 ETH)
+✓ RPC URL format valid
 
 ✓ Credentials saved to ~/.openclaw/secrets/starknet/0x1234.json
 
@@ -223,7 +159,7 @@ MCP Server
 Credentials
   ✓ Account address configured: 0x1234...abcd
   ✓ Private key present (not validated)
-  ✓ RPC URL: https://starknet-sepolia.public.blastapi.io
+  ✓ RPC URL: https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY
 
 Skills
   ✓ starknet-wallet (v1.0.0)
@@ -1198,7 +1134,7 @@ Long-term features and community-driven enhancements.
 1. **0.1 Platform Detection** ✓ COMPLETE (v0.2.0)
 2. **0.2 Platform-Specific Wizards** ✓ COMPLETE (v0.2.0)
 3. **0.3 Agent-Initiated Setup** ✓ COMPLETE (v0.3.0)
-4. **0.4 Credential Helpers** — TODO: Secure credential setup
+4. **0.4 Credential Helpers** ✓ COMPLETE (v0.4.0)
 5. **0.5 Verification (Enhanced)** — TODO: Full end-to-end verification with balance query
 
 ---
@@ -1233,7 +1169,7 @@ Long-term features and community-driven enhancements.
 - `[x]` Complete
 - `[~]` In progress
 
-*Last updated: 2026-02-11 (v0.3.0 - Agent-Initiated Setup)*
+*Last updated: 2026-02-11 (v0.4.0 - Credential Setup Helpers)*
 
 ---
 
@@ -1272,7 +1208,7 @@ This is the target user experience for agent-initiated Starknet setup:
 │                                                                      │
 │  Agent: To set up your wallet:                                       │
 │                                                                      │
-│         1. Open Argent X or Braavos wallet                           │
+│         1. Open Ready or Braavos wallet                           │
 │         2. Go to Settings → Export Private Key                       │
 │         3. Run this command and paste when prompted:                 │
 │            npx create-starknet-agent credentials                     │

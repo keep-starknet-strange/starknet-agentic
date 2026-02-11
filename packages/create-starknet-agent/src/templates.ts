@@ -123,7 +123,7 @@ function generateEnvExample(config: ProjectConfig): string {
 STARKNET_RPC_URL=${rpcUrl}
 
 # Agent Wallet (required)
-# Create an account using Argent X or Braavos, then export the private key
+# Create an account using Ready or Braavos wallet, then export the private key
 STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_PRIVATE_KEY=0x...
 `;

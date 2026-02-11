@@ -130,7 +130,7 @@ All platforms receive an MCP server configuration pointing to `@starknet-agentic
       "command": "npx",
       "args": ["@starknet-agentic/mcp-server@latest"],
       "env": {
-        "STARKNET_RPC_URL": "${STARKNET_RPC_URL:-https://starknet-sepolia.public.blastapi.io}",
+        "STARKNET_RPC_URL": "${STARKNET_RPC_URL:-https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY}",
         "STARKNET_ACCOUNT_ADDRESS": "${STARKNET_ACCOUNT_ADDRESS}",
         "STARKNET_PRIVATE_KEY": "${STARKNET_PRIVATE_KEY}",
         "AVNU_PAYMASTER_URL": "${AVNU_PAYMASTER_URL:-https://sepolia.paymaster.avnu.fi}"

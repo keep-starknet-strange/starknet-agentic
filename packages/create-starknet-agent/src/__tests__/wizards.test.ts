@@ -121,6 +121,6 @@ describe("MCP config generation", () => {
       },
     };
 
-    expect(expectedRpcUrl).toBe("https://starknet-sepolia.public.blastapi.io");
+    expect(expectedRpcUrl).toBe("https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY");
   });
 });

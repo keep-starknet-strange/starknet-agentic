@@ -27,8 +27,9 @@ import {
   isValidPlatformType,
 } from "./platform.js";
 import { runWizard } from "./wizards.js";
+import { parseCredentialsArgs, runCredentialsSetup } from "./credentials.js";
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 
 // CLI banner
 function printBanner() {
@@ -43,6 +44,10 @@ function printHelp() {
   console.log(`
 ${pc.bold("Usage:")}
   npx create-starknet-agent [project-name] [options]
+  npx create-starknet-agent credentials [options]
+
+${pc.bold("Commands:")}
+  ${pc.cyan("credentials")}    Securely configure Starknet wallet credentials
 
 ${pc.bold("Options:")}
   --template <name>     Template to use (minimal, defi, full)
@@ -58,6 +63,11 @@ ${pc.bold("Options:")}
   --json                Output machine-readable JSON (implies --non-interactive)
   --help, -h            Show this help message
   --version, -v         Show version number
+
+${pc.bold("Credentials Options:")}
+  --from-env            Import credentials from current environment variables
+  --from-ready          Show guide for exporting from Ready wallet
+  --from-braavos        Show guide for exporting from Braavos wallet
 
 ${pc.bold("Platform Modes:")}
   The CLI auto-detects your agent platform and provides the appropriate setup:
@@ -82,6 +92,12 @@ ${pc.bold("Examples:")}
   npx create-starknet-agent my-agent --platform claude-code
   npx create-starknet-agent --detect-only
   npx create-starknet-agent my-agent -y
+
+${pc.bold("Credential Setup:")}
+  npx create-starknet-agent credentials
+  npx create-starknet-agent credentials --from-env
+  npx create-starknet-agent credentials --from-ready
+  npx create-starknet-agent credentials --platform openclaw
 
 ${pc.bold("Agent Self-Setup (Non-Interactive):")}
   npx create-starknet-agent --non-interactive --json
@@ -926,6 +942,20 @@ async function verifySetup(jsonOutput: boolean): Promise<void> {
 // Main entry point
 async function main() {
   const args = process.argv.slice(2);
+
+  // Handle credentials subcommand
+  if (args[0] === "credentials") {
+    const credentialsArgs = parseCredentialsArgs(args.slice(1));
+
+    // Print banner unless JSON output
+    if (!credentialsArgs.jsonOutput) {
+      printBanner();
+    }
+
+    await runCredentialsSetup(credentialsArgs);
+    return; // runCredentialsSetup calls process.exit
+  }
+
   const parsed = parseArgs(args);
 
   if (parsed.showVersion) {
