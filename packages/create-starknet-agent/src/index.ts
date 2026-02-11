@@ -28,7 +28,7 @@ import {
 } from "./platform.js";
 import { runWizard } from "./wizards.js";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 // CLI banner
 function printBanner() {
@@ -48,8 +48,14 @@ ${pc.bold("Options:")}
   --template <name>     Template to use (minimal, defi, full)
   --network <name>      Network (mainnet, sepolia)
   --platform <name>     Target platform (openclaw, claude-code, cursor, daydreams, generic-mcp, standalone)
+  --skills <list>       Comma-separated skills to install (starknet-wallet, starknet-defi, etc.)
+  --local               Write config to project directory (default)
+  --global              Write config to user home directory (~/.claude/, etc.)
   --detect-only         Detect platforms and exit (useful for debugging)
+  --verify              Verify existing Starknet setup (check MCP, credentials)
   --yes, -y             Skip prompts and use defaults
+  --non-interactive     Run without any interactive prompts (for agent self-setup)
+  --json                Output machine-readable JSON (implies --non-interactive)
   --help, -h            Show this help message
   --version, -v         Show version number
 
@@ -63,6 +69,12 @@ ${pc.bold("Platform Modes:")}
   ${pc.cyan("generic-mcp")}    Generic MCP - mcp.json configuration
   ${pc.cyan("standalone")}     Full project scaffold (default if no platform detected)
 
+${pc.bold("Exit Codes:")}
+  0  Success
+  1  Configuration error
+  2  Missing required credentials
+  3  Platform not supported
+
 ${pc.bold("Examples:")}
   npx create-starknet-agent my-agent
   npx create-starknet-agent my-agent --template defi
@@ -70,8 +82,24 @@ ${pc.bold("Examples:")}
   npx create-starknet-agent my-agent --platform claude-code
   npx create-starknet-agent --detect-only
   npx create-starknet-agent my-agent -y
+
+${pc.bold("Agent Self-Setup (Non-Interactive):")}
+  npx create-starknet-agent --non-interactive --json
+  npx create-starknet-agent --platform openclaw --skills starknet-wallet,starknet-defi --non-interactive --json
+  npx create-starknet-agent --verify --json
 `);
 }
+
+// Exit codes
+export const EXIT_CODES = {
+  SUCCESS: 0,
+  CONFIG_ERROR: 1,
+  MISSING_CREDENTIALS: 2,
+  PLATFORM_NOT_SUPPORTED: 3,
+} as const;
+
+// Config scope - where to write MCP config
+export type ConfigScope = "local" | "global";
 
 // Parsed CLI arguments interface
 interface ParsedArgs {
@@ -79,10 +107,42 @@ interface ParsedArgs {
   template?: Template;
   network?: Network;
   platform?: PlatformType;
+  skills?: string[];
+  configScope: ConfigScope;
   detectOnly: boolean;
+  verify: boolean;
   skipPrompts: boolean;
+  nonInteractive: boolean;
+  jsonOutput: boolean;
   showHelp: boolean;
   showVersion: boolean;
+}
+
+// Valid skill IDs
+const VALID_SKILLS = ["starknet-wallet", "starknet-defi", "starknet-identity", "starknet-anonymous-wallet"];
+
+/**
+ * Parse and validate skill list from CLI argument
+ */
+function parseSkills(skillsArg: string): string[] {
+  const skills = skillsArg.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const valid: string[] = [];
+  const invalid: string[] = [];
+
+  for (const skill of skills) {
+    if (VALID_SKILLS.includes(skill)) {
+      valid.push(skill);
+    } else {
+      invalid.push(skill);
+    }
+  }
+
+  if (invalid.length > 0 && process.stdin.isTTY) {
+    console.log(pc.yellow(`Warning: Unknown skills ignored: ${invalid.join(", ")}`));
+    console.log(pc.dim(`Valid skills: ${VALID_SKILLS.join(", ")}`));
+  }
+
+  return valid;
 }
 
 // Parse CLI arguments
@@ -92,8 +152,13 @@ function parseArgs(args: string[]): ParsedArgs {
     template: undefined,
     network: undefined,
     platform: undefined,
+    skills: undefined,
+    configScope: "local", // Default to local (project-level) config
     detectOnly: false,
+    verify: false,
     skipPrompts: false,
+    nonInteractive: false,
+    jsonOutput: false,
     showHelp: false,
     showVersion: false,
   };
@@ -107,8 +172,17 @@ function parseArgs(args: string[]): ParsedArgs {
       result.showVersion = true;
     } else if (arg === "--yes" || arg === "-y") {
       result.skipPrompts = true;
+    } else if (arg === "--non-interactive") {
+      result.nonInteractive = true;
+      result.skipPrompts = true;
+    } else if (arg === "--json") {
+      result.jsonOutput = true;
+      result.nonInteractive = true;
+      result.skipPrompts = true;
     } else if (arg === "--detect-only") {
       result.detectOnly = true;
+    } else if (arg === "--verify") {
+      result.verify = true;
     } else if (arg === "--template" && args[i + 1]) {
       const template = args[++i];
       if (["minimal", "defi", "full"].includes(template)) {
@@ -123,12 +197,24 @@ function parseArgs(args: string[]): ParsedArgs {
       const platform = args[++i];
       if (isValidPlatformType(platform)) {
         result.platform = platform;
-      } else {
+      } else if (!result.jsonOutput) {
         console.log(pc.yellow(`Warning: Unknown platform "${platform}". Using auto-detection.`));
       }
+    } else if (arg === "--skills" && args[i + 1]) {
+      result.skills = parseSkills(args[++i]);
+    } else if (arg === "--local") {
+      result.configScope = "local";
+    } else if (arg === "--global") {
+      result.configScope = "global";
     } else if (!arg.startsWith("-") && !result.projectName) {
       result.projectName = arg;
     }
+  }
+
+  // Detect non-interactive mode from environment
+  if (!result.nonInteractive && !process.stdin.isTTY) {
+    result.nonInteractive = true;
+    result.skipPrompts = true;
   }
 
   return result;
@@ -248,8 +334,10 @@ async function getProjectConfig(
   initialTemplate?: Template,
   initialNetwork?: Network,
   initialPlatform?: PlatformType,
-  skipPrompts = false
-): Promise<ProjectConfig | null> {
+  skipPrompts = false,
+  initialSkills?: string[],
+  initialConfigScope: ConfigScope = "local"
+): Promise<(ProjectConfig & { skills?: string[]; configScope?: ConfigScope }) | null> {
   // Detect platforms
   const detectedPlatforms = detectPlatforms();
 
@@ -272,6 +360,10 @@ async function getProjectConfig(
   // If skipping prompts, use defaults
   if (skipPrompts) {
     const projectName = initialName || "my-starknet-agent";
+    // Use provided skills, or default to wallet+defi for non-standalone platforms
+    const defaultSkills = selectedPlatform.type !== "standalone"
+      ? ["starknet-wallet", "starknet-defi"]
+      : [];
     return {
       projectName,
       network: initialNetwork || "sepolia",
@@ -280,6 +372,8 @@ async function getProjectConfig(
       includeExample: "none",
       installDeps: true,
       platform: selectedPlatform,
+      skills: initialSkills || defaultSkills,
+      configScope: initialConfigScope,
     };
   }
 
@@ -431,11 +525,13 @@ async function getProjectConfig(
     includeExample: "none" as ExampleType,
     installDeps,
     platform: selectedPlatform,
+    skills: initialSkills,
+    configScope: initialConfigScope,
   };
 }
 
 // Create project directory and files
-async function createProject(config: ProjectConfig): Promise<void> {
+async function createProject(config: ProjectConfig, jsonOutput = false): Promise<void> {
   // Handle both relative and absolute paths
   const projectDir = path.isAbsolute(config.projectName)
     ? config.projectName
@@ -448,21 +544,35 @@ async function createProject(config: ProjectConfig): Promise<void> {
   if (fs.existsSync(projectDir)) {
     const files = fs.readdirSync(projectDir);
     if (files.length > 0) {
+      if (jsonOutput) {
+        outputJson({
+          success: false,
+          platform: "standalone",
+          configured: {},
+          pendingSetup: { credentials: [] },
+          nextSteps: [],
+          error: `Directory "${projectBasename}" is not empty`,
+          exitCode: EXIT_CODES.CONFIG_ERROR,
+        });
+      }
       console.log(pc.red(`\nError: Directory "${projectBasename}" is not empty.`));
-      process.exit(1);
+      process.exit(EXIT_CODES.CONFIG_ERROR);
     }
   } else {
     fs.mkdirSync(projectDir, { recursive: true });
   }
 
-  console.log();
-  console.log(pc.cyan("Creating project..."));
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan("Creating project..."));
+  }
 
   // Generate files with the basename as project name
   const templateConfig = { ...config, projectName: projectBasename };
   const files = generateProject(templateConfig);
 
   // Write files
+  const createdFiles: string[] = [];
   for (const [relativePath, content] of Object.entries(files)) {
     const filePath = path.join(projectDir, relativePath);
     const fileDir = path.dirname(filePath);
@@ -473,13 +583,18 @@ async function createProject(config: ProjectConfig): Promise<void> {
     }
 
     fs.writeFileSync(filePath, content, "utf-8");
-    console.log(pc.dim(`  Created ${relativePath}`));
+    createdFiles.push(relativePath);
+    if (!jsonOutput) {
+      console.log(pc.dim(`  Created ${relativePath}`));
+    }
   }
 
   // Install dependencies
   if (config.installDeps) {
-    console.log();
-    console.log(pc.cyan("Installing dependencies..."));
+    if (!jsonOutput) {
+      console.log();
+      console.log(pc.cyan("Installing dependencies..."));
+    }
 
     const { execSync } = await import("node:child_process");
     const packageManager = detectPackageManager();
@@ -487,13 +602,43 @@ async function createProject(config: ProjectConfig): Promise<void> {
     try {
       execSync(`${packageManager} install`, {
         cwd: projectDir,
-        stdio: "inherit",
+        stdio: jsonOutput ? "pipe" : "inherit",
       });
     } catch {
-      console.log(pc.yellow("\nFailed to install dependencies. Run manually:"));
-      console.log(pc.dim(`  cd ${projectBasename}`));
-      console.log(pc.dim(`  ${packageManager} install`));
+      if (!jsonOutput) {
+        console.log(pc.yellow("\nFailed to install dependencies. Run manually:"));
+        console.log(pc.dim(`  cd ${projectBasename}`));
+        console.log(pc.dim(`  ${packageManager} install`));
+      }
     }
+  }
+
+  // Build next steps
+  const nextSteps: string[] = [];
+  nextSteps.push(`cd ${projectBasename}`);
+  if (!config.installDeps) {
+    nextSteps.push(`${detectPackageManager()} install`);
+  }
+  nextSteps.push("cp .env.example .env");
+  nextSteps.push("Edit .env with your wallet credentials");
+  nextSteps.push(`${detectPackageManager()} start`);
+
+  // JSON output for standalone mode
+  if (jsonOutput) {
+    outputJson({
+      success: true,
+      platform: "standalone",
+      configured: {
+        mcp: path.join(projectDir, "src/index.ts"),
+        envTemplate: path.join(projectDir, ".env.example"),
+      },
+      pendingSetup: {
+        credentials: ["STARKNET_PRIVATE_KEY", "STARKNET_ACCOUNT_ADDRESS"],
+        actions: ["Run npm install", "Copy and configure .env"],
+      },
+      nextSteps,
+      exitCode: EXIT_CODES.SUCCESS,
+    });
   }
 
   // Success message
@@ -529,6 +674,255 @@ function detectPackageManager(): string {
   return "npm";
 }
 
+// ============================================================================
+// JSON Output Types for Agent Self-Setup
+// ============================================================================
+
+/**
+ * JSON output format for non-interactive/agent mode
+ */
+interface JsonSetupResult {
+  success: boolean;
+  platform: string;
+  configured: {
+    mcp?: string;
+    skills?: string[];
+    envTemplate?: string;
+  };
+  pendingSetup: {
+    credentials: string[];
+    actions?: string[];
+  };
+  nextSteps: string[];
+  error?: string;
+  exitCode: number;
+}
+
+/**
+ * JSON output format for verification
+ */
+interface JsonVerifyResult {
+  success: boolean;
+  platform: string;
+  checks: {
+    mcpConfig: { found: boolean; path?: string };
+    credentials: {
+      privateKey: boolean;
+      accountAddress: boolean;
+      rpcUrl: boolean;
+    };
+    network?: string;
+  };
+  errors: string[];
+  warnings: string[];
+  exitCode: number;
+}
+
+/**
+ * JSON output format for detection
+ */
+interface JsonDetectResult {
+  platforms: Array<{
+    type: string;
+    name: string;
+    configPath: string;
+    skillsPath?: string;
+    secretsPath?: string;
+    confidence: string;
+    detectedBy: string;
+  }>;
+  recommended: string;
+  isAgentInitiated: boolean;
+}
+
+/**
+ * Output JSON result and exit
+ */
+function outputJson(result: JsonSetupResult | JsonVerifyResult | JsonDetectResult): never {
+  console.log(JSON.stringify(result, null, 2));
+  const exitCode = "exitCode" in result ? result.exitCode : EXIT_CODES.SUCCESS;
+  process.exit(exitCode);
+}
+
+// ============================================================================
+// Verification Command
+// ============================================================================
+
+/**
+ * Verify existing Starknet setup
+ */
+async function verifySetup(jsonOutput: boolean): Promise<void> {
+  const platforms = detectPlatforms();
+  const primaryPlatform = platforms[0];
+
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const checks = {
+    mcpConfig: { found: false, path: undefined as string | undefined },
+    credentials: {
+      privateKey: false,
+      accountAddress: false,
+      rpcUrl: false,
+    },
+    network: undefined as string | undefined,
+  };
+
+  // Check MCP config
+  if (primaryPlatform.type !== "standalone") {
+    const configPath = primaryPlatform.configPath;
+    if (fs.existsSync(configPath)) {
+      checks.mcpConfig.found = true;
+      checks.mcpConfig.path = configPath;
+
+      // Try to read and validate MCP config
+      try {
+        const content = fs.readFileSync(configPath, "utf-8");
+        const config = JSON.parse(content);
+        if (!config.mcpServers?.starknet) {
+          warnings.push("MCP config exists but starknet server not configured");
+        }
+      } catch {
+        warnings.push("MCP config file exists but could not be parsed");
+      }
+    } else {
+      errors.push(`MCP config not found at ${configPath}`);
+    }
+  }
+
+  // Check for credentials in environment
+  if (process.env.STARKNET_PRIVATE_KEY) {
+    checks.credentials.privateKey = true;
+  } else {
+    // Check .env file
+    const envPath = primaryPlatform.secretsPath || path.join(process.cwd(), ".env");
+    if (fs.existsSync(envPath)) {
+      try {
+        const envContent = fs.readFileSync(envPath, "utf-8");
+        if (envContent.includes("STARKNET_PRIVATE_KEY=") &&
+            !envContent.includes("STARKNET_PRIVATE_KEY=\n") &&
+            !envContent.includes("STARKNET_PRIVATE_KEY=0x...")) {
+          checks.credentials.privateKey = true;
+        }
+      } catch {
+        // Ignore read errors
+      }
+    }
+  }
+
+  if (process.env.STARKNET_ACCOUNT_ADDRESS) {
+    checks.credentials.accountAddress = true;
+  } else {
+    const envPath = primaryPlatform.secretsPath || path.join(process.cwd(), ".env");
+    if (fs.existsSync(envPath)) {
+      try {
+        const envContent = fs.readFileSync(envPath, "utf-8");
+        if (envContent.includes("STARKNET_ACCOUNT_ADDRESS=") &&
+            !envContent.includes("STARKNET_ACCOUNT_ADDRESS=\n") &&
+            !envContent.includes("STARKNET_ACCOUNT_ADDRESS=0x...")) {
+          checks.credentials.accountAddress = true;
+        }
+      } catch {
+        // Ignore read errors
+      }
+    }
+  }
+
+  if (process.env.STARKNET_RPC_URL) {
+    checks.credentials.rpcUrl = true;
+    // Try to detect network from RPC URL
+    if (process.env.STARKNET_RPC_URL.includes("sepolia")) {
+      checks.network = "sepolia";
+    } else if (process.env.STARKNET_RPC_URL.includes("mainnet")) {
+      checks.network = "mainnet";
+    }
+  }
+
+  // Determine if credentials are missing
+  if (!checks.credentials.privateKey) {
+    errors.push("STARKNET_PRIVATE_KEY not set");
+  }
+  if (!checks.credentials.accountAddress) {
+    errors.push("STARKNET_ACCOUNT_ADDRESS not set");
+  }
+  if (!checks.credentials.rpcUrl) {
+    warnings.push("STARKNET_RPC_URL not set (will use default public RPC)");
+  }
+
+  // Determine success and exit code
+  const success = errors.length === 0;
+  const exitCode = !checks.mcpConfig.found
+    ? EXIT_CODES.CONFIG_ERROR
+    : errors.length > 0
+      ? EXIT_CODES.MISSING_CREDENTIALS
+      : EXIT_CODES.SUCCESS;
+
+  if (jsonOutput) {
+    outputJson({
+      success,
+      platform: primaryPlatform.type,
+      checks,
+      errors,
+      warnings,
+      exitCode,
+    });
+  }
+
+  // Human-readable output
+  console.log();
+  console.log(pc.bold("Starknet Setup Verification"));
+  console.log();
+
+  console.log(pc.cyan("Platform:"), primaryPlatform.name);
+  console.log();
+
+  console.log(pc.bold("Checks:"));
+  console.log(`  MCP Config: ${checks.mcpConfig.found ? pc.green("✓ Found") : pc.red("✗ Not found")}`);
+  if (checks.mcpConfig.path) {
+    console.log(pc.dim(`    ${checks.mcpConfig.path}`));
+  }
+  console.log(`  Private Key: ${checks.credentials.privateKey ? pc.green("✓ Set") : pc.red("✗ Missing")}`);
+  console.log(`  Account Address: ${checks.credentials.accountAddress ? pc.green("✓ Set") : pc.red("✗ Missing")}`);
+  console.log(`  RPC URL: ${checks.credentials.rpcUrl ? pc.green("✓ Set") : pc.yellow("○ Using default")}`);
+  if (checks.network) {
+    console.log(`  Network: ${checks.network}`);
+  }
+  console.log();
+
+  if (errors.length > 0) {
+    console.log(pc.red(pc.bold("Errors:")));
+    for (const error of errors) {
+      console.log(pc.red(`  ✗ ${error}`));
+    }
+    console.log();
+  }
+
+  if (warnings.length > 0) {
+    console.log(pc.yellow(pc.bold("Warnings:")));
+    for (const warning of warnings) {
+      console.log(pc.yellow(`  ○ ${warning}`));
+    }
+    console.log();
+  }
+
+  if (success) {
+    console.log(pc.green(pc.bold("✓ Starknet setup verified successfully!")));
+    console.log(pc.dim('Try: "What\'s my ETH balance on Starknet?"'));
+  } else {
+    console.log(pc.red(pc.bold("✗ Setup incomplete - see errors above")));
+    if (!checks.credentials.privateKey || !checks.credentials.accountAddress) {
+      console.log();
+      console.log(pc.bold("To add credentials:"));
+      const envPath = primaryPlatform.secretsPath || ".env";
+      console.log(pc.dim(`  1. Create/edit ${envPath}`));
+      console.log(pc.dim(`  2. Add STARKNET_PRIVATE_KEY=0x...`));
+      console.log(pc.dim(`  3. Add STARKNET_ACCOUNT_ADDRESS=0x...`));
+    }
+  }
+  console.log();
+
+  process.exit(exitCode);
+}
+
 // Main entry point
 async function main() {
   const args = process.argv.slice(2);
@@ -536,19 +930,46 @@ async function main() {
 
   if (parsed.showVersion) {
     console.log(VERSION);
-    process.exit(0);
+    process.exit(EXIT_CODES.SUCCESS);
   }
 
-  printBanner();
+  // Only print banner in interactive mode
+  if (!parsed.jsonOutput) {
+    printBanner();
+  }
 
   if (parsed.showHelp) {
     printHelp();
-    process.exit(0);
+    process.exit(EXIT_CODES.SUCCESS);
+  }
+
+  // Handle --verify flag
+  if (parsed.verify) {
+    await verifySetup(parsed.jsonOutput);
+    return; // verifySetup calls process.exit
   }
 
   // Handle --detect-only flag
   if (parsed.detectOnly) {
     const platforms = detectPlatforms();
+
+    if (parsed.jsonOutput) {
+      const nonStandalone = platforms.filter((p) => p.type !== "standalone");
+      outputJson({
+        platforms: platforms.map((p) => ({
+          type: p.type,
+          name: p.name,
+          configPath: p.configPath,
+          skillsPath: p.skillsPath,
+          secretsPath: p.secretsPath,
+          confidence: p.confidence,
+          detectedBy: p.detectedBy,
+        })),
+        recommended: nonStandalone.length > 0 ? nonStandalone[0].type : "standalone",
+        isAgentInitiated: platforms[0]?.isAgentInitiated || false,
+      });
+    }
+
     console.log(pc.bold("Detected Platforms:"));
     console.log();
     console.log(formatDetectedPlatforms(platforms));
@@ -565,7 +986,7 @@ async function main() {
       console.log(pc.dim("The CLI will scaffold a standalone project."));
     }
 
-    process.exit(0);
+    process.exit(EXIT_CODES.SUCCESS);
   }
 
   // Get project configuration
@@ -574,24 +995,89 @@ async function main() {
     parsed.template,
     parsed.network,
     parsed.platform,
-    parsed.skipPrompts
+    parsed.skipPrompts,
+    parsed.skills,
+    parsed.configScope
   );
 
   if (!config) {
-    process.exit(1);
+    if (parsed.jsonOutput) {
+      outputJson({
+        success: false,
+        platform: "unknown",
+        configured: {},
+        pendingSetup: { credentials: [] },
+        nextSteps: [],
+        error: "Failed to get project configuration",
+        exitCode: EXIT_CODES.CONFIG_ERROR,
+      });
+    }
+    process.exit(EXIT_CODES.CONFIG_ERROR);
   }
 
   // Route to appropriate setup flow based on platform
   if (config.platform?.type === "standalone") {
     // Standalone mode creates a full project scaffold
-    await createProject(config);
+    await createProject(config, parsed.jsonOutput);
   } else if (config.platform) {
     // Platform-specific wizards for lightweight integration
-    await runWizard(config.platform, parsed.skipPrompts, config.network);
+    const result = await runWizard(
+      config.platform,
+      parsed.skipPrompts,
+      config.network,
+      parsed.jsonOutput,
+      config.skills,
+      config.configScope || "local"
+    );
+
+    // Output JSON result if requested
+    if (parsed.jsonOutput) {
+      const pendingCredentials: string[] = [];
+      if (!process.env.STARKNET_PRIVATE_KEY) {
+        pendingCredentials.push("STARKNET_PRIVATE_KEY");
+      }
+      if (!process.env.STARKNET_ACCOUNT_ADDRESS) {
+        pendingCredentials.push("STARKNET_ACCOUNT_ADDRESS");
+      }
+
+      outputJson({
+        success: result.success,
+        platform: config.platform.type,
+        configured: {
+          mcp: Object.keys(result.files).find((f) => f.includes("mcp") || f.includes("settings")),
+          skills: result.selectedSkills.length > 0 ? result.selectedSkills : undefined,
+          envTemplate: Object.keys(result.files).find((f) => f.includes(".env")),
+        },
+        pendingSetup: {
+          credentials: pendingCredentials,
+          actions: pendingCredentials.length > 0
+            ? ["Restart agent to load new MCP server"]
+            : undefined,
+        },
+        nextSteps: result.nextSteps.filter((s) => s && !s.startsWith("  ")),
+        exitCode: result.success ? EXIT_CODES.SUCCESS : EXIT_CODES.CONFIG_ERROR,
+      });
+    }
   }
 }
 
 main().catch((error) => {
+  // Check if we're in JSON mode
+  const isJsonMode = process.argv.includes("--json");
+
+  if (isJsonMode) {
+    console.log(JSON.stringify({
+      success: false,
+      platform: "unknown",
+      configured: {},
+      pendingSetup: { credentials: [] },
+      nextSteps: [],
+      error: error.message,
+      exitCode: EXIT_CODES.CONFIG_ERROR,
+    }, null, 2));
+    process.exit(EXIT_CODES.CONFIG_ERROR);
+  }
+
   console.error(pc.red("Error:"), error.message);
-  process.exit(1);
+  process.exit(EXIT_CODES.CONFIG_ERROR);
 });

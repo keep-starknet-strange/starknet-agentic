@@ -17,6 +17,11 @@ import type {
 import { RPC_URLS } from "./types.js";
 
 /**
+ * Config scope - where to write MCP config
+ */
+export type ConfigScope = "local" | "global";
+
+/**
  * Available skills that can be installed
  */
 export interface SkillInfo {
@@ -165,6 +170,32 @@ async function promptNetwork(): Promise<Network> {
     { onCancel: createCancelHandler() }
   );
   return response.network as Network;
+}
+
+/**
+ * Prompt for config scope (local vs global)
+ */
+async function promptConfigScope(platformName: string): Promise<ConfigScope> {
+  const response = await prompts(
+    {
+      type: "select",
+      name: "scope",
+      message: "Where should the MCP config be saved?",
+      choices: [
+        {
+          title: pc.green("Project local") + pc.dim(` (.claude/settings.local.json) [recommended]`),
+          value: "local",
+        },
+        {
+          title: "User global" + pc.dim(` (~/.claude/settings.json - shared across projects)`),
+          value: "global",
+        },
+      ],
+      initial: 0,
+    },
+    { onCancel: createCancelHandler() }
+  );
+  return response.scope as ConfigScope;
 }
 
 /**
@@ -394,12 +425,15 @@ async function fetchSkillMdOnly(skillId: string): Promise<string | null> {
  */
 async function installSkills(
   selectedSkills: string[],
-  skillsPath: string
+  skillsPath: string,
+  silent = false
 ): Promise<{ installed: string[]; failed: string[] }> {
   const installed: string[] = [];
   const failed: string[] = [];
 
-  console.log(pc.cyan("\nInstalling skills..."));
+  if (!silent) {
+    console.log(pc.cyan("\nInstalling skills..."));
+  }
 
   for (const skillId of selectedSkills) {
     const skillDir = path.join(skillsPath, skillId);
@@ -413,17 +447,23 @@ async function installSkills(
     const fileCount = await downloadSkillDirectory(skillId, skillDir);
 
     if (fileCount > 0) {
-      console.log(pc.dim(`  ✓ Installed ${skillId} (${fileCount} files)`));
+      if (!silent) {
+        console.log(pc.dim(`  ✓ Installed ${skillId} (${fileCount} files)`));
+      }
       installed.push(skillId);
     } else {
       // Fallback to just SKILL.md if API fails (rate limiting, etc.)
       const content = await fetchSkillMdOnly(skillId);
       if (content) {
         fs.writeFileSync(path.join(skillDir, "SKILL.md"), content, "utf-8");
-        console.log(pc.dim(`  ✓ Installed ${skillId} (SKILL.md only)`));
+        if (!silent) {
+          console.log(pc.dim(`  ✓ Installed ${skillId} (SKILL.md only)`));
+        }
         installed.push(skillId);
       } else {
-        console.log(pc.yellow(`  ✗ Failed to install ${skillId}`));
+        if (!silent) {
+          console.log(pc.yellow(`  ✗ Failed to install ${skillId}`));
+        }
         failed.push(skillId);
       }
     }
@@ -444,12 +484,14 @@ function ensureDir(dirPath: string): void {
 /**
  * Write files to disk
  */
-function writeFiles(files: GeneratedFiles): void {
+function writeFiles(files: GeneratedFiles, silent = false): void {
   for (const [filePath, content] of Object.entries(files)) {
     const dir = path.dirname(filePath);
     ensureDir(dir);
     fs.writeFileSync(filePath, content, "utf-8");
-    console.log(pc.dim(`  Created ${filePath}`));
+    if (!silent) {
+      console.log(pc.dim(`  Created ${filePath}`));
+    }
   }
 }
 
@@ -463,24 +505,33 @@ function writeFiles(files: GeneratedFiles): void {
 export async function openclawWizard(
   platform: DetectedPlatform,
   skipPrompts = false,
-  defaultNetwork: Network = "sepolia"
+  defaultNetwork: Network = "sepolia",
+  jsonOutput = false,
+  customSkills?: string[],
+  _configScope: ConfigScope = "local" // OpenClaw uses its own config structure
 ): Promise<WizardResult> {
-  console.log();
-  console.log(pc.cyan(`Setting up Starknet for ${platform.name}...`));
-  console.log();
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan(`Setting up Starknet for ${platform.name}...`));
+    console.log();
+  }
 
   // Get configuration
   const setupMode = skipPrompts ? "full" : await promptSetupMode(platform);
   const selectedSkills =
     setupMode === "mcp-only"
       ? []
-      : skipPrompts
-        ? ["starknet-wallet", "starknet-defi"]
-        : await promptSkills();
+      : customSkills && customSkills.length > 0
+        ? customSkills
+        : skipPrompts
+          ? ["starknet-wallet", "starknet-defi"]
+          : await promptSkills();
   const network = skipPrompts ? defaultNetwork : await promptNetwork();
 
-  console.log();
-  console.log(pc.cyan("Configuring Starknet..."));
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan("Configuring Starknet..."));
+  }
 
   const files: GeneratedFiles = {};
   const nextSteps: string[] = [];
@@ -501,10 +552,10 @@ export async function openclawWizard(
   }
 
   // Write files
-  writeFiles(files);
+  writeFiles(files, jsonOutput);
 
   // Print skill installation commands (OpenClaw uses its own skill system)
-  if (setupMode !== "mcp-only" && selectedSkills.length > 0) {
+  if (!jsonOutput && setupMode !== "mcp-only" && selectedSkills.length > 0) {
     console.log();
     console.log(pc.cyan("Installing skills..."));
     const skillCommands = generateSkillsCommands(selectedSkills);
@@ -526,32 +577,34 @@ export async function openclawWizard(
   nextSteps.push("");
   nextSteps.push('Try: "What\'s my ETH balance on Starknet?"');
 
-  // Success message
-  console.log();
-  console.log(pc.green(pc.bold("Success!")) + ` Starknet configured for ${platform.name}`);
-  console.log();
-  if (setupMode !== "skills-only") {
-    console.log(pc.dim(`✓ MCP server configured at ${platform.configPath}`));
-  }
-  if (selectedSkills.length > 0) {
-    console.log(pc.dim(`✓ Skills to install: ${selectedSkills.join(", ")}`));
-  }
-  if (platform.secretsPath) {
-    console.log(pc.dim(`✓ Environment template at ${platform.secretsPath}/.env.example`));
-  }
-
-  console.log();
-  console.log(pc.bold("Next steps:"));
-  nextSteps.forEach((step, i) => {
-    if (step.startsWith("  ")) {
-      console.log(pc.dim(step));
-    } else if (step === "") {
-      console.log();
-    } else {
-      console.log(`  ${pc.cyan((i + 1).toString() + ".")} ${step}`);
+  // Success message (skip in JSON mode)
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.green(pc.bold("Success!")) + ` Starknet configured for ${platform.name}`);
+    console.log();
+    if (setupMode !== "skills-only") {
+      console.log(pc.dim(`✓ MCP server configured at ${platform.configPath}`));
     }
-  });
-  console.log();
+    if (selectedSkills.length > 0) {
+      console.log(pc.dim(`✓ Skills to install: ${selectedSkills.join(", ")}`));
+    }
+    if (platform.secretsPath) {
+      console.log(pc.dim(`✓ Environment template at ${platform.secretsPath}/.env.example`));
+    }
+
+    console.log();
+    console.log(pc.bold("Next steps:"));
+    nextSteps.forEach((step, i) => {
+      if (step.startsWith("  ")) {
+        console.log(pc.dim(step));
+      } else if (step === "") {
+        console.log();
+      } else {
+        console.log(`  ${pc.cyan((i + 1).toString() + ".")} ${step}`);
+      }
+    });
+    console.log();
+  }
 
   return {
     success: true,
@@ -571,24 +624,36 @@ export async function openclawWizard(
 export async function claudeCodeWizard(
   platform: DetectedPlatform,
   skipPrompts = false,
-  defaultNetwork: Network = "sepolia"
+  defaultNetwork: Network = "sepolia",
+  jsonOutput = false,
+  customSkills?: string[],
+  defaultConfigScope: ConfigScope = "local"
 ): Promise<WizardResult> {
-  console.log();
-  console.log(pc.cyan(`Setting up Starknet for ${platform.name}...`));
-  console.log();
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan(`Setting up Starknet for ${platform.name}...`));
+    console.log();
+  }
 
   // Get configuration
   const setupMode = skipPrompts ? "full" : await promptSetupMode(platform);
   const selectedSkills =
     setupMode === "mcp-only"
       ? []
-      : skipPrompts
-        ? ["starknet-wallet", "starknet-defi"]
-        : await promptSkills();
+      : customSkills && customSkills.length > 0
+        ? customSkills
+        : skipPrompts
+          ? ["starknet-wallet", "starknet-defi"]
+          : await promptSkills();
   const network = skipPrompts ? defaultNetwork : await promptNetwork();
 
-  console.log();
-  console.log(pc.cyan("Configuring Starknet..."));
+  // Prompt for config scope (local vs global)
+  const configScope = skipPrompts ? defaultConfigScope : await promptConfigScope(platform.name);
+
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan("Configuring Starknet..."));
+  }
 
   const files: GeneratedFiles = {};
   const nextSteps: string[] = [];
@@ -598,9 +663,18 @@ export async function claudeCodeWizard(
   if (setupMode !== "skills-only") {
     const mcpConfig = generateMcpConfig(network);
 
-    // Claude Code stores MCP config in settings.json
-    const settingsPath = platform.configPath;
+    // Determine config path based on scope
+    // Local: .claude/settings.local.json (project-level)
+    // Global: ~/.claude/settings.json (user-level)
+    const settingsPath = configScope === "local"
+      ? path.join(cwd, ".claude", "settings.local.json")
+      : platform.configPath; // Use detected global path
     const settingsDir = path.dirname(settingsPath);
+
+    // Create .claude directory if local scope
+    if (configScope === "local" && !fs.existsSync(settingsDir)) {
+      fs.mkdirSync(settingsDir, { recursive: true });
+    }
 
     // Read existing settings if present
     let existingSettings: Record<string, unknown> = {};
@@ -648,14 +722,24 @@ export async function claudeCodeWizard(
   }
 
   // Write files
-  writeFiles(files);
+  writeFiles(files, jsonOutput);
 
-  // Install skills to .claude/skills/ or ~/.claude/skills/
+  // Determine skills path based on config scope
+  const skillsPath = configScope === "local"
+    ? path.join(cwd, ".claude", "skills")
+    : platform.skillsPath;
+
+  // Install skills
   let installedSkills: string[] = [];
-  if (setupMode !== "mcp-only" && selectedSkills.length > 0 && platform.skillsPath) {
-    const result = await installSkills(selectedSkills, platform.skillsPath);
+  if (setupMode !== "mcp-only" && selectedSkills.length > 0 && skillsPath) {
+    const result = await installSkills(selectedSkills, skillsPath, jsonOutput);
     installedSkills = result.installed;
   }
+
+  // Determine actual settings path for display
+  const actualSettingsPath = configScope === "local"
+    ? path.join(cwd, ".claude", "settings.local.json")
+    : platform.configPath;
 
   // Build next steps
   nextSteps.push("Copy .env.example to .env and add your credentials:");
@@ -669,35 +753,37 @@ export async function claudeCodeWizard(
   nextSteps.push("");
   nextSteps.push('Try: "What\'s my ETH balance on Starknet?"');
 
-  // Success message
-  console.log();
-  console.log(pc.green(pc.bold("Success!")) + ` Starknet configured for ${platform.name}`);
-  console.log();
-  if (setupMode !== "skills-only") {
-    console.log(pc.dim(`✓ MCP server configured at ${platform.configPath}`));
-  }
-  if (installedSkills.length > 0) {
-    console.log(pc.dim(`✓ Skills installed to ${platform.skillsPath}/`));
-  }
-  if (selectedSkills.length > 0) {
-    console.log(pc.dim(`✓ CLAUDE.md updated with skill references`));
-  }
-  console.log(pc.dim(`✓ Environment template at .env.example`));
-
-  console.log();
-  console.log(pc.bold("Next steps:"));
-  let stepNum = 1;
-  for (const step of nextSteps) {
-    if (step.startsWith("  ")) {
-      console.log(pc.dim(step));
-    } else if (step === "") {
-      console.log();
-    } else {
-      console.log(`  ${pc.cyan(stepNum.toString() + ".")} ${step}`);
-      stepNum++;
+  // Success message (skip in JSON mode)
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.green(pc.bold("Success!")) + ` Starknet configured for ${platform.name}`);
+    console.log();
+    if (setupMode !== "skills-only") {
+      console.log(pc.dim(`✓ MCP server configured at ${actualSettingsPath}`));
     }
+    if (installedSkills.length > 0) {
+      console.log(pc.dim(`✓ Skills installed to ${skillsPath}/`));
+    }
+    if (selectedSkills.length > 0) {
+      console.log(pc.dim(`✓ CLAUDE.md updated with skill references`));
+    }
+    console.log(pc.dim(`✓ Environment template at .env.example`));
+
+    console.log();
+    console.log(pc.bold("Next steps:"));
+    let stepNum = 1;
+    for (const step of nextSteps) {
+      if (step.startsWith("  ")) {
+        console.log(pc.dim(step));
+      } else if (step === "") {
+        console.log();
+      } else {
+        console.log(`  ${pc.cyan(stepNum.toString() + ".")} ${step}`);
+        stepNum++;
+      }
+    }
+    console.log();
   }
-  console.log();
 
   return {
     success: true,
@@ -717,24 +803,37 @@ export async function claudeCodeWizard(
 export async function cursorWizard(
   platform: DetectedPlatform,
   skipPrompts = false,
-  defaultNetwork: Network = "sepolia"
+  defaultNetwork: Network = "sepolia",
+  jsonOutput = false,
+  customSkills?: string[],
+  defaultConfigScope: ConfigScope = "local"
 ): Promise<WizardResult> {
-  console.log();
-  console.log(pc.cyan(`Setting up Starknet for ${platform.name}...`));
-  console.log();
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan(`Setting up Starknet for ${platform.name}...`));
+    console.log();
+  }
 
   // Get configuration
   const setupMode = skipPrompts ? "full" : await promptSetupMode(platform);
   const selectedSkills =
     setupMode === "mcp-only"
       ? []
-      : skipPrompts
-        ? ["starknet-wallet", "starknet-defi"]
-        : await promptSkills();
+      : customSkills && customSkills.length > 0
+        ? customSkills
+        : skipPrompts
+          ? ["starknet-wallet", "starknet-defi"]
+          : await promptSkills();
   const network = skipPrompts ? defaultNetwork : await promptNetwork();
 
-  console.log();
-  console.log(pc.cyan("Configuring Starknet..."));
+  // For Cursor, config scope doesn't change much (always project-local .cursor/)
+  // but we accept the parameter for API consistency
+  const configScope = defaultConfigScope;
+
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan("Configuring Starknet..."));
+  }
 
   const files: GeneratedFiles = {};
   const nextSteps: string[] = [];
@@ -790,12 +889,12 @@ export async function cursorWizard(
   }
 
   // Write files
-  writeFiles(files);
+  writeFiles(files, jsonOutput);
 
   // Install skills to .cursor/skills/
   let installedSkills: string[] = [];
   if (setupMode !== "mcp-only" && selectedSkills.length > 0 && platform.skillsPath) {
-    const result = await installSkills(selectedSkills, platform.skillsPath);
+    const result = await installSkills(selectedSkills, platform.skillsPath, jsonOutput);
     installedSkills = result.installed;
   }
 
@@ -811,35 +910,37 @@ export async function cursorWizard(
   nextSteps.push("");
   nextSteps.push('Try: "What\'s my ETH balance on Starknet?"');
 
-  // Success message
-  console.log();
-  console.log(pc.green(pc.bold("Success!")) + ` Starknet configured for ${platform.name}`);
-  console.log();
-  if (setupMode !== "skills-only") {
-    console.log(pc.dim(`✓ MCP server configured at ${platform.configPath}`));
-  }
-  if (installedSkills.length > 0) {
-    console.log(pc.dim(`✓ Skills installed to ${platform.skillsPath}/`));
-  }
-  if (selectedSkills.length > 0) {
-    console.log(pc.dim(`✓ CLAUDE.md created for in-editor guidance`));
-  }
-  console.log(pc.dim(`✓ Environment template at .env.example`));
-
-  console.log();
-  console.log(pc.bold("Next steps:"));
-  let stepNum = 1;
-  for (const step of nextSteps) {
-    if (step.startsWith("  ")) {
-      console.log(pc.dim(step));
-    } else if (step === "") {
-      console.log();
-    } else {
-      console.log(`  ${pc.cyan(stepNum.toString() + ".")} ${step}`);
-      stepNum++;
+  // Success message (skip in JSON mode)
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.green(pc.bold("Success!")) + ` Starknet configured for ${platform.name}`);
+    console.log();
+    if (setupMode !== "skills-only") {
+      console.log(pc.dim(`✓ MCP server configured at ${platform.configPath}`));
     }
+    if (installedSkills.length > 0) {
+      console.log(pc.dim(`✓ Skills installed to ${platform.skillsPath}/`));
+    }
+    if (selectedSkills.length > 0) {
+      console.log(pc.dim(`✓ CLAUDE.md created for in-editor guidance`));
+    }
+    console.log(pc.dim(`✓ Environment template at .env.example`));
+
+    console.log();
+    console.log(pc.bold("Next steps:"));
+    let stepNum = 1;
+    for (const step of nextSteps) {
+      if (step.startsWith("  ")) {
+        console.log(pc.dim(step));
+      } else if (step === "") {
+        console.log();
+      } else {
+        console.log(`  ${pc.cyan(stepNum.toString() + ".")} ${step}`);
+        stepNum++;
+      }
+    }
+    console.log();
   }
-  console.log();
 
   return {
     success: true,
@@ -859,24 +960,33 @@ export async function cursorWizard(
 export async function daydreamsWizard(
   platform: DetectedPlatform,
   skipPrompts = false,
-  defaultNetwork: Network = "sepolia"
+  defaultNetwork: Network = "sepolia",
+  jsonOutput = false,
+  customSkills?: string[],
+  _configScope: ConfigScope = "local" // Daydreams uses its own config structure
 ): Promise<WizardResult> {
-  console.log();
-  console.log(pc.cyan(`Setting up Starknet for ${platform.name}...`));
-  console.log();
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan(`Setting up Starknet for ${platform.name}...`));
+    console.log();
+  }
 
   // Get configuration
   const setupMode = skipPrompts ? "full" : await promptSetupMode(platform);
   const selectedSkills =
     setupMode === "mcp-only"
       ? []
-      : skipPrompts
-        ? ["starknet-wallet", "starknet-defi"]
-        : await promptSkills();
+      : customSkills && customSkills.length > 0
+        ? customSkills
+        : skipPrompts
+          ? ["starknet-wallet", "starknet-defi"]
+          : await promptSkills();
   const network = skipPrompts ? defaultNetwork : await promptNetwork();
 
-  console.log();
-  console.log(pc.cyan("Configuring Starknet..."));
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan("Configuring Starknet..."));
+  }
 
   const files: GeneratedFiles = {};
   const nextSteps: string[] = [];
@@ -916,7 +1026,7 @@ export async function daydreamsWizard(
   }
 
   // Write files
-  writeFiles(files);
+  writeFiles(files, jsonOutput);
 
   // Build next steps
   nextSteps.push("Copy .env.example to .env and add your credentials:");
@@ -930,29 +1040,31 @@ export async function daydreamsWizard(
   nextSteps.push("");
   nextSteps.push('Try: "What\'s my ETH balance on Starknet?"');
 
-  // Success message
-  console.log();
-  console.log(pc.green(pc.bold("Success!")) + ` Starknet configured for ${platform.name}`);
-  console.log();
-  if (setupMode !== "skills-only") {
-    console.log(pc.dim(`✓ MCP server configured at ${platform.configPath}`));
-  }
-  console.log(pc.dim(`✓ Environment template at .env.example`));
-
-  console.log();
-  console.log(pc.bold("Next steps:"));
-  let stepNum = 1;
-  for (const step of nextSteps) {
-    if (step.startsWith("  ")) {
-      console.log(pc.dim(step));
-    } else if (step === "") {
-      console.log();
-    } else {
-      console.log(`  ${pc.cyan(stepNum.toString() + ".")} ${step}`);
-      stepNum++;
+  // Success message (skip in JSON mode)
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.green(pc.bold("Success!")) + ` Starknet configured for ${platform.name}`);
+    console.log();
+    if (setupMode !== "skills-only") {
+      console.log(pc.dim(`✓ MCP server configured at ${platform.configPath}`));
     }
+    console.log(pc.dim(`✓ Environment template at .env.example`));
+
+    console.log();
+    console.log(pc.bold("Next steps:"));
+    let stepNum = 1;
+    for (const step of nextSteps) {
+      if (step.startsWith("  ")) {
+        console.log(pc.dim(step));
+      } else if (step === "") {
+        console.log();
+      } else {
+        console.log(`  ${pc.cyan(stepNum.toString() + ".")} ${step}`);
+        stepNum++;
+      }
+    }
+    console.log();
   }
-  console.log();
 
   return {
     success: true,
@@ -972,24 +1084,33 @@ export async function daydreamsWizard(
 export async function genericMcpWizard(
   platform: DetectedPlatform,
   skipPrompts = false,
-  defaultNetwork: Network = "sepolia"
+  defaultNetwork: Network = "sepolia",
+  jsonOutput = false,
+  customSkills?: string[],
+  _configScope: ConfigScope = "local" // Generic MCP uses project-local mcp.json
 ): Promise<WizardResult> {
-  console.log();
-  console.log(pc.cyan(`Setting up Starknet MCP server...`));
-  console.log();
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan(`Setting up Starknet MCP server...`));
+    console.log();
+  }
 
   // Get configuration
   const setupMode = skipPrompts ? "full" : await promptSetupMode(platform);
   const selectedSkills =
     setupMode === "mcp-only"
       ? []
-      : skipPrompts
-        ? ["starknet-wallet", "starknet-defi"]
-        : await promptSkills();
+      : customSkills && customSkills.length > 0
+        ? customSkills
+        : skipPrompts
+          ? ["starknet-wallet", "starknet-defi"]
+          : await promptSkills();
   const network = skipPrompts ? defaultNetwork : await promptNetwork();
 
-  console.log();
-  console.log(pc.cyan("Configuring Starknet..."));
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.cyan("Configuring Starknet..."));
+  }
 
   const files: GeneratedFiles = {};
   const nextSteps: string[] = [];
@@ -1023,7 +1144,7 @@ export async function genericMcpWizard(
   }
 
   // Install skills to local directory if requested
-  if (setupMode !== "mcp-only" && selectedSkills.length > 0 && platform.skillsPath) {
+  if (!jsonOutput && setupMode !== "mcp-only" && selectedSkills.length > 0 && platform.skillsPath) {
     console.log();
     console.log(pc.cyan("Skill installation commands:"));
     const skillCommands = generateSkillsCommands(selectedSkills);
@@ -1039,7 +1160,7 @@ export async function genericMcpWizard(
   }
 
   // Write files
-  writeFiles(files);
+  writeFiles(files, jsonOutput);
 
   // Build next steps
   nextSteps.push("Copy .env.example to .env and add your credentials:");
@@ -1053,29 +1174,31 @@ export async function genericMcpWizard(
   nextSteps.push("");
   nextSteps.push('Try: "What\'s my ETH balance on Starknet?"');
 
-  // Success message
-  console.log();
-  console.log(pc.green(pc.bold("Success!")) + ` Starknet MCP server configured`);
-  console.log();
-  if (setupMode !== "skills-only") {
-    console.log(pc.dim(`✓ MCP server configured at ${platform.configPath}`));
-  }
-  console.log(pc.dim(`✓ Environment template at .env.example`));
-
-  console.log();
-  console.log(pc.bold("Next steps:"));
-  let stepNum = 1;
-  for (const step of nextSteps) {
-    if (step.startsWith("  ")) {
-      console.log(pc.dim(step));
-    } else if (step === "") {
-      console.log();
-    } else {
-      console.log(`  ${pc.cyan(stepNum.toString() + ".")} ${step}`);
-      stepNum++;
+  // Success message (skip in JSON mode)
+  if (!jsonOutput) {
+    console.log();
+    console.log(pc.green(pc.bold("Success!")) + ` Starknet MCP server configured`);
+    console.log();
+    if (setupMode !== "skills-only") {
+      console.log(pc.dim(`✓ MCP server configured at ${platform.configPath}`));
     }
+    console.log(pc.dim(`✓ Environment template at .env.example`));
+
+    console.log();
+    console.log(pc.bold("Next steps:"));
+    let stepNum = 1;
+    for (const step of nextSteps) {
+      if (step.startsWith("  ")) {
+        console.log(pc.dim(step));
+      } else if (step === "") {
+        console.log();
+      } else {
+        console.log(`  ${pc.cyan(stepNum.toString() + ".")} ${step}`);
+        stepNum++;
+      }
+    }
+    console.log();
   }
-  console.log();
 
   return {
     success: true,
@@ -1095,19 +1218,22 @@ export async function genericMcpWizard(
 export async function runWizard(
   platform: DetectedPlatform,
   skipPrompts = false,
-  defaultNetwork: Network = "sepolia"
+  defaultNetwork: Network = "sepolia",
+  jsonOutput = false,
+  customSkills?: string[],
+  configScope: ConfigScope = "local"
 ): Promise<WizardResult> {
   switch (platform.type) {
     case "openclaw":
-      return openclawWizard(platform, skipPrompts, defaultNetwork);
+      return openclawWizard(platform, skipPrompts, defaultNetwork, jsonOutput, customSkills, configScope);
     case "claude-code":
-      return claudeCodeWizard(platform, skipPrompts, defaultNetwork);
+      return claudeCodeWizard(platform, skipPrompts, defaultNetwork, jsonOutput, customSkills, configScope);
     case "cursor":
-      return cursorWizard(platform, skipPrompts, defaultNetwork);
+      return cursorWizard(platform, skipPrompts, defaultNetwork, jsonOutput, customSkills, configScope);
     case "daydreams":
-      return daydreamsWizard(platform, skipPrompts, defaultNetwork);
+      return daydreamsWizard(platform, skipPrompts, defaultNetwork, jsonOutput, customSkills, configScope);
     case "generic-mcp":
-      return genericMcpWizard(platform, skipPrompts, defaultNetwork);
+      return genericMcpWizard(platform, skipPrompts, defaultNetwork, jsonOutput, customSkills, configScope);
     case "standalone":
       // Standalone mode is handled differently (full project scaffold)
       // This should not be called for standalone

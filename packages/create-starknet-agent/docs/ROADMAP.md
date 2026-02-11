@@ -39,9 +39,18 @@ Let's continue with implementing:
 
 ---
 
-## Current State (v0.1.0)
+## Current State (v0.3.0)
 
-The CLI currently scaffolds standalone TypeScript projects with 3 templates:
+The CLI now provides platform-aware setup with non-interactive mode for agent self-setup.
+
+**Completed in v0.2.0**:
+- Platform detection (0.1): OpenClaw, Claude Code, Cursor, Daydreams, Generic MCP
+- Platform-specific wizards (0.2): Interactive setup for each platform
+
+**Completed in v0.3.0**:
+- Agent-initiated setup (0.3): Non-interactive mode with JSON output for agents
+
+The CLI also scaffolds standalone TypeScript projects with 3 templates:
 
 | Template | Features | Lines |
 |----------|----------|-------|
@@ -74,80 +83,13 @@ Enable the CLI to detect the user's agent platform and provide the appropriate l
 
 ---
 
-### 0.2 Platform-Specific Wizards ✅ COMPLETE
-
-**Description**: Provide tailored setup flows for each detected platform.
-
-**Requirements**:
-- [x] Create wizard router based on detected/selected platform
-- [x] Implement OpenClaw/MoltBook wizard:
-  - [x] Generate MCP server config for `~/.openclaw/mcp/starknet.json`
-  - [x] Install skills via OpenClaw's skill system
-  - [x] Create `.env` template or prompt for secrets setup
-  - [x] Print verification command: "Ask your agent to check your ETH balance"
-- [x] Implement Claude Code wizard:
-  - [x] Generate `CLAUDE.md` with skill references
-  - [x] Add MCP server to Claude Code settings
-  - [x] Create `.env.example` with required variables
-- [x] Implement Cursor wizard:
-  - [x] Configure MCP in Cursor settings
-  - [x] Add CLAUDE.md for in-editor guidance
-- [x] Implement generic MCP wizard:
-  - [x] Generate `mcp.json` or update existing
-  - [x] Install skills to local directory
-- [x] Implement standalone wizard:
-  - [x] Full scaffold (existing Phase 1 behavior)
-  - [x] Position as "advanced" option
-- [x] Implement Daydreams wizard:
-  - [x] Configure MCP in daydreams.config.json
-  - [x] Create `.env.example` with required variables
-
-**Interactive Flow**:
-```
-$ npx create-starknet-agent@latest
-
-✓ Platform: OpenClaw (MoltBook)
-
-? What would you like to set up?
-  > Full Starknet integration (MCP + skills) [recommended]
-    MCP server only (I'll manage skills manually)
-    Just install skills (MCP already configured)
-
-? Select skills to install:
-  [x] starknet-wallet (transfers, balances)
-  [x] starknet-defi (swaps, quotes via AVNU)
-  [ ] starknet-identity (ERC-8004 reputation)
-  [ ] starknet-anonymous-wallet (privacy features)
-
-? Network:
-  > Sepolia (testnet) [recommended for testing]
-    Mainnet
-
-Setting up Starknet for OpenClaw...
-✓ MCP server configured at ~/.openclaw/mcp/starknet.json
-✓ Skills installed: starknet-wallet, starknet-defi
-✓ Environment template created at ~/.openclaw/secrets/starknet.env.example
-
-Next steps:
-  1. Add your credentials to ~/.openclaw/secrets/starknet/
-     - STARKNET_PRIVATE_KEY
-     - STARKNET_ACCOUNT_ADDRESS
-     - STARKNET_RPC_URL (optional, defaults to public RPC)
-
-  2. Restart your OpenClaw agent
-
-  3. Try: "What's my ETH balance on Starknet?"
-```
-
----
-
-### 0.3 Agent-Initiated Setup (Non-Interactive Mode)
+### 0.3 Agent-Initiated Setup (Non-Interactive Mode) ✓ COMPLETE
 
 **Description**: Enable agents to run the CLI and self-configure without human interaction.
 
 **Requirements**:
-- [ ] Detect non-interactive execution (no TTY, or `--non-interactive` flag)
-- [ ] Accept all configuration via CLI flags:
+- [x] Detect non-interactive execution (no TTY, or `--non-interactive` flag)
+- [x] Accept all configuration via CLI flags:
   ```bash
   npx create-starknet-agent@latest \
     --platform openclaw \
@@ -155,20 +97,20 @@ Next steps:
     --network sepolia \
     --non-interactive
   ```
-- [ ] Use sensible defaults when flags not provided:
+- [x] Use sensible defaults when flags not provided:
   - Platform: auto-detect
-  - Skills: `starknet-wallet` only
+  - Skills: `starknet-wallet,starknet-defi` (for non-standalone)
   - Network: `sepolia`
-- [ ] Output machine-readable results (JSON) when `--json` flag provided
-- [ ] Return proper exit codes:
+- [x] Output machine-readable results (JSON) when `--json` flag provided
+- [x] Return proper exit codes:
   - 0: Success
   - 1: Configuration error
   - 2: Missing required credentials
   - 3: Platform not supported
-- [ ] Create setup verification command:
+- [x] Create setup verification command:
   ```bash
   npx create-starknet-agent@latest --verify
-  # Checks: MCP server reachable, credentials valid, can query balance
+  # Checks: MCP config exists, credentials set, network detection
   ```
 
 **Agent Self-Setup Flow**:
@@ -223,14 +165,14 @@ Would you like me to walk you through that?
 - [ ] Implement secure input mode (no echo, no history)
 - [ ] Support multiple credential storage backends:
   - OpenClaw: `~/.openclaw/secrets/starknet/<address>`
-  - Claude Code: `.env` file (gitignored)
+  - Claude Code/Cursor: `.env` file (gitignored)
   - Generic: `.env` or environment variables
 - [ ] Validate credentials before saving:
   - Check address format (0x + 1-64 hex chars)
   - Check private key format
   - Optionally verify against RPC (can derive address from key)
 - [ ] Add `--from-env` flag to copy from current environment
-- [ ] Add `--from-argent` / `--from-braavos` with wallet export guide
+- [ ] Add `--from-ready` / `--from-braavos` with wallet export guide
 
 **Credential Flow**:
 ```
@@ -1253,11 +1195,11 @@ Long-term features and community-driven enhancements.
 
 ### Phase 0 Priority Order
 
-1. **0.1 Platform Detection** — Must detect OpenClaw, Claude Code, Cursor first
-2. **0.3 Agent-Initiated Setup** — Enables the "agent self-install" UX
-3. **0.2 Platform-Specific Wizards** — Human-friendly interactive setup
-4. **0.5 Verification** — Confirm setup works end-to-end
-5. **0.4 Credential Helpers** — Nice-to-have, can use manual setup initially
+1. **0.1 Platform Detection** ✓ COMPLETE (v0.2.0)
+2. **0.2 Platform-Specific Wizards** ✓ COMPLETE (v0.2.0)
+3. **0.3 Agent-Initiated Setup** ✓ COMPLETE (v0.3.0)
+4. **0.4 Credential Helpers** — TODO: Secure credential setup
+5. **0.5 Verification (Enhanced)** — TODO: Full end-to-end verification with balance query
 
 ---
 
@@ -1291,7 +1233,7 @@ Long-term features and community-driven enhancements.
 - `[x]` Complete
 - `[~]` In progress
 
-*Last updated: 2026-02-11*
+*Last updated: 2026-02-11 (v0.3.0 - Agent-Initiated Setup)*
 
 ---
 
