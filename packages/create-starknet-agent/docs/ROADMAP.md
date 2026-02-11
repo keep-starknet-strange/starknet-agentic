@@ -86,49 +86,6 @@ Enable the CLI to detect the user's agent platform and provide the appropriate l
 
 ---
 
-### 0.4 Credential Setup Helpers ✓ COMPLETE (v0.4.0)
-
-**Description**: Provide secure credential setup without exposing private keys in CLI history.
-
-**Requirements**:
-- [x] Create `npx create-starknet-agent credentials` subcommand
-- [x] Implement secure input mode (no echo, no history)
-- [x] Support multiple credential storage backends:
-  - OpenClaw: `~/.openclaw/secrets/starknet/<address>.json`
-  - Claude Code/Cursor: `.env` file (gitignored)
-  - Generic: `.env` or environment variables
-- [x] Validate credentials before saving:
-  - Check address format (0x + 1-64 hex chars)
-  - Check private key format
-  - Check RPC URL format
-- [x] Add `--from-env` flag to copy from current environment
-- [x] Add `--from-ready` / `--from-braavos` with wallet export guide
-- [x] Add RPC endpoint input as part of credentials
-- [x] Add link to docs for account setup before prompts
-
-**Credential Flow**:
-```
-$ npx create-starknet-agent credentials
-
-  Don't have a Starknet account? Follow the guide:
-  https://www.starknet-agentic.com/docs/getting-started/quick-start#getting-your-credentials
-
-? Starknet RPC URL: https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY
-? Starknet account address: 0x1234...
-? Private key: ********** (hidden)
-
-Validating credentials...
-✓ Address format valid
-✓ Private key format valid
-✓ RPC URL format valid
-
-✓ Credentials saved to ~/.openclaw/secrets/starknet/0x1234.json
-
-Your agent can now execute Starknet transactions.
-```
-
----
-
 ### 0.5 Verification and Health Check
 
 **Description**: Provide commands to verify the setup is working correctly.

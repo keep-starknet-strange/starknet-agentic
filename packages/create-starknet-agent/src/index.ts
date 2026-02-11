@@ -28,8 +28,9 @@ import {
 } from "./platform.js";
 import { runWizard } from "./wizards.js";
 import { parseCredentialsArgs, runCredentialsSetup } from "./credentials.js";
+import { parseVerifyArgs, runVerification } from "./verify.js";
 
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 
 // CLI banner
 function printBanner() {
@@ -48,6 +49,7 @@ ${pc.bold("Usage:")}
 
 ${pc.bold("Commands:")}
   ${pc.cyan("credentials")}    Securely configure Starknet wallet credentials
+  ${pc.cyan("verify")}         Verify setup is working correctly (MCP, credentials, skills)
 
 ${pc.bold("Options:")}
   --template <name>     Template to use (minimal, defi, full)
@@ -99,10 +101,16 @@ ${pc.bold("Credential Setup:")}
   npx create-starknet-agent credentials --from-ready
   npx create-starknet-agent credentials --platform openclaw
 
+${pc.bold("Verification:")}
+  npx create-starknet-agent verify
+  npx create-starknet-agent verify --verbose
+  npx create-starknet-agent verify --skip-e2e
+  npx create-starknet-agent verify --json
+
 ${pc.bold("Agent Self-Setup (Non-Interactive):")}
   npx create-starknet-agent --non-interactive --json
   npx create-starknet-agent --platform openclaw --skills starknet-wallet,starknet-defi --non-interactive --json
-  npx create-starknet-agent --verify --json
+  npx create-starknet-agent verify --json
 `);
 }
 
@@ -760,185 +768,6 @@ function outputJson(result: JsonSetupResult | JsonVerifyResult | JsonDetectResul
   process.exit(exitCode);
 }
 
-// ============================================================================
-// Verification Command
-// ============================================================================
-
-/**
- * Verify existing Starknet setup
- */
-async function verifySetup(jsonOutput: boolean): Promise<void> {
-  const platforms = detectPlatforms();
-  const primaryPlatform = platforms[0];
-
-  const errors: string[] = [];
-  const warnings: string[] = [];
-  const checks = {
-    mcpConfig: { found: false, path: undefined as string | undefined },
-    credentials: {
-      privateKey: false,
-      accountAddress: false,
-      rpcUrl: false,
-    },
-    network: undefined as string | undefined,
-  };
-
-  // Check MCP config
-  if (primaryPlatform.type !== "standalone") {
-    const configPath = primaryPlatform.configPath;
-    if (fs.existsSync(configPath)) {
-      checks.mcpConfig.found = true;
-      checks.mcpConfig.path = configPath;
-
-      // Try to read and validate MCP config
-      try {
-        const content = fs.readFileSync(configPath, "utf-8");
-        const config = JSON.parse(content);
-        if (!config.mcpServers?.starknet) {
-          warnings.push("MCP config exists but starknet server not configured");
-        }
-      } catch {
-        warnings.push("MCP config file exists but could not be parsed");
-      }
-    } else {
-      errors.push(`MCP config not found at ${configPath}`);
-    }
-  }
-
-  // Check for credentials in environment
-  if (process.env.STARKNET_PRIVATE_KEY) {
-    checks.credentials.privateKey = true;
-  } else {
-    // Check .env file
-    const envPath = primaryPlatform.secretsPath || path.join(process.cwd(), ".env");
-    if (fs.existsSync(envPath)) {
-      try {
-        const envContent = fs.readFileSync(envPath, "utf-8");
-        if (envContent.includes("STARKNET_PRIVATE_KEY=") &&
-            !envContent.includes("STARKNET_PRIVATE_KEY=\n") &&
-            !envContent.includes("STARKNET_PRIVATE_KEY=0x...")) {
-          checks.credentials.privateKey = true;
-        }
-      } catch {
-        // Ignore read errors
-      }
-    }
-  }
-
-  if (process.env.STARKNET_ACCOUNT_ADDRESS) {
-    checks.credentials.accountAddress = true;
-  } else {
-    const envPath = primaryPlatform.secretsPath || path.join(process.cwd(), ".env");
-    if (fs.existsSync(envPath)) {
-      try {
-        const envContent = fs.readFileSync(envPath, "utf-8");
-        if (envContent.includes("STARKNET_ACCOUNT_ADDRESS=") &&
-            !envContent.includes("STARKNET_ACCOUNT_ADDRESS=\n") &&
-            !envContent.includes("STARKNET_ACCOUNT_ADDRESS=0x...")) {
-          checks.credentials.accountAddress = true;
-        }
-      } catch {
-        // Ignore read errors
-      }
-    }
-  }
-
-  if (process.env.STARKNET_RPC_URL) {
-    checks.credentials.rpcUrl = true;
-    // Try to detect network from RPC URL
-    if (process.env.STARKNET_RPC_URL.includes("sepolia")) {
-      checks.network = "sepolia";
-    } else if (process.env.STARKNET_RPC_URL.includes("mainnet")) {
-      checks.network = "mainnet";
-    }
-  }
-
-  // Determine if credentials are missing
-  if (!checks.credentials.privateKey) {
-    errors.push("STARKNET_PRIVATE_KEY not set");
-  }
-  if (!checks.credentials.accountAddress) {
-    errors.push("STARKNET_ACCOUNT_ADDRESS not set");
-  }
-  if (!checks.credentials.rpcUrl) {
-    warnings.push("STARKNET_RPC_URL not set (will use default public RPC)");
-  }
-
-  // Determine success and exit code
-  const success = errors.length === 0;
-  const exitCode = !checks.mcpConfig.found
-    ? EXIT_CODES.CONFIG_ERROR
-    : errors.length > 0
-      ? EXIT_CODES.MISSING_CREDENTIALS
-      : EXIT_CODES.SUCCESS;
-
-  if (jsonOutput) {
-    outputJson({
-      success,
-      platform: primaryPlatform.type,
-      checks,
-      errors,
-      warnings,
-      exitCode,
-    });
-  }
-
-  // Human-readable output
-  console.log();
-  console.log(pc.bold("Starknet Setup Verification"));
-  console.log();
-
-  console.log(pc.cyan("Platform:"), primaryPlatform.name);
-  console.log();
-
-  console.log(pc.bold("Checks:"));
-  console.log(`  MCP Config: ${checks.mcpConfig.found ? pc.green("✓ Found") : pc.red("✗ Not found")}`);
-  if (checks.mcpConfig.path) {
-    console.log(pc.dim(`    ${checks.mcpConfig.path}`));
-  }
-  console.log(`  Private Key: ${checks.credentials.privateKey ? pc.green("✓ Set") : pc.red("✗ Missing")}`);
-  console.log(`  Account Address: ${checks.credentials.accountAddress ? pc.green("✓ Set") : pc.red("✗ Missing")}`);
-  console.log(`  RPC URL: ${checks.credentials.rpcUrl ? pc.green("✓ Set") : pc.yellow("○ Using default")}`);
-  if (checks.network) {
-    console.log(`  Network: ${checks.network}`);
-  }
-  console.log();
-
-  if (errors.length > 0) {
-    console.log(pc.red(pc.bold("Errors:")));
-    for (const error of errors) {
-      console.log(pc.red(`  ✗ ${error}`));
-    }
-    console.log();
-  }
-
-  if (warnings.length > 0) {
-    console.log(pc.yellow(pc.bold("Warnings:")));
-    for (const warning of warnings) {
-      console.log(pc.yellow(`  ○ ${warning}`));
-    }
-    console.log();
-  }
-
-  if (success) {
-    console.log(pc.green(pc.bold("✓ Starknet setup verified successfully!")));
-    console.log(pc.dim('Try: "What\'s my ETH balance on Starknet?"'));
-  } else {
-    console.log(pc.red(pc.bold("✗ Setup incomplete - see errors above")));
-    if (!checks.credentials.privateKey || !checks.credentials.accountAddress) {
-      console.log();
-      console.log(pc.bold("To add credentials:"));
-      const envPath = primaryPlatform.secretsPath || ".env";
-      console.log(pc.dim(`  1. Create/edit ${envPath}`));
-      console.log(pc.dim(`  2. Add STARKNET_PRIVATE_KEY=0x...`));
-      console.log(pc.dim(`  3. Add STARKNET_ACCOUNT_ADDRESS=0x...`));
-    }
-  }
-  console.log();
-
-  process.exit(exitCode);
-}
-
 // Main entry point
 async function main() {
   const args = process.argv.slice(2);
@@ -954,6 +783,19 @@ async function main() {
 
     await runCredentialsSetup(credentialsArgs);
     return; // runCredentialsSetup calls process.exit
+  }
+
+  // Handle verify subcommand
+  if (args[0] === "verify") {
+    const verifyArgs = parseVerifyArgs(args.slice(1));
+
+    // Print banner unless JSON output
+    if (!verifyArgs.jsonOutput) {
+      printBanner();
+    }
+
+    await runVerification(verifyArgs);
+    return; // runVerification calls process.exit
   }
 
   const parsed = parseArgs(args);
@@ -973,10 +815,15 @@ async function main() {
     process.exit(EXIT_CODES.SUCCESS);
   }
 
-  // Handle --verify flag
+  // Handle --verify flag (deprecated, redirect to verify subcommand)
   if (parsed.verify) {
-    await verifySetup(parsed.jsonOutput);
-    return; // verifySetup calls process.exit
+    if (!parsed.jsonOutput) {
+      console.log(pc.yellow("Note: --verify flag is deprecated. Use 'npx create-starknet-agent verify' instead."));
+      console.log();
+    }
+    const verifyArgs = parseVerifyArgs(parsed.jsonOutput ? ["--json"] : []);
+    await runVerification(verifyArgs);
+    return; // runVerification calls process.exit
   }
 
   // Handle --detect-only flag
