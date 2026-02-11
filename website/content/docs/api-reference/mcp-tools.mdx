@@ -7,7 +7,7 @@ import { Callout, Collapsible } from "@/components/docs";
 
 # MCP Tools Reference
 
-This page documents all 10 tools exposed by the Starknet MCP Server (9 core + 1 conditional). Each tool includes its description, parameters, return values, and usage examples.
+This page documents all 11 tools exposed by the Starknet MCP Server (9 core + 2 conditional). Each tool includes its description, parameters, return values, and usage examples.
 
 <Callout type="info" title="Tool Invocation">
   These tools are invoked automatically by your AI assistant. You describe what you want in natural language, and the AI selects the appropriate tool and parameters.
@@ -26,6 +26,7 @@ This page documents all 10 tools exposed by the Starknet MCP Server (9 core + 1 
 | [`starknet_invoke_contract`](#starknet_invoke_contract) | Invoke contract function | Yes |
 | [`starknet_estimate_fee`](#starknet_estimate_fee) | Estimate transaction fee | No |
 | [`x402_starknet_sign_payment_required`](#x402_starknet_sign_payment_required) | Sign X-402 payment | No |
+| [`starknet_register_agent`](#starknet_register_agent) | Register ERC-8004 identity | Yes |
 | [`starknet_deploy_agent_account`](#starknet_deploy_agent_account) | Deploy agent account | Yes |
 
 ---
@@ -523,9 +524,15 @@ Call a read-only (view) function on a Starknet smart contract. Does not create a
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `contractAddress` | string | Yes | Contract address |
+| `contractAddress` | string | Yes | Contract address (0x-prefixed hex) |
 | `entrypoint` | string | Yes | Function name to call |
-| `calldata` | string[] | No | Function arguments as strings (default: `[]`) |
+| `calldata` | string[] | No | Function arguments as strings (default: `[]`, max 256 items) |
+
+<Callout type="info" title="Input Validation">
+  - Each calldata item is validated as a 251-bit felt (field element)
+  - Decimal values are automatically converted to 0x-prefixed hex
+  - Contract addresses are normalized and validated
+</Callout>
 
 **Returns**
 
@@ -594,6 +601,8 @@ Call a read-only (view) function on a Starknet smart contract. Does not create a
 |-------|-------|----------|
 | `ENTRYPOINT_NOT_FOUND` | Function doesn't exist | Check function name spelling |
 | `INVALID_CALLDATA` | Wrong number or type of arguments | Verify function signature |
+| `CALLDATA_TOO_LARGE` | More than 256 calldata items | Split into multiple calls |
+| `INVALID_FELT` | Calldata value exceeds 251 bits | Use smaller values or split uint256 |
 | `CONTRACT_NOT_FOUND` | No contract at address | Verify contract address |
 
 ---
@@ -606,11 +615,17 @@ Execute a state-changing function on a Starknet smart contract. Creates a transa
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `contractAddress` | string | Yes | Contract address |
+| `contractAddress` | string | Yes | Contract address (0x-prefixed hex) |
 | `entrypoint` | string | Yes | Function name to call |
-| `calldata` | string[] | No | Function arguments as strings (default: `[]`) |
+| `calldata` | string[] | No | Function arguments as strings (default: `[]`, max 256 items) |
 | `gasfree` | boolean | No | Enable gasfree mode (default: `false`) |
 | `gasToken` | string | No | Token to pay gas in (gasfree only) |
+
+<Callout type="info" title="Input Validation">
+  - Each calldata item is validated as a 251-bit felt (field element)
+  - Decimal values are automatically converted to 0x-prefixed hex
+  - Contract addresses are normalized and validated
+</Callout>
 
 **Returns**
 
@@ -817,6 +832,93 @@ Sign a base64-encoded PAYMENT-REQUIRED header containing Starknet typedData. Par
 
 ---
 
+## starknet_register_agent
+
+Register a new ERC-8004 agent identity in the IdentityRegistry. This is a conditional tool that only appears when `ERC8004_IDENTITY_REGISTRY_ADDRESS` is configured.
+
+<Callout type="info" title="Conditional Tool">
+  This tool requires the `ERC8004_IDENTITY_REGISTRY_ADDRESS` environment variable to be set. If not configured, the tool is not exposed.
+</Callout>
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `token_uri` | string | No | Metadata URI (IPFS, Arweave, data URI). If omitted, registers without metadata |
+| `gasfree` | boolean | No | Enable sponsored gasfree mode (default: `false`) |
+
+**Returns**
+
+```json
+{
+  "success": true,
+  "transactionHash": "0x7f3a2bc1...",
+  "identityRegistryAddress": "0x05e4f6a7b8c9d0...",
+  "agentId": "42"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the registration succeeded |
+| `transactionHash` | string | Transaction hash |
+| `identityRegistryAddress` | string | IdentityRegistry address used |
+| `agentId` | string | ERC-8004 agent ID (identity NFT token ID) |
+
+**Examples**
+
+<Collapsible title="Register with metadata URI" defaultOpen={true}>
+
+**Prompt:** "Register my agent with metadata at ipfs://QmAgentMetadata123"
+
+**Tool call:**
+```json
+{
+  "token_uri": "ipfs://QmAgentMetadata123"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Register without metadata">
+
+**Prompt:** "Register my agent on ERC-8004"
+
+**Tool call:**
+```json
+{}
+```
+
+The agent will be registered with no initial metadata.
+
+</Collapsible>
+
+<Collapsible title="Gasfree registration">
+
+**Prompt:** "Register my agent using sponsored gas"
+
+**Tool call:**
+```json
+{
+  "token_uri": "ipfs://QmAgentMetadata123",
+  "gasfree": true
+}
+```
+
+Requires `AVNU_PAYMASTER_API_KEY` for sponsored mode.
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `REGISTRY_NOT_CONFIGURED` | `ERC8004_IDENTITY_REGISTRY_ADDRESS` not set | Configure the environment variable |
+| `REGISTRATION_FAILED` | Registry transaction reverted | Check deployer has sufficient funds |
+| `EVENT_NOT_FOUND` | Registered event missing | Check transaction on explorer |
+
+---
+
 ## starknet_deploy_agent_account
 
 Deploy a new agent account via the AgentAccountFactory with ERC-8004 identity binding. This is a conditional tool that only appears when `AGENT_ACCOUNT_FACTORY_ADDRESS` is configured.
@@ -829,10 +931,16 @@ Deploy a new agent account via the AgentAccountFactory with ERC-8004 identity bi
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `public_key` | string | Yes | Stark public key (felt, 0x-prefixed) for the new account |
+| `public_key` | string | Yes | Stark public key (felt, 0x-prefixed, non-zero, max 251 bits) |
 | `token_uri` | string | Yes | Token URI for agent identity metadata (IPFS, Arweave, etc.) |
-| `salt` | string | No | Deploy salt (felt). Random if omitted for deterministic addresses |
+| `salt` | string | No | Deploy salt (felt, max 251 bits). Random if omitted for deterministic addresses |
 | `gasfree` | boolean | No | Enable sponsored gasfree mode (default: `false`) |
+
+<Callout type="info" title="Input Validation">
+  - `public_key` must be a non-zero value within the 251-bit felt range
+  - `salt` must also fit within 251 bits if provided
+  - Random salts are securely generated when not specified
+</Callout>
 
 **Returns**
 

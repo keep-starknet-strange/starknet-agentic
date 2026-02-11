@@ -134,10 +134,24 @@ pub trait IValidationRegistry<TContractState> {
         agent_id: u256
     ) -> Array<u256>;
 
+    fn get_agent_validations_paginated(
+        self: @TContractState,
+        agent_id: u256,
+        offset: u64,
+        limit: u64
+    ) -> (Array<u256>, bool);
+
     fn get_validator_requests(
         self: @TContractState,
         validator_address: ContractAddress
     ) -> Array<u256>;
+
+    fn get_validator_requests_paginated(
+        self: @TContractState,
+        validator_address: ContractAddress,
+        offset: u64,
+        limit: u64
+    ) -> (Array<u256>, bool);
 
     fn request_exists(self: @TContractState, request_hash: u256) -> bool;
 
@@ -368,6 +382,26 @@ fn get_agent_validations(self: @TContractState, agent_id: u256) -> Array<u256>
 
 **Returns:** Array of request hashes
 
+### get_agent_validations_paginated
+
+Get request hashes for an agent with pagination.
+
+```cairo
+fn get_agent_validations_paginated(
+    self: @TContractState,
+    agent_id: u256,
+    offset: u64,
+    limit: u64
+) -> (Array<u256>, bool)
+```
+
+**Parameters:**
+- `agent_id` - Agent's token ID
+- `offset` - Skip first N requests
+- `limit` - Max requests to return
+
+**Returns:** Tuple of (request hashes array, truncated flag)
+
 ### get_validator_requests
 
 Get all request hashes assigned to a validator.
@@ -380,6 +414,26 @@ fn get_validator_requests(
 ```
 
 **Returns:** Array of request hashes
+
+### get_validator_requests_paginated
+
+Get request hashes for a validator with pagination.
+
+```cairo
+fn get_validator_requests_paginated(
+    self: @TContractState,
+    validator_address: ContractAddress,
+    offset: u64,
+    limit: u64
+) -> (Array<u256>, bool)
+```
+
+**Parameters:**
+- `validator_address` - Validator's address
+- `offset` - Skip first N requests
+- `limit` - Max requests to return
+
+**Returns:** Tuple of (request hashes array, truncated flag)
 
 ### request_exists
 

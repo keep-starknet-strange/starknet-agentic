@@ -147,6 +147,57 @@ export const SKILLS: Skill[] = [
       "Agent metadata",
     ],
   },
+  {
+    slug: "cairo-coding",
+    name: "cairo-coding",
+    title: "Cairo Coding",
+    description:
+      "Production-grade Cairo optimization patterns. Gas-efficient arithmetic, storage packing, BoundedInt limb assembly, and Poseidon hashing.",
+    keywords: [
+      "cairo",
+      "optimization",
+      "gas",
+      "bounded-int",
+      "storage-packing",
+      "arithmetic",
+      "performance",
+    ],
+    icon: "⚡",
+    color: "bg-neo-cyan",
+    features: [
+      "Gas optimization rules",
+      "BoundedInt patterns",
+      "Storage packing",
+      "Loop optimizations",
+      "Poseidon hashing",
+    ],
+  },
+  {
+    slug: "starknet-js",
+    name: "starknet-js",
+    title: "starknet.js SDK",
+    description:
+      "Comprehensive guide for building Starknet dApps using starknet.js v9.x. Providers, accounts, contracts, multicall, paymaster, and SNIP-9/12.",
+    keywords: [
+      "starknet-js",
+      "sdk",
+      "typescript",
+      "account-abstraction",
+      "paymaster",
+      "multicall",
+      "snip-9",
+      "snip-12",
+    ],
+    icon: "📦",
+    color: "bg-neo-purple",
+    features: [
+      "Provider setup",
+      "Account management",
+      "Contract interaction",
+      "Multicall batching",
+      "Paymaster support",
+    ],
+  },
 ];
 
 // Get all unique keywords from all skills

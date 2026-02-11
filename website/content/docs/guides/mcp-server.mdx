@@ -269,9 +269,11 @@ Edit `~/.continue/config.json`:
 | `STARKNET_RPC_URL` | Yes | Starknet JSON-RPC endpoint |
 | `STARKNET_ACCOUNT_ADDRESS` | Yes | Your Starknet account address |
 | `STARKNET_PRIVATE_KEY` | Yes | Private key for signing transactions |
-| `AVNU_BASE_URL` | No | avnu API URL (defaults to mainnet) |
+| `AVNU_BASE_URL` | No | avnu API URL (defaults based on network) |
 | `AVNU_PAYMASTER_URL` | No | avnu Paymaster URL for gasfree transactions |
 | `AVNU_PAYMASTER_API_KEY` | No | API key for sponsored (fully gasless) transactions |
+| `ERC8004_IDENTITY_REGISTRY_ADDRESS` | No | Enables `starknet_register_agent` tool |
+| `AGENT_ACCOUNT_FACTORY_ADDRESS` | No | Enables `starknet_deploy_agent_account` tool |
 
 ### Network Configuration
 
@@ -330,7 +332,7 @@ Open the AI chat and ask:
 
 ## Available Tools
 
-The MCP server exposes 9 tools:
+The MCP server exposes 9 core tools plus 2 conditional tools:
 
 | Tool | Description |
 |------|-------------|
@@ -343,6 +345,14 @@ The MCP server exposes 9 tools:
 | `starknet_invoke_contract` | Execute state-changing contract function |
 | `starknet_estimate_fee` | Estimate transaction fee |
 | `x402_starknet_sign_payment_required` | Sign X-402 payment header |
+| `starknet_register_agent` | Register ERC-8004 identity (conditional) |
+| `starknet_deploy_agent_account` | Deploy agent account (conditional) |
+
+<Callout type="info" title="Conditional Tools">
+  The last two tools require additional environment variables:
+  - `starknet_register_agent` requires `ERC8004_IDENTITY_REGISTRY_ADDRESS`
+  - `starknet_deploy_agent_account` requires `AGENT_ACCOUNT_FACTORY_ADDRESS`
+</Callout>
 
 For complete parameter documentation, see the [MCP Tools Reference](/docs/api-reference/mcp-tools).
 

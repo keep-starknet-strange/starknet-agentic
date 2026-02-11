@@ -1,0 +1,259 @@
+---
+title: Cairo Coding Skill
+description: Production-grade Cairo optimization patterns and gas efficiency rules
+---
+
+import { Callout, Collapsible, Steps, Step } from "@/components/docs";
+
+# Cairo Coding Skill
+
+The **cairo-coding** skill provides production-grade patterns and rules for writing efficient Cairo code. It focuses on gas optimization, performance improvements, and best practices derived from audit findings and production profiling.
+
+## Installation
+
+```bash
+# Install via skills CLI
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-coding
+
+# Or clone the repo
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+```
+
+## Core Optimization Rules
+
+The skill includes 11 core optimization patterns:
+
+### 1. Use DivRem for Division + Modulo
+
+When you need both quotient and remainder, use `DivRem::div_rem()` instead of separate operations:
+
+```cairo
+// Bad: Two operations
+let quotient = value / divisor;
+let remainder = value % divisor;
+
+// Good: Single operation
+let (quotient, remainder) = DivRem::div_rem(value, divisor.try_into().unwrap());
+```
+
+### 2. Prefer != Over < in Loops
+
+Equality checks are cheaper than comparisons:
+
+```cairo
+// Bad: Comparison
+while i < len {
+    // ...
+    i += 1;
+}
+
+// Good: Equality
+while i != len {
+    // ...
+    i += 1;
+}
+```
+
+### 3. Use Lookup Tables for Powers of 2
+
+Avoid `pow()` when you know the possible values:
+
+```cairo
+// Bad: Runtime computation
+let result = pow(2, exponent);
+
+// Good: Lookup table
+fn pow2(exp: u8) -> u256 {
+    match exp {
+        0 => 1,
+        1 => 2,
+        2 => 4,
+        // ... up to your max expected value
+        _ => panic!("exponent too large"),
+    }
+}
+```
+
+### 4. Iterate with pop_front() or for Loops
+
+Avoid index-based array access in loops:
+
+```cairo
+// Bad: Index access
+let mut i = 0;
+while i < arr.len() {
+    let item = *arr.at(i);
+    i += 1;
+}
+
+// Good: pop_front
+let mut span = arr.span();
+loop {
+    match span.pop_front() {
+        Option::Some(item) => { /* use item */ },
+        Option::None => { break; },
+    }
+}
+
+// Good: for loop (Cairo 2.x)
+for item in arr.span() {
+    // use item
+}
+```
+
+### 5. Cache Array Length
+
+Don't call `.len()` on every iteration:
+
+```cairo
+// Bad: Repeated len() calls
+while i < arr.len() {
+    // ...
+}
+
+// Good: Cache the length
+let len = arr.len();
+while i != len {
+    // ...
+}
+```
+
+### 6. Use span.slice() for Efficient Slicing
+
+```cairo
+// Get a portion of an array without copying
+let portion = span.slice(start, length);
+```
+
+### 7. Use DivRem for Parity Checks
+
+```cairo
+// Bad: Bitwise operation
+let is_even = value & 1 == 0;
+
+// Good: DivRem (in Cairo)
+let (_, remainder) = DivRem::div_rem(value, 2);
+let is_even = remainder == 0;
+```
+
+### 8. Use the Smallest Integer Type
+
+Choose the smallest type that fits your value range:
+
+```cairo
+// Bad: Using u256 for small values
+let count: u256 = 0;
+
+// Good: Use u32 or u64 when possible
+let count: u32 = 0;
+```
+
+### 9. Use StorePacking for Related Fields
+
+Pack multiple small fields into a single storage slot:
+
+```cairo
+use starknet::storage_access::StorePacking;
+
+// Pack two u128 values into a single u256 slot
+impl MyDataPacking of StorePacking<MyData, u256> {
+    fn pack(value: MyData) -> u256 {
+        value.field1.into() + value.field2.into() * 0x100000000000000000000000000000000
+    }
+
+    fn unpack(value: u256) -> MyData {
+        let mask = 0xffffffffffffffffffffffffffffffff_u256;
+        MyData {
+            field1: (value & mask).try_into().unwrap(),
+            field2: ((value / 0x100000000000000000000000000000000) & mask).try_into().unwrap(),
+        }
+    }
+}
+```
+
+### 10. Use BoundedInt for Limb Assembly
+
+`BoundedInt<MIN, MAX>` encodes value constraints at compile-time, enabling the compiler to prove operations are safe without runtime checks:
+
+```cairo
+use core::integer::BoundedInt;
+
+// Declare a type that can only hold values 0-255
+type Byte = BoundedInt<0, 255>;
+
+// Operations on BoundedInt are automatically bounds-checked at compile time
+```
+
+<Callout type="info" title="BoundedInt Calculator">
+  The skill includes a `bounded_int_calc.py` CLI tool for computing bounds automatically when refactoring arithmetic operations.
+</Callout>
+
+### 11. Use hades_permutation for 2-Input Poseidon
+
+For hashing two values, use the raw permutation:
+
+```cairo
+use core::poseidon::hades_permutation;
+
+// More efficient for 2 inputs
+let (hash, _, _) = hades_permutation(input1, input2, 2);
+```
+
+## BoundedInt Deep Dive
+
+BoundedInt is particularly powerful for:
+
+- **Avoiding expensive downcast operations** - When you know a value fits in a smaller type
+- **Limb assembly** - Building uint256 from smaller pieces
+- **Byte manipulation** - Extracting and combining bytes
+
+<Collapsible title="BoundedInt Example: Safe Division">
+
+```cairo
+use core::integer::BoundedInt;
+
+// When dividing by a known constant, use BoundedInt to avoid overflow checks
+fn divide_by_100(value: u256) -> u256 {
+    // The divisor is bounded, so the compiler knows this is safe
+    let divisor: BoundedInt<100, 100> = 100;
+    let (quotient, _) = DivRem::div_rem(value, divisor.into());
+    quotient
+}
+```
+
+</Collapsible>
+
+<Collapsible title="BoundedInt Example: Byte Extraction">
+
+```cairo
+// Extract the nth byte from a felt252
+fn extract_byte(value: felt252, n: u8) -> u8 {
+    let shift = n * 8;
+    let shifted = value / pow(256, shift.into());
+    let masked = shifted % 256;
+    masked.try_into().unwrap()
+}
+```
+
+</Collapsible>
+
+## Keywords
+
+- cairo
+- optimization
+- gas
+- bounded-int
+- storage-packing
+- arithmetic
+- starknet
+- smart-contracts
+- performance
+
+## Attribution
+
+Originally authored by [feltroidprime](https://github.com/feltroidprime/cairo-skills) and integrated with permission into starknet-agentic.
+
+## Next Steps
+
+- [Writing Your Own Skill](/docs/skills/writing-skills) - Create custom skills
+- [starknet.js SDK Skill](/docs/skills/starknet-js) - TypeScript SDK patterns

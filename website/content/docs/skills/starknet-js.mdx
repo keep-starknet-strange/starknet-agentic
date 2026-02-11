@@ -1,0 +1,356 @@
+---
+title: starknet.js SDK Skill
+description: Comprehensive guide for building Starknet dApps using starknet.js v9.x
+---
+
+import { Callout, Collapsible, Steps, Step } from "@/components/docs";
+
+# starknet.js SDK Skill
+
+The **starknet-js** skill provides a comprehensive guide for building Starknet dApps using the starknet.js v9.x SDK. It covers providers, accounts, contracts, multicall, paymaster support, and SNIP-9/12 standards.
+
+## Installation
+
+```bash
+# Install via skills CLI
+npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-js
+
+# Or clone the repo
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+```
+
+## Prerequisites
+
+- Node.js 18+
+- TypeScript 5+
+- starknet.js ^9.0.0
+
+```bash
+npm install starknet@^9.0.0
+```
+
+## Core Components
+
+### Provider Setup
+
+The RpcProvider handles read-only operations:
+
+```typescript
+import { RpcProvider } from "starknet";
+
+// Mainnet
+const provider = new RpcProvider({
+  nodeUrl: "https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY"
+});
+
+// Sepolia Testnet
+const sepoliaProvider = new RpcProvider({
+  nodeUrl: "https://starknet-sepolia.g.alchemy.com/v2/YOUR_KEY"
+});
+```
+
+### Account Management
+
+Accounts require a provider, address, and signer:
+
+```typescript
+import { Account, constants } from "starknet";
+
+// Connect to existing account
+const account = new Account({
+  provider,
+  address: "0x123...",
+  signer: privateKey,
+  cairoVersion: "1",
+  transactionVersion: constants.TRANSACTION_VERSION.V3
+});
+```
+
+<Callout type="info" title="V3 Transactions">
+  V3 transactions pay fees in STRK instead of ETH. Always use `TRANSACTION_VERSION.V3` for new applications.
+</Callout>
+
+### Contract Interaction
+
+```typescript
+import { Contract } from "starknet";
+
+// Create contract instance
+const contract = new Contract({
+  abi: tokenAbi,
+  address: tokenAddress,
+  providerOrAccount: account
+});
+
+// Read operation
+const balance = await contract.balanceOf(account.address);
+
+// Write operation
+const tx = await contract.transfer(recipient, amount);
+await provider.waitForTransaction(tx.transaction_hash);
+```
+
+## Advanced Patterns
+
+### Multicall / Batch Transactions
+
+Execute multiple operations atomically:
+
+```typescript
+// Batch multiple calls
+const calls = [
+  {
+    contractAddress: tokenA,
+    entrypoint: "approve",
+    calldata: [spender, amountLow, amountHigh]
+  },
+  {
+    contractAddress: router,
+    entrypoint: "swap",
+    calldata: [tokenA, tokenB, amountLow, amountHigh, minOutLow, minOutHigh]
+  }
+];
+
+const { transaction_hash } = await account.execute(calls);
+```
+
+### Paymaster Support
+
+Enable gas payment in ERC-20 tokens or sponsor transactions entirely:
+
+```typescript
+import { PaymasterRpc } from "starknet";
+
+// Create paymaster instance
+const paymaster = new PaymasterRpc({
+  nodeUrl: "https://sepolia.paymaster.avnu.fi",
+  headers: {
+    "x-api-key": process.env.AVNU_PAYMASTER_API_KEY
+  }
+});
+
+// Sponsored transaction (dApp pays gas)
+const result = await account.executePaymasterTransaction(
+  calls,
+  { feeMode: { mode: "sponsored" } }
+);
+
+// User pays in alternative token
+const result = await account.executePaymasterTransaction(
+  calls,
+  {
+    feeMode: {
+      mode: "default",
+      gasToken: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8" // USDC
+    }
+  }
+);
+```
+
+### Message Signing (SNIP-12)
+
+Sign typed data for off-chain verification:
+
+```typescript
+import { typedData } from "starknet";
+
+const message = {
+  types: {
+    StarkNetDomain: [
+      { name: "name", type: "felt" },
+      { name: "version", type: "felt" },
+      { name: "chainId", type: "felt" }
+    ],
+    Message: [
+      { name: "content", type: "felt" }
+    ]
+  },
+  primaryType: "Message",
+  domain: {
+    name: "MyDApp",
+    version: "1",
+    chainId: "SN_SEPOLIA"
+  },
+  message: {
+    content: "Hello Starknet"
+  }
+};
+
+const signature = await account.signMessage(message);
+```
+
+### Outside Execution (SNIP-9)
+
+Enable delegated or gasless transactions:
+
+```typescript
+// Create outside execution request
+const outsideExecution = {
+  caller: "ANY_CALLER",
+  nonce: nonce,
+  execute_after: Math.floor(Date.now() / 1000) - 60,
+  execute_before: Math.floor(Date.now() / 1000) + 3600,
+  calls: [
+    {
+      to: tokenAddress,
+      selector: hash.getSelectorFromName("transfer"),
+      calldata: [recipient, amountLow, amountHigh]
+    }
+  ]
+};
+
+// Sign the request
+const signature = await account.signMessage(outsideExecutionTypedData);
+
+// Anyone can now execute this on behalf of the account
+await relayerAccount.execute({
+  contractAddress: account.address,
+  entrypoint: "execute_from_outside_v2",
+  calldata: [/* serialized request + signature */]
+});
+```
+
+## ERC-20 Operations
+
+<Callout type="warning" title="BigInt Required">
+  Always use `BigInt` (with `n` suffix like `1000n`) for token amounts to prevent precision loss above 2^53.
+</Callout>
+
+```typescript
+// Reading balance
+const balance = await tokenContract.balanceOf(address);
+// balance is a Uint256 object with { low, high }
+
+// Converting to BigInt
+const balanceBigInt = BigInt(balance.low) + (BigInt(balance.high) << 128n);
+
+// Formatting for display (18 decimals)
+const formatted = Number(balanceBigInt) / 1e18;
+
+// Preparing amount for transfer
+const amount = 1000000000000000000n; // 1 token with 18 decimals
+const { low, high } = uint256.bnToUint256(amount);
+```
+
+## Fee Estimation
+
+```typescript
+// Estimate fee before execution
+const estimateFee = await account.estimateInvokeFee(calls);
+
+console.log("Overall fee:", estimateFee.overall_fee);
+console.log("Gas consumed:", estimateFee.gas_consumed);
+
+// Execute with custom resource bounds
+const { transaction_hash } = await account.execute(calls, {
+  resourceBounds: {
+    l1_gas: {
+      max_amount: "0x1000",
+      max_price_per_unit: "0x100000000000"
+    },
+    l2_gas: {
+      max_amount: "0x0",
+      max_price_per_unit: "0x0"
+    }
+  }
+});
+```
+
+## Wallet Integration
+
+Connect to browser wallets:
+
+```typescript
+import { connect } from "@starknet-io/get-starknet";
+
+// Connect to wallet
+const starknet = await connect();
+
+if (starknet) {
+  await starknet.enable();
+
+  const account = starknet.account;
+  const address = starknet.selectedAddress;
+
+  // Use account for transactions
+  const tx = await account.execute(calls);
+}
+```
+
+## Contract Deployment
+
+Deploy contracts via Universal Deployer Contract (UDC):
+
+```typescript
+import { hash, CallData } from "starknet";
+
+// Compute class hash
+const classHash = await provider.declareContract({
+  contract: compiledContract,
+  casm: compiledCasm
+});
+
+// Deploy via UDC
+const { transaction_hash, contract_address } = await account.deployContract({
+  classHash,
+  constructorCalldata: CallData.compile({
+    owner: account.address,
+    initialSupply: { low: 1000000n, high: 0n }
+  }),
+  salt: hash.computeHashOnElements([Date.now()])
+});
+
+await provider.waitForTransaction(transaction_hash);
+```
+
+## Utility Functions
+
+```typescript
+import { hash, ec, num, shortString } from "starknet";
+
+// Generate keypair
+const privateKey = ec.starkCurve.utils.randomPrivateKey();
+const publicKey = ec.starkCurve.getPublicKey(privateKey);
+
+// Compute selector
+const selector = hash.getSelectorFromName("transfer");
+
+// Number conversions
+const felt = num.toHex(12345);
+const decimal = num.toBigInt("0x3039");
+
+// Short string encoding
+const encoded = shortString.encodeShortString("hello");
+const decoded = shortString.decodeShortString(encoded);
+
+// Poseidon hash
+const poseidonHash = hash.computePoseidonHash(value1, value2);
+```
+
+## Keywords
+
+- starknet
+- starknet-js
+- sdk
+- typescript
+- smart-contracts
+- account-abstraction
+- paymaster
+- multicall
+- snip-9
+- snip-12
+- erc-20
+- erc-721
+- wallet
+- rpc
+- fee-estimation
+
+## Author
+
+0xlny
+
+## Next Steps
+
+- [MCP Server Setup](/docs/guides/mcp-server) - Connect AI assistants to Starknet
+- [Cairo Coding Skill](/docs/skills/cairo-coding) - Cairo optimization patterns
+- [Wallet Skill](/docs/skills/starknet-wallet) - Wallet management patterns
