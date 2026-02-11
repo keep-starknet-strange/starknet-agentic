@@ -18,26 +18,6 @@ Core infrastructure features required for v1.0 release. MVP definition: MCP serv
 
 ---
 
-### 1.1 Create `create-starknet-agent` CLI Scaffolding Tool ✅
-
-**Status**: COMPLETE (PR #134)
-
-**Description**: CLI scaffolding tool at `packages/create-starknet-agent/` that generates new agent projects.
-
-**Implemented**:
-- [x] Create `packages/create-starknet-agent/` directory
-- [x] Implement CLI using `create-*` npm convention (runs via `npx create-starknet-agent`)
-- [x] Add interactive prompts for project configuration
-- [x] Generate project structure with pre-configured package.json, .env.example, agent entry point
-- [x] Add `--template` flag for different starting points (minimal, defi, full)
-- [x] Version 0.1.0 at `packages/create-starknet-agent/`
-- [x] Publish to npm as `create-starknet-agent` (v0.1.0 published)
-- [x] ~~Add automated publishing to CI workflow~~ Manual publishing preferred (independent release cycle from core libraries)
-
-**Priority**: ~~HIGH~~ COMPLETE.
-
----
-
 ### 1.2 Publish Skills to Distribution Channels
 
 **Description**: Publish all complete skills to GitHub, ClawHub, and other channels for maximum distribution.
