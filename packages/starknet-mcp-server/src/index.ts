@@ -464,19 +464,6 @@ const tools: Tool[] = [
           type: "string",
           description: "Base64 JSON from PAYMENT-REQUIRED header",
         },
-        rpcUrl: {
-          type: "string",
-          description: "Starknet RPC URL (defaults to STARKNET_RPC_URL env var)",
-        },
-        accountAddress: {
-          type: "string",
-          description:
-            "Starknet account address (defaults to STARKNET_ACCOUNT_ADDRESS env var)",
-        },
-        privateKey: {
-          type: "string",
-          description: "Starknet private key (defaults to STARKNET_PRIVATE_KEY env var)",
-        },
       },
       required: ["paymentRequiredHeader"],
     },
@@ -914,23 +901,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "x402_starknet_sign_payment_required": {
-        const {
-          paymentRequiredHeader,
-          rpcUrl = env.STARKNET_RPC_URL,
-          accountAddress = env.STARKNET_ACCOUNT_ADDRESS,
-          privateKey = env.STARKNET_PRIVATE_KEY,
-        } = args as {
+        const { paymentRequiredHeader } = args as {
           paymentRequiredHeader: string;
-          rpcUrl?: string;
-          accountAddress?: string;
-          privateKey?: string;
         };
+
+        if (!env.STARKNET_RPC_URL || !env.STARKNET_ACCOUNT_ADDRESS || !env.STARKNET_PRIVATE_KEY) {
+          throw new Error(
+            "Missing required env vars for x402 signing (STARKNET_RPC_URL, STARKNET_ACCOUNT_ADDRESS, STARKNET_PRIVATE_KEY)",
+          );
+        }
 
         const { headerValue, payload } = await createStarknetPaymentSignatureHeader({
           paymentRequiredHeader,
-          rpcUrl,
-          accountAddress,
-          privateKey,
+          rpcUrl: env.STARKNET_RPC_URL,
+          accountAddress: env.STARKNET_ACCOUNT_ADDRESS,
+          privateKey: env.STARKNET_PRIVATE_KEY,
         });
 
         return {
