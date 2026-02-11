@@ -14,6 +14,7 @@
  * - starknet_invoke_contract: Write to contracts
  * - starknet_swap: Execute swaps via avnu
  * - starknet_get_quote: Get swap quotes
+ * - starknet_build_calls: Build unsigned calls for external signing (Controller, multisig)
  * - starknet_register_agent: Register agent identity (ERC-8004)
  * - starknet_set_agent_metadata: Set on-chain metadata for an ERC-8004 agent
  * - starknet_get_agent_metadata: Read on-chain metadata for an ERC-8004 agent
@@ -476,6 +477,41 @@ const tools: Tool[] = [
         },
       },
       required: ["contractAddress", "entrypoint"],
+    },
+  },
+  {
+    name: "starknet_build_calls",
+    description:
+      "Build unsigned Starknet calls without executing. Returns a JSON array of Call objects compatible with starknet.js account.execute() and Cartridge Controller. Use this when you need to compose calls for external signing (e.g., session keys, hardware wallets, multisig).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        calls: {
+          type: "array",
+          description: "Array of call objects to build",
+          items: {
+            type: "object",
+            properties: {
+              contractAddress: {
+                type: "string",
+                description: "Target contract address (0x-prefixed)",
+              },
+              entrypoint: {
+                type: "string",
+                description: "Function name to call",
+              },
+              calldata: {
+                type: "array",
+                items: { type: "string" },
+                description: "Function arguments as array of felt strings",
+                default: [],
+              },
+            },
+            required: ["contractAddress", "entrypoint"],
+          },
+        },
+      },
+      required: ["calls"],
     },
   },
   {
@@ -976,6 +1012,60 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 resourceBounds: fee.resourceBounds,
                 unit: fee.unit || "STRK",
               }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "starknet_build_calls": {
+        const { calls: rawCalls } = args as {
+          calls: Array<{
+            contractAddress: string;
+            entrypoint: string;
+            calldata?: string[];
+          }>;
+        };
+
+        if (!rawCalls || rawCalls.length === 0) {
+          throw new Error("calls array is required and must not be empty");
+        }
+
+        if (rawCalls.length > MAX_CALLDATA_LEN) {
+          throw new Error(`Too many calls (${rawCalls.length}). Maximum: ${MAX_CALLDATA_LEN}`);
+        }
+
+        const validatedCalls = rawCalls.map((call, i) => {
+          if (!call.contractAddress) {
+            throw new Error(`calls[${i}].contractAddress is required`);
+          }
+          if (!call.entrypoint) {
+            throw new Error(`calls[${i}].entrypoint is required`);
+          }
+          const validatedAddress = parseAddress(`calls[${i}].contractAddress`, call.contractAddress);
+          const validatedCalldata = call.calldata && call.calldata.length > 0
+            ? parseCalldata(`calls[${i}].calldata`, call.calldata)
+            : [];
+
+          return {
+            contractAddress: validatedAddress,
+            entrypoint: call.entrypoint,
+            calldata: validatedCalldata,
+          };
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  calls: validatedCalls,
+                  callCount: validatedCalls.length,
+                  note: "Unsigned calls. Pass to account.execute(calls) or write to calls.json for external signing.",
+                },
+                null,
+                2
+              ),
             },
           ],
         };
