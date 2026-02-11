@@ -245,6 +245,189 @@ npm test
 - 87 unit tests (Cairo)
 - 43 E2E tests (Sepolia)
 
+## Production Operations Checklist
+
+This checklist guides production deployment, key management, monitoring, and incident response for the ERC-8004 registries.
+
+### Pre-Deployment
+
+**1. Environment Setup**
+- [ ] Generate or provision a multisig account for contract owner role (recommended: 2-of-3 or 3-of-5)
+- [ ] Fund deployer account with sufficient ETH for declaration and deployment gas
+- [ ] Configure `.env` with RPC URL, deployer address, and deployer private key
+- [ ] Verify private key security: stored in secure vault, never committed to version control
+- [ ] Test RPC connectivity: `curl -X POST $STARKNET_RPC_URL -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"starknet_chainId","params":[],"id":1}'`
+
+**2. Build Verification**
+- [ ] Build contracts: `scarb build`
+- [ ] Run unit tests: `scarb test` (all tests must pass)
+- [ ] Verify no local modifications to contract source (git status clean or approved diff)
+- [ ] Inspect generated class hashes via `sncast` or manual computation
+- [ ] Compare class hashes against reference deployment (if upgrading existing instances)
+
+**3. Deployment Dry Run (Testnet)**
+- [ ] Deploy to Sepolia testnet using `scripts/deploy.js`
+- [ ] Verify deployment: all three contracts deployed successfully
+- [ ] Verify constructor arguments: owner address matches deployer, identity registry references are correct in reputation and validation registries
+- [ ] Run E2E tests: `cd e2e-tests && npm install && npm test` (all tests must pass)
+- [ ] Manually verify on Voyager: check owner, check identity registry references
+
+### Deployment (Mainnet)
+
+**4. Contract Declaration**
+- [ ] Declare IdentityRegistry class hash
+- [ ] Declare ReputationRegistry class hash
+- [ ] Declare ValidationRegistry class hash
+- [ ] Record all three class hashes in deployment log
+- [ ] Verify class hashes on Voyager (inspect bytecode if paranoid)
+
+**5. Contract Deployment**
+- [ ] Deploy IdentityRegistry with multisig owner address (NOT deployer EOA)
+- [ ] Deploy ReputationRegistry with multisig owner and IdentityRegistry address
+- [ ] Deploy ValidationRegistry with multisig owner and IdentityRegistry address
+- [ ] Wait for all deployment transactions to finalize (check `ACCEPTED_ON_L2` status)
+- [ ] Record all three contract addresses in deployment log and version control (`deployed_addresses_mainnet.json`)
+
+**6. Post-Deployment Verification**
+- [ ] Verify IdentityRegistry owner: `get_owner()` returns multisig address
+- [ ] Verify ReputationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
+- [ ] Verify ValidationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
+- [ ] Test agent registration: mint agent NFT via `register_with_token_uri`
+- [ ] Test metadata write: `set_metadata(agent_id, "test", "value")`
+- [ ] Test feedback write: `give_feedback(agent_id, ...)`
+- [ ] Test validation request: `validation_request(validator, agent_id, ...)`
+- [ ] Verify no revert on read paths: `read_feedback`, `get_summary`, `get_validation_status`
+
+**7. Documentation and Handoff**
+- [ ] Publish contract addresses to public registry (website, GitHub README, etc.)
+- [ ] Share multisig owner access with designated signers
+- [ ] Document multisig signing procedure (Braavos multisig, Argent multisig, etc.)
+- [ ] Store deployment artifact (class hashes, addresses, deployment timestamp) in secure location
+- [ ] Update monitoring dashboards with new contract addresses
+
+### Key Management and Rotation
+
+**8. Owner Key Security**
+- [ ] Owner private keys stored in hardware wallet or secure vault (never in plaintext)
+- [ ] Multisig quorum documented and tested (e.g., 2-of-3 approvals required)
+- [ ] Signer list documented with contact info and backup signers identified
+- [ ] Regular signer availability check (quarterly or semi-annual)
+
+**9. Owner Transfer (Emergency or Planned)**
+- [ ] Generate new multisig owner address
+- [ ] Verify new multisig quorum and signer list
+- [ ] Execute `transfer_ownership(new_owner)` on IdentityRegistry via existing multisig
+- [ ] Execute `transfer_ownership(new_owner)` on ReputationRegistry via existing multisig
+- [ ] Execute `transfer_ownership(new_owner)` on ValidationRegistry via existing multisig
+- [ ] Wait for all transactions to finalize
+- [ ] Verify new owner via `get_owner()` on all three contracts
+- [ ] Revoke access for old multisig signers
+- [ ] Update documentation with new owner address
+
+**10. Agent Wallet Verification (User-Facing)**
+- [ ] Document `set_agent_wallet` signature scheme for users (SNIP-6 domain separator, message structure, nonce)
+- [ ] Provide example code for generating signature (starknet.js, starknet-py, etc.)
+- [ ] Test signature verification end-to-end with multiple wallet types (Argent, Braavos, etc.)
+- [ ] Document that wallet is cleared on NFT transfer (users must re-verify after transfer)
+
+### Upgrade Procedures
+
+**11. Contract Upgrade (Class Hash Replacement)**
+- [ ] Build new contract version: `scarb build`
+- [ ] Run unit tests on new version: `scarb test` (all tests must pass)
+- [ ] Deploy to testnet and run E2E tests (all tests must pass)
+- [ ] Declare new class hash on mainnet
+- [ ] Audit new class hash bytecode (internal or third-party review)
+- [ ] Prepare upgrade proposal for multisig signers (include class hash, upgrade rationale, audit report)
+- [ ] Obtain multisig quorum approval
+- [ ] Execute `upgrade(new_class_hash)` on target registry via multisig
+- [ ] Wait for transaction to finalize
+- [ ] Verify `Upgraded` event emitted with correct class hash
+- [ ] Smoke test upgraded contract (register agent, give feedback, etc.)
+- [ ] Monitor for unexpected behavior or reverts (24-48 hour window)
+
+**12. Rollback Procedure**
+- [ ] Identify previous class hash from deployment log
+- [ ] Verify previous class hash is still declared on-chain
+- [ ] Execute `upgrade(previous_class_hash)` via multisig
+- [ ] Verify rollback via `Upgraded` event
+- [ ] Smoke test rolled-back contract
+
+### Monitoring and Alerting
+
+**13. On-Chain Event Monitoring**
+- [ ] Monitor `AgentRegistered` events (IdentityRegistry) for registration activity
+- [ ] Monitor `Upgraded` events (all three registries) for unauthorized or unexpected upgrades
+- [ ] Monitor `OwnershipTransferred` events for unauthorized ownership changes
+- [ ] Monitor `AgentWalletSet` and `AgentWalletUnset` events for wallet verification activity
+- [ ] Monitor `FeedbackGiven` and `FeedbackRevoked` events (ReputationRegistry) for abuse patterns
+- [ ] Monitor `ValidationRequested` and `ValidationResponded` events (ValidationRegistry) for validator activity
+
+**14. Metrics and Dashboards**
+- [ ] Total agents registered (IdentityRegistry: `total_agents()`)
+- [ ] Total feedback entries (ReputationRegistry: count `FeedbackGiven` events)
+- [ ] Total validation requests (ValidationRegistry: count `ValidationRequested` events)
+- [ ] Owner address correctness (all three registries: `get_owner()`)
+- [ ] Identity registry reference correctness (ReputationRegistry and ValidationRegistry: `get_identity_registry()`)
+- [ ] Gas usage trends (identify expensive operations)
+
+**15. Alerting Thresholds**
+- [ ] Alert on `Upgraded` event (always notify on upgrades)
+- [ ] Alert on `OwnershipTransferred` event (always notify on ownership changes)
+- [ ] Alert on abnormal feedback volume (e.g., >100 feedback entries per hour for a single agent)
+- [ ] Alert on abnormal validation volume (e.g., >50 validation responses per hour)
+- [ ] Alert on contract paused or disabled (if applicable)
+
+### Incident Response
+
+**16. Unauthorized Upgrade Detected**
+- [ ] Immediately verify `Upgraded` event details (class hash, timestamp, caller)
+- [ ] Check if multisig signers approved the upgrade (review multisig transaction log)
+- [ ] If unauthorized: execute emergency rollback to previous class hash via multisig
+- [ ] If multisig compromised: prepare owner transfer to new multisig and execute rollback
+- [ ] Notify users via official channels (Twitter, Discord, website banner)
+- [ ] Conduct post-mortem and publish incident report
+
+**17. Unauthorized Ownership Transfer Detected**
+- [ ] Immediately verify `OwnershipTransferred` event details (new owner, timestamp, caller)
+- [ ] Check if multisig signers approved the transfer (review multisig transaction log)
+- [ ] If multisig compromised: coordinate with new owner (if friendly) or prepare social recovery
+- [ ] Notify users and recommend pausing agent registration and feedback until resolution
+- [ ] Conduct post-mortem and publish incident report
+
+**18. Spam or Abuse Detected**
+- [ ] Identify abusive agent_id or client address
+- [ ] Review feedback entries: `read_all_feedback(agent_id, ...)`
+- [ ] Review validation requests: `get_agent_validations(agent_id, ...)`
+- [ ] Document abuse pattern (evidence: transaction hashes, addresses, timestamps)
+- [ ] Publish abuse report (if applicable)
+- [ ] Note: ERC-8004 has no built-in ban/block mechanism; abuse mitigation is application-layer responsibility
+
+**19. Critical Bug or Vulnerability Discovered**
+- [ ] Assess impact: which registry is affected, which functions are vulnerable
+- [ ] Determine if vulnerability is exploitable in the wild (public disclosure risk)
+- [ ] Prepare patched contract version and audit
+- [ ] Declare new class hash on mainnet
+- [ ] Coordinate upgrade with multisig signers (expedited approval if critical)
+- [ ] Execute upgrade: `upgrade(new_class_hash)`
+- [ ] Notify users via official channels
+- [ ] Publish post-mortem after mitigation complete
+
+### Mainnet Migration (Registry Replacement)
+
+**20. Migrating to New IdentityRegistry Instance**
+
+Because the `identity_registry` reference in ReputationRegistry and ValidationRegistry is **immutable after construction**, migrating to a new IdentityRegistry requires deploying new instances of ReputationRegistry and ValidationRegistry. This is an accepted design choice: it prevents a compromised owner from silently redirecting authorization checks.
+
+- [ ] Deploy new IdentityRegistry instance
+- [ ] Deploy new ReputationRegistry instance (with new IdentityRegistry address)
+- [ ] Deploy new ValidationRegistry instance (with new IdentityRegistry address)
+- [ ] Notify users of new contract addresses
+- [ ] Provide migration guide for re-registering agents and linking historical feedback/validation data
+- [ ] Archive old contract addresses and mark as deprecated
+- [ ] Monitor both old and new instances during transition period (e.g., 30 days)
+- [ ] After transition period, stop monitoring old instances (but preserve historical data)
+
 ## License
 
 CC0 - Public Domain
