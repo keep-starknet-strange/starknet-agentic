@@ -1,28 +1,194 @@
 # create-starknet-agent Technical Specification
 
-Technical architecture and implementation specification for scaffolded Starknet agents.
+Technical architecture and implementation specification for adding Starknet capabilities to AI agents.
 
 ---
 
 ## Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [Project Structure](#project-structure)
-3. [Core Components](#core-components)
-4. [Configuration System](#configuration-system)
-5. [Agent Runtime](#agent-runtime)
-6. [MCP Integration](#mcp-integration)
-7. [Skill System](#skill-system)
-8. [LLM Provider Layer](#llm-provider-layer)
-9. [Web UI](#web-ui)
-10. [Storage Layer](#storage-layer)
-11. [API Specification](#api-specification)
-12. [Security Model](#security-model)
-13. [Deployment](#deployment)
+1. [Operating Modes](#operating-modes)
+2. [Platform Integration Mode](#platform-integration-mode) ← PRIMARY
+3. [Standalone Mode Architecture](#standalone-mode-architecture)
+4. [Project Structure](#project-structure)
+5. [Core Components](#core-components)
+6. [Configuration System](#configuration-system)
+7. [Agent Runtime](#agent-runtime)
+8. [MCP Integration](#mcp-integration)
+9. [Skill System](#skill-system)
+10. [LLM Provider Layer](#llm-provider-layer)
+11. [Web UI](#web-ui)
+12. [Storage Layer](#storage-layer)
+13. [API Specification](#api-specification)
+14. [Security Model](#security-model)
+15. [Deployment](#deployment)
 
 ---
 
-## Architecture Overview
+## Operating Modes
+
+`create-starknet-agent` operates in two distinct modes based on the detected environment:
+
+| Mode | Target User | Output | Complexity |
+|------|-------------|--------|------------|
+| **Platform Integration** | Users of OpenClaw, Claude Code, Cursor, etc. | Config files only | Light |
+| **Standalone** | Developers building custom agents | Full project scaffold | Heavy |
+
+```
+npx create-starknet-agent@latest
+         │
+         ▼
+┌─────────────────────┐
+│  Detect Platform    │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┐
+    ▼           ▼
+┌────────┐  ┌────────────┐
+│OpenClaw│  │ No platform│
+│Claude  │  │ detected   │
+│Cursor  │  └─────┬──────┘
+│etc.    │        │
+└───┬────┘        ▼
+    │       ┌────────────┐
+    ▼       │ Standalone │
+┌────────┐  │ Scaffold   │
+│Platform│  └────────────┘
+│Integr. │
+└────────┘
+```
+
+---
+
+## Platform Integration Mode
+
+**This is the primary path.** Most users already have an agent platform (OpenClaw, Claude Code, Cursor) and just need Starknet capabilities added.
+
+### What Gets Generated
+
+Platform integration mode generates **only configuration files**—no runtime, no UI, no database:
+
+```
+# OpenClaw
+~/.openclaw/
+├── mcp/
+│   └── starknet.json              # MCP server configuration
+├── skills/
+│   ├── starknet-wallet/SKILL.md   # Wallet skill
+│   └── starknet-defi/SKILL.md     # DeFi skill
+└── secrets/
+    └── starknet.env.example       # Credential template
+
+# Claude Code
+project/
+├── .claude/
+│   └── settings.local.json        # MCP server config (merged)
+├── CLAUDE.md                      # Updated with skill references
+└── .env.example                   # Credential template
+
+# Generic MCP
+project/
+├── mcp.json                       # MCP server configuration
+└── .env.example                   # Credential template
+```
+
+### Platform Detection
+
+```typescript
+interface DetectedPlatform {
+  type: 'openclaw' | 'claude-code' | 'cursor' | 'daydreams' | 'generic-mcp' | 'standalone';
+  confidence: 'high' | 'medium' | 'low';
+  configPath: string;
+  skillsPath?: string;
+  secretsPath?: string;
+  isAgentInitiated: boolean;
+}
+
+const DETECTION_RULES: DetectionRule[] = [
+  // High confidence: explicit env vars
+  { check: () => !!process.env.OPENCLAW_HOME, platform: 'openclaw', confidence: 'high' },
+  { check: () => !!process.env.CLAUDE_CODE, platform: 'claude-code', confidence: 'high' },
+
+  // Medium confidence: config directories
+  { check: () => existsSync(expandHome('~/.openclaw/')), platform: 'openclaw', confidence: 'medium' },
+  { check: () => existsSync('.claude/settings.json'), platform: 'claude-code', confidence: 'medium' },
+  { check: () => existsSync('.cursor/'), platform: 'cursor', confidence: 'medium' },
+
+  // Low confidence: generic MCP config
+  { check: () => existsSync('mcp.json'), platform: 'generic-mcp', confidence: 'low' },
+  { check: () => existsSync('claude_desktop_config.json'), platform: 'generic-mcp', confidence: 'low' },
+];
+```
+
+### MCP Server Configuration
+
+All platforms receive an MCP server configuration pointing to `@starknet-agentic/mcp-server`:
+
+```json
+{
+  "mcpServers": {
+    "starknet": {
+      "command": "npx",
+      "args": ["@starknet-agentic/mcp-server@latest"],
+      "env": {
+        "STARKNET_RPC_URL": "${STARKNET_RPC_URL:-https://starknet-sepolia.public.blastapi.io}",
+        "STARKNET_ACCOUNT_ADDRESS": "${STARKNET_ACCOUNT_ADDRESS}",
+        "STARKNET_PRIVATE_KEY": "${STARKNET_PRIVATE_KEY}",
+        "AVNU_PAYMASTER_URL": "${AVNU_PAYMASTER_URL:-https://sepolia.paymaster.avnu.fi}"
+      }
+    }
+  }
+}
+```
+
+### Agent-Initiated Setup
+
+When an agent runs the CLI (detected via `!process.stdin.isTTY` or `--non-interactive`):
+
+```typescript
+interface AgentSetupResult {
+  success: boolean;
+  platform: string;
+  configured: {
+    mcp: string;           // Path to MCP config
+    skills: string[];      // Installed skill names
+  };
+  pendingSetup: {
+    credentials: string[]; // Env vars that need to be set
+  };
+  nextSteps: string[];     // Human-readable instructions
+  verifyCommand: string;   // Command to verify setup
+}
+```
+
+**CLI Flags for Non-Interactive Mode:**
+
+```bash
+npx create-starknet-agent@latest \
+  --non-interactive \           # Skip all prompts
+  --json \                      # Output JSON result
+  --platform openclaw \         # Override detection
+  --skills starknet-wallet,starknet-defi \
+  --network sepolia
+```
+
+### Verification
+
+```bash
+npx create-starknet-agent verify
+```
+
+Checks:
+1. MCP config exists and is valid JSON
+2. MCP server binary is available (`npx @starknet-agentic/mcp-server --version`)
+3. Required environment variables are set (not their values, just existence)
+4. Skills are installed
+5. (Optional) Can reach Starknet RPC and query a balance
+
+---
+
+## Standalone Mode Architecture
+
+**This is the secondary path** for developers building custom agents from scratch.
 
 ### High-Level Architecture
 
@@ -66,7 +232,7 @@ Technical architecture and implementation specification for scaffolded Starknet 
                     └─────────────────────┘                             │
 ```
 
-### Design Principles
+### Design Principles (Standalone Mode)
 
 1. **Single Process Deployment**: Agent, server, and UI run in one process for simplicity
 2. **MCP Sidecar Pattern**: MCP server runs as subprocess, communicating via stdio
@@ -78,9 +244,11 @@ Technical architecture and implementation specification for scaffolded Starknet 
 
 ---
 
-## Project Structure
+## Project Structure (Standalone Mode)
 
 ### Directory Layout
+
+The following structure is generated only in **standalone mode**:
 
 ```
 my-agent/
@@ -1717,6 +1885,8 @@ interface InstallSkillResponse {
 
 ## Security Model
 
+> **Note**: The following applies to both modes. In platform integration mode, security is largely delegated to the host platform (OpenClaw, Claude Code, etc.).
+
 ### Private Key Handling
 
 1. **Storage**: Private keys ONLY in environment variables, never in config files
@@ -1766,7 +1936,9 @@ services:
 
 ---
 
-## Deployment
+## Deployment (Standalone Mode Only)
+
+The following deployment configurations are only relevant for standalone mode. Platform integration mode has no deployment—the host platform handles it.
 
 ### Dockerfile
 
@@ -1873,15 +2045,27 @@ volumes:
 
 ## Open Questions
 
-1. **Session Key Integration**: How should we surface Agent Account session key management in the UI? Should it be a separate page or integrated into settings?
+### Platform Integration Mode
 
-2. **Multi-Provider Fallback**: Should we support automatic fallback between LLM providers (e.g., Claude -> OpenAI if Claude fails)?
+1. **OpenClaw Config Paths**: What are the exact config file locations for OpenClaw/MoltBook? Need to verify `~/.openclaw/` structure.
 
-3. **Skill Versioning**: How should we handle skill version updates? Auto-update, notify user, or manual only?
+2. **Skill Installation Method**: Should we use OpenClaw's native skill installation (`npx skills add`) or install directly? Native is cleaner but adds a dependency.
 
-4. **Plugin System**: Should we allow third-party plugins to extend the UI and agent behavior? If so, what's the sandboxing model?
+3. **Agent Restart Detection**: How do we know when the agent has restarted and loaded the new MCP config? Polling? Webhook?
 
-5. **Hosted Service**: Is there interest in a managed hosting option? How would that affect the architecture?
+4. **Credential Injection**: For agent-initiated setup, how should credentials be provided? Environment variables? Secrets manager integration?
+
+### Standalone Mode
+
+5. **Session Key Integration**: How should we surface Agent Account session key management in the UI? Should it be a separate page or integrated into settings?
+
+6. **Multi-Provider Fallback**: Should we support automatic fallback between LLM providers (e.g., Claude -> OpenAI if Claude fails)?
+
+7. **Skill Versioning**: How should we handle skill version updates? Auto-update, notify user, or manual only?
+
+8. **Plugin System**: Should we allow third-party plugins to extend the UI and agent behavior? If so, what's the sandboxing model?
+
+9. **Hosted Service**: Is there interest in a managed hosting option? How would that affect the architecture?
 
 ---
 

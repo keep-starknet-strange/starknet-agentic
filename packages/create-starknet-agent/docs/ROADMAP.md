@@ -1,16 +1,41 @@
 # create-starknet-agent Roadmap
 
-Feature roadmap for the `create-starknet-agent` CLI scaffolding tool, transforming it from a basic project generator into a complete autonomous agent platform.
+Feature roadmap for the `create-starknet-agent` CLI tool, providing Starknet capabilities to AI agents across all platforms.
 
-> **Vision**: `npx create-starknet-agent@latest my-agent && cd my-agent && pnpm start` launches a fully autonomous Starknet agent with Web UI, MCP tools, configurable skills, and on-chain identity.
+> **Vision**: Any AI agent—whether running on OpenClaw, Claude Code, Daydreams, or a custom runtime—can get Starknet capabilities with a single command. The tool adapts to where you're building.
 
 ---
 
 ## Prompt Initialization
 
-Hey, I am working to implement features for create-starknet-agent from the roadmap. 
+Hey, I am working to implement features for create-starknet-agent from the roadmap.
 After finishing implementing a feature, please provide a concise step-by-step instructions of how I can test it out.
 Let's continue with implementing:
+
+---
+
+## Strategic Direction
+
+### Two User Paths
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│              How to get Starknet for your agent                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Already using OpenClaw/MoltBook/Claude Code?  (PRIMARY PATH)       │
+│  ──────────────────────────────────────────────                     │
+│  → Lightweight integration: skills + MCP config                     │
+│  → No scaffolding needed, just config files                         │
+│  → Agent can self-install via npx create-starknet-agent             │
+│                                                                     │
+│  Building a new agent from scratch?  (SECONDARY PATH)               │
+│  ─────────────────────────────────────                              │
+│  → Full platform scaffold with UI, runtime, skills                  │
+│  → For power users who want complete control                        │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -25,7 +50,9 @@ The CLI currently scaffolds standalone TypeScript projects with 3 templates:
 | `full` | DeFi + ERC-8004 identity client | 1,091 |
 
 **What's Missing**:
-- Web UI for agent chat/management
+- Platform detection and lightweight integration paths
+- Agent-initiated self-setup capability
+- Web UI for agent chat/management (standalone mode)
 - MCP server integration
 - Skill loading/configuration system
 - Autonomous agent loop with event handling
@@ -36,6 +63,286 @@ The CLI currently scaffolds standalone TypeScript projects with 3 templates:
 - Persistence layer (SQLite)
 - Docker deployment
 - Detailed CLAUDE.md for customization
+
+---
+
+# Phase 0: Platform-Aware Setup (HIGH PRIORITY)
+
+Enable the CLI to detect the user's agent platform and provide the appropriate lightweight setup, including agent-initiated installation.
+
+**Definition of Done**: An OpenClaw agent can run `npx create-starknet-agent@latest` and automatically configure itself with Starknet capabilities.
+
+---
+
+### 0.1 Platform Detection System
+
+**Description**: Detect which agent platform the CLI is running inside and adapt behavior accordingly.
+
+**Requirements**:
+- [ ] Create platform detector that checks for:
+  - OpenClaw/MoltBook: `~/.openclaw/`, `moltbook.config.*`, env vars
+  - Claude Code: `CLAUDE_CODE` env var, `.claude/` directory
+  - Cursor: `.cursor/` directory, cursor config files
+  - Daydreams: `daydreams.config.*`, workspace markers
+  - Generic MCP: `mcp.json`, `claude_desktop_config.json`
+  - None detected: Offer standalone scaffold
+- [ ] Return structured platform info:
+  ```typescript
+  interface DetectedPlatform {
+    type: 'openclaw' | 'claude-code' | 'cursor' | 'daydreams' | 'generic-mcp' | 'standalone';
+    configPath: string;        // Where to write MCP config
+    skillsPath?: string;       // Where skills are installed
+    secretsPath?: string;      // Where credentials are stored
+    isAgentInitiated: boolean; // True if CLI was invoked by an agent
+  }
+  ```
+- [ ] Add `--platform <name>` flag to override detection
+- [ ] Add `--detect-only` flag to print detected platform and exit
+
+**Detection Heuristics**:
+```typescript
+// Priority order for detection
+const detectPlatform = (): DetectedPlatform => {
+  // 1. Check explicit env vars (most reliable)
+  if (process.env.OPENCLAW_HOME) return openclawPlatform();
+  if (process.env.CLAUDE_CODE) return claudeCodePlatform();
+
+  // 2. Check config file existence
+  if (existsSync(expandHome('~/.openclaw/'))) return openclawPlatform();
+  if (existsSync('.claude/settings.json')) return claudeCodePlatform();
+  if (existsSync('mcp.json')) return genericMcpPlatform();
+
+  // 3. Check if running non-interactively (likely agent-initiated)
+  if (!process.stdin.isTTY) return { ...genericMcpPlatform(), isAgentInitiated: true };
+
+  // 4. Default to standalone
+  return standalonePlatform();
+};
+```
+
+---
+
+### 0.2 Platform-Specific Wizards
+
+**Description**: Provide tailored setup flows for each detected platform.
+
+**Requirements**:
+- [ ] Create wizard router based on detected platform
+- [ ] Implement OpenClaw/MoltBook wizard:
+  - [ ] Generate MCP server config for `~/.openclaw/mcp/starknet.json`
+  - [ ] Install skills via OpenClaw's skill system
+  - [ ] Create `.env` template or prompt for secrets setup
+  - [ ] Print verification command: "Ask your agent to check your ETH balance"
+- [ ] Implement Claude Code wizard:
+  - [ ] Generate `CLAUDE.md` with skill references
+  - [ ] Add MCP server to Claude Code settings
+  - [ ] Create `.env.example` with required variables
+- [ ] Implement Cursor wizard:
+  - [ ] Configure MCP in Cursor settings
+  - [ ] Add CLAUDE.md for in-editor guidance
+- [ ] Implement generic MCP wizard:
+  - [ ] Generate `mcp.json` or update existing
+  - [ ] Install skills to local directory
+- [ ] Implement standalone wizard:
+  - [ ] Full scaffold (existing Phase 1 behavior)
+  - [ ] Position as "advanced" option
+
+**Interactive Flow**:
+```
+$ npx create-starknet-agent@latest
+
+✓ Detected: OpenClaw (MoltBook)
+
+? What would you like to set up?
+  > Full Starknet integration (MCP + skills) [recommended]
+    MCP server only (I'll manage skills manually)
+    Just install skills (MCP already configured)
+
+? Select skills to install:
+  [x] starknet-wallet (transfers, balances)
+  [x] starknet-defi (swaps, quotes via AVNU)
+  [ ] starknet-identity (ERC-8004 reputation)
+  [ ] starknet-anonymous-wallet (privacy features)
+
+? Network:
+  > Sepolia (testnet) [recommended for testing]
+    Mainnet
+
+Setting up Starknet for OpenClaw...
+✓ MCP server configured at ~/.openclaw/mcp/starknet.json
+✓ Skills installed: starknet-wallet, starknet-defi
+✓ Environment template created at ~/.openclaw/secrets/starknet.env.example
+
+Next steps:
+  1. Add your credentials to ~/.openclaw/secrets/starknet/
+     - STARKNET_PRIVATE_KEY
+     - STARKNET_ACCOUNT_ADDRESS
+     - STARKNET_RPC_URL (optional, defaults to public RPC)
+
+  2. Restart your OpenClaw agent
+
+  3. Try: "What's my ETH balance on Starknet?"
+```
+
+---
+
+### 0.3 Agent-Initiated Setup (Non-Interactive Mode)
+
+**Description**: Enable agents to run the CLI and self-configure without human interaction.
+
+**Requirements**:
+- [ ] Detect non-interactive execution (no TTY, or `--non-interactive` flag)
+- [ ] Accept all configuration via CLI flags:
+  ```bash
+  npx create-starknet-agent@latest \
+    --platform openclaw \
+    --skills starknet-wallet,starknet-defi \
+    --network sepolia \
+    --non-interactive
+  ```
+- [ ] Use sensible defaults when flags not provided:
+  - Platform: auto-detect
+  - Skills: `starknet-wallet` only
+  - Network: `sepolia`
+- [ ] Output machine-readable results (JSON) when `--json` flag provided
+- [ ] Return proper exit codes:
+  - 0: Success
+  - 1: Configuration error
+  - 2: Missing required credentials
+  - 3: Platform not supported
+- [ ] Create setup verification command:
+  ```bash
+  npx create-starknet-agent@latest --verify
+  # Checks: MCP server reachable, credentials valid, can query balance
+  ```
+
+**Agent Self-Setup Flow**:
+```
+User: "I want you to be able to use Starknet"
+
+Agent: I'll set up Starknet capabilities for myself.
+
+*Agent runs:*
+npx create-starknet-agent@latest --non-interactive --json
+
+*Output:*
+{
+  "success": true,
+  "platform": "openclaw",
+  "configured": {
+    "mcp": "~/.openclaw/mcp/starknet.json",
+    "skills": ["starknet-wallet", "starknet-defi"]
+  },
+  "pendingSetup": {
+    "credentials": ["STARKNET_PRIVATE_KEY", "STARKNET_ACCOUNT_ADDRESS"]
+  },
+  "nextSteps": [
+    "Add credentials to ~/.openclaw/secrets/starknet/",
+    "Restart agent to load new MCP server"
+  ]
+}
+
+Agent: Done! I've configured Starknet integration. I can now use these tools:
+- Check balances (ETH, STRK, USDC)
+- Transfer tokens
+- Swap tokens via AVNU
+
+Before I can execute transactions, you'll need to add your wallet credentials.
+Would you like me to walk you through that?
+```
+
+**Implementation Notes**:
+- Check `process.stdin.isTTY` to detect non-interactive mode
+- Use `--json` output for agent parsing
+- Include `pendingSetup` array for things the agent can't do (add private keys)
+- Provide `nextSteps` as human-readable instructions the agent can relay
+
+---
+
+### 0.4 Credential Setup Helpers
+
+**Description**: Provide secure credential setup without exposing private keys in CLI history.
+
+**Requirements**:
+- [ ] Create `npx create-starknet-agent credentials` subcommand
+- [ ] Implement secure input mode (no echo, no history)
+- [ ] Support multiple credential storage backends:
+  - OpenClaw: `~/.openclaw/secrets/starknet/<address>`
+  - Claude Code: `.env` file (gitignored)
+  - Generic: `.env` or environment variables
+- [ ] Validate credentials before saving:
+  - Check address format (0x + 1-64 hex chars)
+  - Check private key format
+  - Optionally verify against RPC (can derive address from key)
+- [ ] Add `--from-env` flag to copy from current environment
+- [ ] Add `--from-argent` / `--from-braavos` with wallet export guide
+
+**Credential Flow**:
+```
+$ npx create-starknet-agent credentials
+
+? Starknet account address: 0x1234...
+? Private key: ********** (hidden)
+
+Validating credentials...
+✓ Address format valid
+✓ Private key format valid
+✓ Account exists on Sepolia (balance: 0.1 ETH)
+
+✓ Credentials saved to ~/.openclaw/secrets/starknet/0x1234.json
+
+Your agent can now execute Starknet transactions.
+```
+
+---
+
+### 0.5 Verification and Health Check
+
+**Description**: Provide commands to verify the setup is working correctly.
+
+**Requirements**:
+- [ ] Create `npx create-starknet-agent verify` subcommand
+- [ ] Check MCP server is configured and reachable
+- [ ] Check credentials are present (not valid—we don't read private keys)
+- [ ] Check skills are installed
+- [ ] Attempt a read-only operation (get balance) to verify end-to-end
+- [ ] Output detailed status report
+- [ ] Return exit code 0 only if fully operational
+
+**Verification Output**:
+```
+$ npx create-starknet-agent verify
+
+Starknet Agent Setup Verification
+══════════════════════════════════
+
+Platform: OpenClaw (MoltBook)
+
+MCP Server
+  ✓ Config exists: ~/.openclaw/mcp/starknet.json
+  ✓ Server binary: @starknet-agentic/mcp-server@1.2.0
+  ✓ Server responds to ping
+
+Credentials
+  ✓ Account address configured: 0x1234...abcd
+  ✓ Private key present (not validated)
+  ✓ RPC URL: https://starknet-sepolia.public.blastapi.io
+
+Skills
+  ✓ starknet-wallet (v1.0.0)
+  ✓ starknet-defi (v1.0.0)
+
+End-to-End Test
+  ✓ Balance query successful
+    ETH: 0.1
+    STRK: 100.0
+
+Status: READY ✓
+
+Your agent can now use Starknet. Try asking:
+  "What's my ETH balance on Starknet?"
+  "Swap 0.01 ETH for STRK"
+```
 
 ---
 
@@ -984,9 +1291,18 @@ Long-term features and community-driven enhancements.
 
 | Phase | Target | Key Deliverables |
 |-------|--------|------------------|
-| **MVP (v1.0)** | Q1-Q2 2026 | Working agent + UI + MCP + skill loading + basic chat |
-| **Enhanced (v1.x)** | Q2-Q3 2026 | Full dashboard, skill marketplace, A2A, Docker, logging |
+| **Platform Integration (v0.5)** | **NOW** | Platform detection, OpenClaw/Claude Code setup, agent self-install, verification |
+| **Standalone MVP (v1.0)** | Q2 2026 | Full scaffold for custom agents: UI + MCP + skill loading + basic chat |
+| **Enhanced (v1.x)** | Q3 2026 | Full dashboard, skill marketplace, A2A, Docker, logging |
 | **Future (v2.0+)** | 2026+ | Multi-agent, plugins, mobile app, advanced security |
+
+### Phase 0 Priority Order
+
+1. **0.1 Platform Detection** — Must detect OpenClaw, Claude Code, Cursor first
+2. **0.3 Agent-Initiated Setup** — Enables the "agent self-install" UX
+3. **0.2 Platform-Specific Wizards** — Human-friendly interactive setup
+4. **0.5 Verification** — Confirm setup works end-to-end
+5. **0.4 Credential Helpers** — Nice-to-have, can use manual setup initially
 
 ---
 
@@ -994,11 +1310,23 @@ Long-term features and community-driven enhancements.
 
 | Feature | Depends On |
 |---------|------------|
+| Platform Detection (0.1) | Knowledge of OpenClaw/Claude Code config file locations |
+| Agent Self-Install (0.3) | `@starknet-agentic/mcp-server` published to npm |
 | MCP Sidecar | `@starknet-agentic/mcp-server` published to npm |
+| Skills Installation | `skills/manifest.json` or individual SKILL.md files in repo |
 | On-chain Identity | ERC-8004 contracts deployed (Sepolia done, Mainnet pending) |
 | A2A Discovery | `@starknet-agentic/a2a` package |
 | Session Keys | Agent Account contract deployed |
 | Skill Marketplace | GitHub API access, skills manifest.json |
+
+### External Platform Documentation Needed
+
+| Platform | Documentation Source | Status |
+|----------|---------------------|--------|
+| OpenClaw/MoltBook | OpenClaw docs, reverse engineering | TODO - need to verify config paths |
+| Claude Code | Anthropic docs, CLI source | Partially known |
+| Cursor | Cursor docs | TODO |
+| Daydreams | Daydreams repo | TODO |
 
 ---
 
@@ -1009,3 +1337,58 @@ Long-term features and community-driven enhancements.
 - `[~]` In progress
 
 *Last updated: 2026-02-11*
+
+---
+
+## Appendix: Agent Self-Install UX Example
+
+This is the target user experience for agent-initiated Starknet setup:
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  User (talking to their OpenClaw agent)                              │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  User: "I want you to be able to use Starknet for DeFi"              │
+│                                                                      │
+│  Agent: I'll set up Starknet capabilities now.                       │
+│                                                                      │
+│  *Agent executes:*                                                   │
+│  npx create-starknet-agent@latest \                                  │
+│    --skills starknet-wallet,starknet-defi \                          │
+│    --network sepolia \                                               │
+│    --non-interactive --json                                          │
+│                                                                      │
+│  Agent: Done! I've configured Starknet integration with these        │
+│         capabilities:                                                │
+│                                                                      │
+│         • Check token balances (ETH, STRK, USDC, USDT)              │
+│         • Transfer tokens to any address                             │
+│         • Swap tokens via AVNU aggregator                            │
+│         • Get swap quotes before executing                           │
+│                                                                      │
+│         Before I can execute transactions, you'll need to add        │
+│         your Starknet wallet credentials. Would you like me to       │
+│         walk you through that?                                       │
+│                                                                      │
+│  User: "Yes"                                                         │
+│                                                                      │
+│  Agent: To set up your wallet:                                       │
+│                                                                      │
+│         1. Open Argent X or Braavos wallet                           │
+│         2. Go to Settings → Export Private Key                       │
+│         3. Run this command and paste when prompted:                 │
+│            npx create-starknet-agent credentials                     │
+│                                                                      │
+│         4. Restart me (or wait 30 seconds for auto-reload)           │
+│                                                                      │
+│         After that, try: "What's my ETH balance on Starknet?"       │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+This flow enables:
+1. **Zero friction** — User describes intent, agent handles setup
+2. **Security** — Private keys never pass through the agent; user enters directly
+3. **Verification** — Agent can confirm setup worked with a balance check
+4. **Progressive disclosure** — Start with read-only, add write access when ready
