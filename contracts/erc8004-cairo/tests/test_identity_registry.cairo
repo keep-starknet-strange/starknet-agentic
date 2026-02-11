@@ -85,6 +85,16 @@ fn compute_legacy_wallet_hash(
     poseidon_hash_span(hash_data.span())
 }
 
+// ============ Constructor Validation Tests ============
+
+#[test]
+#[should_panic(expected: 'Invalid owner')]
+fn test_constructor_zero_owner_reverts() {
+    let contract = declare("IdentityRegistry").unwrap().contract_class();
+    let zero: felt252 = 0;
+    contract.deploy(@array![zero]).unwrap();
+}
+
 // ============ Registration Tests ============
 
 #[test]

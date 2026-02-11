@@ -97,6 +97,27 @@ fn create_and_respond_validation_with_tag(
     stop_cheat_caller_address(validation_address);
 }
 
+// ============ Constructor Validation Tests ============
+
+#[test]
+#[should_panic(expected: 'Invalid owner address')]
+fn test_constructor_zero_owner_reverts() {
+    let identity_contract = declare("IdentityRegistry").unwrap().contract_class();
+    let (identity_address, _) = identity_contract.deploy(@array![owner().into()]).unwrap();
+
+    let validation_contract = declare("ValidationRegistry").unwrap().contract_class();
+    let zero: felt252 = 0;
+    validation_contract.deploy(@array![zero, identity_address.into()]).unwrap();
+}
+
+#[test]
+#[should_panic(expected: 'Invalid registry address')]
+fn test_constructor_zero_identity_registry_reverts() {
+    let validation_contract = declare("ValidationRegistry").unwrap().contract_class();
+    let zero: felt252 = 0;
+    validation_contract.deploy(@array![owner().into(), zero]).unwrap();
+}
+
 // ============ Validation Request Tests ============
 
 #[test]
