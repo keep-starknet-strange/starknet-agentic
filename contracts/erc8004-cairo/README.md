@@ -174,6 +174,43 @@ The following protections **do not exist on-chain** (accepted risk):
 - Off-chain indexers should apply reputation scoring, rate-limit detection, and Sybil filtering before presenting aggregated results.
 - The `response_count` storage tracks per-responder response counts for each feedback entry, enabling off-chain anomaly detection.
 
+## Lifecycle and Trust Model
+
+### Registry Reference Immutability
+
+The `identity_registry` address stored in both ValidationRegistry and ReputationRegistry is **immutable after construction**. It is written exactly once in the constructor and never modified at runtime.
+
+- There is no `set_identity_registry()` function in either contract or trait.
+- The `upgrade()` function (owner-only) replaces the contract implementation via `replace_class`, but does not modify storage state. The identity registry binding survives upgrades.
+
+**Migration strategy**: to point at a new IdentityRegistry deployment, you must deploy a new ValidationRegistry and/or ReputationRegistry instance. There is no in-place re-binding. This is intentional: it prevents a compromised owner from silently redirecting authorization checks to a different registry.
+
+### Agent Wallet Trust Model
+
+`set_agent_wallet` verifies that the proposed wallet can produce a valid SNIP-6 signature over a domain-separated message (binding agent_id, new wallet, current owner, deadline, nonce, chain_id, and registry address). This proves:
+
+1. The caller controls an account at the proposed wallet address.
+2. The signature was produced specifically for this registry on this chain (not replayable cross-registry or cross-chain).
+3. The signature is single-use (nonce consumed after successful set).
+
+**What `set_agent_wallet` does NOT verify**:
+
+- It does not certify that the wallet contract is safe, non-malicious, or correctly implemented.
+- It does not check whether the wallet supports specific token standards or can receive assets.
+- It does not validate the wallet contract's bytecode or class hash.
+
+Operators and integrators should treat `agentWallet` as a verified-control-of-key claim, not a guarantee of implementation safety. UI layers should display appropriate warnings when users interact with agent wallets.
+
+### Operator Guidance
+
+**Upgradeability**: all three registries use OpenZeppelin's `UpgradeableComponent`. The `upgrade()` function is gated by `OwnableComponent` (owner-only). Operators should:
+
+- Use a multisig or governance contract as the owner address, not an EOA.
+- Verify new class hashes via independent audit before calling `upgrade()`.
+- Monitor `Upgraded` events for unauthorized or unexpected upgrades.
+
+**Key management**: the contract owner can call `upgrade()` but cannot modify stored data (agent metadata, feedback, validation responses) outside the defined public API. There is no admin backdoor for data manipulation.
+
 ## Suggested End-to-End Flow
 
 1. Register an agent in the Identity Registry (`register_with_token_uri(...)`) and get an `agent_id`.
