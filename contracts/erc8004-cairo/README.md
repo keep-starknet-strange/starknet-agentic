@@ -124,6 +124,56 @@ The Validation Registry supports:
 - `validation_response(request_hash, response, response_uri, response_hash, tag)` (must be called by the requested validator)
 - Read functions: `get_validation_status`, `get_summary`, `get_agent_validations`, `get_validator_requests`
 
+## Runtime Semantics and Integrator Notes
+
+This section documents behavioral edges that integrators should understand. Each item is either enforced in contract code or explicitly documented here as accepted risk.
+
+### Identity Registry: Reserved Key Policy
+
+The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with this key will revert with `'reserved key'`.
+
+- **Enforcement**: contract-level assertion in `_is_reserved_key()`. No off-chain bypass exists.
+- **Key normalization**: keys are hashed via Poseidon for storage, but comparison is byte-exact. `"agentWallet"` and `"agentwallet"` are different keys -- only the exact string `"agentWallet"` is reserved.
+- **Empty keys**: rejected with `'Empty key'` assertion.
+- **Extensibility**: adding future reserved keys requires a contract upgrade (`replace_class`). There is currently no reserved-key registry or prefix convention beyond `"agentWallet"`.
+
+`agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
+
+### Validation Registry: Overwrite Semantics
+
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. When the designated validator calls `validation_response` again for the same request, the previous response is **silently overwritten**.
+
+- **Intentional**: the `last_update` timestamp tracks when the response was last set, enabling update workflows (e.g., validator re-evaluates after agent fix).
+- **Not accumulative**: there is no history of previous responses for a given request. If audit trails are needed, index `ValidationResponse` events off-chain.
+- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`). Only the response is mutable.
+- **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
+
+### Reputation Registry: Spam and Griefing Tradeoffs
+
+The Reputation Registry has **limited on-chain spam protection** by design. The following protections exist:
+
+| Protection | Mechanism |
+|-----------|-----------|
+| Self-feedback | Blocked. `is_authorized_or_owner(caller, agent_id)` check prevents owners and operators from rating their own agents. |
+| Reentrancy | Guard on `give_feedback`. |
+| Revocation | Only the original submitter can revoke their own feedback. |
+| Response to revoked | Blocked. Cannot `append_response` to revoked feedback. |
+
+The following protections **do not exist on-chain** (accepted risk):
+
+| Risk | Status |
+|------|--------|
+| Rate limiting | No cap on feedback submissions per caller per agent. A single address can submit unlimited feedback entries. |
+| Response caps | No limit on `append_response` calls. Same responder can append unlimited responses to the same feedback entry. |
+| Sybil flooding | No on-chain identity verification for callers beyond address uniqueness. |
+| Time throttling | No cooldown between feedback submissions. |
+
+**Mitigation guidance for integrators**:
+
+- `get_summary()` requires an explicit `client_addresses` list rather than iterating all clients. This is the primary Sybil defense: curate the address list off-chain.
+- Off-chain indexers should apply reputation scoring, rate-limit detection, and Sybil filtering before presenting aggregated results.
+- The `response_count` storage tracks per-responder response counts for each feedback entry, enabling off-chain anomaly detection.
+
 ## Suggested End-to-End Flow
 
 1. Register an agent in the Identity Registry (`register_with_token_uri(...)`) and get an `agent_id`.
