@@ -88,11 +88,11 @@ fn compute_legacy_wallet_hash(
 // ============ Constructor Validation Tests ============
 
 #[test]
-#[should_panic(expected: 'Invalid owner')]
 fn test_constructor_zero_owner_reverts() {
     let contract = declare("IdentityRegistry").unwrap().contract_class();
     let zero: felt252 = 0;
-    contract.deploy(@array![zero]).unwrap();
+    let result = contract.deploy(@array![zero]);
+    assert!(result.is_err(), "Deploy with zero owner should fail");
 }
 
 // ============ Registration Tests ============

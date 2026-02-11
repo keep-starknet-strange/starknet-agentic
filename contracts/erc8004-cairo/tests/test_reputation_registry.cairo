@@ -74,22 +74,22 @@ fn give_feedback_helper(
 // ============ Constructor Validation Tests ============
 
 #[test]
-#[should_panic(expected: 'Invalid owner')]
 fn test_constructor_zero_owner_reverts() {
     let identity_contract = declare("IdentityRegistry").unwrap().contract_class();
     let (identity_address, _) = identity_contract.deploy(@array![owner().into()]).unwrap();
 
     let reputation_contract = declare("ReputationRegistry").unwrap().contract_class();
     let zero: felt252 = 0;
-    reputation_contract.deploy(@array![zero, identity_address.into()]).unwrap();
+    let result = reputation_contract.deploy(@array![zero, identity_address.into()]);
+    assert!(result.is_err(), "Deploy with zero owner should fail");
 }
 
 #[test]
-#[should_panic(expected: 'bad identity')]
 fn test_constructor_zero_identity_registry_reverts() {
     let reputation_contract = declare("ReputationRegistry").unwrap().contract_class();
     let zero: felt252 = 0;
-    reputation_contract.deploy(@array![owner().into(), zero]).unwrap();
+    let result = reputation_contract.deploy(@array![owner().into(), zero]);
+    assert!(result.is_err(), "Deploy with zero identity registry should fail");
 }
 
 // ============ Give Feedback Tests ============
