@@ -153,6 +153,11 @@ deployed_addresses*.json
 .mcp.json
 examples/onboard-agent/onboarding_secrets.json
 
+# Demo receipts (safe, but easy to accidentally commit)
+examples/**/crosschain_receipt.json
+examples/**/onboarding_receipt.json
+examples/**/validation_receipt.json
+
 # Claude Code
 .claude/settings.local.json
 
