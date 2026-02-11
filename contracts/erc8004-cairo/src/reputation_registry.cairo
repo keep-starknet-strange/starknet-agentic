@@ -631,6 +631,195 @@ pub mod ReputationRegistry {
             (clients_arr, indexes_arr, values_arr, decimals_arr, tag1s_arr, tag2s_arr, revoked_arr)
         }
 
+        fn read_all_feedback_paginated(
+            self: @ContractState,
+            agent_id: u256,
+            client_addresses: Span<ContractAddress>,
+            tag1: ByteArray,
+            tag2: ByteArray,
+            include_revoked: bool,
+            client_offset: u32,
+            client_limit: u32,
+            feedback_offset: u64,
+            feedback_limit: u64,
+        ) -> (
+            Array<ContractAddress>,
+            Array<u64>,
+            Array<i128>,
+            Array<u8>,
+            Array<ByteArray>,
+            Array<ByteArray>,
+            Array<bool>,
+            bool,
+        ) {
+            let mut clients_arr: Array<ContractAddress> = ArrayTrait::new();
+            let mut indexes_arr: Array<u64> = ArrayTrait::new();
+            let mut values_arr: Array<i128> = ArrayTrait::new();
+            let mut decimals_arr: Array<u8> = ArrayTrait::new();
+            let mut tag1s_arr: Array<ByteArray> = ArrayTrait::new();
+            let mut tag2s_arr: Array<ByteArray> = ArrayTrait::new();
+            let mut revoked_arr: Array<bool> = ArrayTrait::new();
+
+            // Degenerate window: no scan, caller can advance pagination window.
+            if client_limit == 0 || feedback_limit == 0 {
+                let truncated = if client_addresses.len() > 0 {
+                    client_offset < client_addresses.len()
+                } else {
+                    let client_vec = self.clients.entry(agent_id);
+                    (client_offset.into()) < client_vec.len()
+                };
+
+                return (
+                    clients_arr,
+                    indexes_arr,
+                    values_arr,
+                    decimals_arr,
+                    tag1s_arr,
+                    tag2s_arr,
+                    revoked_arr,
+                    truncated,
+                );
+            }
+
+            let mut truncated = false;
+
+            // If callers provide an explicit client list, paginate over it.
+            if client_addresses.len() > 0 {
+                let mut i: u32 = client_offset;
+                let mut scanned_clients: u32 = 0;
+                while i < client_addresses.len() && scanned_clients < client_limit {
+                    let client = *client_addresses.at(i);
+                    let last_idx = self.last_index.entry((agent_id, client)).read();
+
+                    if feedback_offset < last_idx {
+                        let mut j: u64 = feedback_offset + 1;
+                        let mut scanned_feedbacks: u64 = 0;
+
+                        while j <= last_idx && scanned_feedbacks < feedback_limit {
+                            let fb = self.feedback_core.entry((agent_id, client, j)).read();
+                            let stored_tag1 = self.feedback_tag1.entry((agent_id, client, j)).read();
+                            let stored_tag2 = self.feedback_tag2.entry((agent_id, client, j)).read();
+
+                            // Skip revoked if not included
+                            if !include_revoked && fb.is_revoked {
+                                j += 1;
+                                scanned_feedbacks += 1;
+                                continue;
+                            }
+
+                            // Apply tag filters
+                            if tag1.len() > 0 && stored_tag1 != tag1 {
+                                j += 1;
+                                scanned_feedbacks += 1;
+                                continue;
+                            }
+                            if tag2.len() > 0 && stored_tag2 != tag2 {
+                                j += 1;
+                                scanned_feedbacks += 1;
+                                continue;
+                            }
+
+                            clients_arr.append(client);
+                            indexes_arr.append(j);
+                            values_arr.append(fb.value);
+                            decimals_arr.append(fb.value_decimals);
+                            tag1s_arr.append(stored_tag1);
+                            tag2s_arr.append(stored_tag2);
+                            revoked_arr.append(fb.is_revoked);
+
+                            j += 1;
+                            scanned_feedbacks += 1;
+                        };
+
+                        if j <= last_idx {
+                            truncated = true;
+                        }
+                    }
+
+                    i += 1;
+                    scanned_clients += 1;
+                }
+
+                if i < client_addresses.len() {
+                    truncated = true;
+                }
+            } else {
+                // Otherwise paginate directly over storage client Vec (bounded).
+                let client_vec = self.clients.entry(agent_id);
+                let clients_len = client_vec.len();
+
+                let mut i: u64 = client_offset.into();
+                let mut scanned_clients: u64 = 0;
+                let client_limit_u64: u64 = client_limit.into();
+
+                while i < clients_len && scanned_clients < client_limit_u64 {
+                    let client = client_vec.at(i).read();
+                    let last_idx = self.last_index.entry((agent_id, client)).read();
+
+                    if feedback_offset < last_idx {
+                        let mut j: u64 = feedback_offset + 1;
+                        let mut scanned_feedbacks: u64 = 0;
+
+                        while j <= last_idx && scanned_feedbacks < feedback_limit {
+                            let fb = self.feedback_core.entry((agent_id, client, j)).read();
+                            let stored_tag1 = self.feedback_tag1.entry((agent_id, client, j)).read();
+                            let stored_tag2 = self.feedback_tag2.entry((agent_id, client, j)).read();
+
+                            if !include_revoked && fb.is_revoked {
+                                j += 1;
+                                scanned_feedbacks += 1;
+                                continue;
+                            }
+
+                            if tag1.len() > 0 && stored_tag1 != tag1 {
+                                j += 1;
+                                scanned_feedbacks += 1;
+                                continue;
+                            }
+                            if tag2.len() > 0 && stored_tag2 != tag2 {
+                                j += 1;
+                                scanned_feedbacks += 1;
+                                continue;
+                            }
+
+                            clients_arr.append(client);
+                            indexes_arr.append(j);
+                            values_arr.append(fb.value);
+                            decimals_arr.append(fb.value_decimals);
+                            tag1s_arr.append(stored_tag1);
+                            tag2s_arr.append(stored_tag2);
+                            revoked_arr.append(fb.is_revoked);
+
+                            j += 1;
+                            scanned_feedbacks += 1;
+                        };
+
+                        if j <= last_idx {
+                            truncated = true;
+                        }
+                    }
+
+                    i += 1;
+                    scanned_clients += 1;
+                }
+
+                if i < clients_len {
+                    truncated = true;
+                }
+            }
+
+            (
+                clients_arr,
+                indexes_arr,
+                values_arr,
+                decimals_arr,
+                tag1s_arr,
+                tag2s_arr,
+                revoked_arr,
+                truncated,
+            )
+        }
+
         fn get_response_count(
             self: @ContractState,
             agent_id: u256,

@@ -121,8 +121,22 @@ pub trait IValidationRegistry<TState> {
     /// @notice Get all validation request hashes for an agent
     fn get_agent_validations(self: @TState, agent_id: u256) -> Array<u256>;
 
+    /// @notice Get validation request hashes for an agent (paginated)
+    /// @return (request_hashes, truncated)
+    /// - truncated=true means additional items exist after this page
+    fn get_agent_validations_paginated(
+        self: @TState, agent_id: u256, offset: u64, limit: u64,
+    ) -> (Array<u256>, bool);
+
     /// @notice Get all request hashes created by a validator
     fn get_validator_requests(self: @TState, validator_address: ContractAddress) -> Array<u256>;
+
+    /// @notice Get request hashes created by a validator (paginated)
+    /// @return (request_hashes, truncated)
+    /// - truncated=true means additional items exist after this page
+    fn get_validator_requests_paginated(
+        self: @TState, validator_address: ContractAddress, offset: u64, limit: u64,
+    ) -> (Array<u256>, bool);
 
     /// @notice Check if a request exists
     fn request_exists(self: @TState, request_hash: u256) -> bool;

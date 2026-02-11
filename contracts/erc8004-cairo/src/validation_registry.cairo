@@ -427,6 +427,28 @@ pub mod ValidationRegistry {
             result
         }
 
+        fn get_agent_validations_paginated(
+            self: @ContractState, agent_id: u256, offset: u64, limit: u64,
+        ) -> (Array<u256>, bool) {
+            let mut result = ArrayTrait::new();
+            let vec = self.agent_validations.entry(agent_id);
+            let len = vec.len();
+
+            if offset >= len {
+                return (result, false);
+            }
+
+            let end = if offset + limit < len { offset + limit } else { len };
+
+            let mut i = offset;
+            while i < end {
+                result.append(vec.at(i).read());
+                i += 1;
+            }
+
+            (result, end < len)
+        }
+
         fn get_validator_requests(
             self: @ContractState, validator_address: ContractAddress,
         ) -> Array<u256> {
@@ -440,6 +462,28 @@ pub mod ValidationRegistry {
             }
 
             result
+        }
+
+        fn get_validator_requests_paginated(
+            self: @ContractState, validator_address: ContractAddress, offset: u64, limit: u64,
+        ) -> (Array<u256>, bool) {
+            let mut result = ArrayTrait::new();
+            let vec = self.validator_requests.entry(validator_address);
+            let len = vec.len();
+
+            if offset >= len {
+                return (result, false);
+            }
+
+            let end = if offset + limit < len { offset + limit } else { len };
+
+            let mut i = offset;
+            while i < end {
+                result.append(vec.at(i).read());
+                i += 1;
+            }
+
+            (result, end < len)
         }
 
         fn request_exists(self: @ContractState, request_hash: u256) -> bool {

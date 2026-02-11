@@ -812,6 +812,54 @@ fn test_read_all_feedback_success() {
 }
 
 #[test]
+fn test_read_all_feedback_paginated_limits_work_and_sets_truncated() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // Client 1 gives two feedbacks
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 91, 0, "tag1", "tag2",
+    );
+    // Client 2 gives one feedback
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client2(), 85, 0, "tag1", "tag2",
+    );
+
+    let empty_clients: Span<ContractAddress> = array![].span();
+
+    // First page: only first client, only first feedback index scanned.
+    let (clients_arr, indexes_arr, values_arr, _, _, _, _, truncated) = reputation_registry
+        .read_all_feedback_paginated(
+            agent_id, empty_clients, "", "", false, 0, 1, 0, 1,
+        );
+
+    assert_eq!(clients_arr.len(), 1);
+    assert_eq!(indexes_arr.len(), 1);
+    assert_eq!(values_arr.len(), 1);
+    assert_eq!(*clients_arr.at(0), client());
+    assert_eq!(*indexes_arr.at(0), 1);
+    assert_eq!(*values_arr.at(0), 90);
+    assert(truncated, 'truncated');
+
+    // Full window: all clients, enough feedback scan to include all three entries.
+    let (clients_full, _, values_full, _, _, _, _, truncated_full) = reputation_registry
+        .read_all_feedback_paginated(
+            agent_id, empty_clients, "", "", false, 0, 10, 0, 10,
+        );
+
+    assert_eq!(clients_full.len(), 3);
+    assert_eq!(values_full.len(), 3);
+    assert(!truncated_full, 'not truncated');
+}
+
+#[test]
 fn test_read_all_feedback_excludes_revoked() {
     let (identity_registry, reputation_registry, identity_address, reputation_address) =
         deploy_contracts();
