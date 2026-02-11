@@ -43,7 +43,9 @@ Starknet Agentic provides eight official skills:
 
 Skills are designed to be loaded by AI agents at runtime. The agent reads the skill documentation and uses the provided code patterns to accomplish tasks.
 
-### Method 1: GitHub (Recommended)
+### Method 1: NPX Skills Add (Recommended)
+
+Uses the [Vercel Skills CLI](https://github.com/vercel-labs/skills) to install skills directly into your agent's context.
 
 ```bash
 # Install all skills from the repo
@@ -59,7 +61,7 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 /plugin install starknet-wallet@keep-starknet-strange-starknet-agentic
 ```
 
-### Method 3: Direct Clone
+### Method 3: Direct GitHub Clone
 
 ```bash
 git clone https://github.com/keep-starknet-strange/starknet-agentic.git
