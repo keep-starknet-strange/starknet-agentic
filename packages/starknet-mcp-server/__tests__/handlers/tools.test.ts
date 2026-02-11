@@ -1024,6 +1024,131 @@ describe("MCP Tool Handlers", () => {
     });
   });
 
+  describe("starknet_set_agent_metadata", () => {
+    it("sets metadata and returns tx hash", async () => {
+      mockExecute.mockResolvedValue({ transaction_hash: "0xmeta123" });
+      mockWaitForTransaction.mockResolvedValue({});
+
+      const response = await callTool("starknet_set_agent_metadata", {
+        agent_id: "1",
+        key: "agentName",
+        value: "My Trading Bot",
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.transactionHash).toBe("0xmeta123");
+      expect(result.agentId).toBe("1");
+      expect(result.key).toBe("agentName");
+      expect(result.value).toBe("My Trading Bot");
+
+      expect(mockExecute).toHaveBeenCalled();
+      const callArg = mockExecute.mock.calls[0][0];
+      expect(callArg.entrypoint).toBe("set_metadata");
+      expect(callArg.contractAddress).toBe(mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS);
+    });
+
+    it("rejects reserved agentWallet key", async () => {
+      const response = await callTool("starknet_set_agent_metadata", {
+        agent_id: "1",
+        key: "agentWallet",
+        value: "0xabc",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("agentWallet");
+      expect(result.message).toContain("reserved");
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it("rejects empty key", async () => {
+      const response = await callTool("starknet_set_agent_metadata", {
+        agent_id: "1",
+        key: "",
+        value: "test",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("key is required");
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it("supports gasfree mode", async () => {
+      mockEstimatePaymasterTransactionFee.mockResolvedValue({
+        suggested_max_fee_in_gas_token: "0x0",
+      });
+      mockExecutePaymasterTransaction.mockResolvedValue({
+        transaction_hash: "0xmetapaymaster",
+      });
+      mockWaitForTransaction.mockResolvedValue({});
+
+      const response = await callTool("starknet_set_agent_metadata", {
+        agent_id: "1",
+        key: "capabilities",
+        value: "swap,arbitrage",
+        gasfree: true,
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.transactionHash).toBe("0xmetapaymaster");
+      expect(mockExecutePaymasterTransaction).toHaveBeenCalled();
+    });
+  });
+
+  describe("starknet_get_agent_metadata", () => {
+    it("reads metadata and returns decoded value", async () => {
+      // ByteArray: [data_len, ...data_words, pending_word, pending_word_len]
+      mockCallContract.mockResolvedValue([
+        "0x0",  // data_len = 0
+        "0x4d79205472616469",  // pending_word
+        "0x8",  // pending_word_len
+      ]);
+
+      const response = await callTool("starknet_get_agent_metadata", {
+        agent_id: "1",
+        key: "agentName",
+      });
+
+      const result = parseResponse(response);
+      expect(result.agentId).toBe("1");
+      expect(result.key).toBe("agentName");
+      // The mock stringFromByteArray returns "TEST"
+      expect(result.value).toBe("TEST");
+      expect(result.identityRegistry).toBe(mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS);
+    });
+
+    it("rejects empty key", async () => {
+      const response = await callTool("starknet_get_agent_metadata", {
+        agent_id: "1",
+        key: "",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("key is required");
+      expect(mockCallContract).not.toHaveBeenCalled();
+    });
+
+    it("passes correct entrypoint to contract", async () => {
+      mockCallContract.mockResolvedValue(["0x0", "0x0", "0x0"]);
+
+      await callTool("starknet_get_agent_metadata", {
+        agent_id: "42",
+        key: "status",
+      });
+
+      expect(mockCallContract).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contractAddress: mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS,
+          entrypoint: "get_metadata",
+        })
+      );
+    });
+  });
+
   describe("unknown tool", () => {
     it("returns error for unknown tool", async () => {
       const response = await callTool("unknown_tool", {});
@@ -1100,7 +1225,7 @@ describe("Tool list", () => {
 
     const response = await capturedListHandler();
 
-    expect(response.tools).toHaveLength(10);
+    expect(response.tools).toHaveLength(12);
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_get_balance");
     expect(toolNames).toContain("starknet_get_balances");
@@ -1110,6 +1235,8 @@ describe("Tool list", () => {
     expect(toolNames).toContain("starknet_swap");
     expect(toolNames).toContain("starknet_get_quote");
     expect(toolNames).toContain("starknet_register_agent");
+    expect(toolNames).toContain("starknet_set_agent_metadata");
+    expect(toolNames).toContain("starknet_get_agent_metadata");
     expect(toolNames).toContain("starknet_estimate_fee");
     expect(toolNames).toContain("x402_starknet_sign_payment_required");
   });
@@ -1130,7 +1257,7 @@ describe("Tool list", () => {
     const response = await capturedListHandler();
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_deploy_agent_account");
-    expect(response.tools).toHaveLength(11);
+    expect(response.tools).toHaveLength(13);
 
     delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
   });

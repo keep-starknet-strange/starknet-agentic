@@ -15,6 +15,8 @@
  * - starknet_swap: Execute swaps via avnu
  * - starknet_get_quote: Get swap quotes
  * - starknet_register_agent: Register agent identity (ERC-8004)
+ * - starknet_set_agent_metadata: Set on-chain metadata for an ERC-8004 agent
+ * - starknet_get_agent_metadata: Read on-chain metadata for an ERC-8004 agent
  *
  * Usage:
  *   STARKNET_RPC_URL=... STARKNET_ACCOUNT_ADDRESS=... STARKNET_PRIVATE_KEY=... node dist/index.js
@@ -545,6 +547,56 @@ if (env.ERC8004_IDENTITY_REGISTRY_ADDRESS) {
       required: [],
     },
   });
+
+  tools.push({
+    name: "starknet_set_agent_metadata",
+    description:
+      "Set on-chain metadata for an ERC-8004 agent. Caller must be owner or approved for the agent_id. Standard keys: agentName, agentType, version, model, status, framework, capabilities, a2aEndpoint, moltbookId.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        agent_id: {
+          type: "string",
+          description: "Agent ID (u256 decimal or hex string)",
+        },
+        key: {
+          type: "string",
+          description:
+            "Metadata key (e.g. 'agentName', 'capabilities'). 'agentWallet' is reserved and cannot be set here.",
+        },
+        value: {
+          type: "string",
+          description: "Metadata value to store on-chain",
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas or gas paid in token)",
+          default: false,
+        },
+      },
+      required: ["agent_id", "key", "value"],
+    },
+  });
+
+  tools.push({
+    name: "starknet_get_agent_metadata",
+    description:
+      "Read on-chain metadata for an ERC-8004 agent. Returns the value stored for the given key, or empty string if not set.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        agent_id: {
+          type: "string",
+          description: "Agent ID (u256 decimal or hex string)",
+        },
+        key: {
+          type: "string",
+          description: "Metadata key to read (e.g. 'agentName', 'capabilities')",
+        },
+      },
+      required: ["agent_id", "key"],
+    },
+  });
 }
 
 function parseIdentityRegisteredFromReceipt(
@@ -1069,6 +1121,130 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   transactionHash,
                   identityRegistry: identity,
                   agentId,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "starknet_set_agent_metadata": {
+        if (!env.ERC8004_IDENTITY_REGISTRY_ADDRESS) {
+          throw new Error("ERC8004_IDENTITY_REGISTRY_ADDRESS not configured");
+        }
+
+        const { agent_id, key, value, gasfree = false } = args as {
+          agent_id: string;
+          key: string;
+          value: string;
+          gasfree?: boolean;
+        };
+
+        if (!agent_id) throw new Error("agent_id is required");
+        if (!key || key.length === 0) throw new Error("key is required and must be non-empty");
+        if (key === "agentWallet") throw new Error("'agentWallet' is a reserved key and cannot be set via set_metadata");
+        if (value === undefined || value === null) throw new Error("value is required");
+
+        const identity = parseAddress(
+          "ERC8004_IDENTITY_REGISTRY_ADDRESS",
+          env.ERC8004_IDENTITY_REGISTRY_ADDRESS
+        );
+
+        // agent_id is u256: compile as cairo.uint256
+        const agentIdBigInt = BigInt(agent_id);
+        const calldata = CallData.compile({
+          agent_id: cairo.uint256(agentIdBigInt),
+          key: byteArray.byteArrayFromString(key),
+          value: byteArray.byteArrayFromString(value),
+        });
+
+        const call: Call = {
+          contractAddress: identity,
+          entrypoint: "set_metadata",
+          calldata,
+        };
+
+        const transactionHash = await executeTransaction(call, gasfree);
+        await provider.waitForTransaction(transactionHash, {
+          retries: TX_WAIT_RETRIES,
+          retryInterval: TX_WAIT_INTERVAL_MS,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  transactionHash,
+                  identityRegistry: identity,
+                  agentId: agent_id,
+                  key,
+                  value,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "starknet_get_agent_metadata": {
+        if (!env.ERC8004_IDENTITY_REGISTRY_ADDRESS) {
+          throw new Error("ERC8004_IDENTITY_REGISTRY_ADDRESS not configured");
+        }
+
+        const { agent_id, key } = args as {
+          agent_id: string;
+          key: string;
+        };
+
+        if (!agent_id) throw new Error("agent_id is required");
+        if (!key || key.length === 0) throw new Error("key is required and must be non-empty");
+
+        const identity = parseAddress(
+          "ERC8004_IDENTITY_REGISTRY_ADDRESS",
+          env.ERC8004_IDENTITY_REGISTRY_ADDRESS
+        );
+
+        const agentIdBigInt = BigInt(agent_id);
+        const calldata = CallData.compile({
+          agent_id: cairo.uint256(agentIdBigInt),
+          key: byteArray.byteArrayFromString(key),
+        });
+
+        const result = await provider.callContract({
+          contractAddress: identity,
+          entrypoint: "get_metadata",
+          calldata,
+        });
+
+        // The result is a serialized ByteArray. Parse it back to a string.
+        const resultArray = Array.isArray(result)
+          ? result
+          : (result as Record<string, unknown>).result
+            ? ((result as Record<string, unknown>).result as string[])
+            : [];
+        const value = byteArray.stringFromByteArray({
+          data: resultArray.slice(1, 1 + Number(resultArray[0])).map((v) => BigInt(v)),
+          pending_word: BigInt(resultArray[1 + Number(resultArray[0])] ?? "0"),
+          pending_word_len: Number(resultArray[2 + Number(resultArray[0])] ?? "0"),
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  agentId: agent_id,
+                  key,
+                  value,
+                  identityRegistry: identity,
                 },
                 null,
                 2
