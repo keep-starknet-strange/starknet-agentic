@@ -43,6 +43,14 @@
       "skill_md_path": "skills/starknet-identity/SKILL.md"
     },
     {
+      "description": "Guide for building Starknet applications using starknet.js v9.x SDK. Use when developing Starknet dApps, interacting with smart contracts, managing accounts, handling transactions, estimating fees, integrating browser wallets, or working with Paymaster for sponsored/alternative gas token transactions.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-js",
+      "name": "starknet-js",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-js/SKILL.md",
+      "repo_path": "skills/starknet-js",
+      "skill_md_path": "skills/starknet-js/SKILL.md"
+    },
+    {
       "description": "Simple P2P payments on Starknet. Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC. Like Lightning, but native.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-mini-pay",
       "name": "starknet-mini-pay",
