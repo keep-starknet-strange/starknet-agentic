@@ -15,6 +15,11 @@
  * - starknet_swap: Execute swaps via avnu
  * - starknet_get_quote: Get swap quotes
  * - starknet_build_calls: Build unsigned calls for external signing (Controller, multisig)
+ * - starknet_register_session_key: Register session key on SessionAccount
+ * - starknet_revoke_session_key: Revoke a session key
+ * - starknet_get_session_data: Read session key data (remaining calls, expiry, etc.)
+ * - starknet_build_transfer_calls: Build unsigned ERC-20 transfer calls
+ * - starknet_build_swap_calls: Build unsigned AVNU swap calls (approval + route)
  * - starknet_register_agent: Register agent identity (ERC-8004)
  * - starknet_set_agent_metadata: Set on-chain metadata for an ERC-8004 agent
  * - starknet_get_agent_metadata: Read on-chain metadata for an ERC-8004 agent
@@ -47,7 +52,7 @@ import {
   resolveTokenAddressAsync,
   validateTokensInputAsync,
 } from "./utils.js";
-import { getTokenService, configureTokenServiceProvider, TOKENS } from "./services/index.js";
+import { getTokenService, configureTokenServiceProvider, TOKENS, STATIC_TOKENS } from "./services/index.js";
 import {
   fetchTokenBalance,
   fetchTokenBalances,
@@ -527,6 +532,145 @@ const tools: Tool[] = [
         },
       },
       required: ["paymentRequiredHeader"],
+    },
+  },
+  // ── Session key management tools ────────────────────────────────────
+  {
+    name: "starknet_register_session_key",
+    description:
+      "Register a session key on a SessionAccount (chipi-pay fork). Owner-only operation. The session key gets time-limited, call-count-limited access with optional selector whitelist.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        accountAddress: {
+          type: "string",
+          description: "SessionAccount contract address (0x-prefixed)",
+        },
+        sessionPublicKey: {
+          type: "string",
+          description: "Public key of the session key to register (felt, 0x-prefixed)",
+        },
+        validUntil: {
+          type: "number",
+          description: "Unix timestamp (seconds) when session expires",
+        },
+        maxCalls: {
+          type: "number",
+          description: "Maximum number of transactions allowed for this session",
+        },
+        allowedEntrypoints: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Optional array of allowed function selectors (felt strings). Empty = any non-admin selector on external contracts.",
+          default: [],
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas)",
+          default: false,
+        },
+      },
+      required: ["accountAddress", "sessionPublicKey", "validUntil", "maxCalls"],
+    },
+  },
+  {
+    name: "starknet_revoke_session_key",
+    description:
+      "Revoke a session key from a SessionAccount. Owner-only. Zeroes the session data and clears allowed entrypoints.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        accountAddress: {
+          type: "string",
+          description: "SessionAccount contract address (0x-prefixed)",
+        },
+        sessionPublicKey: {
+          type: "string",
+          description: "Public key of the session key to revoke (felt, 0x-prefixed)",
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas)",
+          default: false,
+        },
+      },
+      required: ["accountAddress", "sessionPublicKey"],
+    },
+  },
+  {
+    name: "starknet_get_session_data",
+    description:
+      "Read session key data from a SessionAccount. Returns valid_until, max_calls, calls_used, and allowed_entrypoints_len.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        accountAddress: {
+          type: "string",
+          description: "SessionAccount contract address (0x-prefixed)",
+        },
+        sessionPublicKey: {
+          type: "string",
+          description: "Public key of the session key to query (felt, 0x-prefixed)",
+        },
+      },
+      required: ["accountAddress", "sessionPublicKey"],
+    },
+  },
+  // ── Domain-specific unsigned call builders ──────────────────────────
+  {
+    name: "starknet_build_transfer_calls",
+    description:
+      "Build unsigned ERC-20 transfer calls. Returns Call[] for external signing (session key, owner, hardware wallet).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tokenAddress: {
+          type: "string",
+          description: "ERC-20 token contract address (0x-prefixed), or token symbol like 'ETH', 'STRK', 'USDC'",
+        },
+        recipientAddress: {
+          type: "string",
+          description: "Recipient address (0x-prefixed)",
+        },
+        amount: {
+          type: "string",
+          description: "Amount to transfer in human-readable units (e.g. '1.5' for 1.5 tokens)",
+        },
+      },
+      required: ["tokenAddress", "recipientAddress", "amount"],
+    },
+  },
+  {
+    name: "starknet_build_swap_calls",
+    description:
+      "Build unsigned swap calls via AVNU. Returns approval + swap Call[] for external signing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sellTokenAddress: {
+          type: "string",
+          description: "Token to sell (address or symbol like 'ETH', 'STRK')",
+        },
+        buyTokenAddress: {
+          type: "string",
+          description: "Token to buy (address or symbol)",
+        },
+        sellAmount: {
+          type: "string",
+          description: "Amount to sell in human-readable units (e.g. '0.1')",
+        },
+        signerAddress: {
+          type: "string",
+          description: "Address of the account that will sign and execute (0x-prefixed)",
+        },
+        slippageBps: {
+          type: "number",
+          description: "Slippage tolerance in basis points (default: 100 = 1%)",
+          default: 100,
+        },
+      },
+      required: ["sellTokenAddress", "buyTokenAddress", "sellAmount", "signerAddress"],
     },
   },
 ];
@@ -1062,6 +1206,336 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   calls: validatedCalls,
                   callCount: validatedCalls.length,
                   note: "Unsigned calls. Pass to account.execute(calls) or write to calls.json for external signing.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      // ── Session key management handlers ────────────────────────────────
+      case "starknet_register_session_key": {
+        const {
+          accountAddress: rawAccountAddr,
+          sessionPublicKey: rawSessionKey,
+          validUntil,
+          maxCalls,
+          allowedEntrypoints: rawEntrypoints = [],
+          gasfree = false,
+        } = args as {
+          accountAddress: string;
+          sessionPublicKey: string;
+          validUntil: number;
+          maxCalls: number;
+          allowedEntrypoints?: string[];
+          gasfree?: boolean;
+        };
+
+        const sessionAccountAddr = parseAddress("accountAddress", rawAccountAddr);
+        const sessionKey = parseFelt("sessionPublicKey", rawSessionKey);
+
+        if (validUntil <= Math.floor(Date.now() / 1000)) {
+          throw new Error("validUntil must be in the future");
+        }
+        if (maxCalls <= 0 || maxCalls > 1_000_000) {
+          throw new Error("maxCalls must be between 1 and 1,000,000");
+        }
+
+        // Validate entrypoints (optional: function selectors as felt strings)
+        const entrypoints = rawEntrypoints.map((ep, i) => {
+          // Allow selector names like "transfer" or hex felts
+          if (ep.startsWith("0x")) {
+            return parseFelt(`allowedEntrypoints[${i}]`, ep).toString();
+          }
+          // Convert function name to selector
+          return hash.getSelectorFromName(ep);
+        });
+
+        const registerCall: Call = {
+          contractAddress: sessionAccountAddr,
+          entrypoint: "add_or_update_session_key",
+          calldata: CallData.compile({
+            session_key: `0x${sessionKey.toString(16)}`,
+            valid_until: validUntil,
+            max_calls: maxCalls,
+            allowed_entrypoints: entrypoints,
+          }),
+        };
+
+        const executeFn = gasfree && isSponsored
+          ? () => account.execute([registerCall], { version: ETransactionVersion.V3 })
+          : () => account.execute([registerCall]);
+
+        const result = await executeFn();
+        await provider.waitForTransaction(result.transaction_hash, {
+          retryInterval: TX_WAIT_INTERVAL_MS,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  transactionHash: result.transaction_hash,
+                  accountAddress: sessionAccountAddr,
+                  sessionPublicKey: `0x${sessionKey.toString(16)}`,
+                  validUntil,
+                  maxCalls,
+                  allowedEntrypoints: entrypoints,
+                  note: "Session key registered. The session key holder can now sign transactions within these constraints.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "starknet_revoke_session_key": {
+        const {
+          accountAddress: rawAccountAddr,
+          sessionPublicKey: rawSessionKey,
+          gasfree = false,
+        } = args as {
+          accountAddress: string;
+          sessionPublicKey: string;
+          gasfree?: boolean;
+        };
+
+        const sessionAccountAddr = parseAddress("accountAddress", rawAccountAddr);
+        const sessionKey = parseFelt("sessionPublicKey", rawSessionKey);
+
+        const revokeCall: Call = {
+          contractAddress: sessionAccountAddr,
+          entrypoint: "revoke_session_key",
+          calldata: CallData.compile({
+            session_key: `0x${sessionKey.toString(16)}`,
+          }),
+        };
+
+        const executeFn = gasfree && isSponsored
+          ? () => account.execute([revokeCall], { version: ETransactionVersion.V3 })
+          : () => account.execute([revokeCall]);
+
+        const result = await executeFn();
+        await provider.waitForTransaction(result.transaction_hash, {
+          retryInterval: TX_WAIT_INTERVAL_MS,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  transactionHash: result.transaction_hash,
+                  accountAddress: sessionAccountAddr,
+                  sessionPublicKey: `0x${sessionKey.toString(16)}`,
+                  note: "Session key revoked. It can no longer sign transactions.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "starknet_get_session_data": {
+        const {
+          accountAddress: rawAccountAddr,
+          sessionPublicKey: rawSessionKey,
+        } = args as {
+          accountAddress: string;
+          sessionPublicKey: string;
+        };
+
+        const sessionAccountAddr = parseAddress("accountAddress", rawAccountAddr);
+        const sessionKey = parseFelt("sessionPublicKey", rawSessionKey);
+
+        const sessionData = await provider.callContract({
+          contractAddress: sessionAccountAddr,
+          entrypoint: "get_session_data",
+          calldata: CallData.compile({
+            session_key: `0x${sessionKey.toString(16)}`,
+          }),
+        });
+
+        // SessionData struct: valid_until (u64), max_calls (u32), calls_used (u32), allowed_entrypoints_len (u32)
+        const validUntil = Number(BigInt(sessionData[0]));
+        const maxCalls = Number(BigInt(sessionData[1]));
+        const callsUsed = Number(BigInt(sessionData[2]));
+        const allowedEntrypointsLen = Number(BigInt(sessionData[3]));
+
+        const isActive = validUntil > 0 && validUntil > Math.floor(Date.now() / 1000) && callsUsed < maxCalls;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  accountAddress: sessionAccountAddr,
+                  sessionPublicKey: `0x${sessionKey.toString(16)}`,
+                  validUntil,
+                  validUntilISO: validUntil > 0 ? new Date(validUntil * 1000).toISOString() : null,
+                  maxCalls,
+                  callsUsed,
+                  callsRemaining: Math.max(0, maxCalls - callsUsed),
+                  allowedEntrypointsLen,
+                  isActive,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      // ── Domain-specific unsigned call builders ──────────────────────────
+      case "starknet_build_transfer_calls": {
+        const {
+          tokenAddress: rawToken,
+          recipientAddress: rawRecipient,
+          amount: rawAmount,
+        } = args as {
+          tokenAddress: string;
+          recipientAddress: string;
+          amount: string;
+        };
+
+        // Resolve token symbol to address if needed
+        const tokenAddress = rawToken.startsWith("0x")
+          ? parseAddress("tokenAddress", rawToken)
+          : await resolveTokenAddressAsync(rawToken);
+
+        const recipientAddress = parseAddress("recipientAddress", rawRecipient);
+
+        // Look up token decimals for human-readable amount conversion
+        const tokenService = getTokenService();
+        const decimals = await tokenService.getDecimalsAsync(tokenAddress);
+        const tokenSymbol = STATIC_TOKENS.find(
+          (t) => t.address.toLowerCase() === tokenAddress.toLowerCase()
+        )?.symbol ?? tokenAddress;
+
+        const amountBigInt = BigInt(
+          Math.round(parseFloat(rawAmount) * 10 ** decimals)
+        );
+
+        // ERC-20 transfer: transfer(recipient, amount_u256_low, amount_u256_high)
+        const calls: Call[] = [
+          {
+            contractAddress: tokenAddress,
+            entrypoint: "transfer",
+            calldata: CallData.compile({
+              recipient: recipientAddress,
+              amount: cairo.uint256(amountBigInt),
+            }),
+          },
+        ];
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  calls,
+                  callCount: calls.length,
+                  token: tokenSymbol,
+                  amount: rawAmount,
+                  recipient: recipientAddress,
+                  note: "Unsigned transfer call. Pass to account.execute(calls) with session key or owner signature.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "starknet_build_swap_calls": {
+        const {
+          sellTokenAddress: rawSellToken,
+          buyTokenAddress: rawBuyToken,
+          sellAmount: rawSellAmount,
+          signerAddress: rawSigner,
+          slippageBps = 100,
+        } = args as {
+          sellTokenAddress: string;
+          buyTokenAddress: string;
+          sellAmount: string;
+          signerAddress: string;
+          slippageBps?: number;
+        };
+
+        const sellTokenAddress = rawSellToken.startsWith("0x")
+          ? parseAddress("sellTokenAddress", rawSellToken)
+          : await resolveTokenAddressAsync(rawSellToken);
+
+        const buyTokenAddress = rawBuyToken.startsWith("0x")
+          ? parseAddress("buyTokenAddress", rawBuyToken)
+          : await resolveTokenAddressAsync(rawBuyToken);
+
+        const signerAddress = parseAddress("signerAddress", rawSigner);
+
+        const swapTokenService = getTokenService();
+        const sellDecimals = await swapTokenService.getDecimalsAsync(sellTokenAddress);
+        const sellAmountBigInt = BigInt(
+          Math.round(parseFloat(rawSellAmount) * 10 ** sellDecimals)
+        );
+
+        // Get quote from AVNU
+        const quoteRequest: QuoteRequest = {
+          sellTokenAddress,
+          buyTokenAddress,
+          sellAmount: sellAmountBigInt,
+          takerAddress: signerAddress,
+        };
+
+        const quotes = await getQuotes(quoteRequest, { baseUrl: env.AVNU_BASE_URL });
+        if (!quotes || quotes.length === 0) {
+          throw new Error("No swap quotes available for this pair/amount");
+        }
+
+        const bestQuote = quotes[0];
+        const slippage = slippageBps / 10000;
+
+        const { calls: swapCalls } = await quoteToCalls({
+          quoteId: bestQuote.quoteId,
+          takerAddress: signerAddress,
+          slippage,
+          executeApprove: true,
+        }, { baseUrl: env.AVNU_BASE_URL });
+
+        const sellSymbol = STATIC_TOKENS.find(
+          (t) => t.address.toLowerCase() === sellTokenAddress.toLowerCase()
+        )?.symbol ?? sellTokenAddress;
+        const buySymbol = STATIC_TOKENS.find(
+          (t) => t.address.toLowerCase() === buyTokenAddress.toLowerCase()
+        )?.symbol ?? buyTokenAddress;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  calls: swapCalls,
+                  callCount: swapCalls.length,
+                  sellToken: sellSymbol,
+                  buyToken: buySymbol,
+                  sellAmount: rawSellAmount,
+                  buyAmount: bestQuote.buyAmount?.toString(),
+                  slippageBps,
+                  signerAddress,
+                  note: "Unsigned swap calls (approval + swap). Pass to account.execute(calls) with session key or owner signature.",
                 },
                 null,
                 2

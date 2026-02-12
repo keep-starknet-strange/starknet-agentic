@@ -1328,7 +1328,7 @@ describe("Tool list", () => {
 
     const response = await capturedListHandler();
 
-    expect(response.tools).toHaveLength(13);
+    expect(response.tools).toHaveLength(18);
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_get_balance");
     expect(toolNames).toContain("starknet_get_balances");
@@ -1338,6 +1338,11 @@ describe("Tool list", () => {
     expect(toolNames).toContain("starknet_swap");
     expect(toolNames).toContain("starknet_get_quote");
     expect(toolNames).toContain("starknet_build_calls");
+    expect(toolNames).toContain("starknet_register_session_key");
+    expect(toolNames).toContain("starknet_revoke_session_key");
+    expect(toolNames).toContain("starknet_get_session_data");
+    expect(toolNames).toContain("starknet_build_transfer_calls");
+    expect(toolNames).toContain("starknet_build_swap_calls");
     expect(toolNames).toContain("starknet_register_agent");
     expect(toolNames).toContain("starknet_set_agent_metadata");
     expect(toolNames).toContain("starknet_get_agent_metadata");
@@ -1361,7 +1366,7 @@ describe("Tool list", () => {
     const response = await capturedListHandler();
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_deploy_agent_account");
-    expect(response.tools).toHaveLength(14);
+    expect(response.tools).toHaveLength(19);
 
     delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
   });
