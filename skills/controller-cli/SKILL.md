@@ -52,9 +52,9 @@ controller --version
 This skill includes a small wrapper that enforces the rules above and normalizes output:
 
 ```bash
-python3 skills/controller-cli/scripts/controller_safe.py status
-python3 skills/controller-cli/scripts/controller_safe.py register --preset loot-survivor --chain-id SN_MAIN
-python3 skills/controller-cli/scripts/controller_safe.py execute 0xCONTRACT entrypoint 0xCALLDATA --rpc-url https://api.cartridge.gg/x/starknet/sepolia
+python3 scripts/controller_safe.py status
+python3 scripts/controller_safe.py register --preset loot-survivor --chain-id SN_MAIN
+python3 scripts/controller_safe.py execute 0xCONTRACT entrypoint 0xCALLDATA --rpc-url https://api.cartridge.gg/x/starknet/sepolia
 ```
 
 Behavior:
@@ -211,6 +211,5 @@ Common recoveries:
 Addresses must be `0x`-prefixed hex.
 
 ```bash
-python3 skills/controller-cli/scripts/validate_hex_address.py 0xabc...
+python3 scripts/validate_hex_address.py 0xabc...
 ```
-
