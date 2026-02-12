@@ -51,6 +51,14 @@
       "skill_md_path": "skills/huginn-onboard/SKILL.md"
     },
     {
+      "description": "Time-lock vault for AI agents on Starknet with secure fund locking and scheduled release functionality. Lock funds for 5 min - 30 days, with owner-only release and emergency cancellation.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/quantum-vault",
+      "name": "quantum-vault",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/quantum-vault/SKILL.md",
+      "repo_path": "skills/quantum-vault",
+      "skill_md_path": "skills/quantum-vault/SKILL.md"
+    },
+    {
       "description": "Create an anonymous Starknet wallet via Typhoon and interact with Starknet contracts. Privacy-focused wallet creation for agents requiring anonymity.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-anonymous-wallet",
       "name": "starknet-anonymous-wallet",
@@ -89,6 +97,14 @@
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-mini-pay/SKILL.md",
       "repo_path": "skills/starknet-mini-pay",
       "skill_md_path": "skills/starknet-mini-pay/SKILL.md"
+    },
+    {
+      "description": "Privacy protocols for Starknet: shielded pools using ZK-SNARKs with Circom and snarkjs. Generates zero-knowledge proofs for confidential transactions.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-privacy",
+      "name": "starknet-privacy",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-privacy/SKILL.md",
+      "repo_path": "skills/starknet-privacy",
+      "skill_md_path": "skills/starknet-privacy/SKILL.md"
     },
     {
       "description": "Create and manage Starknet wallets for AI agents. Transfer tokens, check balances, manage session keys, deploy accounts, and interact with smart contracts using native Account Abstraction.",
