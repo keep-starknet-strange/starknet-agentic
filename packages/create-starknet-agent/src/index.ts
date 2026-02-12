@@ -8,6 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import prompts from "prompts";
 import pc from "picocolors";
 import type {
@@ -938,23 +939,31 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  // Check if we're in JSON mode
-  const isJsonMode = process.argv.includes("--json");
+// Only run main() when this file is executed directly, not when imported
+const __filename = fileURLToPath(import.meta.url);
+const isDirectRun = process.argv[1] === __filename ||
+  process.argv[1]?.endsWith("/create-starknet-agent") ||
+  process.argv[1]?.includes("create-starknet-agent/dist/");
 
-  if (isJsonMode) {
-    console.log(JSON.stringify({
-      success: false,
-      platform: "unknown",
-      configured: {},
-      pendingSetup: { credentials: [] },
-      nextSteps: [],
-      error: error.message,
-      exitCode: EXIT_CODES.CONFIG_ERROR,
-    }, null, 2));
+if (isDirectRun) {
+  main().catch((error) => {
+    // Check if we're in JSON mode
+    const isJsonMode = process.argv.includes("--json");
+
+    if (isJsonMode) {
+      console.log(JSON.stringify({
+        success: false,
+        platform: "unknown",
+        configured: {},
+        pendingSetup: { credentials: [] },
+        nextSteps: [],
+        error: error.message,
+        exitCode: EXIT_CODES.CONFIG_ERROR,
+      }, null, 2));
+      process.exit(EXIT_CODES.CONFIG_ERROR);
+    }
+
+    console.error(pc.red("Error:"), error.message);
     process.exit(EXIT_CODES.CONFIG_ERROR);
-  }
-
-  console.error(pc.red("Error:"), error.message);
-  process.exit(EXIT_CODES.CONFIG_ERROR);
-});
+  });
+}
