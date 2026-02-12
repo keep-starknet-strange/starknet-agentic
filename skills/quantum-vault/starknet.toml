@@ -1,0 +1,8 @@
+# Starknet Configuration
+# For deployment and testing
+
+[starknet-compiler]
+version = "2.8.0"
+
+[contracts]
+# quantum-vault = { account = "user", location = "src/quantum_vault.cairo" }
