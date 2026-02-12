@@ -1,8 +1,6 @@
 ---
 name: starknet-privacy
-description: |
-  Privacy protocols for Starknet: shielded pools using ZK-SNARKs with Circom and snarkjs.
-  Generates zero-knowledge proofs for confidential transactions.
+description: Privacy protocols for Starknet: shielded pools using ZK-SNARKs with Circom and snarkjs. Generates zero-knowledge proofs for confidential transactions.
 version: 2.1.0
 updated: 2026-02-10
 ---
