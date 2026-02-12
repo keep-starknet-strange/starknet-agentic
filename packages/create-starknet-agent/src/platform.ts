@@ -199,8 +199,11 @@ export function detectPlatforms(): DetectedPlatform[] {
     detected.push(createOpenClawPlatform("medium", "moltbook.config.* file"));
   }
 
+  // Check for Claude Code - project-local or user-level
   if (pathExists(".claude/settings.json") || pathExists(".claude/")) {
-    detected.push(createClaudeCodePlatform("medium", ".claude/ directory"));
+    detected.push(createClaudeCodePlatform("medium", ".claude/ directory (project)"));
+  } else if (pathExists("~/.claude/settings.json") || pathExists("~/.claude/")) {
+    detected.push(createClaudeCodePlatform("medium", "~/.claude/ directory (user)"));
   }
 
   if (pathExists(".cursor/")) {
