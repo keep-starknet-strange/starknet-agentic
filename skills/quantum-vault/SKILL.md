@@ -1,3 +1,13 @@
+---
+name: quantum-vault
+description: Time-lock vault for AI agents on Starknet with secure fund locking and scheduled release functionality. Lock funds for 5 min - 30 days, with owner-only release and emergency cancellation.
+license: MIT
+metadata: {"author":"Gaijin-01","version":"1.0.0","org":"keep-starknet-strange"}
+keywords: [starknet, vault, time-lock, security, funds, locking, release, schedule, ai-agents]
+allowed-tools: [Bash, Read, Write, Task]
+user-invocable: true
+---
+
 # Quantum Vault Skill
 
 **Skill ID:** `quantum-vault`  
