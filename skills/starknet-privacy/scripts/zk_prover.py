@@ -319,8 +319,8 @@ async def main():
         "amountPublic": 100,
         "salt": 1111111111,
         "nullifierSecret": 2222222222,
-        "merklePath": [1111111111] * 32,
-        "merkleIndices": [0] * 32
+        "merklePath": [1111111111, 2222222222, 3333333333, 4444444444],
+        "merkleIndices": [0, 0, 0, 1]
     }
     
     witness = pool.generate_witness(input_data)
