@@ -8,13 +8,12 @@ pub trait IQuantumVault<TContractState> {
     fn is_releasable(self: @TContractState) -> bool;
     fn get_status(self: @TContractState) -> QuantumVaultStatus;
 
-    #[generate(trait)]
     fn lock_funds(ref self: TContractState, duration: u64);
     fn release(ref self: TContractState);
     fn cancel(ref self: TContractState);
 }
 
-#[derive(Drop, Copy, Debug, PartialEq, Serde)]
+#[derive(Drop, Copy, Debug, PartialEq, Serde, starknet::Store)]
 pub enum QuantumVaultStatus {
     Unlocked,
     Locked,
@@ -39,7 +38,7 @@ mod QuantumVault {
     }
 
     #[event]
-    #[derive(Drop, Debug, PartialEq)]
+    #[derive(Drop, starknet::Event, Debug, PartialEq)]
     enum Event {
         FundsLocked: FundsLocked,
         FundsReleased: FundsReleased,
@@ -79,7 +78,6 @@ mod QuantumVault {
         self.release_time.write(0);
     }
 
-    #[generate(trait)]
     impl QuantumVaultImpl of IQuantumVault<ContractState> {
         fn get_owner(self: @ContractState) -> ContractAddress {
             self.owner.read()
