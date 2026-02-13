@@ -665,6 +665,8 @@ mod SessionAccount {
             let VALIDATE_SELECTOR: felt252 = selector!("__validate__");
             let VALIDATE_DECLARE_SELECTOR: felt252 = selector!("__validate_declare__");
             let VALIDATE_DEPLOY_SELECTOR: felt252 = selector!("__validate_deploy__");
+            let SET_SPENDING_POLICY_SELECTOR: felt252 = selector!("set_spending_policy");
+            let REMOVE_SPENDING_POLICY_SELECTOR: felt252 = selector!("remove_spending_policy");
 
             let mut i = 0;
             loop {
@@ -686,7 +688,9 @@ mod SessionAccount {
                     || sel == COMPUTE_HASH_SELECTOR
                     || sel == VALIDATE_SELECTOR
                     || sel == VALIDATE_DECLARE_SELECTOR
-                    || sel == VALIDATE_DEPLOY_SELECTOR {
+                    || sel == VALIDATE_DEPLOY_SELECTOR
+                    || sel == SET_SPENDING_POLICY_SELECTOR
+                    || sel == REMOVE_SPENDING_POLICY_SELECTOR {
                     return false;
                 }
                 i += 1;
