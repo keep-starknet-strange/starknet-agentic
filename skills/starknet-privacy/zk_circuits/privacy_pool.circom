@@ -4,8 +4,9 @@
 
 pragma circom 2.0.0;
 
-// Use real Poseidon hash from circomlib
+// Use real Poseidon hash and Mux1 from circomlib
 include "./node_modules/circomlib/circuits/poseidon.circom";
+include "./node_modules/circomlib/circuits/mux1.circom";
 
 template PrivacyPool() {
     // === PUBLIC INPUTS ===
@@ -35,22 +36,24 @@ template PrivacyPool() {
     nullifier === nullifierPublic;
     
     // === STEP 4: Merkle proof using REAL POSEIDON HASHING ===
-    // Properly hashes (left, right) or (right, left) based on position
+    // Use Mux1 selector to avoid branching on signals (soundness fix)
     signal cur;
     cur <== commitment;
     
     component merkleHashers[4];
+    component muxSelectors[4];
+    
     for (var i = 0; i < 4; i++) {
         merkleHashers[i] = Poseidon(2);
-        if (merkleIndices[i] == 0) {
-            // Left child: hash(cur, sibling)
-            merkleHashers[i].inputs[0] <== cur;
-            merkleHashers[i].inputs[1] <== merklePath[i];
-        } else {
-            // Right child: hash(sibling, cur)
-            merkleHashers[i].inputs[0] <== merklePath[i];
-            merkleHashers[i].inputs[1] <== cur;
-        }
+        muxSelectors[i] = Mux1();
+        
+        // muxSelector chooses between (cur, sibling) and (sibling, cur)
+        muxSelectors[i].c[0] <== cur;      // left option
+        muxSelectors[i].c[1] <== merklePath[i];  // right option
+        muxSelectors[i].s <== merkleIndices[i];   // selector (0=left, 1=right)
+        
+        merkleHashers[i].inputs[0] <== muxSelectors[i].out;
+        merkleHashers[i].inputs[1] <== merklePath[i];
         cur <== merkleHashers[i].out;
     }
     

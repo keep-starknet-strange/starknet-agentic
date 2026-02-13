@@ -76,43 +76,6 @@ def generate_witness():
     print(f"\n✅ Witness written to: {input_file}")
     
     return witness
-    
-    print(f"\n=== Generating Proof ===")
-    
-    # Generate proof
-    result = subprocess.run(
-        ["snarkjs", "g16f",
-         str(input_file),
-         str(circuit_dir / "privacy_pool.wasm"),
-         str(circuit_dir / "circuit_final.zkey"),
-         str(circuit_dir / "proof_valid.json"),
-         str(circuit_dir / "public_valid.json")],
-        capture_output=True,
-        text=True
-    )
-    
-    if result.returncode != 0:
-        print(f"❌ Failed: {result.stderr}")
-        return False
-    
-    print("✅ Proof generated")
-    
-    # Verify
-    result = subprocess.run(
-        ["snarkjs", "g16v",
-         str(circuit_dir / "verification_key.json"),
-         str(circuit_dir / "public_valid.json"),
-         str(circuit_dir / "proof_valid.json")],
-        capture_output=True,
-        text=True
-    )
-    
-    if result.returncode == 0:
-        print("✅✅✅ PROOF VERIFIED! ✅✅✅")
-        return True
-    else:
-        print(f"❌ Verification failed: {result.stderr}")
-        return False
 
 
 if __name__ == "__main__":
