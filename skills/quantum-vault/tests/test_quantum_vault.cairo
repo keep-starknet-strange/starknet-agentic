@@ -1,4 +1,4 @@
-use snforge_std::{CheatTarget, CheatSpan, start_cheat_caller_address, stop_cheat_caller_address};
+use snforge_std::{CheatTarget, CheatSpan, start_cheat_caller_address, stop_cheat_caller_address, start_cheat_block_timestamp, stop_cheat_block_timestamp};
 use starknet::ContractAddress;
 use starknet::contract_address_const;
 
@@ -87,12 +87,11 @@ fn test_release_after_timelock() {
     start_cheat_caller_address(CheatTarget::One(vault.contract_address), contract_address_const::<0x123456789>());
     vault.lock_funds(3600);
     
-    // Fast forward time by 3601 seconds
-    start_cheat_caller_address(CheatTarget::One(vault.contract_address), contract_address_const::<0x123456789>());
-    stop_cheat_caller_address(CheatTarget::One(vault.contract_address));
+    // Fast forward time by 3601 seconds to pass timelock
+    start_cheat_block_timestamp(CheatTarget::One(vault.contract_address), get_block_timestamp() + 3601);
     
-    // Note: In real tests, use time manipulation for snforge
     vault.release();
+    stop_cheat_block_timestamp(CheatTarget::One(vault.contract_address));
     stop_cheat_caller_address(CheatTarget::One(vault.contract_address));
 
     assert(vault.get_status() == QuantumVaultStatus::Released, 'WRONG_STATUS');
