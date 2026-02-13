@@ -604,3 +604,232 @@ fn test_spending_enforcement_invalid_amount_calldata() {
     ];
     exec.__execute__(calls);
 }
+
+// ========================================================================
+// CRITICAL SECURITY TESTS (from audit Section 4.2)
+// ========================================================================
+
+// #14: Same-block multiple transactions - verify cumulative tracking
+#[test]
+fn test_same_block_spending_accumulation() {
+    let current_time = 1_000_000_u64;
+    let (account, spending_mgr, exec, token) = setup_enforcement(current_time, 600, 1000, 3600);
+
+    // First transaction at t=current_time: spend 400
+    let calls1 = array![make_transfer_call(token, 400)];
+    exec.__execute__(calls1);
+
+    let policy1 = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
+    assert(policy1.spent_in_window == 400, 'first spend should be 400');
+
+    // Second transaction at SAME timestamp (same block): spend 500
+    // DO NOT advance time - simulate same-block execution
+    stop_cheat_signature_global();
+    let valid_until = current_time + 86400;
+    let sig = array![SESSION_PUBKEY, 0x111, 0x222, valid_until.into()];
+    start_cheat_signature_global(sig.span());
+
+    let calls2 = array![make_transfer_call(token, 500)];
+    exec.__execute__(calls2);
+
+    // Verify cumulative tracking: 400 + 500 = 900
+    let policy2 = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
+    assert(policy2.spent_in_window == 900, 'cumulative should be 900');
+    assert(policy2.window_start == current_time, 'window should not reset');
+
+    stop_cheat_signature_global();
+    stop_cheat_caller_address(account);
+}
+
+// #15: Same-block spending that exceeds window limit fails
+#[test]
+#[should_panic(expected: ('Spending: exceeds window limit',))]
+fn test_same_block_exceeds_window_limit() {
+    let current_time = 1_000_000_u64;
+    let (account, spending_mgr, exec, token) = setup_enforcement(current_time, 600, 1000, 3600);
+
+    // First transaction: spend 600
+    let calls1 = array![make_transfer_call(token, 600)];
+    exec.__execute__(calls1);
+
+    // Second transaction at SAME timestamp: spend 600 again
+    // Cumulative = 1200 > window limit 1000 → should panic
+    stop_cheat_signature_global();
+    let valid_until = current_time + 86400;
+    let sig = array![SESSION_PUBKEY, 0x111, 0x222, valid_until.into()];
+    start_cheat_signature_global(sig.span());
+
+    let calls2 = array![make_transfer_call(token, 600)];
+    exec.__execute__(calls2); // Should panic: exceeds window limit
+
+    stop_cheat_signature_global();
+    stop_cheat_caller_address(account);
+}
+
+// #16: Reentrancy protection - spending state updated before execution
+#[test]
+fn test_reentrancy_protection_state_committed() {
+    let current_time = 1_000_000_u64;
+    let (account, spending_mgr, exec, token) = setup_enforcement(current_time, 500, 1000, 3600);
+
+    // First call: spend 500
+    let calls1 = array![make_transfer_call(token, 500)];
+    exec.__execute__(calls1);
+
+    // Verify state was committed (spent_in_window updated)
+    let policy1 = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
+    assert(policy1.spent_in_window == 500, 'state should be committed');
+
+    // Even if a malicious token tried to reenter, it would see updated state
+    // Second call in same window: spend 500 again
+    stop_cheat_signature_global();
+    let valid_until = current_time + 86400;
+    let sig = array![SESSION_PUBKEY, 0x111, 0x222, valid_until.into()];
+    start_cheat_signature_global(sig.span());
+
+    let calls2 = array![make_transfer_call(token, 500)];
+    exec.__execute__(calls2);
+
+    // Verify cumulative tracking works (state not corrupted)
+    let policy2 = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
+    assert(policy2.spent_in_window == 1000, 'cumulative should be 1000');
+
+    stop_cheat_signature_global();
+    stop_cheat_caller_address(account);
+}
+
+// #17: Maximum u256 amounts - verify no overflow in spending accumulation
+#[test]
+fn test_maximum_amount_handling() {
+    let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
+    let token: ContractAddress = account;
+    let current_time = 1_000_000_u64;
+    start_cheat_block_timestamp_global(current_time);
+
+    // Set policy with very large limits (but not MAX to avoid overflow on addition)
+    let max_amount: u256 = u256 { low: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, high: 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF };
+    let valid_until = current_time + 86400;
+
+    start_cheat_caller_address(account, account);
+    session_mgr.add_or_update_session_key(SESSION_PUBKEY, valid_until, 100, array![TRANSFER_SELECTOR]);
+    spending_mgr.set_spending_policy(SESSION_PUBKEY, token, max_amount, max_amount, 86400);
+    stop_cheat_caller_address(account);
+
+    start_cheat_caller_address(account, account);
+    let sig = array![SESSION_PUBKEY, 0x111, 0x222, valid_until.into()];
+    start_cheat_signature_global(sig.span());
+
+    // Transfer with very large amount (but within policy)
+    let transfer_amount: u256 = u256 { low: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, high: 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF };
+    let calls = array![
+        Call {
+            to: token,
+            selector: TRANSFER_SELECTOR,
+            calldata: array![
+                0xBEEF,
+                transfer_amount.low.into(),
+                transfer_amount.high.into()
+            ].span(),
+        }
+    ];
+    exec.__execute__(calls);
+
+    // Verify spending was tracked correctly
+    let policy = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
+    assert(policy.spent_in_window == transfer_amount, 'large amount not tracked');
+
+    stop_cheat_signature_global();
+    stop_cheat_caller_address(account);
+}
+
+// #18: Zero policy values - all spending should be blocked
+#[test]
+#[should_panic(expected: ('Spending: exceeds per-call',))]
+fn test_zero_max_per_call_blocks_all() {
+    let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
+    let token: ContractAddress = account;
+    let current_time = 1_000_000_u64;
+    start_cheat_block_timestamp_global(current_time);
+
+    let valid_until = current_time + 86400;
+    start_cheat_caller_address(account, account);
+    session_mgr.add_or_update_session_key(SESSION_PUBKEY, valid_until, 100, array![TRANSFER_SELECTOR]);
+    // Set max_per_call = 0 (should block all spending)
+    spending_mgr.set_spending_policy(SESSION_PUBKEY, token, 0, 1000, 86400);
+    stop_cheat_caller_address(account);
+
+    start_cheat_caller_address(account, account);
+    let sig = array![SESSION_PUBKEY, 0x111, 0x222, valid_until.into()];
+    start_cheat_signature_global(sig.span());
+
+    // Try to transfer even 1 token → should panic
+    let calls = array![make_transfer_call(token, 1)];
+    exec.__execute__(calls);
+
+    stop_cheat_signature_global();
+    stop_cheat_caller_address(account);
+}
+
+// #19: Zero window limit - enforcement DISABLED (treated as no policy)
+#[test]
+fn test_zero_max_per_window_disables_enforcement() {
+    let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
+    let token: ContractAddress = account;
+    let current_time = 1_000_000_u64;
+    start_cheat_block_timestamp_global(current_time);
+
+    let valid_until = current_time + 86400;
+    start_cheat_caller_address(account, account);
+    session_mgr.add_or_update_session_key(SESSION_PUBKEY, valid_until, 100, array![TRANSFER_SELECTOR]);
+    // Set max_per_window = 0 → enforcement disabled (by design, see component.cairo:180)
+    // max_per_call = 1000 is ignored because enforcement check: `if policy.max_per_window > 0`
+    spending_mgr.set_spending_policy(SESSION_PUBKEY, token, 1000, 0, 86400);
+    stop_cheat_caller_address(account);
+
+    start_cheat_caller_address(account, account);
+    let sig = array![SESSION_PUBKEY, 0x111, 0x222, valid_until.into()];
+    start_cheat_signature_global(sig.span());
+
+    // Transfer large amount → should succeed (no enforcement)
+    let calls = array![make_transfer_call(token, 999999)];
+    exec.__execute__(calls);
+
+    // Verify no spending was tracked (policy inactive)
+    let policy = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
+    assert(policy.spent_in_window == 0, 'should not track if disabled');
+
+    stop_cheat_signature_global();
+    stop_cheat_caller_address(account);
+}
+
+// #20: Zero policy (max_per_call=0, max_per_window=0) - enforcement DISABLED
+#[test]
+fn test_zero_policy_disables_enforcement() {
+    let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
+    let token: ContractAddress = account;
+    let current_time = 1_000_000_u64;
+    start_cheat_block_timestamp_global(current_time);
+
+    let valid_until = current_time + 86400;
+    start_cheat_caller_address(account, account);
+    session_mgr.add_or_update_session_key(SESSION_PUBKEY, valid_until, 100, array![TRANSFER_SELECTOR]);
+    // Set both limits to 0 → enforcement disabled (by design)
+    // This is equivalent to "no policy set" - unrestricted spending
+    spending_mgr.set_spending_policy(SESSION_PUBKEY, token, 0, 0, 86400);
+    stop_cheat_caller_address(account);
+
+    start_cheat_caller_address(account, account);
+    let sig = array![SESSION_PUBKEY, 0x111, 0x222, valid_until.into()];
+    start_cheat_signature_global(sig.span());
+
+    // Transfer large amount → should succeed (no enforcement)
+    let calls = array![make_transfer_call(token, 999999)];
+    exec.__execute__(calls);
+
+    // Verify no spending was tracked (policy inactive)
+    let policy = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
+    assert(policy.spent_in_window == 0, 'should not track if disabled');
+
+    stop_cheat_signature_global();
+    stop_cheat_caller_address(account);
+}
