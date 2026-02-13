@@ -66,6 +66,7 @@ mod SessionAccount {
     use core::array::SpanTrait;
     use core::traits::Into;
     use core::num::traits::Zero;
+    use crate::spending_policy::component::SpendingPolicyComponent;
 
     // ── SNIP-12 type hashes ──────────────────────────────────────────────
     const OUTSIDE_EXECUTION_TYPE_HASH_REV1: felt252 =
@@ -81,6 +82,11 @@ mod SessionAccount {
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
     component!(path: SRC9Component, storage: src9, event: SRC9Event);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+    component!(
+        path: SpendingPolicyComponent,
+        storage: spending_policy,
+        event: SpendingPolicyEvent
+    );
 
     #[abi(embed_v0)]
     impl PublicKeyImpl = AccountComponent::PublicKeyImpl<ContractState>;
@@ -88,6 +94,9 @@ mod SessionAccount {
     impl PublicKeyCamelImpl = AccountComponent::PublicKeyCamelImpl<ContractState>;
     #[abi(embed_v0)]
     impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
+    #[abi(embed_v0)]
+    impl SessionSpendingPolicyImpl =
+        SpendingPolicyComponent::SessionSpendingPolicyImpl<ContractState>;
     impl AccountInternalImpl = AccountComponent::InternalImpl<ContractState>;
     impl SRC5InternalImpl = SRC5Component::InternalImpl<ContractState>;
     // Custom __validate__ — do not embed AccountComponent::SRC6Impl or SRC9Component::SRC6Impl
@@ -96,6 +105,16 @@ mod SessionAccount {
 
     // Custom SRC9 impl — enforces session whitelist before execution.
     impl SRC9InternalImpl = SRC9Component::InternalImpl<ContractState>;
+
+    impl SpendingPolicyInternalImpl =
+        SpendingPolicyComponent::InternalImpl<ContractState>;
+
+    impl SpendingPolicyHasAccountOwnerImpl of
+        SpendingPolicyComponent::HasAccountOwner<ContractState> {
+        fn assert_only_self(self: @ContractState) {
+            self.account.assert_only_self();
+        }
+    }
 
     impl SNIP12MetadataImpl of SNIP12Metadata {
         fn name() -> felt252 {
@@ -125,6 +144,8 @@ mod SessionAccount {
         src9: SRC9Component::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
+        #[substorage(v0)]
+        spending_policy: SpendingPolicyComponent::Storage,
         session_keys: Map<felt252, SessionData>,
         session_entrypoints: Map<(felt252, u32), felt252>,
         agent_id: felt252,
@@ -142,6 +163,8 @@ mod SessionAccount {
         SRC9Event: SRC9Component::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+        #[flat]
+        SpendingPolicyEvent: SpendingPolicyComponent::Event,
         SessionKeyAdded: SessionKeyAdded,
         SessionKeyRevoked: SessionKeyRevoked,
         AgentIdSet: AgentIdSet,
