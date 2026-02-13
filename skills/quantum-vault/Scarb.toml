@@ -1,0 +1,11 @@
+[package]
+name = "quantum-vault"
+version = "1.0.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = "2.8.0"
+
+[[target.starknet-contract]]
+sierra = true
+casm = true
