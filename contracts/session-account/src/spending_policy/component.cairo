@@ -191,7 +191,7 @@ pub mod SpendingPolicyComponent {
                         assert(amount <= policy.max_per_call, 'Spending: exceeds per-call');
 
                         // Auto-reset window if expired
-                        if now >= policy.window_start + policy.window_seconds.into() {
+                        if now > policy.window_start + policy.window_seconds.into() {
                             policy.spent_in_window = 0;
                             policy.window_start = now;
                         }

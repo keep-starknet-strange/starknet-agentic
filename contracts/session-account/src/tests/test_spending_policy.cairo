@@ -336,6 +336,42 @@ fn test_enforcement_window_auto_reset() {
     assert(policy2.window_start == new_time, 'window_start should update');
 }
 
+// #4b: Window boundary attack - spending at exact boundary should NOT reset window
+#[test]
+#[should_panic(expected: ('Spending: exceeds window limit',))]
+fn test_window_boundary_prevents_double_spend() {
+    let current_time = 1_000_000_u64;
+    let window_seconds = 3600_u64;
+    let (account, spending_mgr, exec, token) = setup_enforcement(current_time, 1000, 1000, window_seconds);
+
+    // First batch: spend exactly max_per_window at boundary
+    let boundary_time = current_time + window_seconds;
+    stop_cheat_signature_global();
+    start_cheat_block_timestamp_global(boundary_time);
+    let valid_until = current_time + 86400;
+    let sig = array![SESSION_PUBKEY, 0x111, 0x222, valid_until.into()];
+    start_cheat_signature_global(sig.span());
+
+    let calls1 = array![make_transfer_call(token, 1000)];
+    exec.__execute__(calls1);
+
+    let policy1 = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
+    assert(policy1.spent_in_window == 1000, 'spent should be 1000');
+    assert(policy1.window_start == current_time, 'window should NOT reset yet');
+
+    // Attack: try to spend again at exact same time (should FAIL with > fix)
+    // With >= this would reset window and allow double-spend
+    // With > this correctly panics
+    stop_cheat_signature_global();
+    start_cheat_signature_global(sig.span());
+
+    let calls2 = array![make_transfer_call(token, 1000)];
+    exec.__execute__(calls2); // Should panic: exceeds window limit
+
+    stop_cheat_signature_global();
+    stop_cheat_caller_address(account);
+}
+
 // #5: No policy set → huge transfer passes, no state written
 #[test]
 fn test_enforcement_no_policy_unrestricted() {
