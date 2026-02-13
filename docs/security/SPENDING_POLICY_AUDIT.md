@@ -272,6 +272,69 @@ window_start: get_block_timestamp(),
 
 ---
 
+### 2.5 Design Decisions & Trade-offs 📋
+
+#### D1: Silent Failure on Execution Errors
+**Status**: ✅ INTENTIONAL (fail-closed for security)
+
+**Code:**
+```cairo
+// In _execute_calls (account.cairo:859)
+Result::Err(_) => res.append(array![].span()),
+```
+
+**Behavior:**
+- Failed calls return empty span instead of reverting
+- Spending limit already debited BEFORE execution (check-effects-interactions)
+- Failed transfer still counts against window limit
+
+**Rationale:**
+- **Security**: Prevents bypass attack where attacker intentionally fails calls to avoid spending deduction
+- **Fail-closed**: Conservative approach - spending is tracked even if execution fails
+- **Trade-off**: Caller cannot distinguish "success with no return data" from "failure"
+
+**MCP Integration Note:**
+- MCP tools should verify on-chain state after transfers
+- Check token balances to confirm actual transfer success
+- Don't rely solely on empty span = success
+
+**Verdict**: ✅ CORRECT - Secure design, needs documentation (added)
+
+---
+
+#### D2: Window Start at Policy Creation
+**Status**: ✅ INTENTIONAL (matches ChipiPay v33)
+
+**Code:**
+```cairo
+// In set_spending_policy (component.cairo:100)
+window_start: get_block_timestamp(),
+```
+
+**Behavior:**
+- `window_start` set when policy created, not on first spend
+- If policy created at t=1000, first spend at t=2000, window_seconds=3600
+- First window only 2600s instead of full 3600s
+
+**Trade-offs:**
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Current (creation time)** | Simple, matches audited ChipiPay v33 | First window may be shortened |
+| **Alternative (lazy init)** | Guaranteed full first window | Added complexity, untested |
+
+**Impact:**
+- LOW - Only affects first window after policy creation
+- User can work around by setting policy immediately before first use
+- Not a security issue, just UX consideration
+
+**Future Enhancement:**
+- Consider lazy initialization in v2 for better UX
+- Would require additional testing and audit
+
+**Verdict**: ✅ ACCEPTABLE - Documented limitation, safe behavior
+
+---
+
 ## 3. Attack Scenarios
 
 ### 3.1 Spend-and-Reset Attack

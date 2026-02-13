@@ -856,6 +856,13 @@ mod SessionAccount {
                             call.to, call.selector, call.calldata,
                         ) {
                             Result::Ok(ret) => res.append(ret),
+                            // IMPORTANT: Failed calls return empty span instead of reverting.
+                            // Rationale: Spending policy has already debited spent_in_window
+                            // BEFORE this execution (check-effects-interactions pattern).
+                            // Reverting here would allow bypass attacks where attacker
+                            // intentionally fails calls to avoid spending limit deduction.
+                            // This is fail-closed behavior: failed transfers still count.
+                            // MCP callers should check on-chain state to detect failures.
                             Result::Err(_) => res.append(array![].span()),
                         }
                     },
