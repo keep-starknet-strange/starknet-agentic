@@ -844,7 +844,7 @@ mod SessionAccount {
             )
         }
 
-        /// Execute calls. Reverts on any sub-call failure.
+        /// Execute calls. Returns empty span for failed calls (doesn't revert entire batch).
         fn _execute_calls(
             ref self: ContractState, mut calls: Array<Call>,
         ) -> Array<Span<felt252>> {
@@ -856,9 +856,7 @@ mod SessionAccount {
                             call.to, call.selector, call.calldata,
                         ) {
                             Result::Ok(ret) => res.append(ret),
-                            Result::Err(err) => {
-                                panic(err)
-                            },
+                            Result::Err(_) => res.append(array![].span()),
                         }
                     },
                     Option::None => { break; },
