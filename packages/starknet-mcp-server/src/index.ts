@@ -21,6 +21,7 @@
  *
  * Usage:
  *   STARKNET_RPC_URL=... STARKNET_ACCOUNT_ADDRESS=... STARKNET_PRIVATE_KEY=... node dist/index.js
+ *   STARKNET_RPC_URL=... STARKNET_ACCOUNT_ADDRESS=... STARKNET_SIGNER_MODE=proxy KEYRING_PROXY_URL=... KEYRING_HMAC_SECRET=... node dist/index.js
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -60,17 +61,26 @@ import {
 import { z } from "zod";
 import { createStarknetPaymentSignatureHeader } from "@starknet-agentic/x402-starknet";
 import { formatAmount, formatQuoteFields, formatErrorMessage } from "./utils/formatter.js";
+import { KeyringProxySigner } from "./helpers/keyringProxySigner.js";
 
 // Environment validation
 const envSchema = z.object({
   STARKNET_RPC_URL: z.string().url(),
   STARKNET_ACCOUNT_ADDRESS: z.string().startsWith("0x"),
-  STARKNET_PRIVATE_KEY: z.string().startsWith("0x"),
+  STARKNET_SIGNER_MODE: z.enum(["direct", "proxy"]).optional(),
+  STARKNET_PRIVATE_KEY: z.string().startsWith("0x").optional(),
   AVNU_BASE_URL: z.string().url().optional(),
   AVNU_PAYMASTER_URL: z.string().url().optional(),
   AVNU_PAYMASTER_API_KEY: z.string().optional(),
   AGENT_ACCOUNT_FACTORY_ADDRESS: z.string().startsWith("0x").optional(),
   ERC8004_IDENTITY_REGISTRY_ADDRESS: z.string().startsWith("0x").optional(),
+  KEYRING_PROXY_URL: z.string().url().optional(),
+  KEYRING_HMAC_SECRET: z.string().min(1).optional(),
+  KEYRING_CLIENT_ID: z.string().min(1).optional(),
+  KEYRING_SIGNING_KEY_ID: z.string().min(1).optional(),
+  KEYRING_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+  KEYRING_SESSION_VALIDITY_SECONDS: z.coerce.number().int().positive().optional(),
+  NODE_ENV: z.string().optional(),
 });
 
 const isSepoliaRpc = (process.env.STARKNET_RPC_URL || "").toLowerCase().includes("sepolia");
@@ -84,13 +94,48 @@ const defaultAvnuPaymasterUrl = isSepoliaRpc
 const env = envSchema.parse({
   STARKNET_RPC_URL: process.env.STARKNET_RPC_URL,
   STARKNET_ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS,
+  STARKNET_SIGNER_MODE: process.env.STARKNET_SIGNER_MODE,
   STARKNET_PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY,
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || defaultAvnuApiUrl,
   AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || defaultAvnuPaymasterUrl,
   AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
   AGENT_ACCOUNT_FACTORY_ADDRESS: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
   ERC8004_IDENTITY_REGISTRY_ADDRESS: process.env.ERC8004_IDENTITY_REGISTRY_ADDRESS,
+  KEYRING_PROXY_URL: process.env.KEYRING_PROXY_URL,
+  KEYRING_HMAC_SECRET: process.env.KEYRING_HMAC_SECRET,
+  KEYRING_CLIENT_ID: process.env.KEYRING_CLIENT_ID,
+  KEYRING_SIGNING_KEY_ID: process.env.KEYRING_SIGNING_KEY_ID,
+  KEYRING_REQUEST_TIMEOUT_MS: process.env.KEYRING_REQUEST_TIMEOUT_MS,
+  KEYRING_SESSION_VALIDITY_SECONDS: process.env.KEYRING_SESSION_VALIDITY_SECONDS,
+  NODE_ENV: process.env.NODE_ENV,
 });
+
+const signerMode = env.STARKNET_SIGNER_MODE ?? "direct";
+const runtimeEnvironment = (env.NODE_ENV || "development").toLowerCase();
+const isProductionRuntime = runtimeEnvironment === "production";
+
+if (isProductionRuntime && signerMode !== "proxy") {
+  throw new Error(
+    "Production mode requires STARKNET_SIGNER_MODE=proxy to prevent in-process private key signing"
+  );
+}
+
+if (signerMode === "direct" && !env.STARKNET_PRIVATE_KEY) {
+  throw new Error("Missing STARKNET_PRIVATE_KEY for STARKNET_SIGNER_MODE=direct");
+}
+
+if (signerMode === "proxy") {
+  if (!env.KEYRING_PROXY_URL || !env.KEYRING_HMAC_SECRET) {
+    throw new Error(
+      "Missing keyring proxy configuration for STARKNET_SIGNER_MODE=proxy (KEYRING_PROXY_URL, KEYRING_HMAC_SECRET)"
+    );
+  }
+  if (isProductionRuntime && env.STARKNET_PRIVATE_KEY) {
+    throw new Error(
+      "STARKNET_PRIVATE_KEY must not be set in production when STARKNET_SIGNER_MODE=proxy"
+    );
+  }
+}
 
 // Initialize Starknet provider and account
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
@@ -104,10 +149,23 @@ const paymaster = new PaymasterRpc({
     : {},
 });
 
+const accountSigner =
+  signerMode === "proxy"
+    ? new KeyringProxySigner({
+        proxyUrl: env.KEYRING_PROXY_URL!,
+        hmacSecret: env.KEYRING_HMAC_SECRET!,
+        clientId: env.KEYRING_CLIENT_ID || "starknet-mcp-server",
+        accountAddress: env.STARKNET_ACCOUNT_ADDRESS,
+        requestTimeoutMs: env.KEYRING_REQUEST_TIMEOUT_MS ?? 5_000,
+        sessionValiditySeconds: env.KEYRING_SESSION_VALIDITY_SECONDS ?? 300,
+        keyId: env.KEYRING_SIGNING_KEY_ID,
+      })
+    : env.STARKNET_PRIVATE_KEY!;
+
 const account = new Account({
   provider,
   address: env.STARKNET_ACCOUNT_ADDRESS,
-  signer: env.STARKNET_PRIVATE_KEY,
+  signer: accountSigner,
   transactionVersion: ETransactionVersion.V3,
   paymaster,
 });
@@ -514,7 +572,10 @@ const tools: Tool[] = [
       required: ["calls"],
     },
   },
-  {
+];
+
+if (signerMode === "direct") {
+  tools.push({
     name: "x402_starknet_sign_payment_required",
     description:
       "Sign a base64 PAYMENT-REQUIRED header containing Starknet typedData, return a base64 PAYMENT-SIGNATURE header value.",
@@ -528,8 +589,8 @@ const tools: Tool[] = [
       },
       required: ["paymentRequiredHeader"],
     },
-  },
-];
+  });
+}
 
 if (env.AGENT_ACCOUNT_FACTORY_ADDRESS) {
   tools.push({
@@ -1075,6 +1136,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { paymentRequiredHeader } = args as {
           paymentRequiredHeader: string;
         };
+
+        if (signerMode === "proxy") {
+          throw new Error(
+            "x402_starknet_sign_payment_required is disabled in STARKNET_SIGNER_MODE=proxy (requires direct private key signing)"
+          );
+        }
 
         if (!env.STARKNET_RPC_URL || !env.STARKNET_ACCOUNT_ADDRESS || !env.STARKNET_PRIVATE_KEY) {
           throw new Error(

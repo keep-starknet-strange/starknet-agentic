@@ -12,8 +12,12 @@ const TOKENS = {
 const mockEnv = {
   STARKNET_RPC_URL: "https://starknet-sepolia.example.com",
   STARKNET_ACCOUNT_ADDRESS: "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  STARKNET_SIGNER_MODE: "direct",
   // Non-secret placeholder; tests only require a syntactically-valid string.
   STARKNET_PRIVATE_KEY: "0x1",
+  KEYRING_PROXY_URL: "http://127.0.0.1:8545",
+  KEYRING_HMAC_SECRET: "test-hmac-secret",
+  KEYRING_CLIENT_ID: "mcp-test-suite",
   AVNU_BASE_URL: "https://sepolia.api.avnu.fi",
   AVNU_PAYMASTER_URL: "https://sepolia.paymaster.avnu.fi",
   ERC8004_IDENTITY_REGISTRY_ADDRESS:
@@ -28,18 +32,19 @@ const mockExecutePaymasterTransaction = vi.fn();
 const mockWaitForTransaction = vi.fn();
 const mockCallContract = vi.fn();
 const mockBalanceOf = vi.fn();
+const mockAccountConstructor = vi.fn().mockImplementation(() => ({
+  address: mockEnv.STARKNET_ACCOUNT_ADDRESS,
+  execute: mockExecute,
+  estimateInvokeFee: mockEstimateInvokeFee,
+  estimatePaymasterTransactionFee: mockEstimatePaymasterTransactionFee,
+  executePaymasterTransaction: mockExecutePaymasterTransaction,
+}));
 const mockValidateAndParseAddress = vi.fn((addr: string) =>
   addr.toLowerCase().padStart(66, "0x".padEnd(66, "0"))
 );
 
 vi.mock("starknet", () => ({
-  Account: vi.fn().mockImplementation(() => ({
-    address: mockEnv.STARKNET_ACCOUNT_ADDRESS,
-    execute: mockExecute,
-    estimateInvokeFee: mockEstimateInvokeFee,
-    estimatePaymasterTransactionFee: mockEstimatePaymasterTransactionFee,
-    executePaymasterTransaction: mockExecutePaymasterTransaction,
-  })),
+  Account: mockAccountConstructor,
   RpcProvider: vi.fn().mockImplementation(() => ({
     callContract: mockCallContract,
     waitForTransaction: mockWaitForTransaction,
@@ -55,6 +60,15 @@ vi.mock("starknet", () => ({
   cairo: {
     uint256: vi.fn((n) => ({ low: n.toString(), high: "0" })),
   },
+  num: {
+    toHex: vi.fn((value) => {
+      if (typeof value === "string" && value.startsWith("0x")) {
+        return value;
+      }
+      return `0x${BigInt(value).toString(16)}`;
+    }),
+  },
+  SignerInterface: class {},
   ETransactionVersion: {
     V3: "0x3",
   },
@@ -975,6 +989,23 @@ describe("MCP Tool Handlers", () => {
         privateKey: mockEnv.STARKNET_PRIVATE_KEY,
       });
     });
+
+    it("blocks x402 signing in proxy signer mode", async () => {
+      process.env.STARKNET_SIGNER_MODE = "proxy";
+      delete process.env.STARKNET_PRIVATE_KEY;
+
+      vi.resetModules();
+      await import("../../src/index.js");
+
+      const response = await callTool("x402_starknet_sign_payment_required", {
+        paymentRequiredHeader: "test",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("disabled in STARKNET_SIGNER_MODE=proxy");
+      expect(mockCreateStarknetPaymentSignatureHeader).not.toHaveBeenCalled();
+    });
   });
 
   describe("starknet_deploy_agent_account", () => {
@@ -1295,6 +1326,72 @@ describe("MCP Tool Handlers", () => {
   });
 });
 
+describe("MCP Startup Guardrails", () => {
+  afterEach(() => {
+    for (const key of Object.keys(mockEnv)) {
+      delete process.env[key];
+    }
+    delete process.env.NODE_ENV;
+  });
+
+  it("fails startup in production when signer mode is direct", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.NODE_ENV = "production";
+    process.env.STARKNET_SIGNER_MODE = "direct";
+
+    vi.resetModules();
+    await expect(import("../../src/index.js")).rejects.toThrow(
+      "Production mode requires STARKNET_SIGNER_MODE=proxy"
+    );
+  });
+
+  it("starts in proxy signer mode without STARKNET_PRIVATE_KEY", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    delete process.env.STARKNET_PRIVATE_KEY;
+
+    vi.resetModules();
+    await import("../../src/index.js");
+
+    expect(mockAccountConstructor).toHaveBeenCalled();
+    const accountArgs = mockAccountConstructor.mock.calls.at(-1)?.[0];
+    expect(typeof accountArgs?.signer).toBe("object");
+    expect(typeof accountArgs?.signer?.signTransaction).toBe("function");
+  });
+
+  it("fails startup in proxy mode when keyring auth is missing", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    delete process.env.STARKNET_PRIVATE_KEY;
+    delete process.env.KEYRING_HMAC_SECRET;
+
+    vi.resetModules();
+    await expect(import("../../src/index.js")).rejects.toThrow(
+      "Missing keyring proxy configuration for STARKNET_SIGNER_MODE=proxy"
+    );
+  });
+
+  it("fails startup in production proxy mode if direct private key is still set", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.NODE_ENV = "production";
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    process.env.STARKNET_PRIVATE_KEY = "0x1";
+
+    vi.resetModules();
+    await expect(import("../../src/index.js")).rejects.toThrow(
+      "STARKNET_PRIVATE_KEY must not be set in production when STARKNET_SIGNER_MODE=proxy"
+    );
+  });
+});
+
 describe("Tool list", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -1364,5 +1461,23 @@ describe("Tool list", () => {
     expect(response.tools).toHaveLength(14);
 
     delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
+  });
+
+  it("does not list x402 signing tool in proxy mode", async () => {
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    delete process.env.STARKNET_PRIVATE_KEY;
+
+    console.error = vi.fn();
+    vi.resetModules();
+    await import("../../src/index.js");
+    console.error = originalConsoleError;
+
+    if (!capturedListHandler) {
+      throw new Error("List handler not captured");
+    }
+
+    const response = await capturedListHandler();
+    const toolNames = response.tools.map((t: any) => t.name);
+    expect(toolNames).not.toContain("x402_starknet_sign_payment_required");
   });
 });
