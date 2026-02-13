@@ -1,5 +1,5 @@
 [package]
-name = "quantum-vault"
+name = "quantum_vault"
 version = "1.0.0"
 edition = "2024_07"
 
@@ -9,3 +9,6 @@ starknet = "2.8.0"
 [[target.starknet-contract]]
 sierra = true
 casm = true
+
+[dev-dependencies]
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.50.0" }
