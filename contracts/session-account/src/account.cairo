@@ -266,6 +266,17 @@ mod SessionAccount {
                 caller.is_zero() || caller == get_contract_address(),
                 'Account: unauthorized caller',
             );
+
+            // Spending policy enforcement for session keys (AFTER validation, BEFORE execution).
+            // Must be in __execute__ (not __validate__) because spending state
+            // mutations in validate would be reverted on execution failure.
+            let tx_info = get_tx_info().unbox();
+            let signature = tx_info.signature;
+            if signature.len() == 4 {
+                let session_pubkey = *signature.at(0);
+                self.spending_policy.check_and_update_spending(session_pubkey, calls.span());
+            }
+
             self._execute_calls(calls)
         }
 
@@ -416,6 +427,12 @@ mod SessionAccount {
             assert(is_valid_signature, 'SRC9: invalid signature');
             if is_session_sig {
                 self._consume_session_call(session_pubkey);
+                // Spending policy enforcement (AFTER validation, BEFORE execution).
+                // Must be in execute (not validate) because spending state mutations
+                // in validate would be reverted on execution failure.
+                self.spending_policy.check_and_update_spending(
+                    session_pubkey, outside_execution.calls,
+                );
             }
 
             // 6. Execute
