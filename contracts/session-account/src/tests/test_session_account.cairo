@@ -819,6 +819,77 @@ fn test_blocklist_validate_deploy() {
     assert_selector_blocked(selector!("__validate_deploy__"));
 }
 
+/// ──────────────────────────────────────────────────────────────────────────
+/// CRITICAL SECURITY TEST: Admin blocklist takes precedence over whitelist
+/// ──────────────────────────────────────────────────────────────────────────
+/// This test proves that even if a session key explicitly whitelists an admin
+/// selector like `set_agent_id`, the admin blocklist STILL blocks execution.
+///
+/// Rationale (from PR #203 review, Th0rgal):
+/// "Confirm there's a test that proves a session key cannot call set_agent_id
+/// even if the whitelist includes it."
+///
+/// Security property tested:
+///   Admin blocklist check (lines 612-653 in account.cairo) happens BEFORE
+///   whitelist validation (lines 672-698). This ensures session keys can never
+///   escalate privileges by whitelisting admin functions.
+///
+/// Attack scenario prevented:
+///   1. Compromised session key holder tries to whitelist `set_agent_id`
+///   2. Without this property, they could change agent identity
+///   3. This test proves the attack is blocked at validation layer
+#[test]
+fn test_set_agent_id_blocked_even_when_explicitly_whitelisted() {
+    // Setup: Deploy account and generate keypairs
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let account_addr = deploy_with_key(owner_kp.public_key);
+    let account = src6_dispatcher(account_addr);
+
+    let valid_until: u64 = 9999;
+
+    // CRITICAL: Register session key with `set_agent_id` EXPLICITLY WHITELISTED
+    // This is the key difference from test_blocklist_set_agent_id() which uses empty whitelist
+    let set_agent_id_selector = selector!("set_agent_id");
+    register_session_key(
+        account_addr,
+        session_kp.public_key,
+        valid_until,
+        100,
+        array![set_agent_id_selector], // ← EXPLICIT WHITELIST
+    );
+
+    // Attempt to call set_agent_id with session signature
+    let target_agent_id: felt252 = 0x12345; // Arbitrary agent ID
+    let calls = array![
+        Call {
+            to: account_addr,
+            selector: set_agent_id_selector,
+            calldata: array![target_agent_id].span(),
+        },
+    ];
+
+    let msg_hash = compute_session_hash(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls.span(),
+    );
+    let (r, s) = session_kp.sign(msg_hash).unwrap();
+    setup_session_tx_context(account_addr, session_kp.public_key, r, s, valid_until, 100);
+
+    // Verify: Admin blocklist blocks execution DESPITE whitelist
+    let result = account.__validate__(calls);
+    assert(
+        result == 0,
+        'admin block overrides whitelist',
+    );
+
+    // Verify agent_id was NOT changed
+    let agent_identity = agent_dispatcher(account_addr);
+    let current_agent_id = agent_identity.get_agent_id();
+    assert(current_agent_id == 0, 'agent_id should remain zero');
+
+    cleanup_session_cheats(account_addr);
+}
+
 #[test]
 fn test_blocklist_applies_to_external_target_too() {
     // The blocklist blocks selectors regardless of target address.
