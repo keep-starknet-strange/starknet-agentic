@@ -6,6 +6,7 @@ import sys
 
 
 HEX_ADDRESS = re.compile(r"^0x[0-9a-fA-F]+$")
+MAX_ADDRESS_LEN = 66  # 0x + up to 64 hex chars (allow leading-zero padding)
 
 
 def main(argv: list[str]) -> int:
@@ -15,13 +16,15 @@ def main(argv: list[str]) -> int:
 
     bad = 0
     for s in argv[1:]:
-        if HEX_ADDRESS.match(s):
+        if not HEX_ADDRESS.match(s):
+            print(f"invalid hex address: {s}", file=sys.stderr)
+            bad = 1
             continue
-        print(f"invalid hex address: {s}", file=sys.stderr)
-        bad = 1
+        if len(s) > MAX_ADDRESS_LEN:
+            print(f"invalid hex address (too long): {s}", file=sys.stderr)
+            bad = 1
     return bad
 
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))
-

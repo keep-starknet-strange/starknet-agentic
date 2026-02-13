@@ -21,6 +21,13 @@ describe("controller-cli skill acceptance", () => {
     "scripts",
     "controller_safe.py"
   );
+  const validator = path.join(
+    repoRoot,
+    "skills",
+    "controller-cli",
+    "scripts",
+    "validate_hex_address.py"
+  );
 
   it("appends --json and returns parsed JSON output", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "controller-cli-skill-"));
@@ -163,5 +170,20 @@ json.dump({"status": "success"}, sys.stdout)
     expect(fs.readFileSync(calledFile, "utf-8")).toContain("--chain-id SN_SEPOLIA");
     expect(fs.readFileSync(calledFile, "utf-8")).toContain("--json");
   });
-});
 
+  it("validate_hex_address rejects overly long values", () => {
+    const tooLong = `0x${"1".repeat(65)}`; // 0x + 65 hex chars
+    const res = spawnSync("python3", [validator, tooLong], { encoding: "utf-8" });
+
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("too long");
+  });
+
+  it("validate_hex_address accepts common 0x + 64-hex addresses", () => {
+    const padded = `0x${"0".repeat(63)}1`; // length = 66
+    const res = spawnSync("python3", [validator, padded], { encoding: "utf-8" });
+
+    expect(res.status).toBe(0);
+    expect(res.stderr).toBe("");
+  });
+});
