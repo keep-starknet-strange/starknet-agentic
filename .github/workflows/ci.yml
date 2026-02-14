@@ -95,9 +95,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Audit dependencies
-        run: pnpm audit --audit-level=high
-        continue-on-error: true
+      - name: Audit dependencies (policy gate)
+        run: |
+          pnpm audit --prod --json > audit-report.json || true
+          node scripts/security/audit-gate.mjs \
+            --report audit-report.json \
+            --allowlist security/audit-allowlist.json \
+            --failLevel moderate
 
       - name: Build packages
         run: pnpm run build

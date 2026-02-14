@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  qs: '>=6.14.2'
+  qs: 6.14.2
 
 importers:
 
