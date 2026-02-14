@@ -14,14 +14,14 @@
     "@avnu/avnu-sdk": "^4.0.1",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@starknet-agentic/x402-starknet": "workspace:*",
-    "starknet": "^8.9.1",
-    "zod": "^3.23.0"
+    "starknet": "^9.2.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@vitest/coverage-v8": "2.1.9",
+    "@types/node": "^25.2.3",
+    "@vitest/coverage-v8": "4.0.18",
     "tsup": "^8.5.0",
     "typescript": "^5.9.0",
-    "vitest": "^2.0.0"
+    "vitest": "^4.0.18"
   }
 }
