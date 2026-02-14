@@ -168,6 +168,7 @@ mod SessionAccount {
         SessionKeyAdded: SessionKeyAdded,
         SessionKeyRevoked: SessionKeyRevoked,
         AgentIdSet: AgentIdSet,
+        CallFailed: CallFailed,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -188,6 +189,15 @@ mod SessionAccount {
     struct AgentIdSet {
         #[key]
         agent_id: felt252,
+    }
+
+    /// Emitted when a call inside `_execute_calls` fails but execution continues.
+    #[derive(Drop, starknet::Event)]
+    struct CallFailed {
+        #[key]
+        call_index: u32,
+        to: starknet::ContractAddress,
+        selector: felt252,
     }
 
     // ── Constructor ───────────────────────────────────────────────────────
@@ -849,6 +859,7 @@ mod SessionAccount {
             ref self: ContractState, mut calls: Array<Call>,
         ) -> Array<Span<felt252>> {
             let mut res = array![];
+            let mut call_index: u32 = 0;
             loop {
                 match calls.pop_front() {
                     Option::Some(call) => {
@@ -863,8 +874,16 @@ mod SessionAccount {
                             // intentionally fails calls to avoid spending limit deduction.
                             // This is fail-closed behavior: failed transfers still count.
                             // MCP callers should check on-chain state to detect failures.
-                            Result::Err(_) => res.append(array![].span()),
+                            Result::Err(_) => {
+                                self.emit(CallFailed {
+                                    call_index,
+                                    to: call.to,
+                                    selector: call.selector,
+                                });
+                                res.append(array![].span());
+                            },
                         }
+                        call_index += 1;
                     },
                     Option::None => { break; },
                 }
