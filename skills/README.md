@@ -12,6 +12,7 @@ Production-ready skills for AI agents operating on Starknet. Built for the Agent
 | [starknet-mini-pay](./starknet-mini-pay/) | P2P payments, QR codes, Telegram bot | Complete |
 | [starknet-anonymous-wallet](./starknet-anonymous-wallet/) | Anonymous wallet creation via Typhoon | Complete |
 | [huginn-onboard](./huginn-onboard/) | Bridge to Starknet and register with Huginn | Complete |
+| [controller-cli](./controller-cli/) | Cartridge Controller CLI sessions + scoped execution (JSON-only, explicit network, paymaster, error recovery) | Complete |
 | [cairo-contracts](./cairo-contracts/) | Contract structure, components, OZ v3, storage, events, interfaces | Complete |
 | [cairo-testing](./cairo-testing/) | snforge test patterns, cheatcodes, fuzzing, fork testing | Complete |
 | [cairo-deploy](./cairo-deploy/) | sncast deployment, account setup, network config, verification | Complete |

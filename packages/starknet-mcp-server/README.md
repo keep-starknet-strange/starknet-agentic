@@ -20,17 +20,42 @@ npm run build
 
 ## Configuration
 
-Create a `.env` file with your Starknet credentials:
+Create a `.env` file with your Starknet credentials.
+
+Direct signer mode (development/local only):
 
 ```bash
 STARKNET_RPC_URL=https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY
 STARKNET_ACCOUNT_ADDRESS=0x...
+STARKNET_SIGNER_MODE=direct
 STARKNET_PRIVATE_KEY=0x...
 
 # avnu URLs (optional -- defaults shown)
 AVNU_BASE_URL=https://starknet.api.avnu.fi
 AVNU_PAYMASTER_URL=https://starknet.paymaster.avnu.fi
 ```
+
+Proxy signer mode (recommended for production):
+
+```bash
+STARKNET_RPC_URL=https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY
+STARKNET_ACCOUNT_ADDRESS=0x...
+STARKNET_SIGNER_MODE=proxy
+KEYRING_PROXY_URL=https://signer.internal:8545
+KEYRING_HMAC_SECRET=replace-with-long-random-secret
+# mTLS client material (required in production for non-loopback signer URLs)
+# KEYRING_TLS_CLIENT_CERT_PATH=/etc/starknet-mcp/tls/client.crt
+# KEYRING_TLS_CLIENT_KEY_PATH=/etc/starknet-mcp/tls/client.key
+# KEYRING_TLS_CA_PATH=/etc/starknet-mcp/tls/ca.crt
+# Optional:
+# KEYRING_CLIENT_ID=starknet-mcp-server
+# KEYRING_SIGNING_KEY_ID=default
+# KEYRING_REQUEST_TIMEOUT_MS=5000
+# KEYRING_SESSION_VALIDITY_SECONDS=300
+```
+
+Production startup guard: `KEYRING_PROXY_URL` must use `https://` unless loopback is used (`http://127.0.0.1`, `http://localhost`, or `http://[::1]`).
+Production startup guard (non-loopback signer URLs): `KEYRING_TLS_CLIENT_CERT_PATH`, `KEYRING_TLS_CLIENT_KEY_PATH`, and `KEYRING_TLS_CA_PATH` are required.
 
 ## Usage
 
@@ -49,6 +74,29 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
       "env": {
         "STARKNET_RPC_URL": "https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY",
         "STARKNET_ACCOUNT_ADDRESS": "0x...",
+        "STARKNET_SIGNER_MODE": "proxy",
+        "KEYRING_PROXY_URL": "http://127.0.0.1:8545",
+        "KEYRING_HMAC_SECRET": "replace-with-long-random-secret"
+      }
+    }
+  }
+}
+```
+
+If you run direct mode locally instead:
+
+```json
+{
+  "mcpServers": {
+    "starknet": {
+      "command": "node",
+      "args": [
+        "/path/to/starknet-agentic/packages/starknet-mcp-server/dist/index.js"
+      ],
+      "env": {
+        "STARKNET_RPC_URL": "https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY",
+        "STARKNET_ACCOUNT_ADDRESS": "0x...",
+        "STARKNET_SIGNER_MODE": "direct",
         "STARKNET_PRIVATE_KEY": "0x..."
       }
     }
@@ -169,7 +217,11 @@ The server uses:
 
 ## Security
 
-- Private keys are loaded from environment variables only
+- Production startup guard: `NODE_ENV=production` requires `STARKNET_SIGNER_MODE=proxy`
+- Production startup guard: rejects `STARKNET_PRIVATE_KEY` when `STARKNET_SIGNER_MODE=proxy`
+- Production startup guard: non-loopback proxy URLs require mTLS client cert/key/CA paths
+- Proxy mode keeps signing outside MCP process (`starknet-keyring-proxy`)
+- Direct private key mode is intended for local development only
 - All inputs are validated before execution
 - Transactions wait for confirmation before returning
 - Comprehensive error handling for all operations

@@ -1,6 +1,7 @@
 import { Contract, RpcProvider, uint256 } from "starknet";
 import { normalizeAddress } from "../utils.js";
 import { getTokenService } from "../services/index.js";
+import { log } from "../logger.js";
 
 /** Convert a balance result (bigint or Uint256) to bigint */
 function toBigInt(value: unknown): bigint {
@@ -173,10 +174,11 @@ export async function fetchTokenBalances(
     );
     return { balances, method: "balance_checker" };
   } catch (error) {
-    console.error(
-      "BalanceChecker contract unavailable, falling back to batch RPC:",
-      error instanceof Error ? error.message : error
-    );
+    log({
+      level: "warn",
+      event: "balance.checker_fallback",
+      details: { error: error instanceof Error ? error.message : String(error) },
+    });
     const balances = await fetchBalancesViaBatchRpc(
       walletAddress,
       tokens,

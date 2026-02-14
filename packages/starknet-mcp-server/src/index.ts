@@ -15,12 +15,18 @@
  * - starknet_swap: Execute swaps via avnu
  * - starknet_get_quote: Get swap quotes
  * - starknet_build_calls: Build unsigned calls for external signing (Controller, multisig)
+ * - starknet_register_session_key: Register session key on SessionAccount
+ * - starknet_revoke_session_key: Revoke a session key
+ * - starknet_get_session_data: Read session key data (remaining calls, expiry, etc.)
+ * - starknet_build_transfer_calls: Build unsigned ERC-20 transfer calls
+ * - starknet_build_swap_calls: Build unsigned AVNU swap calls (approval + route)
  * - starknet_register_agent: Register agent identity (ERC-8004)
  * - starknet_set_agent_metadata: Set on-chain metadata for an ERC-8004 agent
  * - starknet_get_agent_metadata: Read on-chain metadata for an ERC-8004 agent
  *
  * Usage:
  *   STARKNET_RPC_URL=... STARKNET_ACCOUNT_ADDRESS=... STARKNET_PRIVATE_KEY=... node dist/index.js
+ *   STARKNET_RPC_URL=... STARKNET_ACCOUNT_ADDRESS=... STARKNET_SIGNER_MODE=proxy KEYRING_PROXY_URL=... KEYRING_HMAC_SECRET=... node dist/index.js
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -39,6 +45,7 @@ import {
   byteArray,
   ETransactionVersion,
   hash,
+  ec,
   validateAndParseAddress,
   type Call,
 } from "starknet";
@@ -47,7 +54,7 @@ import {
   resolveTokenAddressAsync,
   validateTokensInputAsync,
 } from "./utils.js";
-import { getTokenService, configureTokenServiceProvider, TOKENS } from "./services/index.js";
+import { getTokenService, configureTokenServiceProvider, TOKENS, STATIC_TOKENS } from "./services/index.js";
 import {
   fetchTokenBalance,
   fetchTokenBalances,
@@ -61,17 +68,31 @@ import { z } from "zod";
 import { createStarknetPaymentSignatureHeader } from "@starknet-agentic/x402-starknet";
 import { formatAmount, formatQuoteFields, formatErrorMessage } from "./utils/formatter.js";
 import { PolicyGuard, loadPolicyConfig } from "./middleware/policyGuard.js";
+import { KeyringProxySigner } from "./helpers/keyringProxySigner.js";
+import { parseDecimalToBigInt } from "./helpers/parseDecimal.js";
+import { log } from "./logger.js";
 
 // Environment validation
 const envSchema = z.object({
   STARKNET_RPC_URL: z.string().url(),
   STARKNET_ACCOUNT_ADDRESS: z.string().startsWith("0x"),
-  STARKNET_PRIVATE_KEY: z.string().startsWith("0x"),
+  STARKNET_SIGNER_MODE: z.enum(["direct", "proxy"]).optional(),
+  STARKNET_PRIVATE_KEY: z.string().startsWith("0x").optional(),
   AVNU_BASE_URL: z.string().url().optional(),
   AVNU_PAYMASTER_URL: z.string().url().optional(),
   AVNU_PAYMASTER_API_KEY: z.string().optional(),
   AGENT_ACCOUNT_FACTORY_ADDRESS: z.string().startsWith("0x").optional(),
   ERC8004_IDENTITY_REGISTRY_ADDRESS: z.string().startsWith("0x").optional(),
+  KEYRING_PROXY_URL: z.string().url().optional(),
+  KEYRING_HMAC_SECRET: z.string().min(1).optional(),
+  KEYRING_CLIENT_ID: z.string().min(1).optional(),
+  KEYRING_SIGNING_KEY_ID: z.string().min(1).optional(),
+  KEYRING_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+  KEYRING_SESSION_VALIDITY_SECONDS: z.coerce.number().int().positive().optional(),
+  KEYRING_TLS_CLIENT_CERT_PATH: z.string().min(1).optional(),
+  KEYRING_TLS_CLIENT_KEY_PATH: z.string().min(1).optional(),
+  KEYRING_TLS_CA_PATH: z.string().min(1).optional(),
+  NODE_ENV: z.string().optional(),
 });
 
 const isSepoliaRpc = (process.env.STARKNET_RPC_URL || "").toLowerCase().includes("sepolia");
@@ -85,13 +106,91 @@ const defaultAvnuPaymasterUrl = isSepoliaRpc
 const env = envSchema.parse({
   STARKNET_RPC_URL: process.env.STARKNET_RPC_URL,
   STARKNET_ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS,
+  STARKNET_SIGNER_MODE: process.env.STARKNET_SIGNER_MODE,
   STARKNET_PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY,
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || defaultAvnuApiUrl,
   AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || defaultAvnuPaymasterUrl,
   AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
   AGENT_ACCOUNT_FACTORY_ADDRESS: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
   ERC8004_IDENTITY_REGISTRY_ADDRESS: process.env.ERC8004_IDENTITY_REGISTRY_ADDRESS,
+  KEYRING_PROXY_URL: process.env.KEYRING_PROXY_URL,
+  KEYRING_HMAC_SECRET: process.env.KEYRING_HMAC_SECRET,
+  KEYRING_CLIENT_ID: process.env.KEYRING_CLIENT_ID,
+  KEYRING_SIGNING_KEY_ID: process.env.KEYRING_SIGNING_KEY_ID,
+  KEYRING_REQUEST_TIMEOUT_MS: process.env.KEYRING_REQUEST_TIMEOUT_MS,
+  KEYRING_SESSION_VALIDITY_SECONDS: process.env.KEYRING_SESSION_VALIDITY_SECONDS,
+  KEYRING_TLS_CLIENT_CERT_PATH: process.env.KEYRING_TLS_CLIENT_CERT_PATH,
+  KEYRING_TLS_CLIENT_KEY_PATH: process.env.KEYRING_TLS_CLIENT_KEY_PATH,
+  KEYRING_TLS_CA_PATH: process.env.KEYRING_TLS_CA_PATH,
+  NODE_ENV: process.env.NODE_ENV,
 });
+
+const signerMode = env.STARKNET_SIGNER_MODE ?? "direct";
+const runtimeEnvironment = (env.NODE_ENV || "development").toLowerCase();
+const isProductionRuntime = runtimeEnvironment === "production";
+
+if (isProductionRuntime && signerMode !== "proxy") {
+  throw new Error(
+    "Production mode requires STARKNET_SIGNER_MODE=proxy to prevent in-process private key signing"
+  );
+}
+
+if (signerMode === "direct" && !env.STARKNET_PRIVATE_KEY) {
+  throw new Error("Missing STARKNET_PRIVATE_KEY for STARKNET_SIGNER_MODE=direct");
+}
+
+if (signerMode === "proxy") {
+  if (!env.KEYRING_PROXY_URL || !env.KEYRING_HMAC_SECRET) {
+    throw new Error(
+      "Missing keyring proxy configuration for STARKNET_SIGNER_MODE=proxy (KEYRING_PROXY_URL, KEYRING_HMAC_SECRET)"
+    );
+  }
+  if (isProductionRuntime) {
+    const proxyUrl = new URL(env.KEYRING_PROXY_URL);
+    const isLoopback =
+      proxyUrl.hostname === "127.0.0.1" ||
+      proxyUrl.hostname === "localhost" ||
+      proxyUrl.hostname === "::1" ||
+      proxyUrl.hostname === "[::1]";
+    if (proxyUrl.protocol !== "https:" && !isLoopback) {
+      throw new Error(
+        "Production proxy mode requires KEYRING_PROXY_URL to use https unless loopback is used"
+      );
+    }
+    if (!isLoopback) {
+      if (
+        !env.KEYRING_TLS_CLIENT_CERT_PATH ||
+        !env.KEYRING_TLS_CLIENT_KEY_PATH ||
+        !env.KEYRING_TLS_CA_PATH
+      ) {
+        throw new Error(
+          "Production proxy mode requires KEYRING_TLS_CLIENT_CERT_PATH, KEYRING_TLS_CLIENT_KEY_PATH, and KEYRING_TLS_CA_PATH for mTLS"
+        );
+      }
+    }
+  }
+  if (isProductionRuntime && env.STARKNET_PRIVATE_KEY) {
+    throw new Error(
+      "STARKNET_PRIVATE_KEY must not be set in production when STARKNET_SIGNER_MODE=proxy"
+    );
+  }
+}
+
+// Enforce HTTPS for RPC URL in production to prevent eavesdropping on
+// account balances, transaction details, and nonce values.
+if (isProductionRuntime) {
+  const rpcUrl = new URL(env.STARKNET_RPC_URL);
+  const isLoopback =
+    rpcUrl.hostname === "127.0.0.1" ||
+    rpcUrl.hostname === "localhost" ||
+    rpcUrl.hostname === "::1" ||
+    rpcUrl.hostname === "[::1]";
+  if (rpcUrl.protocol !== "https:" && !isLoopback) {
+    throw new Error(
+      "Production mode requires STARKNET_RPC_URL to use HTTPS to protect transaction data in transit."
+    );
+  }
+}
 
 // Initialize Starknet provider and account
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
@@ -105,10 +204,26 @@ const paymaster = new PaymasterRpc({
     : {},
 });
 
+const accountSigner =
+  signerMode === "proxy"
+    ? new KeyringProxySigner({
+        proxyUrl: env.KEYRING_PROXY_URL!,
+        hmacSecret: env.KEYRING_HMAC_SECRET!,
+        clientId: env.KEYRING_CLIENT_ID || "starknet-mcp-server",
+        accountAddress: env.STARKNET_ACCOUNT_ADDRESS,
+        requestTimeoutMs: env.KEYRING_REQUEST_TIMEOUT_MS ?? 5_000,
+        sessionValiditySeconds: env.KEYRING_SESSION_VALIDITY_SECONDS ?? 300,
+        keyId: env.KEYRING_SIGNING_KEY_ID,
+        tlsClientCertPath: env.KEYRING_TLS_CLIENT_CERT_PATH,
+        tlsClientKeyPath: env.KEYRING_TLS_CLIENT_KEY_PATH,
+        tlsCaPath: env.KEYRING_TLS_CA_PATH,
+      })
+    : env.STARKNET_PRIVATE_KEY!;
+
 const account = new Account({
   provider,
   address: env.STARKNET_ACCOUNT_ADDRESS,
-  signer: env.STARKNET_PRIVATE_KEY,
+  signer: accountSigner,
   transactionVersion: ETransactionVersion.V3,
   paymaster,
 });
@@ -142,8 +257,17 @@ function parseFelt(name: string, value: string): bigint {
 
 function parseAddress(name: string, value: string): string {
   try {
-    return validateAndParseAddress(value);
-  } catch {
+    const parsed = validateAndParseAddress(value);
+    // Reject the zero address — it's never a valid target for transfers or calls.
+    if (/^0x0+$/.test(parsed)) {
+      throw new Error("zero address");
+    }
+    return parsed;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "zero address") {
+      throw new Error(`${name} cannot be the zero address.`);
+    }
     throw new Error(
       `${name} is not a valid Starknet address: "${value}". ` +
         "Expected a hex string starting with 0x."
@@ -174,9 +298,51 @@ function parseCalldata(name: string, calldata: string[]): string[] {
   });
 }
 
+function validateEntrypoint(name: string, value: string): string {
+  if (!value || value.trim().length === 0) {
+    throw new Error(`${name} is required and must be non-empty`);
+  }
+  if (/[\x00-\x1f\x7f]/.test(value)) {
+    throw new Error(`${name} contains invalid control characters`);
+  }
+  return value.trim();
+}
+
 // Transaction wait config: ~120 s total (40 retries x 3 s interval).
 const TX_WAIT_RETRIES = 40;
 const TX_WAIT_INTERVAL_MS = 3_000;
+
+/**
+ * Reject an AVNU quote whose server-provided expiry has already passed.
+ * The `expiry` field is a Unix-seconds timestamp set by the AVNU router;
+ * executing an expired quote will fail on-chain and waste gas.
+ */
+function assertQuoteNotExpired(quote: { expiry?: number | null }): void {
+  if (quote.expiry != null && quote.expiry > 0) {
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (nowSec >= quote.expiry) {
+      throw new Error(
+        `Swap quote has expired (expiry=${quote.expiry}, now=${nowSec}). ` +
+          "Please request a fresh quote and retry."
+      );
+    }
+  }
+}
+
+/** Threshold (5%) above which we flag high price impact to the AI agent. */
+const HIGH_PRICE_IMPACT_THRESHOLD = 5;
+
+function priceImpactWarning(priceImpact?: number): string | undefined {
+  if (priceImpact != null && Math.abs(priceImpact) >= HIGH_PRICE_IMPACT_THRESHOLD) {
+    return (
+      `WARNING: Price impact is ${priceImpact.toFixed(2)}% which exceeds the ${HIGH_PRICE_IMPACT_THRESHOLD}% threshold. ` +
+      "This swap may result in significant value loss. Consider reducing the amount or using a more liquid pair."
+    );
+  }
+  return undefined;
+}
+
+// parseDecimalToBigInt imported from ./helpers/parseDecimal.js
 
 function randomSaltFelt(): string {
   const random = BigInt(`0x${randomBytes(32).toString("hex")}`);
@@ -519,7 +685,10 @@ const tools: Tool[] = [
       required: ["calls"],
     },
   },
-  {
+];
+
+if (signerMode === "direct") {
+  tools.push({
     name: "x402_starknet_sign_payment_required",
     description:
       "Sign a base64 PAYMENT-REQUIRED header containing Starknet typedData, return a base64 PAYMENT-SIGNATURE header value.",
@@ -533,8 +702,150 @@ const tools: Tool[] = [
       },
       required: ["paymentRequiredHeader"],
     },
+  });
+}
+
+tools.push(
+  // ── Session key management tools ────────────────────────────────────
+  {
+    name: "starknet_register_session_key",
+    description:
+      "Register a session key on a SessionAccount (chipi-pay fork). Owner-only operation. The session key gets time-limited, call-count-limited access with optional selector whitelist.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        accountAddress: {
+          type: "string",
+          description: "SessionAccount contract address (0x-prefixed)",
+        },
+        sessionPublicKey: {
+          type: "string",
+          description: "Public key of the session key to register (felt, 0x-prefixed)",
+        },
+        validUntil: {
+          type: "number",
+          description: "Unix timestamp (seconds) when session expires",
+        },
+        maxCalls: {
+          type: "number",
+          description: "Maximum number of transactions allowed for this session",
+        },
+        allowedEntrypoints: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Optional array of allowed function selectors (felt strings). Empty = any non-admin selector on external contracts.",
+          default: [],
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas)",
+          default: false,
+        },
+      },
+      required: ["accountAddress", "sessionPublicKey", "validUntil", "maxCalls"],
+    },
   },
-];
+  {
+    name: "starknet_revoke_session_key",
+    description:
+      "Revoke a session key from a SessionAccount. Owner-only. Zeroes the session data and clears allowed entrypoints.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        accountAddress: {
+          type: "string",
+          description: "SessionAccount contract address (0x-prefixed)",
+        },
+        sessionPublicKey: {
+          type: "string",
+          description: "Public key of the session key to revoke (felt, 0x-prefixed)",
+        },
+        gasfree: {
+          type: "boolean",
+          description: "Use gasfree mode (paymaster pays gas)",
+          default: false,
+        },
+      },
+      required: ["accountAddress", "sessionPublicKey"],
+    },
+  },
+  {
+    name: "starknet_get_session_data",
+    description:
+      "Read session key data from a SessionAccount. Returns valid_until, max_calls, calls_used, and allowed_entrypoints_len.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        accountAddress: {
+          type: "string",
+          description: "SessionAccount contract address (0x-prefixed)",
+        },
+        sessionPublicKey: {
+          type: "string",
+          description: "Public key of the session key to query (felt, 0x-prefixed)",
+        },
+      },
+      required: ["accountAddress", "sessionPublicKey"],
+    },
+  },
+  // ── Domain-specific unsigned call builders ──────────────────────────
+  {
+    name: "starknet_build_transfer_calls",
+    description:
+      "Build unsigned ERC-20 transfer calls. Returns Call[] for external signing (session key, owner, hardware wallet).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tokenAddress: {
+          type: "string",
+          description: "ERC-20 token contract address (0x-prefixed), or token symbol like 'ETH', 'STRK', 'USDC'",
+        },
+        recipientAddress: {
+          type: "string",
+          description: "Recipient address (0x-prefixed)",
+        },
+        amount: {
+          type: "string",
+          description: "Amount to transfer in human-readable units (e.g. '1.5' for 1.5 tokens)",
+        },
+      },
+      required: ["tokenAddress", "recipientAddress", "amount"],
+    },
+  },
+  {
+    name: "starknet_build_swap_calls",
+    description:
+      "Build unsigned swap calls via AVNU. Returns approval + swap Call[] for external signing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sellTokenAddress: {
+          type: "string",
+          description: "Token to sell (address or symbol like 'ETH', 'STRK')",
+        },
+        buyTokenAddress: {
+          type: "string",
+          description: "Token to buy (address or symbol)",
+        },
+        sellAmount: {
+          type: "string",
+          description: "Amount to sell in human-readable units (e.g. '0.1')",
+        },
+        signerAddress: {
+          type: "string",
+          description: "Address of the account that will sign and execute (0x-prefixed)",
+        },
+        slippageBps: {
+          type: "number",
+          description: "Slippage tolerance in basis points (default: 100 = 1%)",
+          default: 100,
+        },
+      },
+      required: ["sellTokenAddress", "buyTokenAddress", "sellAmount", "signerAddress"],
+    },
+  }
+);
 
 if (env.AGENT_ACCOUNT_FACTORY_ADDRESS) {
   tools.push({
@@ -836,10 +1147,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const validatedContractAddress = parseAddress("contractAddress", contractAddress);
+        const validatedEntrypoint = validateEntrypoint("entrypoint", entrypoint);
         const validatedCalldata = parseCalldata("calldata", calldata);
         const result = await provider.callContract({
           contractAddress: validatedContractAddress,
-          entrypoint,
+          entrypoint: validatedEntrypoint,
           calldata: validatedCalldata,
         });
 
@@ -867,11 +1179,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const validatedContractAddress = parseAddress("contractAddress", contractAddress);
+        const validatedEntrypoint = validateEntrypoint("entrypoint", entrypoint);
         const validatedCalldata = parseCalldata("calldata", calldata);
         const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : TOKENS.STRK;
         const invokeCall: Call = {
           contractAddress: validatedContractAddress,
-          entrypoint,
+          entrypoint: validatedEntrypoint,
           calldata: validatedCalldata,
         };
 
@@ -905,8 +1218,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         // Validate slippage is within reasonable bounds
-        if (slippage < 0 || slippage > 0.5) {
-          throw new Error("Slippage must be between 0 and 0.5 (50%). Recommended: 0.005-0.03.");
+        if (slippage < 0 || slippage > 0.15) {
+          throw new Error("Slippage must be between 0 and 0.15 (15%). Recommended: 0.005-0.03.");
         }
 
         const [sellTokenAddress, buyTokenAddress] = await Promise.all([
@@ -928,6 +1241,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
 
         const bestQuote = quotes[0];
+        assertQuoteNotExpired(bestQuote);
 
         const { calls } = await quoteToCalls({
           quoteId: bestQuote.quoteId,
@@ -944,6 +1258,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const buyDecimals = await tokenService.getDecimalsAsync(buyTokenAddress);
         const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
 
+        const swapPriceWarning = priceImpactWarning(bestQuote.priceImpact);
+
         return {
           content: [
             {
@@ -958,6 +1274,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
                 slippage,
                 gasfree,
+                ...(swapPriceWarning ? { warning: swapPriceWarning } : {}),
               }, null, 2),
             },
           ],
@@ -994,6 +1311,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const tokenService = getTokenService();
         const buyDecimals = await tokenService.getDecimalsAsync(buyTokenAddress);
         const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
+        const quotePriceWarning = priceImpactWarning(bestQuote.priceImpact);
 
         return {
           content: [
@@ -1007,6 +1325,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 sellAmountInUsd: bestQuote.sellAmountInUsd?.toFixed(2),
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
                 quoteId: bestQuote.quoteId,
+                ...(quotePriceWarning ? { warning: quotePriceWarning } : {}),
               }, null, 2),
             },
           ],
@@ -1020,10 +1339,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           calldata?: string[];
         };
 
+        const validatedContractAddress = parseAddress("contractAddress", contractAddress);
+        const validatedEntrypoint = validateEntrypoint("entrypoint", entrypoint);
+        const validatedCalldata = parseCalldata("calldata", calldata);
         const fee = await account.estimateInvokeFee({
-          contractAddress,
-          entrypoint,
-          calldata,
+          contractAddress: validatedContractAddress,
+          entrypoint: validatedEntrypoint,
+          calldata: validatedCalldata,
         });
 
         return {
@@ -1064,17 +1386,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           if (!call.entrypoint) {
             throw new Error(`calls[${i}].entrypoint is required`);
           }
+          if (call.calldata && call.calldata.length > MAX_CALLDATA_LEN) {
+            throw new Error(`calls[${i}].calldata too large (${call.calldata.length} items, max ${MAX_CALLDATA_LEN})`);
+          }
           const validatedAddress = parseAddress(`calls[${i}].contractAddress`, call.contractAddress);
+          const validatedEntrypoint = validateEntrypoint(`calls[${i}].entrypoint`, call.entrypoint);
           const validatedCalldata = call.calldata && call.calldata.length > 0
             ? parseCalldata(`calls[${i}].calldata`, call.calldata)
             : [];
 
           return {
             contractAddress: validatedAddress,
-            entrypoint: call.entrypoint,
+            entrypoint: validatedEntrypoint,
             calldata: validatedCalldata,
           };
         });
+
+        // Detect exact-duplicate calls — likely an LLM hallucination or copy-paste error.
+        const callKeys = validatedCalls.map(
+          (c) => `${c.contractAddress}:${c.entrypoint}:${c.calldata.join(",")}`
+        );
+        const seen = new Set<string>();
+        const duplicateIndices: number[] = [];
+        for (let idx = 0; idx < callKeys.length; idx++) {
+          if (seen.has(callKeys[idx])) duplicateIndices.push(idx);
+          seen.add(callKeys[idx]);
+        }
+
+        const warning =
+          duplicateIndices.length > 0
+            ? `WARNING: Identical calls detected at indices [${duplicateIndices.join(", ")}]. ` +
+              "This may indicate a duplicate request. Review carefully before signing."
+            : undefined;
 
         return {
           content: [
@@ -1084,7 +1427,381 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 {
                   calls: validatedCalls,
                   callCount: validatedCalls.length,
+                  ...(warning ? { warning } : {}),
                   note: "Unsigned calls. Pass to account.execute(calls) or write to calls.json for external signing.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      // ── Session key management handlers ────────────────────────────────
+      case "starknet_register_session_key": {
+        const {
+          accountAddress: rawAccountAddr,
+          sessionPublicKey: rawSessionKey,
+          validUntil,
+          maxCalls,
+          allowedEntrypoints: rawEntrypoints = [],
+          gasfree = false,
+        } = args as {
+          accountAddress: string;
+          sessionPublicKey: string;
+          validUntil: number;
+          maxCalls: number;
+          allowedEntrypoints?: string[];
+          gasfree?: boolean;
+        };
+
+        const sessionAccountAddr = parseAddress("accountAddress", rawAccountAddr);
+        const sessionKey = parseFelt("sessionPublicKey", rawSessionKey);
+
+        const configuredAccount = parseAddress("STARKNET_ACCOUNT_ADDRESS", env.STARKNET_ACCOUNT_ADDRESS);
+        if (sessionAccountAddr.toLowerCase() !== configuredAccount.toLowerCase()) {
+          throw new Error(
+            `accountAddress (${sessionAccountAddr}) does not match the configured MCP server account (${configuredAccount}). ` +
+            `Session key operations can only target the server's own account.`
+          );
+        }
+
+        const nowSec = Math.floor(Date.now() / 1000);
+        if (validUntil <= nowSec) {
+          throw new Error("validUntil must be in the future");
+        }
+        const MAX_SESSION_DURATION_SECS = 30 * 24 * 60 * 60; // 30 days
+        if (validUntil > nowSec + MAX_SESSION_DURATION_SECS) {
+          throw new Error(
+            `validUntil is too far in the future (max 30 days from now). ` +
+            `Max allowed: ${nowSec + MAX_SESSION_DURATION_SECS}, got: ${validUntil}`
+          );
+        }
+        if (maxCalls <= 0 || maxCalls > 1_000_000) {
+          throw new Error("maxCalls must be between 1 and 1,000,000");
+        }
+
+        // Validate session public key is non-zero and in valid range
+        if (sessionKey === 0n) {
+          throw new Error(
+            "sessionPublicKey must be non-zero. A zero key creates an unusable session."
+          );
+        }
+        // Stark curve order: keys must be < CURVE_ORDER
+        const STARK_CURVE_ORDER = BigInt("0x800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2f");
+        if (sessionKey >= STARK_CURVE_ORDER) {
+          throw new Error(
+            "sessionPublicKey exceeds Stark curve order. This is not a valid public key."
+          );
+        }
+
+        // Validate entrypoints (optional: function selectors as felt strings)
+        const entrypoints = rawEntrypoints.map((ep, i) => {
+          // Allow selector names like "transfer" or hex felts
+          if (ep.startsWith("0x")) {
+            return parseFelt(`allowedEntrypoints[${i}]`, ep).toString();
+          }
+          // Convert function name to selector
+          return hash.getSelectorFromName(ep);
+        });
+
+        const registerCall: Call = {
+          contractAddress: sessionAccountAddr,
+          entrypoint: "add_or_update_session_key",
+          calldata: CallData.compile({
+            session_key: `0x${sessionKey.toString(16)}`,
+            valid_until: validUntil,
+            max_calls: maxCalls,
+            allowed_entrypoints: entrypoints,
+          }),
+        };
+
+        const executeFn = gasfree && isSponsored
+          ? () => account.execute([registerCall], { version: ETransactionVersion.V3 })
+          : () => account.execute([registerCall]);
+
+        const result = await executeFn();
+        await provider.waitForTransaction(result.transaction_hash, {
+          retries: TX_WAIT_RETRIES,
+          retryInterval: TX_WAIT_INTERVAL_MS,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  transactionHash: result.transaction_hash,
+                  accountAddress: sessionAccountAddr,
+                  sessionPublicKey: `0x${sessionKey.toString(16)}`,
+                  validUntil,
+                  maxCalls,
+                  allowedEntrypoints: entrypoints,
+                  note: "Session key registered. The session key holder can now sign transactions within these constraints.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "starknet_revoke_session_key": {
+        const {
+          accountAddress: rawAccountAddr,
+          sessionPublicKey: rawSessionKey,
+          gasfree = false,
+        } = args as {
+          accountAddress: string;
+          sessionPublicKey: string;
+          gasfree?: boolean;
+        };
+
+        const sessionAccountAddr = parseAddress("accountAddress", rawAccountAddr);
+        const sessionKey = parseFelt("sessionPublicKey", rawSessionKey);
+
+        const configuredAccountRevoke = parseAddress("STARKNET_ACCOUNT_ADDRESS", env.STARKNET_ACCOUNT_ADDRESS);
+        if (sessionAccountAddr.toLowerCase() !== configuredAccountRevoke.toLowerCase()) {
+          throw new Error(
+            `accountAddress (${sessionAccountAddr}) does not match the configured MCP server account (${configuredAccountRevoke}). ` +
+            `Session key operations can only target the server's own account.`
+          );
+        }
+
+        const revokeCall: Call = {
+          contractAddress: sessionAccountAddr,
+          entrypoint: "revoke_session_key",
+          calldata: CallData.compile({
+            session_key: `0x${sessionKey.toString(16)}`,
+          }),
+        };
+
+        const executeFn = gasfree && isSponsored
+          ? () => account.execute([revokeCall], { version: ETransactionVersion.V3 })
+          : () => account.execute([revokeCall]);
+
+        const result = await executeFn();
+        await provider.waitForTransaction(result.transaction_hash, {
+          retries: TX_WAIT_RETRIES,
+          retryInterval: TX_WAIT_INTERVAL_MS,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  transactionHash: result.transaction_hash,
+                  accountAddress: sessionAccountAddr,
+                  sessionPublicKey: `0x${sessionKey.toString(16)}`,
+                  note: "Session key revoked. It can no longer sign transactions.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "starknet_get_session_data": {
+        const {
+          accountAddress: rawAccountAddr,
+          sessionPublicKey: rawSessionKey,
+        } = args as {
+          accountAddress: string;
+          sessionPublicKey: string;
+        };
+
+        const sessionAccountAddr = parseAddress("accountAddress", rawAccountAddr);
+        const sessionKey = parseFelt("sessionPublicKey", rawSessionKey);
+
+        const sessionData = await provider.callContract({
+          contractAddress: sessionAccountAddr,
+          entrypoint: "get_session_data",
+          calldata: CallData.compile({
+            session_key: `0x${sessionKey.toString(16)}`,
+          }),
+        });
+
+        // SessionData struct: valid_until (u64), max_calls (u32), calls_used (u32), allowed_entrypoints_len (u32)
+        // SessionData struct: valid_until (u64), max_calls (u32), calls_used (u32), allowed_entrypoints_len (u32)
+        const validUntil = Number(sessionData[0]);
+        const maxCalls = Number(sessionData[1]);
+        const callsUsed = Number(sessionData[2]);
+        const allowedEntrypointsLen = Number(sessionData[3]);
+
+        const isActive = validUntil > 0 && validUntil > Math.floor(Date.now() / 1000) && callsUsed < maxCalls;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  accountAddress: sessionAccountAddr,
+                  sessionPublicKey: `0x${sessionKey.toString(16)}`,
+                  validUntil,
+                  validUntilISO: validUntil > 0 ? new Date(validUntil * 1000).toISOString() : null,
+                  maxCalls,
+                  callsUsed,
+                  callsRemaining: Math.max(0, maxCalls - callsUsed),
+                  allowedEntrypointsLen,
+                  isActive,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      // ── Domain-specific unsigned call builders ──────────────────────────
+      case "starknet_build_transfer_calls": {
+        const {
+          tokenAddress: rawToken,
+          recipientAddress: rawRecipient,
+          amount: rawAmount,
+        } = args as {
+          tokenAddress: string;
+          recipientAddress: string;
+          amount: string;
+        };
+
+        // Resolve token symbol to address if needed
+        const tokenAddress = rawToken.startsWith("0x")
+          ? parseAddress("tokenAddress", rawToken)
+          : await resolveTokenAddressAsync(rawToken);
+
+        const recipientAddress = parseAddress("recipientAddress", rawRecipient);
+
+        // Look up token decimals for human-readable amount conversion
+        const tokenService = getTokenService();
+        const decimals = await tokenService.getDecimalsAsync(tokenAddress);
+        const tokenSymbol = STATIC_TOKENS.find(
+          (t) => t.address.toLowerCase() === tokenAddress.toLowerCase()
+        )?.symbol ?? tokenAddress;
+
+        const amountBigInt = parseDecimalToBigInt(rawAmount, decimals);
+
+        // ERC-20 transfer: transfer(recipient, amount_u256_low, amount_u256_high)
+        const calls: Call[] = [
+          {
+            contractAddress: tokenAddress,
+            entrypoint: "transfer",
+            calldata: CallData.compile({
+              recipient: recipientAddress,
+              amount: cairo.uint256(amountBigInt),
+            }),
+          },
+        ];
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  calls,
+                  callCount: calls.length,
+                  token: tokenSymbol,
+                  amount: rawAmount,
+                  recipient: recipientAddress,
+                  note: "Unsigned transfer call. Pass to account.execute(calls) with session key or owner signature.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "starknet_build_swap_calls": {
+        const {
+          sellTokenAddress: rawSellToken,
+          buyTokenAddress: rawBuyToken,
+          sellAmount: rawSellAmount,
+          signerAddress: rawSigner,
+          slippageBps = 100,
+        } = args as {
+          sellTokenAddress: string;
+          buyTokenAddress: string;
+          sellAmount: string;
+          signerAddress: string;
+          slippageBps?: number;
+        };
+
+        // Validate slippage bounds (1500 bps = 15% max)
+        if (slippageBps < 0 || slippageBps > 1500) {
+          throw new Error("slippageBps must be between 0 and 1500 (15%). Recommended: 50-300.");
+        }
+
+        const sellTokenAddress = rawSellToken.startsWith("0x")
+          ? parseAddress("sellTokenAddress", rawSellToken)
+          : await resolveTokenAddressAsync(rawSellToken);
+
+        const buyTokenAddress = rawBuyToken.startsWith("0x")
+          ? parseAddress("buyTokenAddress", rawBuyToken)
+          : await resolveTokenAddressAsync(rawBuyToken);
+
+        const signerAddress = parseAddress("signerAddress", rawSigner);
+
+        const swapTokenService = getTokenService();
+        const sellDecimals = await swapTokenService.getDecimalsAsync(sellTokenAddress);
+        const sellAmountBigInt = parseDecimalToBigInt(rawSellAmount, sellDecimals);
+
+        // Get quote from AVNU
+        const quoteRequest: QuoteRequest = {
+          sellTokenAddress,
+          buyTokenAddress,
+          sellAmount: sellAmountBigInt,
+          takerAddress: signerAddress,
+        };
+
+        const quotes = await getQuotes(quoteRequest, { baseUrl: env.AVNU_BASE_URL });
+        if (!quotes || quotes.length === 0) {
+          throw new Error("No swap quotes available for this pair/amount");
+        }
+
+        const bestQuote = quotes[0];
+        assertQuoteNotExpired(bestQuote);
+        const slippage = slippageBps / 10000;
+
+        const { calls: swapCalls } = await quoteToCalls({
+          quoteId: bestQuote.quoteId,
+          takerAddress: signerAddress,
+          slippage,
+          executeApprove: true,
+        }, { baseUrl: env.AVNU_BASE_URL });
+
+        const sellSymbol = STATIC_TOKENS.find(
+          (t) => t.address.toLowerCase() === sellTokenAddress.toLowerCase()
+        )?.symbol ?? sellTokenAddress;
+        const buySymbol = STATIC_TOKENS.find(
+          (t) => t.address.toLowerCase() === buyTokenAddress.toLowerCase()
+        )?.symbol ?? buyTokenAddress;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  calls: swapCalls,
+                  callCount: swapCalls.length,
+                  sellToken: sellSymbol,
+                  buyToken: buySymbol,
+                  sellAmount: rawSellAmount,
+                  buyAmount: bestQuote.buyAmount?.toString(),
+                  slippageBps,
+                  signerAddress,
+                  note: "Unsigned swap calls (approval + swap). Pass to account.execute(calls) with session key or owner signature.",
                 },
                 null,
                 2
@@ -1098,6 +1815,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { paymentRequiredHeader } = args as {
           paymentRequiredHeader: string;
         };
+
+        if (signerMode === "proxy") {
+          throw new Error(
+            "x402_starknet_sign_payment_required is disabled in STARKNET_SIGNER_MODE=proxy (requires direct private key signing)"
+          );
+        }
 
         if (!env.STARKNET_RPC_URL || !env.STARKNET_ACCOUNT_ADDRESS || !env.STARKNET_PRIVATE_KEY) {
           throw new Error(
@@ -1374,6 +2097,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const userMessage = formatErrorMessage(errorMessage);
 
+    // Log the full error to stderr for operators; never expose to the agent.
+    log({ level: "error", event: "tool.error", tool: name, details: { error: errorMessage } });
+
     return {
       content: [
         {
@@ -1381,7 +2107,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           text: JSON.stringify({
             error: true,
             message: userMessage,
-            originalError: errorMessage !== userMessage ? errorMessage : undefined,
             tool: name,
           }, null, 2),
         },
@@ -1395,10 +2120,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Starknet MCP Server running on stdio");
+  log({ level: "info", event: "server.started", details: { transport: "stdio" } });
 }
 
 main().catch((error) => {
-  console.error("Server error:", error);
+  log({
+    level: "error",
+    event: "server.fatal",
+    details: { error: error instanceof Error ? error.message : String(error) },
+  });
   process.exit(1);
 });

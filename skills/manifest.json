@@ -43,6 +43,14 @@
       "skill_md_path": "skills/cairo-testing/SKILL.md"
     },
     {
+      "description": "Use when installing and operating the Cartridge Controller CLI (`controller`) to create human-approved sessions and execute Starknet transactions (JSON-only, explicit network selection, least-privilege policy scoping, paymaster control, and error recovery).",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/controller-cli",
+      "name": "controller-cli",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/controller-cli/SKILL.md",
+      "repo_path": "skills/controller-cli",
+      "skill_md_path": "skills/controller-cli/SKILL.md"
+    },
+    {
       "description": "Bridge to Starknet from any EVM chain and register with Huginn agent registry. Enables cross-chain agent onboarding with AVNU bridge integration.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/huginn-onboard",
       "name": "huginn-onboard",
