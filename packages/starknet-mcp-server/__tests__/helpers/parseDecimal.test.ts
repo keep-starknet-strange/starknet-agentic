@@ -99,23 +99,23 @@ describe("parseDecimalToBigInt", () => {
     });
   });
 
-  // ── Negative values ──────────────────────────────────────────────────
+  // ── Negative values are rejected ────────────────────────────────────
 
   describe("negative values", () => {
-    it("handles negative integer", () => {
-      expect(parseDecimalToBigInt("-1", 18)).toBe(-1_000_000_000_000_000_000n);
+    it("rejects negative integer", () => {
+      expect(() => parseDecimalToBigInt("-1", 18)).toThrow("non-negative");
     });
 
-    it("handles negative decimal", () => {
-      expect(parseDecimalToBigInt("-0.5", 18)).toBe(-500_000_000_000_000_000n);
+    it("rejects negative decimal", () => {
+      expect(() => parseDecimalToBigInt("-0.5", 18)).toThrow("non-negative");
     });
 
-    it("handles negative zero", () => {
-      expect(parseDecimalToBigInt("-0", 18)).toBe(0n);
+    it("rejects negative zero", () => {
+      expect(() => parseDecimalToBigInt("-0", 18)).toThrow("non-negative");
     });
 
-    it("handles negative zero with decimal", () => {
-      expect(parseDecimalToBigInt("-0.0", 18)).toBe(0n);
+    it("rejects negative zero with decimal", () => {
+      expect(() => parseDecimalToBigInt("-0.0", 18)).toThrow("non-negative");
     });
   });
 

@@ -104,6 +104,8 @@ export class TokenService {
   private baseUrl: string;
   /** RPC provider for on-chain fallback */
   private provider: RpcProvider | null = null;
+  /** Maximum number of dynamic (non-static) entries allowed in cache */
+  private static readonly MAX_DYNAMIC_CACHE_SIZE = 512;
 
   constructor(baseUrl: string = "https://starknet.api.avnu.fi") {
     this.baseUrl = baseUrl;
@@ -150,6 +152,9 @@ export class TokenService {
     if (!existingAddr || !this.cache.get(existingAddr)?.isStatic) {
       this.symbolIndex.set(upperSymbol, normalized);
     }
+
+    // Evict oldest dynamic entries when cache exceeds cap
+    this.evictIfNeeded();
 
     return cached;
   }
@@ -382,6 +387,27 @@ export class TokenService {
       return this.getTokenByAddress(addressOrSymbol);
     }
     return this.getTokenBySymbol(addressOrSymbol);
+  }
+
+  /**
+   * Evict oldest dynamic cache entries when cache exceeds MAX_DYNAMIC_CACHE_SIZE.
+   */
+  private evictIfNeeded(): void {
+    const dynamicEntries = Array.from(this.cache.entries())
+      .filter(([, t]) => !t.isStatic);
+    if (dynamicEntries.length <= TokenService.MAX_DYNAMIC_CACHE_SIZE) return;
+
+    // Sort by lastUpdated ascending (oldest first) and remove excess
+    dynamicEntries.sort((a, b) => a[1].lastUpdated - b[1].lastUpdated);
+    const toRemove = dynamicEntries.length - TokenService.MAX_DYNAMIC_CACHE_SIZE;
+    for (let i = 0; i < toRemove; i++) {
+      const [addr, token] = dynamicEntries[i];
+      this.cache.delete(addr);
+      const sym = token.symbol.toUpperCase();
+      if (this.symbolIndex.get(sym) === addr) {
+        this.symbolIndex.delete(sym);
+      }
+    }
   }
 
   // ============================================

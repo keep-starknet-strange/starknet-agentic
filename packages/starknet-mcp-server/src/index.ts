@@ -87,6 +87,9 @@ const envSchema = z.object({
   KEYRING_SIGNING_KEY_ID: z.string().min(1).optional(),
   KEYRING_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
   KEYRING_SESSION_VALIDITY_SECONDS: z.coerce.number().int().positive().optional(),
+  KEYRING_TLS_CLIENT_CERT_PATH: z.string().min(1).optional(),
+  KEYRING_TLS_CLIENT_KEY_PATH: z.string().min(1).optional(),
+  KEYRING_TLS_CA_PATH: z.string().min(1).optional(),
   NODE_ENV: z.string().optional(),
 });
 
@@ -114,6 +117,9 @@ const env = envSchema.parse({
   KEYRING_SIGNING_KEY_ID: process.env.KEYRING_SIGNING_KEY_ID,
   KEYRING_REQUEST_TIMEOUT_MS: process.env.KEYRING_REQUEST_TIMEOUT_MS,
   KEYRING_SESSION_VALIDITY_SECONDS: process.env.KEYRING_SESSION_VALIDITY_SECONDS,
+  KEYRING_TLS_CLIENT_CERT_PATH: process.env.KEYRING_TLS_CLIENT_CERT_PATH,
+  KEYRING_TLS_CLIENT_KEY_PATH: process.env.KEYRING_TLS_CLIENT_KEY_PATH,
+  KEYRING_TLS_CA_PATH: process.env.KEYRING_TLS_CA_PATH,
   NODE_ENV: process.env.NODE_ENV,
 });
 
@@ -149,10 +155,37 @@ if (signerMode === "proxy") {
         "Production proxy mode requires KEYRING_PROXY_URL to use https unless loopback is used"
       );
     }
+    if (!isLoopback) {
+      if (
+        !env.KEYRING_TLS_CLIENT_CERT_PATH ||
+        !env.KEYRING_TLS_CLIENT_KEY_PATH ||
+        !env.KEYRING_TLS_CA_PATH
+      ) {
+        throw new Error(
+          "Production proxy mode requires KEYRING_TLS_CLIENT_CERT_PATH, KEYRING_TLS_CLIENT_KEY_PATH, and KEYRING_TLS_CA_PATH for mTLS"
+        );
+      }
+    }
   }
   if (isProductionRuntime && env.STARKNET_PRIVATE_KEY) {
     throw new Error(
       "STARKNET_PRIVATE_KEY must not be set in production when STARKNET_SIGNER_MODE=proxy"
+    );
+  }
+}
+
+// Enforce HTTPS for RPC URL in production to prevent eavesdropping on
+// account balances, transaction details, and nonce values.
+if (isProductionRuntime) {
+  const rpcUrl = new URL(env.STARKNET_RPC_URL);
+  const isLoopback =
+    rpcUrl.hostname === "127.0.0.1" ||
+    rpcUrl.hostname === "localhost" ||
+    rpcUrl.hostname === "::1" ||
+    rpcUrl.hostname === "[::1]";
+  if (rpcUrl.protocol !== "https:" && !isLoopback) {
+    throw new Error(
+      "Production mode requires STARKNET_RPC_URL to use HTTPS to protect transaction data in transit."
     );
   }
 }
@@ -179,6 +212,9 @@ const accountSigner =
         requestTimeoutMs: env.KEYRING_REQUEST_TIMEOUT_MS ?? 5_000,
         sessionValiditySeconds: env.KEYRING_SESSION_VALIDITY_SECONDS ?? 300,
         keyId: env.KEYRING_SIGNING_KEY_ID,
+        tlsClientCertPath: env.KEYRING_TLS_CLIENT_CERT_PATH,
+        tlsClientKeyPath: env.KEYRING_TLS_CLIENT_KEY_PATH,
+        tlsCaPath: env.KEYRING_TLS_CA_PATH,
       })
     : env.STARKNET_PRIVATE_KEY!;
 
@@ -215,8 +251,17 @@ function parseFelt(name: string, value: string): bigint {
 
 function parseAddress(name: string, value: string): string {
   try {
-    return validateAndParseAddress(value);
-  } catch {
+    const parsed = validateAndParseAddress(value);
+    // Reject the zero address — it's never a valid target for transfers or calls.
+    if (/^0x0+$/.test(parsed)) {
+      throw new Error("zero address");
+    }
+    return parsed;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "zero address") {
+      throw new Error(`${name} cannot be the zero address.`);
+    }
     throw new Error(
       `${name} is not a valid Starknet address: "${value}". ` +
         "Expected a hex string starting with 0x."
@@ -247,9 +292,49 @@ function parseCalldata(name: string, calldata: string[]): string[] {
   });
 }
 
+function validateEntrypoint(name: string, value: string): string {
+  if (!value || value.trim().length === 0) {
+    throw new Error(`${name} is required and must be non-empty`);
+  }
+  if (/[\x00-\x1f\x7f]/.test(value)) {
+    throw new Error(`${name} contains invalid control characters`);
+  }
+  return value.trim();
+}
+
 // Transaction wait config: ~120 s total (40 retries x 3 s interval).
 const TX_WAIT_RETRIES = 40;
 const TX_WAIT_INTERVAL_MS = 3_000;
+
+/**
+ * Reject an AVNU quote whose server-provided expiry has already passed.
+ * The `expiry` field is a Unix-seconds timestamp set by the AVNU router;
+ * executing an expired quote will fail on-chain and waste gas.
+ */
+function assertQuoteNotExpired(quote: { expiry?: number | null }): void {
+  if (quote.expiry != null && quote.expiry > 0) {
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (nowSec >= quote.expiry) {
+      throw new Error(
+        `Swap quote has expired (expiry=${quote.expiry}, now=${nowSec}). ` +
+          "Please request a fresh quote and retry."
+      );
+    }
+  }
+}
+
+/** Threshold (5%) above which we flag high price impact to the AI agent. */
+const HIGH_PRICE_IMPACT_THRESHOLD = 5;
+
+function priceImpactWarning(priceImpact?: number): string | undefined {
+  if (priceImpact != null && Math.abs(priceImpact) >= HIGH_PRICE_IMPACT_THRESHOLD) {
+    return (
+      `WARNING: Price impact is ${priceImpact.toFixed(2)}% which exceeds the ${HIGH_PRICE_IMPACT_THRESHOLD}% threshold. ` +
+      "This swap may result in significant value loss. Consider reducing the amount or using a more liquid pair."
+    );
+  }
+  return undefined;
+}
 
 // parseDecimalToBigInt imported from ./helpers/parseDecimal.js
 
@@ -1038,10 +1123,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const validatedContractAddress = parseAddress("contractAddress", contractAddress);
+        const validatedEntrypoint = validateEntrypoint("entrypoint", entrypoint);
         const validatedCalldata = parseCalldata("calldata", calldata);
         const result = await provider.callContract({
           contractAddress: validatedContractAddress,
-          entrypoint,
+          entrypoint: validatedEntrypoint,
           calldata: validatedCalldata,
         });
 
@@ -1069,11 +1155,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         const validatedContractAddress = parseAddress("contractAddress", contractAddress);
+        const validatedEntrypoint = validateEntrypoint("entrypoint", entrypoint);
         const validatedCalldata = parseCalldata("calldata", calldata);
         const gasTokenAddress = gasToken ? await resolveTokenAddressAsync(gasToken) : TOKENS.STRK;
         const invokeCall: Call = {
           contractAddress: validatedContractAddress,
-          entrypoint,
+          entrypoint: validatedEntrypoint,
           calldata: validatedCalldata,
         };
 
@@ -1107,8 +1194,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
         // Validate slippage is within reasonable bounds
-        if (slippage < 0 || slippage > 0.5) {
-          throw new Error("Slippage must be between 0 and 0.5 (50%). Recommended: 0.005-0.03.");
+        if (slippage < 0 || slippage > 0.15) {
+          throw new Error("Slippage must be between 0 and 0.15 (15%). Recommended: 0.005-0.03.");
         }
 
         const [sellTokenAddress, buyTokenAddress] = await Promise.all([
@@ -1130,6 +1217,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
 
         const bestQuote = quotes[0];
+        assertQuoteNotExpired(bestQuote);
 
         const { calls } = await quoteToCalls({
           quoteId: bestQuote.quoteId,
@@ -1146,6 +1234,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const buyDecimals = await tokenService.getDecimalsAsync(buyTokenAddress);
         const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
 
+        const swapPriceWarning = priceImpactWarning(bestQuote.priceImpact);
+
         return {
           content: [
             {
@@ -1160,6 +1250,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
                 slippage,
                 gasfree,
+                ...(swapPriceWarning ? { warning: swapPriceWarning } : {}),
               }, null, 2),
             },
           ],
@@ -1196,6 +1287,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const tokenService = getTokenService();
         const buyDecimals = await tokenService.getDecimalsAsync(buyTokenAddress);
         const quoteFields = formatQuoteFields(bestQuote, buyDecimals);
+        const quotePriceWarning = priceImpactWarning(bestQuote.priceImpact);
 
         return {
           content: [
@@ -1209,6 +1301,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 sellAmountInUsd: bestQuote.sellAmountInUsd?.toFixed(2),
                 buyAmountInUsd: bestQuote.buyAmountInUsd?.toFixed(2),
                 quoteId: bestQuote.quoteId,
+                ...(quotePriceWarning ? { warning: quotePriceWarning } : {}),
               }, null, 2),
             },
           ],
@@ -1222,10 +1315,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           calldata?: string[];
         };
 
+        const validatedContractAddress = parseAddress("contractAddress", contractAddress);
+        const validatedEntrypoint = validateEntrypoint("entrypoint", entrypoint);
+        const validatedCalldata = parseCalldata("calldata", calldata);
         const fee = await account.estimateInvokeFee({
-          contractAddress,
-          entrypoint,
-          calldata,
+          contractAddress: validatedContractAddress,
+          entrypoint: validatedEntrypoint,
+          calldata: validatedCalldata,
         });
 
         return {
@@ -1266,17 +1362,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           if (!call.entrypoint) {
             throw new Error(`calls[${i}].entrypoint is required`);
           }
+          if (call.calldata && call.calldata.length > MAX_CALLDATA_LEN) {
+            throw new Error(`calls[${i}].calldata too large (${call.calldata.length} items, max ${MAX_CALLDATA_LEN})`);
+          }
           const validatedAddress = parseAddress(`calls[${i}].contractAddress`, call.contractAddress);
+          const validatedEntrypoint = validateEntrypoint(`calls[${i}].entrypoint`, call.entrypoint);
           const validatedCalldata = call.calldata && call.calldata.length > 0
             ? parseCalldata(`calls[${i}].calldata`, call.calldata)
             : [];
 
           return {
             contractAddress: validatedAddress,
-            entrypoint: call.entrypoint,
+            entrypoint: validatedEntrypoint,
             calldata: validatedCalldata,
           };
         });
+
+        // Detect exact-duplicate calls — likely an LLM hallucination or copy-paste error.
+        const callKeys = validatedCalls.map(
+          (c) => `${c.contractAddress}:${c.entrypoint}:${c.calldata.join(",")}`
+        );
+        const seen = new Set<string>();
+        const duplicateIndices: number[] = [];
+        for (let idx = 0; idx < callKeys.length; idx++) {
+          if (seen.has(callKeys[idx])) duplicateIndices.push(idx);
+          seen.add(callKeys[idx]);
+        }
+
+        const warning =
+          duplicateIndices.length > 0
+            ? `WARNING: Identical calls detected at indices [${duplicateIndices.join(", ")}]. ` +
+              "This may indicate a duplicate request. Review carefully before signing."
+            : undefined;
 
         return {
           content: [
@@ -1286,6 +1403,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 {
                   calls: validatedCalls,
                   callCount: validatedCalls.length,
+                  ...(warning ? { warning } : {}),
                   note: "Unsigned calls. Pass to account.execute(calls) or write to calls.json for external signing.",
                 },
                 null,
@@ -1381,6 +1499,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const result = await executeFn();
         await provider.waitForTransaction(result.transaction_hash, {
+          retries: TX_WAIT_RETRIES,
           retryInterval: TX_WAIT_INTERVAL_MS,
         });
 
@@ -1442,6 +1561,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const result = await executeFn();
         await provider.waitForTransaction(result.transaction_hash, {
+          retries: TX_WAIT_RETRIES,
           retryInterval: TX_WAIT_INTERVAL_MS,
         });
 
@@ -1593,6 +1713,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           slippageBps?: number;
         };
 
+        // Validate slippage bounds (1500 bps = 15% max)
+        if (slippageBps < 0 || slippageBps > 1500) {
+          throw new Error("slippageBps must be between 0 and 1500 (15%). Recommended: 50-300.");
+        }
+
         const sellTokenAddress = rawSellToken.startsWith("0x")
           ? parseAddress("sellTokenAddress", rawSellToken)
           : await resolveTokenAddressAsync(rawSellToken);
@@ -1621,6 +1746,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
 
         const bestQuote = quotes[0];
+        assertQuoteNotExpired(bestQuote);
         const slippage = slippageBps / 10000;
 
         const { calls: swapCalls } = await quoteToCalls({
@@ -1947,6 +2073,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const userMessage = formatErrorMessage(errorMessage);
 
+    // Log the full error to stderr for operators; never expose to the agent.
+    console.error(`[MCP] tool=${name} error:`, errorMessage);
+
     return {
       content: [
         {
@@ -1954,7 +2083,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           text: JSON.stringify({
             error: true,
             message: userMessage,
-            originalError: errorMessage !== userMessage ? errorMessage : undefined,
             tool: name,
           }, null, 2),
         },

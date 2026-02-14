@@ -43,6 +43,10 @@ STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_SIGNER_MODE=proxy
 KEYRING_PROXY_URL=https://signer.internal:8545
 KEYRING_HMAC_SECRET=replace-with-long-random-secret
+# mTLS client material (required in production for non-loopback signer URLs)
+# KEYRING_TLS_CLIENT_CERT_PATH=/etc/starknet-mcp/tls/client.crt
+# KEYRING_TLS_CLIENT_KEY_PATH=/etc/starknet-mcp/tls/client.key
+# KEYRING_TLS_CA_PATH=/etc/starknet-mcp/tls/ca.crt
 # Optional:
 # KEYRING_CLIENT_ID=starknet-mcp-server
 # KEYRING_SIGNING_KEY_ID=default
@@ -51,6 +55,7 @@ KEYRING_HMAC_SECRET=replace-with-long-random-secret
 ```
 
 Production startup guard: `KEYRING_PROXY_URL` must use `https://` unless loopback is used (`http://127.0.0.1`, `http://localhost`, or `http://[::1]`).
+Production startup guard (non-loopback signer URLs): `KEYRING_TLS_CLIENT_CERT_PATH`, `KEYRING_TLS_CLIENT_KEY_PATH`, and `KEYRING_TLS_CA_PATH` are required.
 
 ## Usage
 
@@ -214,6 +219,7 @@ The server uses:
 
 - Production startup guard: `NODE_ENV=production` requires `STARKNET_SIGNER_MODE=proxy`
 - Production startup guard: rejects `STARKNET_PRIVATE_KEY` when `STARKNET_SIGNER_MODE=proxy`
+- Production startup guard: non-loopback proxy URLs require mTLS client cert/key/CA paths
 - Proxy mode keeps signing outside MCP process (`starknet-keyring-proxy`)
 - Direct private key mode is intended for local development only
 - All inputs are validated before execution

@@ -1,4 +1,9 @@
 import { createHash, createHmac } from "node:crypto";
+import { EventEmitter } from "node:events";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import https from "node:https";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KeyringProxySigner } from "../../src/helpers/keyringProxySigner.js";
 
@@ -247,5 +252,85 @@ describe("KeyringProxySigner", () => {
         { chainId: "0x1", nonce: "0x2" } as any
       )
     ).rejects.toThrow("session public key changed unexpectedly");
+  });
+
+  it("rejects incomplete mTLS client configuration", async () => {
+    expect(
+      () =>
+        new KeyringProxySigner({
+          proxyUrl: "https://signer.internal:8545",
+          hmacSecret: "test-secret",
+          clientId: "mcp-tests",
+          accountAddress: "0xabc",
+          requestTimeoutMs: 5_000,
+          sessionValiditySeconds: 300,
+          tlsClientCertPath: "/tmp/cert.pem",
+        })
+    ).toThrow("Incomplete keyring mTLS client configuration");
+  });
+
+  it("uses mTLS transport when TLS client material is configured", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-keyring-mtls-"));
+    const certPath = path.join(tempDir, "client.crt");
+    const keyPath = path.join(tempDir, "client.key");
+    const caPath = path.join(tempDir, "ca.crt");
+    fs.writeFileSync(certPath, "client-cert");
+    fs.writeFileSync(keyPath, "client-key");
+    fs.writeFileSync(caPath, "ca-cert");
+
+    const requestSpy = vi.spyOn(https, "request").mockImplementation(((options: any, callback: any) => {
+      const response = new EventEmitter() as EventEmitter & { statusCode?: number };
+      response.statusCode = 200;
+
+      const req = new EventEmitter() as EventEmitter & {
+        setTimeout: (ms: number, cb: () => void) => void;
+        write: (chunk: string) => void;
+        end: () => void;
+        destroy: (err?: Error) => void;
+      };
+      req.setTimeout = vi.fn();
+      req.write = vi.fn();
+      req.end = vi.fn(() => {
+        callback(response);
+        response.emit(
+          "data",
+          Buffer.from(
+            JSON.stringify({
+              signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+              sessionPublicKey: "0x123",
+            })
+          )
+        );
+        response.emit("end");
+      });
+      req.destroy = vi.fn();
+      return req as any;
+    }) as any);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "https://signer.internal:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+      tlsClientCertPath: certPath,
+      tlsClientKeyPath: keyPath,
+      tlsCaPath: caPath,
+    });
+
+    const signature = await signer.signTransaction(
+      [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+      { chainId: "0x1", nonce: "0x1" } as any
+    );
+
+    expect(signature).toEqual(["0x123", "0xaaa", "0xbbb", "0x698f136c"]);
+    expect(requestSpy).toHaveBeenCalledTimes(1);
+
+    const requestOptions = requestSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(requestOptions.cert).toBeInstanceOf(Buffer);
+    expect(requestOptions.key).toBeInstanceOf(Buffer);
+    expect(requestOptions.ca).toBeInstanceOf(Buffer);
+    expect(requestOptions.rejectUnauthorized).toBe(true);
   });
 });

@@ -7,15 +7,12 @@
  */
 export function parseDecimalToBigInt(value: string, decimals: number): bigint {
   const trimmed = value.trim();
-  if (!/^-?\d+(\.\d+)?$/.test(trimmed)) {
-    throw new Error(`Invalid decimal amount: "${value}"`);
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+    throw new Error(`Invalid decimal amount: "${value}". Must be a non-negative number.`);
   }
-  const negative = trimmed.startsWith("-");
-  const abs = negative ? trimmed.slice(1) : trimmed;
-  const [intPart, fracPart = ""] = abs.split(".");
+  const [intPart, fracPart = ""] = trimmed.split(".");
 
   // Truncate or pad fractional part to exactly `decimals` digits
   const adjustedFrac = fracPart.slice(0, decimals).padEnd(decimals, "0");
-  const raw = BigInt(intPart + adjustedFrac);
-  return negative ? -raw : raw;
+  return BigInt(intPart + adjustedFrac);
 }
