@@ -137,6 +137,13 @@ function main() {
   }
 
   const report = readJson(reportPath);
+  // pnpm may emit a JSON error object (e.g. no lockfile). Treat that as a hard failure
+  // to avoid silently skipping the gate.
+  if (report?.error) {
+    console.error("audit-gate: BLOCK (audit report error)");
+    console.error(JSON.stringify(report.error));
+    process.exit(1);
+  }
   const allowlistDoc = readJson(allowlistPath);
   const allowlistEntries = Array.isArray(allowlistDoc?.advisories)
     ? allowlistDoc.advisories
