@@ -87,6 +87,9 @@ const envSchema = z.object({
   KEYRING_SIGNING_KEY_ID: z.string().min(1).optional(),
   KEYRING_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
   KEYRING_SESSION_VALIDITY_SECONDS: z.coerce.number().int().positive().optional(),
+  KEYRING_TLS_CLIENT_CERT_PATH: z.string().min(1).optional(),
+  KEYRING_TLS_CLIENT_KEY_PATH: z.string().min(1).optional(),
+  KEYRING_TLS_CA_PATH: z.string().min(1).optional(),
   NODE_ENV: z.string().optional(),
 });
 
@@ -114,6 +117,9 @@ const env = envSchema.parse({
   KEYRING_SIGNING_KEY_ID: process.env.KEYRING_SIGNING_KEY_ID,
   KEYRING_REQUEST_TIMEOUT_MS: process.env.KEYRING_REQUEST_TIMEOUT_MS,
   KEYRING_SESSION_VALIDITY_SECONDS: process.env.KEYRING_SESSION_VALIDITY_SECONDS,
+  KEYRING_TLS_CLIENT_CERT_PATH: process.env.KEYRING_TLS_CLIENT_CERT_PATH,
+  KEYRING_TLS_CLIENT_KEY_PATH: process.env.KEYRING_TLS_CLIENT_KEY_PATH,
+  KEYRING_TLS_CA_PATH: process.env.KEYRING_TLS_CA_PATH,
   NODE_ENV: process.env.NODE_ENV,
 });
 
@@ -149,6 +155,17 @@ if (signerMode === "proxy") {
         "Production proxy mode requires KEYRING_PROXY_URL to use https unless loopback is used"
       );
     }
+    if (!isLoopback) {
+      if (
+        !env.KEYRING_TLS_CLIENT_CERT_PATH ||
+        !env.KEYRING_TLS_CLIENT_KEY_PATH ||
+        !env.KEYRING_TLS_CA_PATH
+      ) {
+        throw new Error(
+          "Production proxy mode requires KEYRING_TLS_CLIENT_CERT_PATH, KEYRING_TLS_CLIENT_KEY_PATH, and KEYRING_TLS_CA_PATH for mTLS"
+        );
+      }
+    }
   }
   if (isProductionRuntime && env.STARKNET_PRIVATE_KEY) {
     throw new Error(
@@ -179,6 +196,9 @@ const accountSigner =
         requestTimeoutMs: env.KEYRING_REQUEST_TIMEOUT_MS ?? 5_000,
         sessionValiditySeconds: env.KEYRING_SESSION_VALIDITY_SECONDS ?? 300,
         keyId: env.KEYRING_SIGNING_KEY_ID,
+        tlsClientCertPath: env.KEYRING_TLS_CLIENT_CERT_PATH,
+        tlsClientKeyPath: env.KEYRING_TLS_CLIENT_KEY_PATH,
+        tlsCaPath: env.KEYRING_TLS_CA_PATH,
       })
     : env.STARKNET_PRIVATE_KEY!;
 

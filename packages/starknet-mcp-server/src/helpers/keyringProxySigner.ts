@@ -1,4 +1,6 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
+import fs from "node:fs";
+import https from "node:https";
 import {
   type Call,
   type DeclareSignerDetails,
@@ -20,6 +22,9 @@ type KeyringProxySignerConfig = {
   requestTimeoutMs: number;
   sessionValiditySeconds: number;
   keyId?: string;
+  tlsClientCertPath?: string;
+  tlsClientKeyPath?: string;
+  tlsCaPath?: string;
 };
 
 type KeyringSignResponse = {
@@ -27,6 +32,12 @@ type KeyringSignResponse = {
   sessionPublicKey?: string;
   requestId?: string;
   messageHash?: string;
+};
+
+type MtlsClientMaterial = {
+  cert: Buffer;
+  key: Buffer;
+  ca: Buffer;
 };
 
 function sha256Hex(input: string): string {
@@ -82,10 +93,80 @@ export class KeyringProxySigner extends SignerInterface {
   private readonly endpointPath = "/v1/sign/session-transaction";
   private readonly config: KeyringProxySignerConfig;
   private cachedSessionPublicKey?: string;
+  private readonly mtlsClientMaterial?: MtlsClientMaterial;
 
   constructor(config: KeyringProxySignerConfig) {
     super();
     this.config = config;
+    const hasMtlsField = Boolean(
+      config.tlsClientCertPath || config.tlsClientKeyPath || config.tlsCaPath
+    );
+    if (hasMtlsField) {
+      if (!config.tlsClientCertPath || !config.tlsClientKeyPath || !config.tlsCaPath) {
+        throw new Error(
+          "Incomplete keyring mTLS client configuration; set tlsClientCertPath, tlsClientKeyPath, and tlsCaPath"
+        );
+      }
+      const proxyProtocol = new URL(config.proxyUrl).protocol;
+      if (proxyProtocol !== "https:") {
+        throw new Error("mTLS client certificates require an https KEYRING_PROXY_URL");
+      }
+
+      this.mtlsClientMaterial = {
+        cert: fs.readFileSync(config.tlsClientCertPath),
+        key: fs.readFileSync(config.tlsClientKeyPath),
+        ca: fs.readFileSync(config.tlsCaPath),
+      };
+    }
+  }
+
+  private async postJsonViaMtls(
+    url: URL,
+    headers: Record<string, string>,
+    body: string
+  ): Promise<{ status: number; bodyText: string }> {
+    if (!this.mtlsClientMaterial) {
+      throw new Error("Internal error: mTLS material not initialized");
+    }
+
+    return await new Promise((resolve, reject) => {
+      const request = https.request(
+        {
+          protocol: url.protocol,
+          hostname: url.hostname,
+          port: url.port ? Number(url.port) : undefined,
+          path: `${url.pathname}${url.search}`,
+          method: "POST",
+          headers,
+          cert: this.mtlsClientMaterial.cert,
+          key: this.mtlsClientMaterial.key,
+          ca: this.mtlsClientMaterial.ca,
+          rejectUnauthorized: true,
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+          response.on("data", (chunk) => {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          });
+          response.on("end", () => {
+            resolve({
+              status: response.statusCode ?? 0,
+              bodyText: Buffer.concat(chunks).toString("utf8"),
+            });
+          });
+        }
+      );
+
+      request.setTimeout(this.config.requestTimeoutMs, () => {
+        const timeoutError = new Error("request timeout");
+        timeoutError.name = "AbortError";
+        request.destroy(timeoutError);
+      });
+
+      request.on("error", reject);
+      request.write(body);
+      request.end();
+    });
   }
 
   async getPubKey(): Promise<string> {
@@ -141,25 +222,40 @@ export class KeyringProxySigner extends SignerInterface {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.requestTimeoutMs);
     try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-keyring-client-id": this.config.clientId,
-          "x-keyring-timestamp": timestamp,
-          "x-keyring-nonce": nonce,
-          "x-keyring-signature": hmacHex,
-        },
-        body: rawBody,
-        signal: controller.signal,
-      });
+      const requestHeaders = {
+        "content-type": "application/json",
+        "x-keyring-client-id": this.config.clientId,
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": hmacHex,
+      };
 
-      if (!response.ok) {
-        const rawText = await response.text();
-        throw new Error(formatProxyError(response.status, rawText));
+      let responseStatus: number;
+      let responseBodyText: string;
+      if (this.mtlsClientMaterial) {
+        const mtlsResponse = await this.postJsonViaMtls(url, requestHeaders, rawBody);
+        responseStatus = mtlsResponse.status;
+        responseBodyText = mtlsResponse.bodyText;
+      } else {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: requestHeaders,
+          body: rawBody,
+          signal: controller.signal,
+        });
+        responseStatus = response.status;
+        if (typeof response.text === "function") {
+          responseBodyText = await response.text();
+        } else {
+          responseBodyText = JSON.stringify(await response.json());
+        }
       }
 
-      const parsed = (await response.json()) as KeyringSignResponse;
+      if (responseStatus < 200 || responseStatus >= 300) {
+        throw new Error(formatProxyError(responseStatus, responseBodyText));
+      }
+
+      const parsed = JSON.parse(responseBodyText) as KeyringSignResponse;
       if (!Array.isArray(parsed.signature) || parsed.signature.length !== 4) {
         throw new Error(
           "Invalid signature response from keyring proxy: expected [pubkey, r, s, valid_until]"

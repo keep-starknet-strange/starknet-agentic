@@ -1405,6 +1405,24 @@ describe("MCP Startup Guardrails", () => {
       "Production proxy mode requires KEYRING_PROXY_URL to use https unless loopback is used"
     );
   });
+
+  it("fails startup in production proxy mode when mTLS client cert config is missing", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.NODE_ENV = "production";
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    process.env.KEYRING_PROXY_URL = "https://signer.internal:8545";
+    delete process.env.STARKNET_PRIVATE_KEY;
+    delete process.env.KEYRING_TLS_CLIENT_CERT_PATH;
+    delete process.env.KEYRING_TLS_CLIENT_KEY_PATH;
+    delete process.env.KEYRING_TLS_CA_PATH;
+
+    vi.resetModules();
+    await expect(import("../../src/index.js")).rejects.toThrow(
+      "Production proxy mode requires KEYRING_TLS_CLIENT_CERT_PATH, KEYRING_TLS_CLIENT_KEY_PATH, and KEYRING_TLS_CA_PATH for mTLS"
+    );
+  });
 });
 
 describe("Tool list", () => {
