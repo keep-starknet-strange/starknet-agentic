@@ -94,10 +94,15 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+      - name: Audit dependencies (report)
+        run: |
+          set -euo pipefail
+          pnpm audit --json > audit-report.json || true
 
-      - name: Audit dependencies
-        run: pnpm audit --audit-level=high
-        continue-on-error: true
+      - name: Enforce audit allowlist (high+)
+        run: |
+          set -euo pipefail
+          node scripts/security/audit-gate.mjs --report audit-report.json --allowlist security/audit-allowlist.json --failLevel high
 
       - name: Build packages
         run: pnpm run build
