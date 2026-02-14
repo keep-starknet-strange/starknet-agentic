@@ -1,0 +1,98 @@
+name: Spec Conformance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/session-account/**'
+      - 'packages/**'
+      - 'spec/interop-version.json'
+      - 'spec/interop-version.schema.json'
+      - 'docs/**'
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/session-account/**'
+      - 'packages/**'
+      - 'spec/interop-version.json'
+      - 'spec/interop-version.schema.json'
+      - 'docs/**'
+  repository_dispatch:
+    types: [spec-conformance-request]
+  schedule:
+    - cron: '40 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: spec-conformance-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SISNA_REPO: ${{ vars.SISNA_REPO }}
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Node.js (for schema validation)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20'
+
+      - name: Validate local interop manifest (schema)
+        run: |
+          set -euo pipefail
+          npx --yes ajv-cli@5 validate --spec=draft2020 --strict=true \
+            -s spec/interop-version.schema.json \
+            -d spec/interop-version.json
+
+      - name: Clone counterpart repos
+        run: |
+          set -euo pipefail
+          SISNA_TARGET="${SISNA_REPO:-omarespejel/SISNA}"
+          git clone --depth 1 https://github.com/keep-starknet-strange/starkclaw.git /tmp/starkclaw
+          git clone --depth 1 "https://github.com/${SISNA_TARGET}.git" /tmp/SISNA
+
+      - name: Enforce schema parity across repos
+        run: |
+          set -euo pipefail
+          for counterpart in /tmp/starkclaw /tmp/SISNA; do
+            schema_file="$counterpart/spec/interop-version.schema.json"
+            if [[ -f "$schema_file" ]]; then
+              diff -u spec/interop-version.schema.json "$schema_file"
+            else
+              echo "::warning::Skipping schema parity for $counterpart (missing $schema_file on target branch)"
+            fi
+          done
+
+      - name: Compare spec version across repos
+        run: |
+          set -euo pipefail
+          LOCAL_VERSION=$(jq -r '.spec_version' spec/interop-version.json)
+          echo "agentic=$LOCAL_VERSION"
+          for counterpart in /tmp/starkclaw /tmp/SISNA; do
+            manifest_file="$counterpart/spec/interop-version.json"
+            if [[ -f "$manifest_file" ]]; then
+              COUNTERPART_VERSION=$(jq -r '.spec_version' "$manifest_file")
+              echo "$counterpart=$COUNTERPART_VERSION"
+              test "$LOCAL_VERSION" = "$COUNTERPART_VERSION"
+            else
+              echo "::warning::Skipping version parity for $counterpart (missing $manifest_file on target branch)"
+            fi
+          done
+
+      - name: Validate boundary invariants
+        run: |
+          set -euo pipefail
+          grep -nE "if signature\\.len\\(\\) == 4" contracts/session-account/src/account.cairo
+          grep -nE "signature\\.at\\(3\\)" contracts/session-account/src/account.cairo
+          grep -nE "parsed\\.signature\\.length !== 4" /tmp/starkclaw/apps/mobile/lib/signer/keyring-proxy-signer.ts
+          grep -nE "name: X-Keyring-Signature" /tmp/SISNA/docs/api-spec.yaml
+          grep -nE "validUntil:" /tmp/SISNA/docs/api-spec.yaml
+          grep -nE "/v1/sign/session-transaction:" /tmp/SISNA/docs/api-spec.yaml

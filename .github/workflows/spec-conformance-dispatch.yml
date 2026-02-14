@@ -1,0 +1,71 @@
+name: Dispatch Spec Conformance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/session-account/**'
+      - 'packages/**'
+      - 'spec/interop-version.json'
+      - 'spec/interop-version.schema.json'
+      - 'docs/**'
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/session-account/**'
+      - 'packages/**'
+      - 'spec/interop-version.json'
+      - 'spec/interop-version.schema.json'
+      - 'docs/**'
+
+concurrency:
+  group: spec-dispatch-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SISNA_REPO: ${{ vars.SISNA_REPO }}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Resolve spec version
+        id: spec
+        run: |
+          set -euo pipefail
+          echo "version=$(jq -r '.spec_version' spec/interop-version.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch to counterpart repos (if token configured)
+        env:
+          TOKEN: ${{ secrets.CROSS_REPO_DISPATCH_TOKEN }}
+          SPEC_VERSION: ${{ steps.spec.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ]; then
+            echo "CROSS_REPO_DISPATCH_TOKEN is not configured; skipping cross-repo dispatch."
+            exit 0
+          fi
+
+          SISNA_TARGET="${SISNA_REPO:-omarespejel/SISNA}"
+          for target in "keep-starknet-strange/starkclaw" "${SISNA_TARGET}"; do
+            owner="${target%%/*}"
+            repo="${target##*/}"
+            payload=$(jq -n \
+              --arg source_repo "${GITHUB_REPOSITORY}" \
+              --arg source_sha "${GITHUB_SHA}" \
+              --arg source_ref "${GITHUB_REF}" \
+              --arg spec_version "${SPEC_VERSION}" \
+              '{event_type:"spec-conformance-request", client_payload:{source_repo:$source_repo, source_sha:$source_sha, source_ref:$source_ref, spec_version:$spec_version}}')
+            curl -fsSL -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${TOKEN}" \
+              "https://api.github.com/repos/${owner}/${repo}/dispatches" \
+              -d "${payload}"
+            echo "Dispatched spec-conformance-request to ${target}"
+          done

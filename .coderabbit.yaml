@@ -1,15 +1,51 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: "en-US"
 early_access: false
+
 reviews:
-  profile: "chill"
-  request_changes_workflow: false
+  profile: "assertive"
+  request_changes_workflow: true
   high_level_summary: true
   review_status: true
   collapse_walkthrough: true
   poem: false
+  fail_commit_status: true
   auto_review:
     enabled: true
     drafts: false
+
+  path_instructions:
+    - path: "contracts/session-account/**"
+      instructions: |
+        Treat session-account changes as wallet-grade security code.
+        Check signer authority boundaries, signature envelope invariants, replay resistance,
+        and policy-enforcement semantics. Flag any compatibility drift with SISNA and Starkclaw.
+    - path: "packages/**"
+      instructions: |
+        Validate API compatibility and backward compatibility for published packages.
+        Breaking API changes require explicit migration notes.
+    - path: ".github/workflows/**"
+      instructions: |
+        Ensure least-privilege permissions and safe CI execution patterns.
+
+  pre_merge_checks:
+    custom_checks:
+      - name: "Spec impact declaration"
+        mode: error
+        instructions: |
+          If this PR changes contracts/session-account/**, packages/**, docs/**,
+          or .github/workflows/**, the PR description must include "Spec impact"
+          with either "none" or concrete compatibility/migration notes.
+      - name: "Cross-repo boundary awareness"
+        mode: error
+        instructions: |
+          Boundary changes must acknowledge impacted repos:
+          keep-starknet-strange/starkclaw and omarespejel/SISNA.
+      - name: "Security rationale for account semantics"
+        mode: warning
+        instructions: |
+          For changes in contracts/session-account/**, require a concise security rationale
+          and explicit mention of invariants preserved or changed.
+
 chat:
   auto_reply: false

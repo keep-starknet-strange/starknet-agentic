@@ -11,16 +11,17 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      attestations: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@53751a9789c7351e4924f01fe68370252a4f1f18
         with:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
@@ -31,6 +32,19 @@ jobs:
 
       - name: Build packages
         run: pnpm run build
+
+      - name: Pack publish artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist-release
+          cd packages/starknet-mcp-server && npm pack --pack-destination ../../dist-release
+          cd ../starknet-a2a && npm pack --pack-destination ../../dist-release
+          cd ../starknet-agent-passport && npm pack --pack-destination ../../dist-release
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45
+        with:
+          subject-path: 'dist-release/*.tgz'
 
       - name: Publish to npm
         run: |
