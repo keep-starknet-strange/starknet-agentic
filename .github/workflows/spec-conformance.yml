@@ -7,6 +7,7 @@ on:
       - 'contracts/session-account/**'
       - 'packages/**'
       - 'spec/interop-version.json'
+      - 'spec/interop-version.schema.json'
       - 'docs/**'
   push:
     branches: [main]
@@ -14,6 +15,7 @@ on:
       - 'contracts/session-account/**'
       - 'packages/**'
       - 'spec/interop-version.json'
+      - 'spec/interop-version.schema.json'
       - 'docs/**'
   repository_dispatch:
     types: [spec-conformance-request]
@@ -21,8 +23,15 @@ on:
     - cron: '40 5 * * *'
   workflow_dispatch:
 
+concurrency:
+  group: spec-conformance-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name || github.sha }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
+
+env:
+  SISNA_REPO: ${{ vars.SISNA_REPO }}
 
 jobs:
   conformance:
@@ -31,17 +40,26 @@ jobs:
       - name: Checkout current repo
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-      - name: Validate local interop manifest
+      - name: Validate local interop manifest (strict)
         run: |
           set -euo pipefail
-          jq -e '.spec_version and .session_signature_envelope and .signer_api_path' spec/interop-version.json >/dev/null
+          test -f spec/interop-version.schema.json
+          jq -e '
+            type == "object" and
+            (keys | sort) == ["required_auth_headers","session_signature_envelope","signer_api_path","spec_version"] and
+            (.spec_version | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) and
+            .session_signature_envelope == "[session_pubkey,r,s,valid_until]" and
+            .signer_api_path == "/v1/sign/session-transaction" and
+            .required_auth_headers == ["X-Keyring-Timestamp","X-Keyring-Nonce","X-Keyring-Signature"]
+          ' spec/interop-version.json >/dev/null
           jq -r '.spec_version' spec/interop-version.json
 
       - name: Clone counterpart repos
         run: |
           set -euo pipefail
+          SISNA_TARGET="${SISNA_REPO:-omarespejel/SISNA}"
           git clone --depth 1 https://github.com/keep-starknet-strange/starkclaw.git /tmp/starkclaw
-          git clone --depth 1 https://github.com/omarespejel/SISNA.git /tmp/SISNA
+          git clone --depth 1 "https://github.com/${SISNA_TARGET}.git" /tmp/SISNA
 
       - name: Compare spec version across repos
         run: |
@@ -53,9 +71,12 @@ jobs:
           test "$LOCAL_VERSION" = "$STARKCLAW_VERSION"
           test "$LOCAL_VERSION" = "$SISNA_VERSION"
 
-      - name: Validate envelope anchors
+      - name: Validate boundary invariants
         run: |
           set -euo pipefail
-          rg -n "len=4\): \[session_pubkey, r, s, valid_until\]" contracts/session-account/src/account.cairo
-          rg -n "expected \\[pubkey, r, s, valid_until\\]" /tmp/starkclaw/apps/mobile/lib/signer/keyring-proxy-signer.ts
-          rg -n "X-Keyring-Signature|validUntil|/v1/sign/session-transaction" /tmp/SISNA/docs/api-spec.yaml
+          rg -n "if signature\.len\(\) == 4" contracts/session-account/src/account.cairo
+          rg -n "signature\.at\(3\)" contracts/session-account/src/account.cairo
+          rg -n "parsed\.signature\.length !== 4" /tmp/starkclaw/apps/mobile/lib/signer/keyring-proxy-signer.ts
+          rg -n "name: X-Keyring-Signature" /tmp/SISNA/docs/api-spec.yaml
+          rg -n "validUntil:" /tmp/SISNA/docs/api-spec.yaml
+          rg -n "/v1/sign/session-transaction:" /tmp/SISNA/docs/api-spec.yaml

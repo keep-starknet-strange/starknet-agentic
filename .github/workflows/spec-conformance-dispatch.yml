@@ -7,6 +7,7 @@ on:
       - 'contracts/session-account/**'
       - 'packages/**'
       - 'spec/interop-version.json'
+      - 'spec/interop-version.schema.json'
       - 'docs/**'
   push:
     branches: [main]
@@ -14,10 +15,18 @@ on:
       - 'contracts/session-account/**'
       - 'packages/**'
       - 'spec/interop-version.json'
+      - 'spec/interop-version.schema.json'
       - 'docs/**'
+
+concurrency:
+  group: spec-dispatch-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name || github.sha }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
+
+env:
+  SISNA_REPO: ${{ vars.SISNA_REPO }}
 
 jobs:
   dispatch:
@@ -43,7 +52,8 @@ jobs:
             exit 0
           fi
 
-          for target in "keep-starknet-strange/starkclaw" "omarespejel/SISNA"; do
+          SISNA_TARGET="${SISNA_REPO:-omarespejel/SISNA}"
+          for target in "keep-starknet-strange/starkclaw" "${SISNA_TARGET}"; do
             owner="${target%%/*}"
             repo="${target##*/}"
             payload=$(jq -n \

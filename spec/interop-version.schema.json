@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.dev/spec/interop-version.schema.json",
+  "title": "InteropVersion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "session_signature_envelope",
+    "signer_api_path",
+    "required_auth_headers"
+  ],
+  "properties": {
+    "spec_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$"
+    },
+    "session_signature_envelope": {
+      "type": "string",
+      "const": "[session_pubkey,r,s,valid_until]"
+    },
+    "signer_api_path": {
+      "type": "string",
+      "const": "/v1/sign/session-transaction"
+    },
+    "required_auth_headers": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "string"
+      },
+      "const": [
+        "X-Keyring-Timestamp",
+        "X-Keyring-Nonce",
+        "X-Keyring-Signature"
+      ]
+    }
+  }
+}
