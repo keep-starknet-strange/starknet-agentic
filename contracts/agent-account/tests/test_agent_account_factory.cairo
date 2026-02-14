@@ -75,6 +75,17 @@ fn test_factory_deploys_account_and_links_identity() {
 }
 
 #[test]
+#[should_panic(expected: 'Only owner')]
+fn test_deploy_account_rejects_non_owner() {
+    let (factory, factory_addr, _, _) = setup();
+    let owner_key = StarkCurveKeyPairImpl::from_secret_key(0x123);
+    let public_key = owner_key.public_key;
+
+    start_cheat_caller_address(factory_addr, other());
+    factory.deploy_account(public_key, 0x999, "");
+}
+
+#[test]
 fn test_factory_deploys_multiple_accounts() {
     let (factory, _, _, factory_registry) = setup();
 

@@ -65,6 +65,13 @@ pub mod SessionKeyComponent {
         ) {
             assert(policy.valid_until > policy.valid_after, 'Invalid time range');
             assert(policy.valid_until > get_block_timestamp(), 'Already expired');
+            let zero_addr: ContractAddress = 0.try_into().unwrap();
+            let spending_limit_is_zero = policy.spending_limit.low == 0 && policy.spending_limit.high == 0;
+            let spending_token_is_zero = policy.spending_token == zero_addr;
+            assert(
+                spending_limit_is_zero == spending_token_is_zero,
+                'Invalid spending config',
+            );
 
             self.session_keys.entry(key).write(policy);
             self.session_key_active.entry(key).write(true);
