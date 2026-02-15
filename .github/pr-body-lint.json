@@ -1,11 +1,12 @@
 {
   "requiredHeadings": [
+    "Summary",
     "Cross-repo boundary awareness",
-    "What changed",
     "Spec impact",
-    "How to verify",
-    "Security checklist",
-    "Risk notes"
+    "Validation",
+    "Risk",
+    "Security Notes",
+    "Checklist"
   ],
   "boundaryPatterns": [
     ".github/workflows/",
@@ -17,4 +18,3 @@
     "omarespejel/SISNA"
   ]
 }
-
