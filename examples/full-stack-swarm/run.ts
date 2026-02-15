@@ -139,12 +139,12 @@ class McpSidecar {
   ) {}
 
   async connect(): Promise<void> {
-    // Prefer running the local MCP server source via tsx to avoid requiring a monorepo build.
-    // If a built dist exists, you can swap this to `node dist/index.js` for faster cold starts.
-    const mcpSource = path.resolve(SCRIPT_DIR, "../../packages/starknet-mcp-server/src/index.ts");
+    // Use the local built MCP server for correctness: it depends on other workspace packages
+    // that are expected to be built (e.g. x402-starknet).
+    const mcpEntry = path.resolve(SCRIPT_DIR, "../../packages/starknet-mcp-server/dist/index.js");
     const transport = new StdioClientTransport({
-      command: "npx",
-      args: ["tsx", mcpSource],
+      command: "node",
+      args: [mcpEntry],
       env: { ...process.env, ...this.env },
     });
 
