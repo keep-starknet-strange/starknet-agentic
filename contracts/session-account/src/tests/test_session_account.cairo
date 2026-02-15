@@ -1265,7 +1265,7 @@ fn test_validate_sig_len_0_non_self_returns_zero() {
 }
 
 #[test]
-fn test_validate_sig_len_0_self_returns_validated() {
+fn test_validate_sig_len_0_self_outside_execution_context_returns_zero() {
     let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
     let account_addr = deploy_with_key(owner_kp.public_key);
     let account = src6_dispatcher(account_addr);
@@ -1273,12 +1273,12 @@ fn test_validate_sig_len_0_self_returns_validated() {
     let target: ContractAddress = 0xAAA.try_into().unwrap();
     let calls = array![external_call(target, selector!("transfer"))];
 
-    // Empty signature from self caller → VALIDATED (self-call path)
+    // Empty signature from self caller but without execution context should fail.
     start_cheat_signature_global(array![].span());
     start_cheat_caller_address(account_addr, account_addr);
 
     let result = account.__validate__(calls);
-    assert(result == starknet::VALIDATED, 'sig 0 self = VALIDATED');
+    assert(result == 0, 'sig 0 self outside context = 0');
 
     stop_cheat_signature_global();
     stop_cheat_caller_address(account_addr);

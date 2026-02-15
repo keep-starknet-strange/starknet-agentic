@@ -149,6 +149,7 @@ mod SessionAccount {
         session_keys: Map<felt252, SessionData>,
         session_entrypoints: Map<(felt252, u32), felt252>,
         agent_id: felt252,
+        validate_self_call_active: bool,
     }
 
     // ── Events ────────────────────────────────────────────────────────────
@@ -214,9 +215,10 @@ mod SessionAccount {
             let signature = tx_info.signature;
             let caller = get_caller_address();
 
-            // Self-calls via __execute__ carry no tx signature
+            // Self-calls with empty signatures are only valid while executing
+            // an internal batch (set by __execute__/execute_from_outside_v2).
             if signature.len() == 0 {
-                if caller == get_contract_address() {
+                if caller == get_contract_address() && self.validate_self_call_active.read() {
                     return starknet::VALIDATED;
                 } else {
                     return 0;
@@ -277,7 +279,10 @@ mod SessionAccount {
                 self.spending_policy.check_and_update_spending(session_pubkey, calls.span());
             }
 
-            self._execute_calls(calls)
+            self.validate_self_call_active.write(true);
+            let result = self._execute_calls(calls);
+            self.validate_self_call_active.write(false);
+            result
         }
 
         #[external(v0)]
@@ -436,7 +441,10 @@ mod SessionAccount {
             }
 
             // 6. Execute
-            self._execute_calls(outside_execution.calls.into())
+            self.validate_self_call_active.write(true);
+            let result = self._execute_calls(outside_execution.calls.into());
+            self.validate_self_call_active.write(false);
+            result
         }
 
         fn is_valid_outside_execution_nonce(self: @ContractState, nonce: felt252) -> bool {
