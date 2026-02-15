@@ -85,6 +85,15 @@ function toU256Calldata(value: bigint): [string, string] {
   return [num.toHex(low), num.toHex(high)];
 }
 
+function tokenAddressFromSymbol(symbolOrAddress: string): string {
+  if (symbolOrAddress.startsWith("0x")) return symbolOrAddress;
+  const resolved = TOKENS[symbolOrAddress];
+  if (!resolved) {
+    throw new Error(`Unknown token symbol: ${symbolOrAddress}. Use ETH/STRK/USDC/USDT or a 0x address.`);
+  }
+  return resolved;
+}
+
 function randomPrivateKeyHex(): string {
   while (true) {
     const raw = BigInt(`0x${randomBytes(32).toString("hex")}`);
@@ -300,19 +309,24 @@ async function main() {
 
   const tokenUriBase = required("TOKEN_URI_BASE");
 
+  const paymasterFeeMode = (envString("AVNU_PAYMASTER_FEE_MODE", "default") || "default") as
+    | "default"
+    | "sponsored";
+  const paymasterGasToken = envString("PAYMASTER_GAS_TOKEN", "STRK") || "STRK";
+
+  const fundBeforeRun = envBool("FUND_BEFORE_RUN", true);
+  const fundEthRaw = envBigInt("FUND_ETH_RAW");
+  const fundGasTokenRaw = envBigInt("FUND_GAS_TOKEN_RAW");
+
   const startSisnaFlag = envBool("START_SISNA", true);
   const sisnaDir = envString("SISNA_DIR", "");
   const sisnaPort = envInt("SISNA_PORT", 8545);
   const keyringHmacSecret = required("KEYRING_HMAC_SECRET");
   const externalProxyUrl = envString("KEYRING_PROXY_URL", "");
 
-  const spendingTokenAddress =
-    TOKENS[spendingTokenSymbol] || (spendingTokenSymbol.startsWith("0x") ? spendingTokenSymbol : "");
-  if (!spendingTokenAddress) {
-    throw new Error(
-      `Unknown SPENDING_TOKEN_SYMBOL=${spendingTokenSymbol}. Use ETH/STRK/USDC/USDT or a 0x address.`,
-    );
-  }
+  const spendingTokenAddress = tokenAddressFromSymbol(spendingTokenSymbol);
+  const paymasterGasTokenAddress = tokenAddressFromSymbol(paymasterGasToken);
+  const ethTokenAddress = TOKENS.ETH;
 
   // Optional: declare SessionAccount from source (pins against SESSION_ACCOUNT_CLASS_HASH)
   await declareSessionAccountIfRequested({
@@ -369,23 +383,67 @@ async function main() {
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
   try { fs.chmodSync(statePath, 0o600); } catch {}
 
+  // 1.5) Fund accounts if using paymaster default fees or if swaps need sell token.
+  // This is intentionally simple: transfer ETH (for the swap) + paymaster gas token (for fees).
+  if (fundBeforeRun) {
+    const semFund = createSemaphore(concurrency);
+    await Promise.all(
+      (state.agents as any[]).map((agent) =>
+        (async () => {
+          await semFund.acquire();
+          try {
+            const calls: any[] = [];
+
+            if (fundEthRaw > 0n) {
+              const [low, high] = toU256Calldata(fundEthRaw);
+              calls.push({
+                contractAddress: ethTokenAddress,
+                entrypoint: "transfer",
+                calldata: [agent.sessionAccountAddress, low, high],
+              });
+            }
+
+            if (fundGasTokenRaw > 0n) {
+              const [low, high] = toU256Calldata(fundGasTokenRaw);
+              calls.push({
+                contractAddress: paymasterGasTokenAddress,
+                entrypoint: "transfer",
+                calldata: [agent.sessionAccountAddress, low, high],
+              });
+            }
+
+            if (calls.length > 0) {
+              const { transaction_hash } = await deployer.execute(calls);
+              await provider.waitForTransaction(transaction_hash, { retries: 120, retryInterval: 3_000 });
+              agent.fundTxHash = transaction_hash;
+            }
+          } finally {
+            semFund.release();
+          }
+        })(),
+      ),
+    );
+    fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+    try { fs.chmodSync(statePath, 0o600); } catch {}
+  }
+
   // 2) Configure each agent (owner-signed direct mode)
   const sem = createSemaphore(concurrency);
   const ownerResults = await Promise.all(
     state.agents.map((agent: any) =>
       (async () => {
         await sem.acquire();
-      const sidecar = new McpSidecar(`owner-${agent.id}`, {
+        const sidecar = new McpSidecar(`owner-${agent.id}`, {
         STARKNET_RPC_URL: rpcUrl,
         STARKNET_ACCOUNT_ADDRESS: agent.sessionAccountAddress,
         STARKNET_PRIVATE_KEY: agent.ownerPrivateKey,
         STARKNET_SIGNER_MODE: "direct",
         AVNU_BASE_URL: avnuBaseUrl,
-        AVNU_PAYMASTER_URL: avnuPaymasterUrl,
-        AVNU_PAYMASTER_API_KEY: avnuPaymasterApiKey,
-        AVNU_PAYMASTER_FEE_MODE: envString("AVNU_PAYMASTER_FEE_MODE", "sponsored")!,
-        ERC8004_IDENTITY_REGISTRY_ADDRESS: identityRegistry,
-      });
+          AVNU_PAYMASTER_URL: avnuPaymasterUrl,
+          AVNU_PAYMASTER_API_KEY: avnuPaymasterApiKey,
+          AVNU_PAYMASTER_FEE_MODE: paymasterFeeMode,
+          ERC8004_IDENTITY_REGISTRY_ADDRESS: identityRegistry,
+        });
         try {
           await sidecar.connect();
 
@@ -498,14 +556,14 @@ async function main() {
         AVNU_BASE_URL: avnuBaseUrl,
         AVNU_PAYMASTER_URL: avnuPaymasterUrl,
         AVNU_PAYMASTER_API_KEY: avnuPaymasterApiKey,
-        AVNU_PAYMASTER_FEE_MODE: envString("AVNU_PAYMASTER_FEE_MODE", "sponsored")!,
+        AVNU_PAYMASTER_FEE_MODE: paymasterFeeMode,
         ERC8004_IDENTITY_REGISTRY_ADDRESS: identityRegistry,
         KEYRING_PROXY_URL: proxyUrl,
         KEYRING_HMAC_SECRET: keyringHmacSecret,
         KEYRING_CLIENT_ID: `mcp-${agent.sessionKeyId}`,
         KEYRING_SIGNING_KEY_ID: agent.sessionKeyId,
-          KEYRING_SESSION_VALIDITY_SECONDS: String(sessionSignValiditySeconds),
-        });
+        KEYRING_SESSION_VALIDITY_SECONDS: String(sessionSignValiditySeconds),
+      });
         try {
           await sidecar.connect();
 
@@ -522,6 +580,7 @@ async function main() {
               amount,
               slippage,
               gasfree,
+              ...(paymasterFeeMode === "default" ? { gasToken: paymasterGasToken } : {}),
             }),
           );
 
@@ -535,6 +594,7 @@ async function main() {
               amount: String(Number(amount) * 10),
               slippage,
               gasfree,
+              ...(paymasterFeeMode === "default" ? { gasToken: paymasterGasToken } : {}),
             });
             deniedByPolicy = false;
           } catch {
