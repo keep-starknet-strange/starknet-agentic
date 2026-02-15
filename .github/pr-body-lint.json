@@ -1,0 +1,20 @@
+{
+  "requiredHeadings": [
+    "Cross-repo boundary awareness",
+    "What changed",
+    "Spec impact",
+    "How to verify",
+    "Security checklist",
+    "Risk notes"
+  ],
+  "boundaryPatterns": [
+    ".github/workflows/",
+    "contracts/",
+    "docs/"
+  ],
+  "counterpartRepos": [
+    "keep-starknet-strange/starkclaw",
+    "omarespejel/SISNA"
+  ]
+}
+
