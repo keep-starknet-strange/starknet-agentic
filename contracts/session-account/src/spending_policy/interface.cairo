@@ -19,7 +19,7 @@ pub struct SpendingPolicy {
     pub window_seconds: u64,
     /// Amount spent in the current window so far.
     pub spent_in_window: u256,
-    /// Timestamp when the current window started.
+    /// Timestamp when the current window started (0 until first spend).
     pub window_start: u64,
 }
 

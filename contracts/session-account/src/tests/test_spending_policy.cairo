@@ -104,7 +104,7 @@ fn test_spending_policy_set_and_get() {
     assert(policy.max_per_window == max_per_window, 'wrong max_per_window');
     assert(policy.window_seconds == window_seconds, 'wrong window_seconds');
     assert(policy.spent_in_window == 0, 'should start at 0');
-    assert(policy.window_start == current_time, 'wrong window_start');
+    assert(policy.window_start == 0, 'window_start should lazy-init');
 }
 
 #[test]
@@ -357,7 +357,7 @@ fn test_window_boundary_prevents_double_spend() {
 
     let policy1 = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
     assert(policy1.spent_in_window == 1000, 'spent should be 1000');
-    assert(policy1.window_start == current_time, 'window should NOT reset yet');
+    assert(policy1.window_start == boundary_time, 'window anchor mismatch');
 
     // Attack: try to spend again at exact same time (should FAIL with > fix)
     // With >= this would reset window and allow double-spend
@@ -367,6 +367,41 @@ fn test_window_boundary_prevents_double_spend() {
 
     let calls2 = array![make_transfer_call(token, 1000)];
     exec.__execute__(calls2); // Should panic: exceeds window limit
+
+    stop_cheat_signature_global();
+    stop_cheat_caller_address(account);
+}
+
+// #4c: Delayed first spend keeps a full window from first use
+#[test]
+#[should_panic(expected: ('Spending: exceeds window limit',))]
+fn test_delayed_first_spend_does_not_allow_early_reset() {
+    let current_time = 1_000_000_u64;
+    let window_seconds = 3600_u64;
+    let (account, spending_mgr, exec, token) = setup_enforcement(current_time, 1000, 1000, window_seconds);
+
+    // First spend happens long after policy creation.
+    let first_spend_time = current_time + window_seconds;
+    stop_cheat_signature_global();
+    start_cheat_block_timestamp_global(first_spend_time);
+    let valid_until = current_time + 86400;
+    let sig = array![SESSION_PUBKEY, 0x111, 0x222, valid_until.into()];
+    start_cheat_signature_global(sig.span());
+
+    let calls1 = array![make_transfer_call(token, 1000)];
+    exec.__execute__(calls1);
+
+    let policy1 = spending_mgr.get_spending_policy(SESSION_PUBKEY, token);
+    assert(policy1.window_start == first_spend_time, 'first-use anchor mismatch');
+    assert(policy1.spent_in_window == 1000, 'spent should be 1000');
+
+    // One second later should still be same window, so this must fail.
+    stop_cheat_signature_global();
+    start_cheat_block_timestamp_global(first_spend_time + 1);
+    start_cheat_signature_global(sig.span());
+
+    let calls2 = array![make_transfer_call(token, 1)];
+    exec.__execute__(calls2);
 
     stop_cheat_signature_global();
     stop_cheat_caller_address(account);
