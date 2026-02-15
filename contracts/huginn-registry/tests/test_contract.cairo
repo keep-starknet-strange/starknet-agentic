@@ -52,6 +52,19 @@ fn test_register_agent() {
 }
 
 #[test]
+#[should_panic(expected: 'Agent already registered')]
+fn test_register_agent_rejects_overwrite() {
+    let contract_address = deploy_contract(test_address());
+    let dispatcher = IHuginnRegistryDispatcher { contract_address };
+
+    let caller = 0x1.try_into().unwrap();
+    start_cheat_caller_address(contract_address, caller);
+
+    dispatcher.register_agent('alpha_agent', "ipfs://metadata");
+    dispatcher.register_agent('new_name', "ipfs://new");
+}
+
+#[test]
 fn test_log_thought() {
     let contract_address = deploy_contract(test_address());
     let dispatcher = IHuginnRegistryDispatcher { contract_address };
