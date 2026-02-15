@@ -37,6 +37,9 @@ pub mod ReputationRegistry {
     // ============ Constants ============
     // Maximum absolute value for feedback (matches Solidity: 1e38)
     const MAX_ABS_VALUE: i128 = 100000000000000000000000000000000000000; // 1e38
+    // Defensive ceiling for the legacy non-paginated reader.
+    // Large reads should use `read_all_feedback_paginated`.
+    const MAX_READ_ALL_FEEDBACK_ENTRIES: u32 = 2048;
 
     // ============ Component Declarations ============
     component!(
@@ -614,6 +617,10 @@ pub mod ReputationRegistry {
                         continue;
                     }
 
+                    assert(
+                        clients_arr.len() < MAX_READ_ALL_FEEDBACK_ENTRIES,
+                        'Use read_all_feedback_paginated',
+                    );
                     clients_arr.append(client);
                     indexes_arr.append(j);
                     values_arr.append(fb.value);
