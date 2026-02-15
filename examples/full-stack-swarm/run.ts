@@ -26,6 +26,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { Account, RpcProvider, ec, extractContractHashes, num } from "starknet";
 
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+
 // --- Static token addresses (Starknet mainnet/sepolia canonical addresses) ---
 const TOKENS: Record<string, string> = {
   ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
@@ -139,7 +141,7 @@ class McpSidecar {
   async connect(): Promise<void> {
     // Prefer running the local MCP server source via tsx to avoid requiring a monorepo build.
     // If a built dist exists, you can swap this to `node dist/index.js` for faster cold starts.
-    const mcpSource = path.resolve(__dirname, "../../packages/starknet-mcp-server/src/index.ts");
+    const mcpSource = path.resolve(SCRIPT_DIR, "../../packages/starknet-mcp-server/src/index.ts");
     const transport = new StdioClientTransport({
       command: "npx",
       args: ["tsx", mcpSource],
@@ -253,16 +255,14 @@ function declareSessionAccountIfRequested(args: {
 }
 
 async function main() {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  dotenv.config({ path: path.join(__dirname, ".env") });
+  dotenv.config({ path: path.join(SCRIPT_DIR, ".env") });
 
   const { network } = parseArgs();
   if (network !== "sepolia") {
     throw new Error(`Only sepolia is supported by this demo right now (got network=${network}).`);
   }
 
-  const repoRoot = path.resolve(__dirname, "../..");
+  const repoRoot = path.resolve(SCRIPT_DIR, "../..");
 
   const rpcUrl = required("STARKNET_RPC_URL");
   const deployerAddress = required("DEPLOYER_ADDRESS");
@@ -279,6 +279,7 @@ async function main() {
 
   const agentCount = envInt("AGENT_COUNT", 5);
   const concurrency = envInt("CONCURRENCY", 2);
+  const resume = envBool("RESUME", false);
 
   const sellToken = required("SELL_TOKEN");
   const buyToken = required("BUY_TOKEN");
@@ -326,37 +327,43 @@ async function main() {
   const provider = new RpcProvider({ nodeUrl: rpcUrl });
   const deployer = new Account({ provider, address: deployerAddress, signer: deployerPrivateKey });
 
-  const statePath = path.join(__dirname, "state.json");
-  const state: any = {
-    version: "1",
-    created_at: new Date().toISOString(),
-    network,
-    rpcUrl,
-    identityRegistry,
-    sessionAccountClassHash,
-    agents: [],
-  };
+  const statePath = path.join(SCRIPT_DIR, "state.json");
+  let state: any | null = null;
+  if (resume && fs.existsSync(statePath)) {
+    state = JSON.parse(fs.readFileSync(statePath, "utf8"));
+  }
+  if (!state) {
+    state = {
+      version: "1",
+      created_at: new Date().toISOString(),
+      network,
+      rpcUrl,
+      identityRegistry,
+      sessionAccountClassHash,
+      agents: [],
+    };
 
-  // 1) Deploy SessionAccount instances
-  for (let i = 1; i <= agentCount; i += 1) {
-    const ownerPrivateKey = randomPrivateKeyHex();
-    const ownerPublicKey = pubKeyFromPriv(ownerPrivateKey);
-    const { transaction_hash, address } = await deployer.deployContract({
-      classHash: sessionAccountClassHash,
-      constructorCalldata: [ownerPublicKey],
-    });
-    await provider.waitForTransaction(transaction_hash, { retries: 120, retryInterval: 3_000 });
-    state.agents.push({
-      id: i,
-      sessionAccountAddress: address,
-      ownerPrivateKey,
-      ownerPublicKey,
-      deployTxHash: transaction_hash,
-      agentId: null,
-      sessionKeyId: `agent-${i}`,
-      sessionPrivateKey: null,
-      sessionPublicKey: null,
-    });
+    // 1) Deploy SessionAccount instances
+    for (let i = 1; i <= agentCount; i += 1) {
+      const ownerPrivateKey = randomPrivateKeyHex();
+      const ownerPublicKey = pubKeyFromPriv(ownerPrivateKey);
+      const { transaction_hash, address } = await deployer.deployContract({
+        classHash: sessionAccountClassHash,
+        constructorCalldata: [ownerPublicKey],
+      });
+      await provider.waitForTransaction(transaction_hash, { retries: 120, retryInterval: 3_000 });
+      state.agents.push({
+        id: i,
+        sessionAccountAddress: address,
+        ownerPrivateKey,
+        ownerPublicKey,
+        deployTxHash: transaction_hash,
+        agentId: null,
+        sessionKeyId: `agent-${i}`,
+        sessionPrivateKey: null,
+        sessionPublicKey: null,
+      });
+    }
   }
 
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
@@ -381,11 +388,13 @@ async function main() {
         try {
           await sidecar.connect();
 
-          const tokenUri = `${tokenUriBase}${tokenUriBase.includes("?") ? "&" : "?"}agent=${agent.id}`;
-          const reg = parseToolTextJson(
-            await sidecar.callTool("starknet_register_agent", { token_uri: tokenUri, gasfree }),
-          );
-          agent.agentId = reg.agentId ?? null;
+          if (!agent.agentId) {
+            const tokenUri = `${tokenUriBase}${tokenUriBase.includes("?") ? "&" : "?"}agent=${agent.id}`;
+            const reg = parseToolTextJson(
+              await sidecar.callTool("starknet_register_agent", { token_uri: tokenUri, gasfree }),
+            );
+            agent.agentId = reg.agentId ?? null;
+          }
 
           if (agent.agentId) {
             await sidecar.callTool("starknet_invoke_contract", {
@@ -397,15 +406,17 @@ async function main() {
           }
 
           // Register session key (empty whitelist => allow all non-admin selectors)
-          agent.sessionPrivateKey = randomPrivateKeyHex();
-          agent.sessionPublicKey = pubKeyFromPriv(agent.sessionPrivateKey);
-          const validUntil = Math.floor(Date.now() / 1000) + sessionKeyLifetimeSeconds;
-          await sidecar.callTool("starknet_invoke_contract", {
-            contractAddress: agent.sessionAccountAddress,
-            entrypoint: "add_or_update_session_key",
-            calldata: [agent.sessionPublicKey, String(validUntil), String(maxCalls), "0"],
-            gasfree,
-          });
+          if (!agent.sessionPrivateKey || !agent.sessionPublicKey) {
+            agent.sessionPrivateKey = randomPrivateKeyHex();
+            agent.sessionPublicKey = pubKeyFromPriv(agent.sessionPrivateKey);
+            const validUntil = Math.floor(Date.now() / 1000) + sessionKeyLifetimeSeconds;
+            await sidecar.callTool("starknet_invoke_contract", {
+              contractAddress: agent.sessionAccountAddress,
+              entrypoint: "add_or_update_session_key",
+              calldata: [agent.sessionPublicKey, String(validUntil), String(maxCalls), "0"],
+              gasfree,
+            });
+          }
 
           // Spending policy for the sell token (per-call + per-window)
           const [maxPerCallLow, maxPerCallHigh] = toU256Calldata(maxPerCallRaw);
@@ -452,8 +463,12 @@ async function main() {
       allowedKeyIdsByClientId[`mcp-${agent.sessionKeyId}`] = [agent.sessionKeyId];
     }
 
+    if (Object.keys(signingKeysById).length === 0) {
+      // Don't start SISNA if we failed to configure any session keys.
+      proxyUrl = "";
+    } else {
     const started = startSisna({
-      sisnaDir: path.resolve(__dirname, sisnaDir),
+      sisnaDir: path.resolve(SCRIPT_DIR, sisnaDir),
       port: sisnaPort,
       hmacSecret: keyringHmacSecret,
       signingKeysById,
@@ -462,6 +477,7 @@ async function main() {
     sisna = started;
     proxyUrl = started.proxyUrl;
     await new Promise((r) => setTimeout(r, 1_200));
+    }
   }
 
   if (!proxyUrl) {
@@ -534,8 +550,12 @@ async function main() {
     ),
   );
 
+  const ok =
+    ownerResults.every((r: any) => r.ok) &&
+    tradeResults.every((r: any) => r.ok);
+
   const report = {
-    ok: true,
+    ok,
     generated_at: new Date().toISOString(),
     network,
     config: {
