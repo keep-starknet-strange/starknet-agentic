@@ -188,6 +188,10 @@ function startSisna(args: {
   signingKeysById: Record<string, string>;
   allowedKeyIdsByClientId: Record<string, string[]>;
 }) {
+  const defaultKeyId = Object.keys(args.signingKeysById)[0];
+  if (!defaultKeyId) {
+    throw new Error("Internal error: no signing keys provided to SISNA");
+  }
   const keyringAllowedChainIds = "0x534e5f5345504f4c4941"; // "SN_SEPOLIA" as felt
   const env = {
     ...process.env,
@@ -198,6 +202,8 @@ function startSisna(args: {
     KEYRING_ALLOWED_CHAIN_IDS: keyringAllowedChainIds,
     KEYRING_HMAC_SECRET: args.hmacSecret,
     KEYRING_DEFAULT_AUTH_CLIENT_ID: "swarm",
+    // SISNA requires KEYRING_DEFAULT_KEY_ID to exist in signing keys.
+    KEYRING_DEFAULT_KEY_ID: defaultKeyId,
     KEYRING_SIGNING_KEYS_JSON: JSON.stringify(
       Object.entries(args.signingKeysById).map(([keyId, privateKey]) => ({ keyId, privateKey })),
     ),
@@ -551,7 +557,7 @@ async function main() {
     state.agents.map((agent: any) =>
       (async () => {
         await tradeSem.acquire();
-      const sidecar = new McpSidecar(`trade-${agent.id}`, {
+        const sidecar = new McpSidecar(`trade-${agent.id}`, {
         STARKNET_RPC_URL: rpcUrl,
         STARKNET_ACCOUNT_ADDRESS: agent.sessionAccountAddress,
         STARKNET_SIGNER_MODE: "proxy",
@@ -569,8 +575,9 @@ async function main() {
         try {
           await sidecar.connect();
 
+          const balanceTokens = Array.from(new Set(["ETH", "STRK", sellToken, buyToken]));
           const balances = parseToolTextJson(
-            await sidecar.callTool("starknet_get_balances", { tokens: ["ETH", "STRK", "USDC"] }),
+            await sidecar.callTool("starknet_get_balances", { tokens: balanceTokens }),
           );
           const quote = parseToolTextJson(
             await sidecar.callTool("starknet_get_quote", { sellToken, buyToken, amount }),
