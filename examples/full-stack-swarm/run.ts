@@ -375,16 +375,17 @@ async function main() {
     state.agents.map((agent: any) =>
       (async () => {
         await sem.acquire();
-        const sidecar = new McpSidecar(`owner-${agent.id}`, {
-          STARKNET_RPC_URL: rpcUrl,
-          STARKNET_ACCOUNT_ADDRESS: agent.sessionAccountAddress,
-          STARKNET_PRIVATE_KEY: agent.ownerPrivateKey,
-          STARKNET_SIGNER_MODE: "direct",
-          AVNU_BASE_URL: avnuBaseUrl,
-          AVNU_PAYMASTER_URL: avnuPaymasterUrl,
-          AVNU_PAYMASTER_API_KEY: avnuPaymasterApiKey,
-          ERC8004_IDENTITY_REGISTRY_ADDRESS: identityRegistry,
-        });
+      const sidecar = new McpSidecar(`owner-${agent.id}`, {
+        STARKNET_RPC_URL: rpcUrl,
+        STARKNET_ACCOUNT_ADDRESS: agent.sessionAccountAddress,
+        STARKNET_PRIVATE_KEY: agent.ownerPrivateKey,
+        STARKNET_SIGNER_MODE: "direct",
+        AVNU_BASE_URL: avnuBaseUrl,
+        AVNU_PAYMASTER_URL: avnuPaymasterUrl,
+        AVNU_PAYMASTER_API_KEY: avnuPaymasterApiKey,
+        AVNU_PAYMASTER_FEE_MODE: envString("AVNU_PAYMASTER_FEE_MODE", "sponsored")!,
+        ERC8004_IDENTITY_REGISTRY_ADDRESS: identityRegistry,
+      });
         try {
           await sidecar.connect();
 
@@ -490,18 +491,19 @@ async function main() {
     state.agents.map((agent: any) =>
       (async () => {
         await tradeSem.acquire();
-        const sidecar = new McpSidecar(`trade-${agent.id}`, {
-          STARKNET_RPC_URL: rpcUrl,
-          STARKNET_ACCOUNT_ADDRESS: agent.sessionAccountAddress,
-          STARKNET_SIGNER_MODE: "proxy",
-          AVNU_BASE_URL: avnuBaseUrl,
-          AVNU_PAYMASTER_URL: avnuPaymasterUrl,
-          AVNU_PAYMASTER_API_KEY: avnuPaymasterApiKey,
-          ERC8004_IDENTITY_REGISTRY_ADDRESS: identityRegistry,
-          KEYRING_PROXY_URL: proxyUrl,
-          KEYRING_HMAC_SECRET: keyringHmacSecret,
-          KEYRING_CLIENT_ID: `mcp-${agent.sessionKeyId}`,
-          KEYRING_SIGNING_KEY_ID: agent.sessionKeyId,
+      const sidecar = new McpSidecar(`trade-${agent.id}`, {
+        STARKNET_RPC_URL: rpcUrl,
+        STARKNET_ACCOUNT_ADDRESS: agent.sessionAccountAddress,
+        STARKNET_SIGNER_MODE: "proxy",
+        AVNU_BASE_URL: avnuBaseUrl,
+        AVNU_PAYMASTER_URL: avnuPaymasterUrl,
+        AVNU_PAYMASTER_API_KEY: avnuPaymasterApiKey,
+        AVNU_PAYMASTER_FEE_MODE: envString("AVNU_PAYMASTER_FEE_MODE", "sponsored")!,
+        ERC8004_IDENTITY_REGISTRY_ADDRESS: identityRegistry,
+        KEYRING_PROXY_URL: proxyUrl,
+        KEYRING_HMAC_SECRET: keyringHmacSecret,
+        KEYRING_CLIENT_ID: `mcp-${agent.sessionKeyId}`,
+        KEYRING_SIGNING_KEY_ID: agent.sessionKeyId,
           KEYRING_SESSION_VALIDITY_SECONDS: String(sessionSignValiditySeconds),
         });
         try {

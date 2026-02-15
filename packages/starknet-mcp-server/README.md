@@ -33,6 +33,13 @@ STARKNET_PRIVATE_KEY=0x...
 # avnu URLs (optional -- defaults shown)
 AVNU_BASE_URL=https://starknet.api.avnu.fi
 AVNU_PAYMASTER_URL=https://starknet.paymaster.avnu.fi
+#
+# Paymaster fee mode:
+# - sponsored: dApp pays gas (requires AVNU to authorize your API key for sponsored builds)
+# - default: user pays gas in `gasToken` via paymaster
+# Defaults to "sponsored" when AVNU_PAYMASTER_API_KEY is set; otherwise "default".
+# You can force "default" to avoid failures when your key is not sponsor-authorized.
+AVNU_PAYMASTER_FEE_MODE=default
 ```
 
 Proxy signer mode (recommended for production):

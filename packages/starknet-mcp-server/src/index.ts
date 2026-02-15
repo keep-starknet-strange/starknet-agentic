@@ -81,6 +81,9 @@ const envSchema = z.object({
   AVNU_BASE_URL: z.string().url().optional(),
   AVNU_PAYMASTER_URL: z.string().url().optional(),
   AVNU_PAYMASTER_API_KEY: z.string().optional(),
+  // When AVNU_PAYMASTER_API_KEY is set, some orgs only allow "default" fee mode (user pays in gas token).
+  // Allow overriding to avoid hard-failing on sponsored mode.
+  AVNU_PAYMASTER_FEE_MODE: z.enum(["sponsored", "default"]).optional(),
   AGENT_ACCOUNT_FACTORY_ADDRESS: z.string().startsWith("0x").optional(),
   ERC8004_IDENTITY_REGISTRY_ADDRESS: z.string().startsWith("0x").optional(),
   KEYRING_PROXY_URL: z.string().url().optional(),
@@ -111,6 +114,10 @@ const env = envSchema.parse({
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || defaultAvnuApiUrl,
   AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || defaultAvnuPaymasterUrl,
   AVNU_PAYMASTER_API_KEY: process.env.AVNU_PAYMASTER_API_KEY,
+  AVNU_PAYMASTER_FEE_MODE: process.env.AVNU_PAYMASTER_FEE_MODE as
+    | "sponsored"
+    | "default"
+    | undefined,
   AGENT_ACCOUNT_FACTORY_ADDRESS: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
   ERC8004_IDENTITY_REGISTRY_ADDRESS: process.env.ERC8004_IDENTITY_REGISTRY_ADDRESS,
   KEYRING_PROXY_URL: process.env.KEYRING_PROXY_URL,
@@ -195,8 +202,12 @@ if (isProductionRuntime) {
 // Initialize Starknet provider and account
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
 
-// Fee mode: sponsored (gasfree, dApp pays) vs default (user pays in gasToken)
-const isSponsored = !!env.AVNU_PAYMASTER_API_KEY;
+// Fee mode:
+// - sponsored: dApp pays all gas (requires AVNU paymaster to authorize the API key)
+// - default: user pays gas in `gasToken` via paymaster
+const paymasterFeeMode =
+  env.AVNU_PAYMASTER_FEE_MODE ?? (env.AVNU_PAYMASTER_API_KEY ? "sponsored" : "default");
+const isSponsored = paymasterFeeMode === "sponsored" && !!env.AVNU_PAYMASTER_API_KEY;
 const paymaster = new PaymasterRpc({
   nodeUrl: env.AVNU_PAYMASTER_URL,
   headers: env.AVNU_PAYMASTER_API_KEY
