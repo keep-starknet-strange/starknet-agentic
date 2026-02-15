@@ -76,6 +76,8 @@ mod SessionAccount {
     const STARKNET_DOMAIN_TYPE_HASH_REV1: felt252 =
         0x1ff2f602e42168014d405a94f75e8a93d640751d71d16311266e140d8b0a210;
     const STARKNET_MESSAGE_PREFIX: felt252 = 'StarkNet Message';
+    const DEFAULT_UPGRADE_DELAY: u64 = 3600;
+    const MIN_UPGRADE_DELAY: u64 = 60;
 
     // ── Components ────────────────────────────────────────────────────────
     component!(path: AccountComponent, storage: account, event: AccountEvent);
@@ -150,6 +152,9 @@ mod SessionAccount {
         session_entrypoints: Map<(felt252, u32), felt252>,
         agent_id: felt252,
         validate_self_call_active: bool,
+        pending_upgrade: ClassHash,
+        upgrade_scheduled_at: u64,
+        upgrade_delay: u64,
     }
 
     // ── Events ────────────────────────────────────────────────────────────
@@ -169,6 +174,10 @@ mod SessionAccount {
         SessionKeyAdded: SessionKeyAdded,
         SessionKeyRevoked: SessionKeyRevoked,
         AgentIdSet: AgentIdSet,
+        UpgradeScheduled: UpgradeScheduled,
+        UpgradeExecuted: UpgradeExecuted,
+        UpgradeCancelled: UpgradeCancelled,
+        UpgradeDelayUpdated: UpgradeDelayUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -191,6 +200,30 @@ mod SessionAccount {
         agent_id: felt252,
     }
 
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeScheduled {
+        new_class_hash: ClassHash,
+        scheduled_at: u64,
+        executable_after: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeExecuted {
+        new_class_hash: ClassHash,
+        executed_at: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeCancelled {
+        cancelled_at: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeDelayUpdated {
+        old_delay: u64,
+        new_delay: u64,
+    }
+
     // ── Constructor ───────────────────────────────────────────────────────
     #[constructor]
     fn constructor(ref self: ContractState, public_key: felt252) {
@@ -198,6 +231,9 @@ mod SessionAccount {
         self.src9.initializer();
         self.src5.register_interface(SESSION_KEY_MANAGER_ID);
         self.src5.register_interface(AGENT_IDENTITY_ID);
+        self.upgrade_delay.write(DEFAULT_UPGRADE_DELAY);
+        self.upgrade_scheduled_at.write(0);
+        self.pending_upgrade.write(0.try_into().unwrap());
     }
 
     // ── SRC-6 ──────────────────────────────────────────────────────────────
@@ -457,7 +493,82 @@ mod SessionAccount {
     impl UpgradeableImpl of IUpgradeable<ContractState> {
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.account.assert_only_self();
-            self.upgradeable.upgrade(new_class_hash);
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            assert(new_class_hash != zero_class, 'Session: zero class hash');
+            assert(self.pending_upgrade.read() == zero_class, 'Session: upgrade pending');
+
+            let now = get_block_timestamp();
+            let delay = self.upgrade_delay.read();
+            self.pending_upgrade.write(new_class_hash);
+            self.upgrade_scheduled_at.write(now);
+
+            self.emit(
+                UpgradeScheduled {
+                    new_class_hash,
+                    scheduled_at: now,
+                    executable_after: now + delay,
+                },
+            );
+        }
+    }
+
+    #[starknet::interface]
+    trait IUpgradeTimelock<TState> {
+        fn execute_upgrade(ref self: TState);
+        fn cancel_upgrade(ref self: TState);
+        fn set_upgrade_delay(ref self: TState, new_delay: u64);
+        fn get_upgrade_info(self: @TState) -> (ClassHash, u64, u64, u64);
+    }
+
+    #[abi(embed_v0)]
+    impl UpgradeTimelockImpl of IUpgradeTimelock<ContractState> {
+        fn execute_upgrade(ref self: ContractState) {
+            self.account.assert_only_self();
+
+            let pending = self.pending_upgrade.read();
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            assert(pending != zero_class, 'Session: no pending upgrade');
+
+            let now = get_block_timestamp();
+            let scheduled_at = self.upgrade_scheduled_at.read();
+            let delay = self.upgrade_delay.read();
+            assert(now >= scheduled_at + delay, 'Session: upgrade timelock');
+
+            self.pending_upgrade.write(zero_class);
+            self.upgrade_scheduled_at.write(0);
+            self.upgradeable.upgrade(pending);
+
+            self.emit(UpgradeExecuted { new_class_hash: pending, executed_at: now });
+        }
+
+        fn cancel_upgrade(ref self: ContractState) {
+            self.account.assert_only_self();
+
+            let pending = self.pending_upgrade.read();
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            assert(pending != zero_class, 'Session: no pending upgrade');
+
+            self.pending_upgrade.write(zero_class);
+            self.upgrade_scheduled_at.write(0);
+            self.emit(UpgradeCancelled { cancelled_at: get_block_timestamp() });
+        }
+
+        fn set_upgrade_delay(ref self: ContractState, new_delay: u64) {
+            self.account.assert_only_self();
+            assert(new_delay >= MIN_UPGRADE_DELAY, 'Session: delay too small');
+
+            let old_delay = self.upgrade_delay.read();
+            self.upgrade_delay.write(new_delay);
+            self.emit(UpgradeDelayUpdated { old_delay, new_delay });
+        }
+
+        fn get_upgrade_info(self: @ContractState) -> (ClassHash, u64, u64, u64) {
+            (
+                self.pending_upgrade.read(),
+                self.upgrade_scheduled_at.read(),
+                self.upgrade_delay.read(),
+                get_block_timestamp(),
+            )
         }
     }
 
@@ -659,6 +770,9 @@ mod SessionAccount {
 
             // Admin selector blocklist
             let UPGRADE_SELECTOR: felt252 = selector!("upgrade");
+            let EXECUTE_UPGRADE_SELECTOR: felt252 = selector!("execute_upgrade");
+            let CANCEL_UPGRADE_SELECTOR: felt252 = selector!("cancel_upgrade");
+            let SET_UPGRADE_DELAY_SELECTOR: felt252 = selector!("set_upgrade_delay");
             let ADD_SESSION_SELECTOR: felt252 = selector!("add_or_update_session_key");
             let REVOKE_SESSION_SELECTOR: felt252 = selector!("revoke_session_key");
             let EXECUTE_SELECTOR: felt252 = selector!("__execute__");
@@ -685,6 +799,9 @@ mod SessionAccount {
                 let sel = *call.selector;
 
                 if sel == UPGRADE_SELECTOR
+                    || sel == EXECUTE_UPGRADE_SELECTOR
+                    || sel == CANCEL_UPGRADE_SELECTOR
+                    || sel == SET_UPGRADE_DELAY_SELECTOR
                     || sel == ADD_SESSION_SELECTOR
                     || sel == REVOKE_SESSION_SELECTOR
                     || sel == EXECUTE_SELECTOR
