@@ -84,14 +84,6 @@ function toU256Calldata(value: bigint): [string, string] {
 }
 
 function randomPrivateKeyHex(): string {
-  // Prefer any upstream helper if available, but keep a safe fallback.
-  const curve: any = (ec as any)?.starkCurve;
-  const maybeRandom = curve?.utils?.randomPrivateKey;
-  if (typeof maybeRandom === "function") {
-    const v = maybeRandom();
-    return typeof v === "string" ? v : num.toHex(v);
-  }
-
   while (true) {
     const raw = BigInt(`0x${randomBytes(32).toString("hex")}`);
     // Keep within felt range (<= 2^251 - 1) to avoid encoding failures.
