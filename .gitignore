@@ -157,6 +157,7 @@ examples/onboard-agent/onboarding_secrets.json
 examples/**/crosschain_receipt.json
 examples/**/onboarding_receipt.json
 examples/**/validation_receipt.json
+examples/**/state.json
 
 # Claude Code
 .claude/settings.local.json

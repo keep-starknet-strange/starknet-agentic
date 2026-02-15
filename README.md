@@ -106,6 +106,7 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 | [DeFi Agent](./examples/defi-agent/) | Autonomous triangular arbitrage agent with risk management | `examples/defi-agent/` |
 | Hello Agent | Minimal E2E proof of concept | `examples/hello-agent/` |
 | [Onboard Agent](./examples/onboard-agent/) | E2E agent onboarding: deploy account, register identity, first action | `examples/onboard-agent/` |
+| [Full Stack Swarm](./examples/full-stack-swarm/) | SessionAccount + SISNA signer boundary + MCP tools + AVNU gasless + ERC-8004 (5-agent demo) | `examples/full-stack-swarm/` |
 | [Crosschain Demo](./examples/crosschain-demo/) | Base Sepolia ↔ Starknet ERC-8004 cross-chain registration flow | `examples/crosschain-demo/` |
 
 The **DeFi Agent** is the flagship example demonstrating how to build production-ready autonomous agents on Starknet. The **Onboard Agent** shows the full lifecycle from account deployment to identity registration with AVNU gasfree support.
