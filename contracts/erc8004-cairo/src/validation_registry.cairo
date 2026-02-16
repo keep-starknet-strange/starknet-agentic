@@ -7,7 +7,7 @@
 //
 // Key Features:
 // - Validation requests with URI and hash commitments
-// - Multiple responses per request (progressive validation)
+// - Single immutable response per request
 // - Tag-based categorization (ByteArray for Solidity string parity)
 // - On-chain aggregation for composability
 // - Support for various validation methods (stake-secured, zkML, TEE)
@@ -211,6 +211,10 @@ pub mod ValidationRegistry {
             // Only the designated validator can respond
             let caller = get_caller_address();
             assert(caller == request.validator_address, 'Not validator');
+
+            // Finalize-once policy: response is immutable once submitted.
+            let existing = self.responses.entry(request_hash).read();
+            assert(!existing.has_response, 'Response already submitted');
 
             // Store response
             self
