@@ -332,7 +332,8 @@ fn test_validation_response_success() {
 }
 
 #[test]
-fn test_validation_response_multiple_responses() {
+#[should_panic(expected: 'Response already submitted')]
+fn test_validation_response_second_submit_reverts() {
     let (identity_registry, validation_registry, identity_address, validation_address) =
         deploy_contracts();
 
@@ -357,14 +358,11 @@ fn test_validation_response_multiple_responses() {
     let (_, _, response1, _, _, _) = validation_registry.get_validation_status(request_hash);
     assert_eq!(response1, 20);
 
-    // Second response (80) - updates the first
+    // Second response must revert (immutable response policy)
     start_cheat_caller_address(validation_address, validator());
     let tag2: ByteArray = "hard-finality";
     validation_registry.validation_response(request_hash, 80, response_uri, 0, tag2);
     stop_cheat_caller_address(validation_address);
-
-    let (_, _, response2, _, _, _) = validation_registry.get_validation_status(request_hash);
-    assert_eq!(response2, 80);
 }
 
 #[test]
@@ -639,6 +637,42 @@ fn test_get_agent_validations_returns_all_requests() {
 }
 
 #[test]
+fn test_get_agent_validations_paginated_returns_slices_and_truncation() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let request_uri: ByteArray = "ipfs://QmRequest/validation-request.json";
+    let hash1: u256 = 0x1111;
+    let hash2: u256 = 0x2222;
+    let hash3: u256 = 0x3333;
+
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(validator(), agent_id, request_uri.clone(), hash1);
+    validation_registry.validation_request(validator(), agent_id, request_uri.clone(), hash2);
+    validation_registry.validation_request(validator(), agent_id, request_uri, hash3);
+    stop_cheat_caller_address(validation_address);
+
+    let (page1, truncated1) = validation_registry.get_agent_validations_paginated(agent_id, 0, 2);
+    assert_eq!(page1.len(), 2);
+    assert_eq!(*page1[0], hash1);
+    assert_eq!(*page1[1], hash2);
+    assert(truncated1, 'truncated');
+
+    let (page2, truncated2) = validation_registry.get_agent_validations_paginated(agent_id, 2, 2);
+    assert_eq!(page2.len(), 1);
+    assert_eq!(*page2[0], hash3);
+    assert(!truncated2, 'not truncated');
+
+    let (page3, truncated3) = validation_registry.get_agent_validations_paginated(agent_id, 10, 2);
+    assert_eq!(page3.len(), 0);
+    assert(!truncated3, 'not truncated');
+}
+
+#[test]
 fn test_get_validator_requests_returns_all_requests() {
     let (identity_registry, validation_registry, identity_address, validation_address) =
         deploy_contracts();
@@ -662,6 +696,38 @@ fn test_get_validator_requests_returns_all_requests() {
     assert_eq!(requests.len(), 2);
     assert_eq!(*requests[0], hash1);
     assert_eq!(*requests[1], hash2);
+}
+
+#[test]
+fn test_get_validator_requests_paginated_returns_slices_and_truncation() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let request_uri: ByteArray = "ipfs://QmRequest/validation-request.json";
+    let hash1: u256 = 0x1111;
+    let hash2: u256 = 0x2222;
+    let hash3: u256 = 0x3333;
+
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(validator(), agent_id, request_uri.clone(), hash1);
+    validation_registry.validation_request(validator(), agent_id, request_uri.clone(), hash2);
+    validation_registry.validation_request(validator(), agent_id, request_uri, hash3);
+    stop_cheat_caller_address(validation_address);
+
+    let (page1, truncated1) = validation_registry.get_validator_requests_paginated(validator(), 0, 2);
+    assert_eq!(page1.len(), 2);
+    assert_eq!(*page1[0], hash1);
+    assert_eq!(*page1[1], hash2);
+    assert(truncated1, 'truncated');
+
+    let (page2, truncated2) = validation_registry.get_validator_requests_paginated(validator(), 2, 2);
+    assert_eq!(page2.len(), 1);
+    assert_eq!(*page2[0], hash3);
+    assert(!truncated2, 'not truncated');
 }
 
 #[test]

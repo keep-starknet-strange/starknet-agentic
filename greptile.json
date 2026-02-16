@@ -1,0 +1,20 @@
+{
+  "reviewProfile": "security-focused",
+  "focus": [
+    "security",
+    "cross-repo-compatibility",
+    "architecture"
+  ],
+  "patternRepositories": [
+    "keep-starknet-strange/starkclaw",
+    "omarespejel/SISNA"
+  ],
+  "paths": {
+    "include": [
+      "contracts/session-account/**",
+      "packages/**",
+      ".github/workflows/**",
+      "docs/**"
+    ]
+  }
+}

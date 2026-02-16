@@ -10,6 +10,44 @@ export type DeFiProtocol = "avnu" | "zklend" | "nostra" | "ekubo";
 
 export type ExampleType = "none" | "hello-agent" | "defi-agent";
 
+/**
+ * Supported agent platforms for lightweight integration
+ */
+export type PlatformType =
+  | "openclaw"
+  | "claude-code"
+  | "cursor"
+  | "daydreams"
+  | "generic-mcp"
+  | "standalone";
+
+/**
+ * Detection confidence level for platforms
+ */
+export type DetectionConfidence = "high" | "medium" | "low";
+
+/**
+ * Detected platform information
+ */
+export interface DetectedPlatform {
+  /** Platform type identifier */
+  type: PlatformType;
+  /** Human-readable platform name */
+  name: string;
+  /** Where to write MCP config */
+  configPath: string;
+  /** Where skills are installed (if applicable) */
+  skillsPath?: string;
+  /** Where credentials are stored */
+  secretsPath?: string;
+  /** True if CLI was invoked by an agent (non-TTY, env hints) */
+  isAgentInitiated: boolean;
+  /** How confident we are in this detection */
+  confidence: DetectionConfidence;
+  /** What triggered this detection */
+  detectedBy: string;
+}
+
 export interface ProjectConfig {
   projectName: string;
   network: Network;
@@ -18,6 +56,8 @@ export interface ProjectConfig {
   defiProtocols: DeFiProtocol[];
   includeExample: ExampleType;
   installDeps: boolean;
+  /** Selected platform (from detection or CLI flag) */
+  platform?: DetectedPlatform;
 }
 
 export interface GeneratedFiles {
@@ -25,8 +65,8 @@ export interface GeneratedFiles {
 }
 
 export const RPC_URLS: Record<Exclude<Network, "custom">, string> = {
-  mainnet: "https://starknet-mainnet.public.blastapi.io",
-  sepolia: "https://starknet-sepolia.public.blastapi.io",
+  mainnet: "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY",
+  sepolia: "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY",
 };
 
 export const TOKEN_ADDRESSES = {

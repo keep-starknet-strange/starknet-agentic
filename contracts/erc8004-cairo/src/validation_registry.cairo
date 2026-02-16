@@ -7,7 +7,7 @@
 //
 // Key Features:
 // - Validation requests with URI and hash commitments
-// - Multiple responses per request (progressive validation)
+// - Single immutable response per request
 // - Tag-based categorization (ByteArray for Solidity string parity)
 // - On-chain aggregation for composability
 // - Support for various validation methods (stake-secured, zkML, TEE)
@@ -211,6 +211,10 @@ pub mod ValidationRegistry {
             // Only the designated validator can respond
             let caller = get_caller_address();
             assert(caller == request.validator_address, 'Not validator');
+
+            // Finalize-once policy: response is immutable once submitted.
+            let existing = self.responses.entry(request_hash).read();
+            assert(!existing.has_response, 'Response already submitted');
 
             // Store response
             self
@@ -427,6 +431,28 @@ pub mod ValidationRegistry {
             result
         }
 
+        fn get_agent_validations_paginated(
+            self: @ContractState, agent_id: u256, offset: u64, limit: u64,
+        ) -> (Array<u256>, bool) {
+            let mut result = ArrayTrait::new();
+            let vec = self.agent_validations.entry(agent_id);
+            let len = vec.len();
+
+            if offset >= len {
+                return (result, false);
+            }
+
+            let end = if offset + limit < len { offset + limit } else { len };
+
+            let mut i = offset;
+            while i < end {
+                result.append(vec.at(i).read());
+                i += 1;
+            }
+
+            (result, end < len)
+        }
+
         fn get_validator_requests(
             self: @ContractState, validator_address: ContractAddress,
         ) -> Array<u256> {
@@ -440,6 +466,28 @@ pub mod ValidationRegistry {
             }
 
             result
+        }
+
+        fn get_validator_requests_paginated(
+            self: @ContractState, validator_address: ContractAddress, offset: u64, limit: u64,
+        ) -> (Array<u256>, bool) {
+            let mut result = ArrayTrait::new();
+            let vec = self.validator_requests.entry(validator_address);
+            let len = vec.len();
+
+            if offset >= len {
+                return (result, false);
+            }
+
+            let end = if offset + limit < len { offset + limit } else { len };
+
+            let mut i = offset;
+            while i < end {
+                result.append(vec.at(i).read());
+                i += 1;
+            }
+
+            (result, end < len)
         }
 
         fn request_exists(self: @ContractState, request_hash: u256) -> bool {

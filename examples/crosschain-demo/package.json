@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@starknet-agentic/onboarding-utils": "workspace:*",
     "dotenv": "^16.4.0",
     "ethers": "^6.16.0",
     "starknet": "^8.9.1"

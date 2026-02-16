@@ -4,6 +4,7 @@
 
 import type { RpcProvider } from "starknet";
 import { TokenService } from "./TokenService.js";
+import { log } from "../logger.js";
 
 let tokenServiceInstance: TokenService | null = null;
 let initializedBaseUrl: string | undefined;
@@ -17,9 +18,11 @@ export function getTokenService(baseUrl?: string): TokenService {
     tokenServiceInstance = new TokenService(baseUrl);
     initializedBaseUrl = baseUrl;
   } else if (baseUrl !== undefined && baseUrl !== initializedBaseUrl) {
-    console.warn(
-      `TokenService already initialized with baseUrl "${initializedBaseUrl}". Ignoring: "${baseUrl}"`
-    );
+    log({
+      level: "warn",
+      event: "token_service.duplicate_init",
+      details: { existingBaseUrl: initializedBaseUrl, ignoredBaseUrl: baseUrl },
+    });
   }
   return tokenServiceInstance;
 }

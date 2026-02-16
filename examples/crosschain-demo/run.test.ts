@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { Interface, ZeroAddress } from "ethers";
 import {
   createSharedUri,
+  parseNonNegativeWei,
   parseFundingProvider,
   parseMinStarknetDeployerBalanceWei,
+  parsePositiveIntEnv,
   resolveEvmAgentId,
 } from "./run.js";
 
@@ -70,6 +72,7 @@ describe("crosschain-demo helpers", () => {
     expect(parseFundingProvider(undefined)).toBe("auto");
     expect(parseFundingProvider("mock")).toBe("mock");
     expect(parseFundingProvider("skipped")).toBe("skipped");
+    expect(parseFundingProvider("starkgate-l1")).toBe("starkgate-l1");
     expect(() => parseFundingProvider("starkgate")).toThrow("Invalid FUNDING_PROVIDER");
   });
 
@@ -81,5 +84,20 @@ describe("crosschain-demo helpers", () => {
     expect(() => parseMinStarknetDeployerBalanceWei("not-a-number")).toThrow(
       "Invalid MIN_STARKNET_DEPLOYER_BALANCE_WEI",
     );
+  });
+
+  it("parses positive integer env values", () => {
+    expect(parsePositiveIntEnv(undefined, "X_TIMEOUT", 10)).toBe(10);
+    expect(parsePositiveIntEnv("5000", "X_TIMEOUT", 10)).toBe(5000);
+    expect(() => parsePositiveIntEnv("0", "X_TIMEOUT", 10)).toThrow("Invalid X_TIMEOUT");
+    expect(() => parsePositiveIntEnv("-1", "X_TIMEOUT", 10)).toThrow("Invalid X_TIMEOUT");
+    expect(() => parsePositiveIntEnv("abc", "X_TIMEOUT", 10)).toThrow("Invalid X_TIMEOUT");
+  });
+
+  it("parses generic non-negative wei env values", () => {
+    expect(parseNonNegativeWei("0", "L1_GAS_BUFFER_WEI")).toBe(0n);
+    expect(parseNonNegativeWei("123", "L1_GAS_BUFFER_WEI")).toBe(123n);
+    expect(() => parseNonNegativeWei("-1", "L1_GAS_BUFFER_WEI")).toThrow("must be non-negative");
+    expect(() => parseNonNegativeWei("abc", "L1_GAS_BUFFER_WEI")).toThrow("Invalid L1_GAS_BUFFER_WEI");
   });
 });

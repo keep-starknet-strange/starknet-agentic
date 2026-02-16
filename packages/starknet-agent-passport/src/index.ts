@@ -1,4 +1,4 @@
-import { Contract, type AccountInterface, type ProviderInterface, byteArray } from "starknet"
+import { Contract, type AccountInterface, type ProviderInterface, byteArray, type ByteArray } from "starknet"
 import { identityRegistryAbi } from "./identityRegistryAbi.js"
 
 export type AgentCapability = {
@@ -28,7 +28,18 @@ export function encodeStringAsByteArray(v: string) {
 export function decodeByteArrayAsString(v: unknown): string {
   if (v == null) return ""
   if (typeof v === "string") return v
-  return byteArray.stringFromByteArray(v as never)
+  if (isByteArray(v)) return byteArray.stringFromByteArray(v)
+  throw new Error("Unsupported metadata value type (expected string or ByteArray)")
+}
+
+function isByteArray(v: unknown): v is ByteArray {
+  if (typeof v !== "object" || v === null) return false
+  const obj = v as Record<string, unknown>
+  return (
+    Array.isArray(obj.data) &&
+    typeof obj.pending_word === "string" &&
+    typeof obj.pending_word_len === "number"
+  )
 }
 
 export function parseCapsList(raw: string | undefined): string[] {

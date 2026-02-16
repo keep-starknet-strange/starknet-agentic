@@ -3,6 +3,12 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@starknet-agentic/onboarding-utils": [
+        "../../packages/starknet-onboarding-utils/src/index.ts"
+      ]
+    },
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,

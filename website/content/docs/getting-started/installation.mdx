@@ -3,11 +3,11 @@ title: Installation
 description: Install Starknet Agentic packages
 ---
 
-import { Callout, Steps, Step } from "@/components/docs";
+import { Callout, Steps, Step, Collapsible } from "@/components/docs";
 
 # Installation
 
-This guide covers all installation options for Starknet Agentic, from quick repository setup to using individual packages in your own projects.
+This guide covers all installation options for Starknet Agentic, from the platform-aware CLI to manual repository setup.
 
 ## System Requirements
 
@@ -20,33 +20,90 @@ This guide covers all installation options for Starknet Agentic, from quick repo
 
 ## Installation Methods
 
-### Method 1: Scaffold with CLI (Recommended)
+### Method 1: Platform-Aware CLI (Recommended)
 
-Best for starting a new agent project. No cloning required.
-
-```bash
-npx create-starknet-agent@latest my-agent
-```
-
-The CLI guides you through:
-1. **Template selection** - minimal (wallet), defi (swaps), or full (identity + A2A)
-2. **Network configuration** - Sepolia (testnet) or Mainnet
-3. **Dependency installation** - Automatic with your package manager
-
-After scaffolding:
+The `create-starknet-agent` CLI auto-detects your environment and configures Starknet accordingly.
 
 ```bash
-cd my-agent
-cp .env.example .env
-# Add your credentials to .env
-pnpm start
+npx create-starknet-agent@latest
 ```
 
-See the [create-starknet-agent documentation](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/packages/create-starknet-agent) for all CLI options.
+The CLI detects and configures for:
+
+| Platform | Detection | Configuration |
+|----------|-----------|---------------|
+| **OpenClaw / MoltBook** | `OPENCLAW_HOME` env or `~/.openclaw/` | MCP config + skills + secrets |
+| **Claude Code** | `CLAUDE_CODE` env or `.claude/` | `.mcp.json` + CLAUDE.md |
+| **Cursor** | `CURSOR_SESSION_ID` env | Cursor MCP settings |
+| **Daydreams** | `DAYDREAMS_HOME` env | MCP integration |
+| **Generic MCP** | `mcp.json` present | MCP server config |
+| **Standalone** | No platform detected | Full agent project scaffold |
+
+#### CLI Commands
+
+```bash
+# Main setup (auto-detect platform)
+npx create-starknet-agent@latest
+
+# Configure wallet credentials
+npx create-starknet-agent credentials
+
+# Verify setup is working
+npx create-starknet-agent verify
+
+# Force specific platform
+npx create-starknet-agent@latest --platform claude-code
+
+# Non-interactive (for agent self-setup)
+npx create-starknet-agent@latest --non-interactive --json
+
+# Show detected platform
+npx create-starknet-agent@latest --detect-only
+```
+
+#### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `--platform <name>` | Force platform: `openclaw`, `claude-code`, `cursor`, `daydreams`, `generic-mcp`, `standalone` |
+| `--skills <list>` | Comma-separated skills: `starknet-wallet,starknet-defi` |
+| `--network <name>` | Network: `mainnet`, `sepolia` |
+| `--non-interactive` | Skip all prompts (for agent self-setup) |
+| `--json` | Output machine-readable JSON |
+| `--detect-only` | Show detected platform and exit |
+| `--from-env` | Import credentials from environment variables |
+| `--yes`, `-y` | Accept defaults |
+
+#### Agent Self-Setup
+
+Agents can configure themselves in non-interactive mode:
+
+```bash
+npx create-starknet-agent@latest --non-interactive --json
+```
+
+Returns:
+```json
+{
+  "success": true,
+  "platform": "openclaw",
+  "configured": {
+    "mcp": "~/.openclaw/mcp/starknet.json",
+    "skills": ["starknet-wallet", "starknet-defi"]
+  },
+  "pendingSetup": {
+    "credentials": ["STARKNET_PRIVATE_KEY", "STARKNET_ACCOUNT_ADDRESS"]
+  },
+  "nextSteps": [
+    "Add credentials to ~/.openclaw/secrets/starknet/",
+    "Restart agent to load new MCP server"
+  ]
+}
+```
 
 ### Method 2: Clone Full Repository
 
-Best for exploring examples and contributing to the project.
+Best for exploring examples, contributing, or manual MCP server setup.
 
 <Steps>
 <Step number={1} title="Clone the repository">
@@ -108,7 +165,7 @@ npm install @starknet-agentic/a2a
 ```
 
 <Callout type="info">
-  Individual npm packages will be available after the v1.0 release. For now, use the monorepo installation method.
+  Individual npm packages will be available after the v1.0 release. For now, use the CLI or monorepo installation method.
 </Callout>
 
 ### Method 4: Use as Git Submodule
@@ -128,10 +185,16 @@ After installation, you'll have access to these packages:
 ```text
 starknet-agentic/
 |-- packages/
-|   |-- create-starknet-agent/   # CLI scaffolding tool
+|   |-- create-starknet-agent/   # Platform-aware CLI tool
+|   |   |-- src/
+|   |   |   |-- index.ts         # Main CLI entry point
+|   |   |   |-- platform.ts      # Platform detection
+|   |   |   |-- credentials.ts   # Secure credential setup
+|   |   |   |-- verify.ts        # Health check commands
+|   |   |   +-- wizards.ts       # Platform-specific setup wizards
 |   |   +-- package.json
 |   |
-|   |-- starknet-mcp-server/     # MCP tools for AI agents (10 tools)
+|   |-- starknet-mcp-server/     # MCP tools for AI agents (14 tools)
 |   |   |-- src/                 # Source code
 |   |   |-- dist/                # Built output (after pnpm build)
 |   |   +-- package.json
@@ -159,12 +222,18 @@ starknet-agentic/
 |   |-- starknet-defi/
 |   |-- starknet-identity/
 |   |-- starknet-mini-pay/
-|   +-- starknet-anonymous-wallet/
+|   |-- starknet-anonymous-wallet/
+|   |-- cairo-contracts/         # Cairo contract patterns
+|   |-- cairo-testing/           # snforge testing patterns
+|   |-- cairo-security/          # Security patterns from 50+ audits
+|   |-- cairo-optimization/      # Gas optimization rules
+|   +-- cairo-deploy/            # Deployment with sncast
 |
 +-- examples/                    # Example implementations
     |-- hello-agent/             # Minimal E2E proof
     |-- defi-agent/              # Arbitrage bot example
-    +-- onboard-agent/           # Agent deployment with gasfree
+    |-- onboard-agent/           # Agent deployment with gasfree
+    +-- controller-calls/        # Cartridge Controller integration
 ```
 
 ## Installing Cairo Contracts (Optional)
@@ -222,7 +291,19 @@ snforge test --filter test_register_agent
 
 ## Verifying Installation
 
-Run these commands to verify everything is working:
+### CLI Verification
+
+```bash
+npx create-starknet-agent verify
+```
+
+Checks:
+- MCP server configuration exists
+- Required credentials are set
+- Skills are installed
+- Can query Starknet (optional)
+
+### Manual Verification
 
 ```bash
 # Check Node.js version
@@ -245,7 +326,7 @@ snforge --version  # Should be 0.54.1+
 
 ## Common Installation Issues
 
-### pnpm not found
+<Collapsible title="pnpm not found">
 
 Install pnpm globally:
 
@@ -260,7 +341,9 @@ corepack enable
 corepack prepare pnpm@latest --activate
 ```
 
-### Node.js version too old
+</Collapsible>
+
+<Collapsible title="Node.js version too old">
 
 Use [nvm](https://github.com/nvm-sh/nvm) to install the correct version:
 
@@ -269,7 +352,9 @@ nvm install 20
 nvm use 20
 ```
 
-### Build fails with TypeScript errors
+</Collapsible>
+
+<Collapsible title="Build fails with TypeScript errors">
 
 Clear caches and reinstall:
 
@@ -279,7 +364,9 @@ pnpm install
 pnpm build
 ```
 
-### Cairo/Scarb version mismatch
+</Collapsible>
+
+<Collapsible title="Cairo/Scarb version mismatch">
 
 Ensure you have the exact versions specified:
 
@@ -287,6 +374,24 @@ Ensure you have the exact versions specified:
 # Install specific Scarb version
 curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | sh -s -- -v 2.14.0
 ```
+
+</Collapsible>
+
+<Collapsible title="Platform detection incorrect">
+
+Force the platform manually:
+
+```bash
+npx create-starknet-agent@latest --platform claude-code
+```
+
+Or check what was detected:
+
+```bash
+npx create-starknet-agent@latest --detect-only
+```
+
+</Collapsible>
 
 ## Development Setup
 
@@ -327,6 +432,6 @@ pnpm format
 
 After installation:
 
-1. **[Configuration](/docs/getting-started/configuration)** - Set up your environment variables
-2. **[Quick Start](/docs/getting-started/quick-start)** - Run your first agent operation
+1. **[Quick Start](/docs/getting-started/quick-start)** - Configure and test your setup
+2. **[Configuration](/docs/getting-started/configuration)** - Environment variables reference
 3. **[MCP Server Guide](/docs/guides/mcp-server)** - Connect to Claude or other AI assistants

@@ -14,6 +14,7 @@ pub mod AgentAccount {
     const QUERY_OFFSET: u256 = 0x100000000000000000000000000000000;
     /// Default timelock delay for upgrades (5 minutes).
     const DEFAULT_UPGRADE_DELAY: u64 = 300;
+    const MIN_UPGRADE_DELAY: u64 = 60;
 
     fn execute_calls(mut calls: Span<Call>) -> Array<Span<felt252>> {
         let mut res = array![];
@@ -81,19 +82,45 @@ pub mod AgentAccount {
     pub const INCREASE_ALLOWANCE_CAMEL_SELECTOR: felt252 =
         0x16cc063b8338363cf388ce7fe1df408bf10f16cd51635d392e21d852fafb683;
 
+    /// ERC-20 `transfer_from(sender, recipient, amount)` selector (snake_case).
+    pub const TRANSFER_FROM_SELECTOR: felt252 = selector!("transfer_from");
+
+    /// ERC-20 `transferFrom(sender, recipient, amount)` selector (camelCase).
+    pub const TRANSFER_FROM_CAMEL_SELECTOR: felt252 = selector!("transferFrom");
+
     /// Returns true if the selector corresponds to an ERC-20 operation that
     /// moves or authorizes moving value: transfer, approve, increase_allowance.
     /// All share identical calldata layout: [address, amount_low, amount_high].
-    ///
-    /// NOTE: transfer_from / transferFrom are deliberately NOT tracked here.
-    /// They consume existing approvals (which are already gated by approve +
-    /// increase_allowance tracking above). Debiting transferFrom would
-    /// double-count the same exposure.
     fn is_spending_selector(sel: felt252) -> bool {
         sel == TRANSFER_SELECTOR
             || sel == APPROVE_SELECTOR
             || sel == INCREASE_ALLOWANCE_SELECTOR
             || sel == INCREASE_ALLOWANCE_CAMEL_SELECTOR
+    }
+
+    /// transfer_from / transferFrom are blocked for session keys because they
+    /// can consume pre-existing approvals and bypass per-key spending intent.
+    fn is_blocked_transfer_from_selector(sel: felt252) -> bool {
+        sel == TRANSFER_FROM_SELECTOR || sel == TRANSFER_FROM_CAMEL_SELECTOR
+    }
+
+    /// Admin selectors that a session key must never execute, even if
+    /// allowed_contract would otherwise permit calling this account.
+    fn is_admin_selector(sel: felt252) -> bool {
+        sel == selector!("register_session_key")
+            || sel == selector!("revoke_session_key")
+            || sel == selector!("emergency_revoke_all")
+            || sel == selector!("set_agent_id")
+            || sel == selector!("schedule_upgrade")
+            || sel == selector!("execute_upgrade")
+            || sel == selector!("cancel_upgrade")
+            || sel == selector!("set_upgrade_delay")
+            || sel == selector!("set_public_key")
+            || sel == selector!("setPublicKey")
+            || sel == selector!("__execute__")
+            || sel == selector!("__validate__")
+            || sel == selector!("__validate_deploy__")
+            || sel == selector!("__validate_declare__")
     }
 
     #[storage]
@@ -315,6 +342,13 @@ pub mod AgentAccount {
                         break;
                     }
                     let call = calls_span.at(i);
+                    let selector = *call.selector;
+
+                    assert(!is_admin_selector(selector), 'Session: admin selector blocked');
+                    assert(
+                        !is_blocked_transfer_from_selector(selector),
+                        'Session: transferFrom blocked',
+                    );
 
                     // Enforce allowed_contract policy (zero = any contract allowed)
                     if policy.allowed_contract != zero_addr {
@@ -326,7 +360,7 @@ pub mod AgentAccount {
 
                     // Enforce spending limit for all ERC-20 value-moving selectors.
                     // All share calldata layout: [address, amount_low, amount_high].
-                    if is_spending_selector(*call.selector) {
+                    if is_spending_selector(selector) {
                         let calldata = *call.calldata;
                         assert(calldata.len() >= 3, 'Session: bad transfer data');
 
@@ -561,6 +595,7 @@ pub mod AgentAccount {
 
         fn set_upgrade_delay(ref self: ContractState, new_delay: u64) {
             self.account.assert_only_self();
+            assert(new_delay >= MIN_UPGRADE_DELAY, 'Upgrade delay too small');
             let old_delay = self.upgrade_delay.read();
             self.upgrade_delay.write(new_delay);
 

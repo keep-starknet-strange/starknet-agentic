@@ -1,6 +1,6 @@
 {
   "name": "create-starknet-agent",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "CLI tool to scaffold a Starknet AI agent project",
   "keywords": [
     "starknet",

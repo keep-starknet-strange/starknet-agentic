@@ -1,0 +1,10 @@
+{
+  "spec_version": "0.1.0",
+  "session_signature_envelope": "[session_pubkey,r,s,valid_until]",
+  "signer_api_path": "/v1/sign/session-transaction",
+  "required_auth_headers": [
+    "X-Keyring-Timestamp",
+    "X-Keyring-Nonce",
+    "X-Keyring-Signature"
+  ]
+}

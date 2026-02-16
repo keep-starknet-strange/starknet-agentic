@@ -2,28 +2,9 @@
 name: starknet-identity
 description: Register AI agents on-chain using the ERC-8004 Trustless Agents standard. Manage agent identity as NFTs, build reputation through feedback, and request third-party validation.
 license: Apache-2.0
-metadata:
-  author: starknet-agentic
-  version: "1.0.0"
-  org: keep-starknet-strange
-keywords:
-  - starknet
-  - identity
-  - erc-8004
-  - agent-registry
-  - reputation
-  - validation
-  - nft
-  - trustless
-  - on-chain-identity
-  - agent-registration
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Glob
-  - Grep
-  - Task
+metadata: {"author":"starknet-agentic","version":"1.0.0","org":"keep-starknet-strange"}
+keywords: [starknet, identity, erc-8004, agent-registry, reputation, validation, nft, trustless, on-chain-identity, agent-registration]
+allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
 ---
 

@@ -7,7 +7,7 @@ import { Callout, Collapsible } from "@/components/docs";
 
 # MCP Tools Reference
 
-This page documents all 10 tools exposed by the Starknet MCP Server (9 core + 1 conditional). Each tool includes its description, parameters, return values, and usage examples.
+This page documents all 14 tools exposed by the Starknet MCP Server (10 core + 4 conditional). Each tool includes its description, parameters, return values, and usage examples.
 
 <Callout type="info" title="Tool Invocation">
   These tools are invoked automatically by your AI assistant. You describe what you want in natural language, and the AI selects the appropriate tool and parameters.
@@ -25,7 +25,11 @@ This page documents all 10 tools exposed by the Starknet MCP Server (9 core + 1 
 | [`starknet_call_contract`](#starknet_call_contract) | Call view function | No |
 | [`starknet_invoke_contract`](#starknet_invoke_contract) | Invoke contract function | Yes |
 | [`starknet_estimate_fee`](#starknet_estimate_fee) | Estimate transaction fee | No |
+| [`starknet_build_calls`](#starknet_build_calls) | Build unsigned calls for external signing | No |
 | [`x402_starknet_sign_payment_required`](#x402_starknet_sign_payment_required) | Sign X-402 payment | No |
+| [`starknet_register_agent`](#starknet_register_agent) | Register ERC-8004 identity | Yes |
+| [`starknet_set_agent_metadata`](#starknet_set_agent_metadata) | Set agent metadata | Yes |
+| [`starknet_get_agent_metadata`](#starknet_get_agent_metadata) | Read agent metadata | No |
 | [`starknet_deploy_agent_account`](#starknet_deploy_agent_account) | Deploy agent account | Yes |
 
 ---
@@ -523,9 +527,15 @@ Call a read-only (view) function on a Starknet smart contract. Does not create a
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `contractAddress` | string | Yes | Contract address |
+| `contractAddress` | string | Yes | Contract address (0x-prefixed hex) |
 | `entrypoint` | string | Yes | Function name to call |
-| `calldata` | string[] | No | Function arguments as strings (default: `[]`) |
+| `calldata` | string[] | No | Function arguments as strings (default: `[]`, max 256 items) |
+
+<Callout type="info" title="Input Validation">
+  - Each calldata item is validated as a 251-bit felt (field element)
+  - Decimal values are automatically converted to 0x-prefixed hex
+  - Contract addresses are normalized and validated
+</Callout>
 
 **Returns**
 
@@ -594,6 +604,8 @@ Call a read-only (view) function on a Starknet smart contract. Does not create a
 |-------|-------|----------|
 | `ENTRYPOINT_NOT_FOUND` | Function doesn't exist | Check function name spelling |
 | `INVALID_CALLDATA` | Wrong number or type of arguments | Verify function signature |
+| `CALLDATA_TOO_LARGE` | More than 256 calldata items | Split into multiple calls |
+| `INVALID_FELT` | Calldata value exceeds 251 bits | Use smaller values or split uint256 |
 | `CONTRACT_NOT_FOUND` | No contract at address | Verify contract address |
 
 ---
@@ -606,11 +618,17 @@ Execute a state-changing function on a Starknet smart contract. Creates a transa
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `contractAddress` | string | Yes | Contract address |
+| `contractAddress` | string | Yes | Contract address (0x-prefixed hex) |
 | `entrypoint` | string | Yes | Function name to call |
-| `calldata` | string[] | No | Function arguments as strings (default: `[]`) |
+| `calldata` | string[] | No | Function arguments as strings (default: `[]`, max 256 items) |
 | `gasfree` | boolean | No | Enable gasfree mode (default: `false`) |
 | `gasToken` | string | No | Token to pay gas in (gasfree only) |
+
+<Callout type="info" title="Input Validation">
+  - Each calldata item is validated as a 251-bit felt (field element)
+  - Decimal values are automatically converted to 0x-prefixed hex
+  - Contract addresses are normalized and validated
+</Callout>
 
 **Returns**
 
@@ -755,6 +773,146 @@ Estimate the transaction fee for a contract call before executing it.
 
 ---
 
+## starknet_build_calls
+
+Build unsigned Starknet calls without executing them. Returns validated Call[] objects compatible with starknet.js and external signers like Cartridge Controller, hardware wallets, or multisig contracts.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calls` | object[] | Yes | Array of call objects (max 256 calls) |
+
+Each call object has:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `contractAddress` | string | Yes | Contract address (0x-prefixed hex) |
+| `entrypoint` | string | Yes | Function name to call |
+| `calldata` | string[] | No | Function arguments as strings (default: `[]`) |
+
+<Callout type="info" title="No Execution">
+  This tool performs **validation only** — it does not execute transactions or require gas. Use it to build calls for external signing workflows.
+</Callout>
+
+**Returns**
+
+```json
+{
+  "calls": [
+    {
+      "contractAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+      "entrypoint": "transfer",
+      "calldata": ["0x04f3e8d17b41...", "0x5f5e100", "0x0"]
+    }
+  ],
+  "count": 1,
+  "validated": true
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `calls` | array | Validated Call[] objects ready for signing |
+| `count` | number | Number of calls in the batch |
+| `validated` | boolean | Whether all calls passed validation |
+
+**Examples**
+
+<Collapsible title="Build a single transfer call" defaultOpen={true}>
+
+**Prompt:** "Build an unsigned transfer call to send 100 USDC to 0x04f3..."
+
+**Tool call:**
+```json
+{
+  "calls": [
+    {
+      "contractAddress": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+      "entrypoint": "transfer",
+      "calldata": ["0x04f3e8d17b41b1e82b13...", "100000000", "0"]
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "calls": [
+    {
+      "contractAddress": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+      "entrypoint": "transfer",
+      "calldata": ["0x04f3e8d17b41b1e82b13...", "0x5f5e100", "0x0"]
+    }
+  ],
+  "count": 1,
+  "validated": true
+}
+```
+
+Note: Decimal calldata values are normalized to hex (e.g., "100000000" → "0x5f5e100").
+
+</Collapsible>
+
+<Collapsible title="Build a multicall batch">
+
+**Prompt:** "Build unsigned calls to approve and then swap tokens"
+
+**Tool call:**
+```json
+{
+  "calls": [
+    {
+      "contractAddress": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+      "entrypoint": "approve",
+      "calldata": ["0x07a2...", "1000000000", "0"]
+    },
+    {
+      "contractAddress": "0x07a2...",
+      "entrypoint": "swap",
+      "calldata": ["0x053c...", "0x049d...", "1000000000", "0"]
+    }
+  ]
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Use with Cartridge Controller">
+
+After building calls, pass them to Cartridge Controller's SessionAccount:
+
+```typescript
+import { buildCalls } from "./mcp-client";
+
+// Build the calls via MCP
+const { calls } = await buildCalls([
+  {
+    contractAddress: USDC_ADDRESS,
+    entrypoint: "transfer",
+    calldata: [recipient, amount, "0"],
+  },
+]);
+
+// Execute with Cartridge session key
+const result = await sessionAccount.execute(calls);
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `EMPTY_CALLS` | Empty calls array provided | Provide at least one call |
+| `TOO_MANY_CALLS` | More than 256 calls | Split into multiple batches |
+| `INVALID_ADDRESS` | Contract address format invalid | Use 0x-prefixed hex address |
+| `INVALID_ENTRYPOINT` | Entrypoint name empty | Provide a valid function name |
+| `INVALID_FELT` | Calldata value exceeds 251 bits | Use smaller values or split uint256 |
+
+---
+
 ## x402_starknet_sign_payment_required
 
 Sign a base64-encoded PAYMENT-REQUIRED header containing Starknet typedData. Part of the [X-402 payment protocol](https://x402.xyz/) for AI-to-AI micropayments.
@@ -817,6 +975,313 @@ Sign a base64-encoded PAYMENT-REQUIRED header containing Starknet typedData. Par
 
 ---
 
+## starknet_register_agent
+
+Register a new ERC-8004 agent identity in the IdentityRegistry. This is a conditional tool that only appears when `ERC8004_IDENTITY_REGISTRY_ADDRESS` is configured.
+
+<Callout type="info" title="Conditional Tool">
+  This tool requires the `ERC8004_IDENTITY_REGISTRY_ADDRESS` environment variable to be set. If not configured, the tool is not exposed.
+</Callout>
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `token_uri` | string | No | Metadata URI (IPFS, Arweave, data URI). If omitted, registers without metadata |
+| `gasfree` | boolean | No | Enable sponsored gasfree mode (default: `false`) |
+
+**Returns**
+
+```json
+{
+  "success": true,
+  "transactionHash": "0x7f3a2bc1...",
+  "identityRegistryAddress": "0x05e4f6a7b8c9d0...",
+  "agentId": "42"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the registration succeeded |
+| `transactionHash` | string | Transaction hash |
+| `identityRegistryAddress` | string | IdentityRegistry address used |
+| `agentId` | string | ERC-8004 agent ID (identity NFT token ID) |
+
+**Examples**
+
+<Collapsible title="Register with metadata URI" defaultOpen={true}>
+
+**Prompt:** "Register my agent with metadata at ipfs://QmAgentMetadata123"
+
+**Tool call:**
+```json
+{
+  "token_uri": "ipfs://QmAgentMetadata123"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Register without metadata">
+
+**Prompt:** "Register my agent on ERC-8004"
+
+**Tool call:**
+```json
+{}
+```
+
+The agent will be registered with no initial metadata.
+
+</Collapsible>
+
+<Collapsible title="Gasfree registration">
+
+**Prompt:** "Register my agent using sponsored gas"
+
+**Tool call:**
+```json
+{
+  "token_uri": "ipfs://QmAgentMetadata123",
+  "gasfree": true
+}
+```
+
+Requires `AVNU_PAYMASTER_API_KEY` for sponsored mode.
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `REGISTRY_NOT_CONFIGURED` | `ERC8004_IDENTITY_REGISTRY_ADDRESS` not set | Configure the environment variable |
+| `REGISTRATION_FAILED` | Registry transaction reverted | Check deployer has sufficient funds |
+| `EVENT_NOT_FOUND` | Registered event missing | Check transaction on explorer |
+
+---
+
+## starknet_set_agent_metadata
+
+Set on-chain metadata for an ERC-8004 agent identity. This is a conditional tool that only appears when `ERC8004_IDENTITY_REGISTRY_ADDRESS` is configured.
+
+<Callout type="info" title="Conditional Tool">
+  This tool requires the `ERC8004_IDENTITY_REGISTRY_ADDRESS` environment variable to be set. If not configured, the tool is not exposed.
+</Callout>
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `agent_id` | string | Yes | Agent ID (u256 as decimal or hex string) |
+| `key` | string | Yes | Metadata key (non-empty string) |
+| `value` | string | Yes | Metadata value (any string) |
+| `gasfree` | boolean | No | Enable sponsored gasfree mode (default: `false`) |
+
+<Callout type="info" title="Standard Metadata Keys">
+  The ERC-8004 spec defines these standard keys:
+  - `agentName` - Human-readable agent name
+  - `agentType` - Agent type/category
+  - `version` - Agent version string
+  - `model` - AI model identifier
+  - `status` - Operational status
+  - `framework` - Agent framework used
+  - `capabilities` - JSON array of capabilities
+  - `a2aEndpoint` - Agent-to-Agent protocol endpoint
+  - `moltbookId` - MoltBook identifier
+
+  The key `agentWallet` is reserved and cannot be set via this tool.
+</Callout>
+
+**Returns**
+
+```json
+{
+  "success": true,
+  "transactionHash": "0x7f3a2bc1...",
+  "identityRegistryAddress": "0x05e4f6a7b8c9d0...",
+  "agentId": "42",
+  "key": "agentName",
+  "value": "Trading Bot Alpha"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the transaction succeeded |
+| `transactionHash` | string | Transaction hash |
+| `identityRegistryAddress` | string | IdentityRegistry address used |
+| `agentId` | string | Agent ID that was updated |
+| `key` | string | Metadata key that was set |
+| `value` | string | Value that was stored |
+
+**Examples**
+
+<Collapsible title="Set agent name" defaultOpen={true}>
+
+**Prompt:** "Set my agent's name to 'Trading Bot Alpha'"
+
+**Tool call:**
+```json
+{
+  "agent_id": "42",
+  "key": "agentName",
+  "value": "Trading Bot Alpha"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Set A2A endpoint">
+
+**Prompt:** "Update agent 42's A2A endpoint"
+
+**Tool call:**
+```json
+{
+  "agent_id": "42",
+  "key": "a2aEndpoint",
+  "value": "https://api.myagent.com/.well-known/agent.json"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Set capabilities JSON">
+
+**Prompt:** "Set my agent's capabilities"
+
+**Tool call:**
+```json
+{
+  "agent_id": "42",
+  "key": "capabilities",
+  "value": "[\"swap\", \"transfer\", \"quote\"]"
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `REGISTRY_NOT_CONFIGURED` | `ERC8004_IDENTITY_REGISTRY_ADDRESS` not set | Configure the environment variable |
+| `EMPTY_KEY` | Key is empty string | Provide a non-empty key |
+| `RESERVED_KEY` | Attempted to set `agentWallet` | Use a different key (agentWallet is system-managed) |
+| `NOT_OWNER` | Caller is not owner/approved for agent_id | Use the owner account or get approval |
+| `TRANSACTION_REVERTED` | Contract execution failed | Check agent_id exists and you have permission |
+
+---
+
+## starknet_get_agent_metadata
+
+Read on-chain metadata for an ERC-8004 agent identity. This is a read-only operation that does not create a transaction.
+
+<Callout type="info" title="Conditional Tool">
+  This tool requires the `ERC8004_IDENTITY_REGISTRY_ADDRESS` environment variable to be set. If not configured, the tool is not exposed.
+</Callout>
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `agent_id` | string | Yes | Agent ID (u256 as decimal or hex string) |
+| `key` | string | Yes | Metadata key to read (non-empty string) |
+
+**Returns**
+
+```json
+{
+  "agentId": "42",
+  "key": "agentName",
+  "value": "Trading Bot Alpha",
+  "identityRegistryAddress": "0x05e4f6a7b8c9d0..."
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `agentId` | string | Agent ID queried |
+| `key` | string | Metadata key requested |
+| `value` | string | Decoded value (empty string if not set) |
+| `identityRegistryAddress` | string | IdentityRegistry address used |
+
+**Examples**
+
+<Collapsible title="Read agent name" defaultOpen={true}>
+
+**Prompt:** "What's the name of agent 42?"
+
+**Tool call:**
+```json
+{
+  "agent_id": "42",
+  "key": "agentName"
+}
+```
+
+**Response:**
+```json
+{
+  "agentId": "42",
+  "key": "agentName",
+  "value": "Trading Bot Alpha",
+  "identityRegistryAddress": "0x05e4f6a7b8c9d0..."
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Check A2A endpoint">
+
+**Prompt:** "Get agent 42's A2A endpoint"
+
+**Tool call:**
+```json
+{
+  "agent_id": "42",
+  "key": "a2aEndpoint"
+}
+```
+
+</Collapsible>
+
+<Collapsible title="Read unset key">
+
+**Prompt:** "Get the model for agent 42"
+
+**Tool call:**
+```json
+{
+  "agent_id": "42",
+  "key": "model"
+}
+```
+
+If the key has never been set:
+```json
+{
+  "agentId": "42",
+  "key": "model",
+  "value": "",
+  "identityRegistryAddress": "0x05e4f6a7b8c9d0..."
+}
+```
+
+</Collapsible>
+
+**Error Codes**
+
+| Error | Cause | Recovery |
+|-------|-------|----------|
+| `REGISTRY_NOT_CONFIGURED` | `ERC8004_IDENTITY_REGISTRY_ADDRESS` not set | Configure the environment variable |
+| `EMPTY_KEY` | Key is empty string | Provide a non-empty key |
+| `RPC_ERROR` | Network communication failed | Check RPC URL and connectivity |
+
+---
+
 ## starknet_deploy_agent_account
 
 Deploy a new agent account via the AgentAccountFactory with ERC-8004 identity binding. This is a conditional tool that only appears when `AGENT_ACCOUNT_FACTORY_ADDRESS` is configured.
@@ -829,10 +1294,16 @@ Deploy a new agent account via the AgentAccountFactory with ERC-8004 identity bi
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `public_key` | string | Yes | Stark public key (felt, 0x-prefixed) for the new account |
+| `public_key` | string | Yes | Stark public key (felt, 0x-prefixed, non-zero, max 251 bits) |
 | `token_uri` | string | Yes | Token URI for agent identity metadata (IPFS, Arweave, etc.) |
-| `salt` | string | No | Deploy salt (felt). Random if omitted for deterministic addresses |
+| `salt` | string | No | Deploy salt (felt, max 251 bits). Random if omitted for deterministic addresses |
 | `gasfree` | boolean | No | Enable sponsored gasfree mode (default: `false`) |
+
+<Callout type="info" title="Input Validation">
+  - `public_key` must be a non-zero value within the 251-bit felt range
+  - `salt` must also fit within 251 bits if provided
+  - Random salts are securely generated when not specified
+</Callout>
 
 **Returns**
 

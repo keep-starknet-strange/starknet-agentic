@@ -4,9 +4,9 @@ This command updates the website documentation to reflect all changes made to th
 
 ## Execution Steps
 
-### Step 1: Get the Last Documentation Update Commit
+### Step 1: Get the Baseline Commit
 
-Read `website/CLAUDE.md` and extract the commit hash from the `docs-last-updated` field at the end of the file. This is your baseline commit.
+Read `website/CLAUDE.md` and extract the commit hash from the `docs-last-updated` field at the end of the file. This is your baseline commit - the last commit that was reviewed for documentation updates. All changes after this commit need to be analyzed.
 
 ### Step 2: Analyze All Changes Since Baseline
 
@@ -92,32 +92,24 @@ Options:
 
 Only after user confirms everything is good:
 
-1. Stage and commit all documentation changes (excluding CLAUDE.md):
+1. Get the current HEAD commit hash (this is the baseline you just reviewed up to):
 ```bash
-git add website/app/data/docs.ts website/content/docs/
-git commit -m "docs(website): update documentation using the update-docs command
+git rev-parse HEAD
+```
+
+2. Update the `docs-last-updated` field in `website/CLAUDE.md` with this baseline commit hash
+
+3. Stage and commit all changes together:
+```bash
+git add website/app/data/docs.ts website/content/docs/ website/CLAUDE.md
+git commit -m "docs(website): update documentation for <feature/component>
 
 <summary of changes>
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
-2. Get the new commit hash:
-```bash
-git rev-parse HEAD
-```
-
-3. Update the `docs-last-updated` field in `website/CLAUDE.md` with the new commit hash
-
-4. Make a separate commit for the CLAUDE.md tracking update (do NOT amend):
-```bash
-git add website/CLAUDE.md
-git commit -m "chore(website): update docs-last-updated tracking field
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
-```
-
-**Note:** We use a separate commit instead of amending because amending changes the commit hash, creating a chicken-and-egg problem where the hash in CLAUDE.md would never match the final commit.
+**Note:** The `docs-last-updated` field tracks the **last commit you reviewed**, not the docs commit itself. This works correctly with squash-and-merge workflows where commit hashes change when PRs land.
 
 ## Documentation Style Guidelines
 

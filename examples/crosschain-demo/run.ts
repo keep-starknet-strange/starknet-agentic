@@ -13,6 +13,7 @@ import {
   cairo,
 } from "starknet";
 import { Contract, Interface, JsonRpcProvider, Wallet, ZeroAddress } from "ethers";
+import { waitForTransactionWithTimeout } from "@starknet-agentic/onboarding-utils";
 import { preflight } from "./steps/preflight.js";
 import { deployAccount } from "./steps/deploy-account.js";
 import { fundDeployer } from "./steps/fund-deployer.js";
@@ -160,24 +161,36 @@ function formatEthWei(wei: bigint): string {
 
 export function parseFundingProvider(value: string | undefined): FundingProviderSelection {
   const parsed = (value || "auto").toLowerCase();
-  if (parsed === "auto" || parsed === "mock" || parsed === "skipped") {
+  if (parsed === "auto" || parsed === "mock" || parsed === "skipped" || parsed === "starkgate-l1") {
     return parsed;
   }
-  throw new Error(`Invalid FUNDING_PROVIDER "${value}". Expected one of: auto, mock, skipped.`);
+  throw new Error(`Invalid FUNDING_PROVIDER "${value}". Expected one of: auto, mock, skipped, starkgate-l1.`);
 }
 
 export function parseMinStarknetDeployerBalanceWei(value: string | undefined): bigint {
-  const raw = value || "5000000000000000";
+  return parseNonNegativeWei(value || "5000000000000000", "MIN_STARKNET_DEPLOYER_BALANCE_WEI");
+}
+
+export function parseNonNegativeWei(raw: string, varName: string): bigint {
   let parsed: bigint;
   try {
     parsed = BigInt(raw);
   } catch {
-    throw new Error(
-      `Invalid MIN_STARKNET_DEPLOYER_BALANCE_WEI "${raw}". Expected non-negative integer wei value.`,
-    );
+    throw new Error(`Invalid ${varName} "${raw}". Expected non-negative integer wei value.`);
   }
   if (parsed < 0n) {
-    throw new Error("MIN_STARKNET_DEPLOYER_BALANCE_WEI must be non-negative.");
+    throw new Error(`${varName} must be non-negative.`);
+  }
+  return parsed;
+}
+
+export function parsePositiveIntEnv(value: string | undefined, varName: string, defaultValue: number): number {
+  if (value === undefined || value === "") {
+    return defaultValue;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${varName} "${value}". Expected positive integer.`);
   }
   return parsed;
 }
@@ -194,11 +207,27 @@ async function updateStarknetUri(args: {
   paymasterApiKey?: string;
   paymasterUrl?: string;
 }): Promise<string> {
+  const paymasterUrl =
+    args.paymasterUrl ||
+    (args.network === "sepolia"
+      ? "https://sepolia.paymaster.avnu.fi"
+      : "https://starknet.paymaster.avnu.fi");
+
+  const paymaster = new PaymasterRpc({
+    nodeUrl: paymasterUrl,
+    headers: args.paymasterApiKey
+      ? {
+          "x-paymaster-api-key": args.paymasterApiKey,
+        }
+      : {},
+  });
+
   const account = new Account({
     provider: args.provider,
     address: args.accountAddress,
     signer: args.privateKey,
     transactionVersion: ETransactionVersion.V3,
+    paymaster,
   });
 
   const call = {
@@ -212,38 +241,26 @@ async function updateStarknetUri(args: {
 
   if (!args.gasfree) {
     const tx = await account.execute(call);
-    await args.provider.waitForTransaction(tx.transaction_hash);
+    await waitForTransactionWithTimeout({
+      provider: args.provider as any,
+      txHash: tx.transaction_hash,
+      timeoutMs: 300_000,
+    });
     return tx.transaction_hash;
   }
 
   if (!args.paymasterApiKey) {
     throw new Error("--gasfree requires AVNU_PAYMASTER_API_KEY in .env");
   }
-
-  const paymasterUrl =
-    args.paymasterUrl ||
-    (args.network === "sepolia"
-      ? "https://sepolia.paymaster.avnu.fi"
-      : "https://starknet.paymaster.avnu.fi");
-
-  const paymaster = new PaymasterRpc({
-    nodeUrl: paymasterUrl,
-    headers: {
-      "x-paymaster-api-key": args.paymasterApiKey,
-    },
+  const tx = await account.executePaymasterTransaction([call], {
+    feeMode: { mode: "sponsored" },
   });
 
-  const tx = await account.execute([call], {
-    paymaster: {
-      provider: paymaster,
-      params: {
-        version: "0x1",
-        feeMode: { mode: "sponsored" },
-      },
-    },
-  } as never);
-
-  await args.provider.waitForTransaction(tx.transaction_hash);
+  await waitForTransactionWithTimeout({
+    provider: args.provider as any,
+    txHash: tx.transaction_hash,
+    timeoutMs: 300_000,
+  });
   return tx.transaction_hash;
 }
 
@@ -273,6 +290,13 @@ async function main() {
     process.env.MIN_STARKNET_DEPLOYER_BALANCE_WEI,
   );
   const fundingProvider = parseFundingProvider(process.env.FUNDING_PROVIDER);
+  const fundingTimeoutMs = parsePositiveIntEnv(process.env.FUNDING_TIMEOUT_MS, "FUNDING_TIMEOUT_MS", 900000);
+  const fundingPollIntervalMs = parsePositiveIntEnv(
+    process.env.FUNDING_POLL_INTERVAL_MS,
+    "FUNDING_POLL_INTERVAL_MS",
+    5000,
+  );
+  const l1GasBufferWei = parseNonNegativeWei(process.env.L1_GAS_BUFFER_WEI || "1000000000000000", "L1_GAS_BUFFER_WEI");
 
   console.log("=== ERC-8004 Cross-Chain Demo ===\n");
   console.log(`Starknet network: ${args.starknetNetwork}`);
@@ -319,6 +343,8 @@ async function main() {
     rpcUrl: process.env.STARKNET_RPC_URL,
     accountAddress: starknetDeployerAddress,
     privateKey: starknetDeployerPrivateKey,
+    paymasterUrl: process.env.AVNU_PAYMASTER_URL,
+    paymasterApiKey: process.env.AVNU_PAYMASTER_API_KEY,
   });
   console.log("  Starknet preflight passed");
 
@@ -331,6 +357,12 @@ async function main() {
     providerSelection: fundingProvider,
     config: {
       minDeployerBalanceWei: minStarknetDeployerBalanceWei,
+      l1RpcUrl: process.env.L1_RPC_URL,
+      l1PrivateKey: process.env.L1_PRIVATE_KEY,
+      starkgateEthBridgeAddress: process.env.STARKGATE_ETH_BRIDGE_L1,
+      fundingTimeoutMs,
+      fundingPollIntervalMs,
+      l1GasBufferWei,
     },
   });
   console.log(

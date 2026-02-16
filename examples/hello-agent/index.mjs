@@ -3,6 +3,22 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { Account, RpcProvider, Contract, CallData, cairo } from 'starknet';
 
+async function waitForTransactionWithTimeout(provider, txHash, timeoutMs) {
+  let timeout = null;
+  try {
+    return await Promise.race([
+      provider.waitForTransaction(txHash),
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => {
+          reject(new Error(`waitForTransaction timed out after ${timeoutMs}ms (${txHash})`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 // Load .env from script's directory (works regardless of cwd)
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
@@ -94,7 +110,7 @@ async function main() {
   console.log('sending 0-value self-transfer tx...');
   const res = await account.execute(call);
   console.log('tx:', res.transaction_hash);
-  await provider.waitForTransaction(res.transaction_hash);
+  await waitForTransactionWithTimeout(provider, res.transaction_hash, 300_000);
   console.log('done');
 }
 

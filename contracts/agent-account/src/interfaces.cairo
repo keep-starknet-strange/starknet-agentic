@@ -65,5 +65,7 @@ pub trait IAgentAccountFactory<TContractState> {
     fn get_identity_registry(self: @TContractState) -> ContractAddress;
     fn set_identity_registry(ref self: TContractState, new_registry: ContractAddress);
     fn get_owner(self: @TContractState) -> ContractAddress;
+    fn get_pending_owner(self: @TContractState) -> ContractAddress;
     fn transfer_ownership(ref self: TContractState, new_owner: ContractAddress);
+    fn accept_ownership(ref self: TContractState);
 }

@@ -22,6 +22,7 @@ pub mod AgentAccountFactory {
     #[storage]
     struct Storage {
         owner: ContractAddress,
+        pending_owner: ContractAddress,
         account_class_hash: ClassHash,
         identity_registry: ContractAddress,
     }
@@ -32,7 +33,14 @@ pub mod AgentAccountFactory {
         AccountDeployed: AccountDeployed,
         AccountClassHashUpdated: AccountClassHashUpdated,
         IdentityRegistryUpdated: IdentityRegistryUpdated,
+        OwnershipTransferStarted: OwnershipTransferStarted,
         OwnershipTransferred: OwnershipTransferred,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct OwnershipTransferStarted {
+        previous_owner: ContractAddress,
+        pending_owner: ContractAddress,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -69,6 +77,7 @@ pub mod AgentAccountFactory {
     ) {
         let caller = get_caller_address();
         self.owner.write(caller);
+        self.pending_owner.write(0.try_into().unwrap());
         self.account_class_hash.write(account_class_hash);
         self.identity_registry.write(identity_registry);
     }
@@ -81,6 +90,7 @@ pub mod AgentAccountFactory {
             salt: felt252,
             token_uri: ByteArray,
         ) -> (ContractAddress, u256) {
+            self._assert_owner();
             assert(public_key != 0, 'Zero public key');
 
             let class_hash = self.account_class_hash.read();
@@ -154,13 +164,29 @@ pub mod AgentAccountFactory {
             self.owner.read()
         }
 
+        fn get_pending_owner(self: @ContractState) -> ContractAddress {
+            self.pending_owner.read()
+        }
+
         fn transfer_ownership(ref self: ContractState, new_owner: ContractAddress) {
             self._assert_owner();
             let zero: ContractAddress = 0.try_into().unwrap();
             assert(new_owner != zero, 'New owner is zero address');
             let previous_owner = self.owner.read();
-            self.owner.write(new_owner);
-            self.emit(OwnershipTransferred { previous_owner, new_owner });
+            self.pending_owner.write(new_owner);
+            self.emit(OwnershipTransferStarted { previous_owner, pending_owner: new_owner });
+        }
+
+        fn accept_ownership(ref self: ContractState) {
+            let caller = get_caller_address();
+            let pending_owner = self.pending_owner.read();
+            assert(caller == pending_owner, 'Only pending owner');
+
+            let previous_owner = self.owner.read();
+            let zero: ContractAddress = 0.try_into().unwrap();
+            self.owner.write(caller);
+            self.pending_owner.write(zero);
+            self.emit(OwnershipTransferred { previous_owner, new_owner: caller });
         }
     }
 

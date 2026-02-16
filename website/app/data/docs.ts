@@ -119,6 +119,16 @@ export const DOC_CATEGORIES: DocCategory[] = [
         description: "Bridge to Starknet and register with Huginn",
       },
       {
+        slug: "cairo-coding",
+        title: "Cairo Development Skills",
+        description: "Contracts, testing, security, optimization, and deployment",
+      },
+      {
+        slug: "starknet-js",
+        title: "starknet.js SDK Skill",
+        description: "starknet.js v9.x SDK patterns and examples",
+      },
+      {
         slug: "writing-skills",
         title: "Writing Your Own Skill",
         description: "Guide to creating custom agent skills",

@@ -144,6 +144,33 @@ pub trait IReputationRegistry<TState> {
         Array<bool>,
     );
 
+    /// Read feedback entries matching filters using a bounded scan window.
+    /// Returns arrays: (clients, feedbackIndexes, values, valueDecimals, tag1s, tag2s, revokedStatuses, truncated)
+    /// - client_offset/client_limit paginate the client list
+    /// - feedback_offset/feedback_limit paginate feedback indices per client
+    /// - truncated=true means additional scan work exists outside this window
+    fn read_all_feedback_paginated(
+        self: @TState,
+        agent_id: u256,
+        client_addresses: Span<ContractAddress>,
+        tag1: ByteArray,
+        tag2: ByteArray,
+        include_revoked: bool,
+        client_offset: u32,
+        client_limit: u32,
+        feedback_offset: u64,
+        feedback_limit: u64,
+    ) -> (
+        Array<ContractAddress>,
+        Array<u64>,
+        Array<i128>,
+        Array<u8>,
+        Array<ByteArray>,
+        Array<ByteArray>,
+        Array<bool>,
+        bool,
+    );
+
     /// Get response count for feedback
     fn get_response_count(
         self: @TState,

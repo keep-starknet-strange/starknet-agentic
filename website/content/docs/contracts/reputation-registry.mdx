@@ -163,6 +163,19 @@ pub trait IReputationRegistry<TContractState> {
         include_revoked: bool
     ) -> (Array<ContractAddress>, Array<i128>, Array<u8>, Array<ByteArray>, Array<ByteArray>, Array<bool>);
 
+    fn read_all_feedback_paginated(
+        self: @TContractState,
+        agent_id: u256,
+        client_addresses: Span<ContractAddress>,
+        tag1: ByteArray,
+        tag2: ByteArray,
+        include_revoked: bool,
+        client_offset: u64,
+        client_limit: u64,
+        feedback_offset: u64,
+        feedback_limit: u64
+    ) -> (Array<ContractAddress>, Array<i128>, Array<u8>, Array<ByteArray>, Array<ByteArray>, Array<bool>, bool);
+
     fn get_response_count(
         self: @TContractState,
         agent_id: u256,
@@ -424,6 +437,35 @@ fn read_all_feedback(
 ```
 
 **Returns:** Six parallel arrays (clients, values, value_decimals, tag1s, tag2s, revoked statuses)
+
+### read_all_feedback_paginated
+
+Read feedback with pagination for gas-bounded queries.
+
+```cairo
+fn read_all_feedback_paginated(
+    self: @TContractState,
+    agent_id: u256,
+    client_addresses: Span<ContractAddress>,
+    tag1: ByteArray,
+    tag2: ByteArray,
+    include_revoked: bool,
+    client_offset: u64,
+    client_limit: u64,
+    feedback_offset: u64,
+    feedback_limit: u64
+) -> (Array<ContractAddress>, Array<i128>, Array<u8>, Array<ByteArray>, Array<ByteArray>, Array<bool>, bool)
+```
+
+**Parameters:**
+- `agent_id` - Agent's token ID
+- `client_addresses` - Filter to specific clients (empty for all)
+- `tag1`, `tag2` - Filter by tags (empty for all)
+- `include_revoked` - Whether to include revoked feedback
+- `client_offset`, `client_limit` - Pagination for clients
+- `feedback_offset`, `feedback_limit` - Pagination for feedback per client
+
+**Returns:** Six parallel arrays plus a `truncated` flag indicating if more data exists.
 
 ### get_clients
 

@@ -7,6 +7,16 @@ description: Execute token swaps, DCA orders, staking, and DeFi operations
 
 The `starknet-defi` skill enables AI agents to execute DeFi operations on Starknet using the AVNU aggregator. Swap tokens with best-price routing, set up DCA orders, stake STRK, and interact with lending protocols.
 
+## Installation
+
+```bash
+# Install via skills CLI
+npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-defi
+
+# Or clone the repo
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+```
+
 <Callout type="tip" title="Best Price Routing">
 AVNU aggregates liquidity across all Starknet DEXs (Ekubo, JediSwap, etc.) to find the optimal route for every swap.
 </Callout>

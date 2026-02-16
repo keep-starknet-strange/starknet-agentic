@@ -12,8 +12,12 @@ const TOKENS = {
 const mockEnv = {
   STARKNET_RPC_URL: "https://starknet-sepolia.example.com",
   STARKNET_ACCOUNT_ADDRESS: "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  STARKNET_SIGNER_MODE: "direct",
   // Non-secret placeholder; tests only require a syntactically-valid string.
   STARKNET_PRIVATE_KEY: "0x1",
+  KEYRING_PROXY_URL: "http://127.0.0.1:8545",
+  KEYRING_HMAC_SECRET: "test-hmac-secret",
+  KEYRING_CLIENT_ID: "mcp-test-suite",
   AVNU_BASE_URL: "https://sepolia.api.avnu.fi",
   AVNU_PAYMASTER_URL: "https://sepolia.paymaster.avnu.fi",
   ERC8004_IDENTITY_REGISTRY_ADDRESS:
@@ -23,19 +27,24 @@ const mockEnv = {
 // Mock starknet before importing the module
 const mockExecute = vi.fn();
 const mockEstimateInvokeFee = vi.fn();
+const mockEstimatePaymasterTransactionFee = vi.fn();
+const mockExecutePaymasterTransaction = vi.fn();
 const mockWaitForTransaction = vi.fn();
 const mockCallContract = vi.fn();
 const mockBalanceOf = vi.fn();
+const mockAccountConstructor = vi.fn().mockImplementation(() => ({
+  address: mockEnv.STARKNET_ACCOUNT_ADDRESS,
+  execute: mockExecute,
+  estimateInvokeFee: mockEstimateInvokeFee,
+  estimatePaymasterTransactionFee: mockEstimatePaymasterTransactionFee,
+  executePaymasterTransaction: mockExecutePaymasterTransaction,
+}));
 const mockValidateAndParseAddress = vi.fn((addr: string) =>
   addr.toLowerCase().padStart(66, "0x".padEnd(66, "0"))
 );
 
 vi.mock("starknet", () => ({
-  Account: vi.fn().mockImplementation(() => ({
-    address: mockEnv.STARKNET_ACCOUNT_ADDRESS,
-    execute: mockExecute,
-    estimateInvokeFee: mockEstimateInvokeFee,
-  })),
+  Account: mockAccountConstructor,
   RpcProvider: vi.fn().mockImplementation(() => ({
     callContract: mockCallContract,
     waitForTransaction: mockWaitForTransaction,
@@ -51,6 +60,15 @@ vi.mock("starknet", () => ({
   cairo: {
     uint256: vi.fn((n) => ({ low: n.toString(), high: "0" })),
   },
+  num: {
+    toHex: vi.fn((value) => {
+      if (typeof value === "string" && value.startsWith("0x")) {
+        return value;
+      }
+      return `0x${BigInt(value).toString(16)}`;
+    }),
+  },
+  SignerInterface: class {},
   ETransactionVersion: {
     V3: "0x3",
   },
@@ -68,6 +86,10 @@ vi.mock("starknet", () => ({
       pending_word_len: 0,
     })),
     stringFromByteArray: vi.fn((ba) => "TEST"),
+  },
+  // Minimal selector helper used by receipt parsers.
+  hash: {
+    getSelectorFromName: vi.fn((name: string) => `selector:${name}`),
   },
 }));
 
@@ -132,12 +154,15 @@ function parseResponse(response: any) {
   return text ? JSON.parse(text) : null;
 }
 
-// Suppress server startup messages globally for this test file
-const originalConsoleError = console.error;
+// Structured log output (process.stderr.write) is suppressed during module
+// imports in beforeEach blocks to keep test output clean.
 
 describe("MCP Tool Handlers", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    mockEstimatePaymasterTransactionFee.mockResolvedValue({
+      suggested_max_fee_in_gas_token: "0",
+    });
     capturedToolHandler = null;
     capturedListHandler = null;
 
@@ -146,8 +171,8 @@ describe("MCP Tool Handlers", () => {
       process.env[key] = value;
     }
 
-    // Suppress server startup message
-    console.error = vi.fn();
+    // Suppress server startup log output
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
     // Reset module cache and re-import to capture handlers
     vi.resetModules();
@@ -155,8 +180,8 @@ describe("MCP Tool Handlers", () => {
     // Import the server module to trigger handler registration
     await import("../../src/index.js");
 
-    // Restore console.error for test assertions
-    console.error = originalConsoleError;
+    // Restore stderr for test assertions
+    stderrSpy.mockRestore();
   });
 
   afterEach(() => {
@@ -246,14 +271,15 @@ describe("MCP Tool Handlers", () => {
       expect(toolNames).toContain("starknet_register_agent");
     });
 
-    it("registers with token_uri and parses agent_id from receipt event data[0..1]", async () => {
+    it("registers with token_uri and parses agent_id from receipt event keys (Registered)", async () => {
       mockExecute.mockResolvedValue({ transaction_hash: "0xabc" });
       mockWaitForTransaction.mockResolvedValue({
         events: [
           {
             from_address: mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS,
-            // Registered event begins with agent_id.low, agent_id.high. Remaining fields ignored.
-            data: ["0x01", "0x00", "0xdead"],
+            // Registered has agent_id as a #[key] u256, so it is encoded in event keys.
+            keys: ["selector:Registered", "0x01", "0x00"],
+            data: ["0xdead"],
           },
         ],
       });
@@ -338,7 +364,7 @@ describe("MCP Tool Handlers", () => {
     });
 
     it("executes transfer with gasfree mode (no API key)", async () => {
-      mockExecute.mockResolvedValue({ transaction_hash: "0xpaymaster456" });
+      mockExecutePaymasterTransaction.mockResolvedValue({ transaction_hash: "0xpaymaster456" });
       mockWaitForTransaction.mockResolvedValue({});
 
       const response = await callTool("starknet_transfer", {
@@ -353,15 +379,12 @@ describe("MCP Tool Handlers", () => {
       expect(result.success).toBe(true);
       expect(result.transactionHash).toBe("0xpaymaster456");
       expect(result.gasfree).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(
+      expect(mockExecutePaymasterTransaction).toHaveBeenCalledWith(
         expect.any(Array),
         expect.objectContaining({
-          paymaster: expect.objectContaining({
-            params: expect.objectContaining({
-              feeMode: expect.objectContaining({ mode: "default" }),
-            }),
-          }),
+          feeMode: expect.objectContaining({ mode: "default" }),
         }),
+        expect.anything(),
       );
     });
 
@@ -427,6 +450,22 @@ describe("MCP Tool Handlers", () => {
       });
     });
 
+    it("normalizes decimal calldata to 0x-prefixed felt", async () => {
+      mockCallContract.mockResolvedValue({ result: ["0x1"] });
+
+      await callTool("starknet_call_contract", {
+        contractAddress,
+        entrypoint: "balanceOf",
+        calldata: ["100"],
+      });
+
+      expect(mockCallContract).toHaveBeenCalledWith({
+        contractAddress,
+        entrypoint: "balanceOf",
+        calldata: ["0x64"],
+      });
+    });
+
     it("handles result wrapped in object", async () => {
       mockCallContract.mockResolvedValue({ result: ["0x42"] });
 
@@ -462,28 +501,136 @@ describe("MCP Tool Handlers", () => {
     });
 
     it("invokes contract with gasfree mode", async () => {
-      mockExecute.mockResolvedValue({ transaction_hash: "0xgasfree789" });
+      mockEstimatePaymasterTransactionFee.mockResolvedValue({
+        suggested_max_fee_in_gas_token: "0x0",
+      });
+      mockExecutePaymasterTransaction.mockResolvedValue({
+        transaction_hash: "0xgasfree789",
+      });
       mockWaitForTransaction.mockResolvedValue({});
 
       const response = await callTool("starknet_invoke_contract", {
         contractAddress,
         entrypoint: "transfer",
-        calldata: ["0xrecipient", "100"],
+        calldata: [
+          "0x0111111111111111111111111111111111111111111111111111111111111111",
+          "100",
+        ],
         gasfree: true,
       });
 
       const result = parseResponse(response);
       expect(result.success).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(
+      expect(mockExecutePaymasterTransaction).toHaveBeenCalledWith(
         expect.any(Array),
         expect.objectContaining({
-          paymaster: expect.objectContaining({
-            params: expect.objectContaining({
-              feeMode: expect.objectContaining({ mode: "default" }),
-            }),
-          }),
+          feeMode: expect.objectContaining({ mode: "default" }),
         }),
+        expect.anything()
       );
+    });
+  });
+
+  describe("starknet_build_calls", () => {
+    const contractAddress = "0x0222222222222222222222222222222222222222222222222222222222222222";
+
+    it("returns validated unsigned calls", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          {
+            contractAddress,
+            entrypoint: "transfer",
+            calldata: ["0x123", "0x64"],
+          },
+        ],
+      });
+
+      const result = parseResponse(response);
+      expect(result.calls).toHaveLength(1);
+      expect(result.calls[0].contractAddress).toBe(contractAddress);
+      expect(result.calls[0].entrypoint).toBe("transfer");
+      expect(result.calls[0].calldata).toEqual(["0x123", "0x64"]);
+      expect(result.callCount).toBe(1);
+      expect(result.note).toContain("Unsigned");
+      // Must NOT trigger execution
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it("handles multiple calls (multicall)", async () => {
+      const addr2 = "0x0333333333333333333333333333333333333333333333333333333333333333";
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress, entrypoint: "approve", calldata: ["0xabc", "0x100"] },
+          { contractAddress: addr2, entrypoint: "swap", calldata: ["0x1"] },
+        ],
+      });
+
+      const result = parseResponse(response);
+      expect(result.calls).toHaveLength(2);
+      expect(result.callCount).toBe(2);
+      expect(result.calls[0].entrypoint).toBe("approve");
+      expect(result.calls[1].entrypoint).toBe("swap");
+    });
+
+    it("normalizes decimal calldata to hex", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress, entrypoint: "set_value", calldata: ["100"] },
+        ],
+      });
+
+      const result = parseResponse(response);
+      expect(result.calls[0].calldata).toEqual(["0x64"]);
+    });
+
+    it("rejects empty calls array", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [],
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("must not be empty");
+    });
+
+    it("rejects invalid contract address", async () => {
+      mockValidateAndParseAddress.mockImplementationOnce(() => {
+        throw new Error("Invalid address format");
+      });
+
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress: "bad", entrypoint: "foo" },
+        ],
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+    });
+
+    it("rejects invalid calldata felt", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress, entrypoint: "foo", calldata: ["0xnotafelt"] },
+        ],
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+    });
+
+    it("allows calls without calldata", async () => {
+      const response = await callTool("starknet_build_calls", {
+        calls: [
+          { contractAddress, entrypoint: "get_count" },
+        ],
+      });
+
+      const result = parseResponse(response);
+      expect(result.calls).toHaveLength(1);
+      expect(result.calls[0].calldata).toEqual([]);
     });
   });
 
@@ -537,6 +684,34 @@ describe("MCP Tool Handlers", () => {
       const result = parseResponse(response);
       expect(result.error).toBe(true);
       expect(result.message).toMatch(/not a valid Starknet address/);
+    });
+
+    it("rejects invalid calldata felt in starknet_call_contract", async () => {
+      const response = await callTool("starknet_call_contract", {
+        contractAddress: "0x0222222222222222222222222222222222222222222222222222222222222222",
+        entrypoint: "balanceOf",
+        calldata: ["0xrecipient"],
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toMatch(/calldata\[0\]/);
+      expect(result.message).toMatch(/valid felt/);
+    });
+
+    it("rejects too-large calldata arrays in starknet_invoke_contract", async () => {
+      const big = Array.from({ length: 300 }, () => "0x1");
+      const response = await callTool("starknet_invoke_contract", {
+        contractAddress: "0x0333333333333333333333333333333333333333333333333333333333333333",
+        entrypoint: "set_value",
+        calldata: big,
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toMatch(/calldata too large/i);
     });
 
     it("rejects malformed amount in starknet_transfer", async () => {
@@ -883,11 +1058,12 @@ describe("MCP Tool Handlers", () => {
         calldata: ["0x1", "0x2"],
       });
 
-      expect(mockEstimateInvokeFee).toHaveBeenCalledWith({
-        contractAddress: "0x555",
-        entrypoint: "call_with_args",
-        calldata: ["0x1", "0x2"],
-      });
+      expect(mockEstimateInvokeFee).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entrypoint: "call_with_args",
+          calldata: ["0x1", "0x2"],
+        }),
+      );
     });
   });
 
@@ -931,29 +1107,43 @@ describe("MCP Tool Handlers", () => {
       });
     });
 
-    it("uses provided params over env defaults", async () => {
+    it("ignores extra params and always signs with env-configured account", async () => {
       mockCreateStarknetPaymentSignatureHeader.mockResolvedValue({
         headerValue: "sig",
         payload: {},
       });
 
-      const customRpc = "https://custom.rpc.url";
-      const customAddress = "0xcustom";
-      const customKey = "0xprivate";
-
       await callTool("x402_starknet_sign_payment_required", {
         paymentRequiredHeader: "test",
-        rpcUrl: customRpc,
-        accountAddress: customAddress,
-        privateKey: customKey,
+        // These are intentionally ignored to avoid signing arbitrary key material.
+        rpcUrl: "https://custom.rpc.url",
+        accountAddress: "0xcustom",
+        privateKey: "0xprivate",
       });
 
       expect(mockCreateStarknetPaymentSignatureHeader).toHaveBeenCalledWith({
         paymentRequiredHeader: "test",
-        rpcUrl: customRpc,
-        accountAddress: customAddress,
-        privateKey: customKey,
+        rpcUrl: mockEnv.STARKNET_RPC_URL,
+        accountAddress: mockEnv.STARKNET_ACCOUNT_ADDRESS,
+        privateKey: mockEnv.STARKNET_PRIVATE_KEY,
       });
+    });
+
+    it("blocks x402 signing in proxy signer mode", async () => {
+      process.env.STARKNET_SIGNER_MODE = "proxy";
+      delete process.env.STARKNET_PRIVATE_KEY;
+
+      vi.resetModules();
+      await import("../../src/index.js");
+
+      const response = await callTool("x402_starknet_sign_payment_required", {
+        paymentRequiredHeader: "test",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("disabled in STARKNET_SIGNER_MODE=proxy");
+      expect(mockCreateStarknetPaymentSignatureHeader).not.toHaveBeenCalled();
     });
   });
 
@@ -976,6 +1166,7 @@ describe("MCP Tool Handlers", () => {
         events: [
           {
             from_address: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
+            keys: ["selector:AccountDeployed"],
             // account, public_key, agent_id.low, agent_id.high, registry
             data: ["0xabc", "0x1234", "0x2a", "0x0", "0xregistry"],
           },
@@ -1046,7 +1237,12 @@ describe("MCP Tool Handlers", () => {
       vi.resetModules();
       await import("../../src/index.js");
 
-      mockExecute.mockResolvedValue({ transaction_hash: "0xdeploy-sponsored" });
+      mockEstimatePaymasterTransactionFee.mockResolvedValue({
+        suggested_max_fee_in_gas_token: "0x0",
+      });
+      mockExecutePaymasterTransaction.mockResolvedValue({
+        transaction_hash: "0xdeploy-sponsored",
+      });
       mockWaitForTransaction.mockResolvedValue({
         events: [
           {
@@ -1064,15 +1260,12 @@ describe("MCP Tool Handlers", () => {
 
       const result = parseResponse(response);
       expect(result.success).toBe(true);
-      expect(mockExecute).toHaveBeenCalledWith(
+      expect(mockExecutePaymasterTransaction).toHaveBeenCalledWith(
         expect.any(Array),
         expect.objectContaining({
-          paymaster: expect.objectContaining({
-            params: expect.objectContaining({
-              feeMode: expect.objectContaining({ mode: "sponsored" }),
-            }),
-          }),
+          feeMode: expect.objectContaining({ mode: "sponsored" }),
         }),
+        expect.anything()
       );
 
       delete process.env.AVNU_PAYMASTER_API_KEY;
@@ -1101,6 +1294,131 @@ describe("MCP Tool Handlers", () => {
       expect(response.isError).toBe(true);
       const result = parseResponse(response);
       expect(result.message).toContain("salt must fit in 251 bits");
+    });
+  });
+
+  describe("starknet_set_agent_metadata", () => {
+    it("sets metadata and returns tx hash", async () => {
+      mockExecute.mockResolvedValue({ transaction_hash: "0xmeta123" });
+      mockWaitForTransaction.mockResolvedValue({});
+
+      const response = await callTool("starknet_set_agent_metadata", {
+        agent_id: "1",
+        key: "agentName",
+        value: "My Trading Bot",
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.transactionHash).toBe("0xmeta123");
+      expect(result.agentId).toBe("1");
+      expect(result.key).toBe("agentName");
+      expect(result.value).toBe("My Trading Bot");
+
+      expect(mockExecute).toHaveBeenCalled();
+      const callArg = mockExecute.mock.calls[0][0];
+      expect(callArg.entrypoint).toBe("set_metadata");
+      expect(callArg.contractAddress).toBe(mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS);
+    });
+
+    it("rejects reserved agentWallet key", async () => {
+      const response = await callTool("starknet_set_agent_metadata", {
+        agent_id: "1",
+        key: "agentWallet",
+        value: "0xabc",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("agentWallet");
+      expect(result.message).toContain("reserved");
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it("rejects empty key", async () => {
+      const response = await callTool("starknet_set_agent_metadata", {
+        agent_id: "1",
+        key: "",
+        value: "test",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("key is required");
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it("supports gasfree mode", async () => {
+      mockEstimatePaymasterTransactionFee.mockResolvedValue({
+        suggested_max_fee_in_gas_token: "0x0",
+      });
+      mockExecutePaymasterTransaction.mockResolvedValue({
+        transaction_hash: "0xmetapaymaster",
+      });
+      mockWaitForTransaction.mockResolvedValue({});
+
+      const response = await callTool("starknet_set_agent_metadata", {
+        agent_id: "1",
+        key: "capabilities",
+        value: "swap,arbitrage",
+        gasfree: true,
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.transactionHash).toBe("0xmetapaymaster");
+      expect(mockExecutePaymasterTransaction).toHaveBeenCalled();
+    });
+  });
+
+  describe("starknet_get_agent_metadata", () => {
+    it("reads metadata and returns decoded value", async () => {
+      // ByteArray: [data_len, ...data_words, pending_word, pending_word_len]
+      mockCallContract.mockResolvedValue([
+        "0x0",  // data_len = 0
+        "0x4d79205472616469",  // pending_word
+        "0x8",  // pending_word_len
+      ]);
+
+      const response = await callTool("starknet_get_agent_metadata", {
+        agent_id: "1",
+        key: "agentName",
+      });
+
+      const result = parseResponse(response);
+      expect(result.agentId).toBe("1");
+      expect(result.key).toBe("agentName");
+      // The mock stringFromByteArray returns "TEST"
+      expect(result.value).toBe("TEST");
+      expect(result.identityRegistry).toBe(mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS);
+    });
+
+    it("rejects empty key", async () => {
+      const response = await callTool("starknet_get_agent_metadata", {
+        agent_id: "1",
+        key: "",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toContain("key is required");
+      expect(mockCallContract).not.toHaveBeenCalled();
+    });
+
+    it("passes correct entrypoint to contract", async () => {
+      mockCallContract.mockResolvedValue(["0x0", "0x0", "0x0"]);
+
+      await callTool("starknet_get_agent_metadata", {
+        agent_id: "42",
+        key: "status",
+      });
+
+      expect(mockCallContract).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contractAddress: mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS,
+          entrypoint: "get_metadata",
+        })
+      );
     });
   });
 
@@ -1147,6 +1465,105 @@ describe("MCP Tool Handlers", () => {
   });
 });
 
+describe("MCP Startup Guardrails", () => {
+  afterEach(() => {
+    for (const key of Object.keys(mockEnv)) {
+      delete process.env[key];
+    }
+    delete process.env.NODE_ENV;
+  });
+
+  it("fails startup in production when signer mode is direct", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.NODE_ENV = "production";
+    process.env.STARKNET_SIGNER_MODE = "direct";
+
+    vi.resetModules();
+    await expect(import("../../src/index.js")).rejects.toThrow(
+      "Production mode requires STARKNET_SIGNER_MODE=proxy"
+    );
+  });
+
+  it("starts in proxy signer mode without STARKNET_PRIVATE_KEY", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    delete process.env.STARKNET_PRIVATE_KEY;
+
+    vi.resetModules();
+    await import("../../src/index.js");
+
+    expect(mockAccountConstructor).toHaveBeenCalled();
+    const accountArgs = mockAccountConstructor.mock.calls.at(-1)?.[0];
+    expect(typeof accountArgs?.signer).toBe("object");
+    expect(typeof accountArgs?.signer?.signTransaction).toBe("function");
+  });
+
+  it("fails startup in proxy mode when keyring auth is missing", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    delete process.env.STARKNET_PRIVATE_KEY;
+    delete process.env.KEYRING_HMAC_SECRET;
+
+    vi.resetModules();
+    await expect(import("../../src/index.js")).rejects.toThrow(
+      "Missing keyring proxy configuration for STARKNET_SIGNER_MODE=proxy"
+    );
+  });
+
+  it("fails startup in production proxy mode if direct private key is still set", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.NODE_ENV = "production";
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    process.env.STARKNET_PRIVATE_KEY = "0x1";
+
+    vi.resetModules();
+    await expect(import("../../src/index.js")).rejects.toThrow(
+      "STARKNET_PRIVATE_KEY must not be set in production when STARKNET_SIGNER_MODE=proxy"
+    );
+  });
+
+  it("fails startup in production proxy mode when proxy URL is non-https and non-loopback", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.NODE_ENV = "production";
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    process.env.KEYRING_PROXY_URL = "http://signer.internal:8545";
+    delete process.env.STARKNET_PRIVATE_KEY;
+
+    vi.resetModules();
+    await expect(import("../../src/index.js")).rejects.toThrow(
+      "Production proxy mode requires KEYRING_PROXY_URL to use https unless loopback is used"
+    );
+  });
+
+  it("fails startup in production proxy mode when mTLS client cert config is missing", async () => {
+    for (const [key, value] of Object.entries(mockEnv)) {
+      process.env[key] = value;
+    }
+    process.env.NODE_ENV = "production";
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    process.env.KEYRING_PROXY_URL = "https://signer.internal:8545";
+    delete process.env.STARKNET_PRIVATE_KEY;
+    delete process.env.KEYRING_TLS_CLIENT_CERT_PATH;
+    delete process.env.KEYRING_TLS_CLIENT_KEY_PATH;
+    delete process.env.KEYRING_TLS_CA_PATH;
+
+    vi.resetModules();
+    await expect(import("../../src/index.js")).rejects.toThrow(
+      "Production proxy mode requires KEYRING_TLS_CLIENT_CERT_PATH, KEYRING_TLS_CLIENT_KEY_PATH, and KEYRING_TLS_CA_PATH for mTLS"
+    );
+  });
+});
+
 describe("Tool list", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -1157,14 +1574,13 @@ describe("Tool list", () => {
       process.env[key] = value;
     }
 
-    // Suppress server startup message
-    console.error = vi.fn();
+    // Suppress structured log output
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
     vi.resetModules();
     await import("../../src/index.js");
 
-    // Restore console.error
-    console.error = originalConsoleError;
+    stderrSpy.mockRestore();
   });
 
   afterEach(() => {
@@ -1180,7 +1596,7 @@ describe("Tool list", () => {
 
     const response = await capturedListHandler();
 
-    expect(response.tools).toHaveLength(13);
+    expect(response.tools).toHaveLength(21);
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_get_balance");
     expect(toolNames).toContain("starknet_get_balances");
@@ -1192,7 +1608,15 @@ describe("Tool list", () => {
     expect(toolNames).toContain("starknet_invoke_contract");
     expect(toolNames).toContain("starknet_swap");
     expect(toolNames).toContain("starknet_get_quote");
+    expect(toolNames).toContain("starknet_build_calls");
+    expect(toolNames).toContain("starknet_register_session_key");
+    expect(toolNames).toContain("starknet_revoke_session_key");
+    expect(toolNames).toContain("starknet_get_session_data");
+    expect(toolNames).toContain("starknet_build_transfer_calls");
+    expect(toolNames).toContain("starknet_build_swap_calls");
     expect(toolNames).toContain("starknet_register_agent");
+    expect(toolNames).toContain("starknet_set_agent_metadata");
+    expect(toolNames).toContain("starknet_get_agent_metadata");
     expect(toolNames).toContain("starknet_estimate_fee");
     expect(toolNames).toContain("x402_starknet_sign_payment_required");
   });
@@ -1201,10 +1625,10 @@ describe("Tool list", () => {
     process.env.AGENT_ACCOUNT_FACTORY_ADDRESS =
       "0x0fabcde01234567890abcdef01234567890abcdef01234567890abcdef01234";
 
-    console.error = vi.fn();
+    let spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     vi.resetModules();
     await import("../../src/index.js");
-    console.error = originalConsoleError;
+    spy.mockRestore();
 
     if (!capturedListHandler) {
       throw new Error("List handler not captured");
@@ -1213,8 +1637,26 @@ describe("Tool list", () => {
     const response = await capturedListHandler();
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_deploy_agent_account");
-    expect(response.tools).toHaveLength(14);
+    expect(response.tools).toHaveLength(22);
 
     delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
+  });
+
+  it("does not list x402 signing tool in proxy mode", async () => {
+    process.env.STARKNET_SIGNER_MODE = "proxy";
+    delete process.env.STARKNET_PRIVATE_KEY;
+
+    let spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    vi.resetModules();
+    await import("../../src/index.js");
+    spy.mockRestore();
+
+    if (!capturedListHandler) {
+      throw new Error("List handler not captured");
+    }
+
+    const response = await capturedListHandler();
+    const toolNames = response.tools.map((t: any) => t.name);
+    expect(toolNames).not.toContain("x402_starknet_sign_payment_required");
   });
 });
