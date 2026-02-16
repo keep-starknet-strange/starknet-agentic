@@ -16,10 +16,23 @@ import {
 } from "../../src/helpers/vesu.js";
 
 const MAINNET_RPC = process.env.STARKNET_RPC_URL;
-const SKIP_REASON =
-  !MAINNET_RPC ||
-  MAINNET_RPC.includes("example.com") ||
-  MAINNET_RPC.includes("sepolia");
+
+function isMockOrSepoliaRpc(url?: string): boolean {
+  if (!url) return true;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "example.com" || host.endsWith(".example.com") || host.includes("sepolia");
+  } catch {
+    const normalized = url.toLowerCase();
+    return (
+      normalized === "example.com" ||
+      normalized.endsWith(".example.com") ||
+      normalized.includes("sepolia")
+    );
+  }
+}
+
+const SKIP_REASON = isMockOrSepoliaRpc(MAINNET_RPC);
 
 const TOKENS = {
   STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
