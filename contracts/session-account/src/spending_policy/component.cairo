@@ -184,11 +184,11 @@ pub mod SpendingPolicyComponent {
                         assert(call.calldata.len() >= 3, 'Spending: calldata too short');
                         let amount_low: u128 = match (*call.calldata.at(1)).try_into() {
                             Option::Some(v) => v,
-                            Option::None => { panic!("Spending: invalid amount"); 0 },
+                            Option::None => { panic!("Spending: invalid amount"); },
                         };
                         let amount_high: u128 = match (*call.calldata.at(2)).try_into() {
                             Option::Some(v) => v,
-                            Option::None => { panic!("Spending: invalid amount"); 0 },
+                            Option::None => { panic!("Spending: invalid amount"); },
                         };
                         let amount: u256 = u256 { low: amount_low, high: amount_high };
 
