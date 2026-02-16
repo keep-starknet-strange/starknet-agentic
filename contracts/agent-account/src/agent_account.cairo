@@ -12,7 +12,7 @@ pub mod AgentAccount {
 
     const MIN_TRANSACTION_VERSION: u256 = 1;
     const QUERY_OFFSET: u256 = 0x100000000000000000000000000000000;
-    /// Default timelock delay for upgrades (5 minutes).
+    /// Default timelock delay for upgrades (1 hour).
     const DEFAULT_UPGRADE_DELAY: u64 = 3600;
     /// Minimum timelock delay for upgrades (1 hour).
     const MIN_UPGRADE_DELAY: u64 = 3600;
