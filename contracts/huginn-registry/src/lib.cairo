@@ -29,6 +29,7 @@ pub mod HuginnRegistry {
     struct Storage {
         verifier: ContractAddress,
         agents: Map<ContractAddress, AgentProfile>,
+        agent_registered: Map<ContractAddress, bool>,
         thought_owner: Map<u256, ContractAddress>,
         thought_proofs: Map<u256, Proof>,
     }
@@ -93,6 +94,7 @@ pub mod HuginnRegistry {
     impl HuginnRegistryImpl of super::IHuginnRegistry<ContractState> {
         fn register_agent(ref self: ContractState, name: felt252, metadata_url: ByteArray) {
             let caller = get_caller_address();
+            assert(!self.agent_registered.read(caller), 'Agent already registered');
             let timestamp = starknet::get_block_timestamp();
 
             let profile = AgentProfile {
@@ -101,6 +103,7 @@ pub mod HuginnRegistry {
                 registered_at: timestamp,
             };
             self.agents.write(caller, profile);
+            self.agent_registered.write(caller, true);
 
             self.emit(Event::OdinEye(OdinEye { agent_id: caller, name }));
         }

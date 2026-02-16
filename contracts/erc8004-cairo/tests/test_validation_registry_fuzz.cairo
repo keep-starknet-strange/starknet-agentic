@@ -46,8 +46,9 @@ fn deploy_contracts() -> (
 }
 
 #[test]
+#[should_panic(expected: 'Response already submitted')]
 #[fuzzer(runs: 64)]
-fn fuzz_validation_same_responder_can_update(raw_first: u8, raw_second: u8) {
+fn fuzz_validation_same_responder_cannot_overwrite(raw_first: u8, raw_second: u8) {
     let (identity_registry, validation_registry, identity_address, validation_address) =
         deploy_contracts();
 
@@ -67,10 +68,6 @@ fn fuzz_validation_same_responder_can_update(raw_first: u8, raw_second: u8) {
     validation_registry.validation_response(request_hash, first, "", 0, "");
     validation_registry.validation_response(request_hash, second, "", 0, "");
     stop_cheat_caller_address(validation_address);
-
-    let (_, _, resp, _, _, _) = validation_registry.get_validation_status(request_hash);
-
-    assert_eq!(resp, second);
 }
 
 #[test]
