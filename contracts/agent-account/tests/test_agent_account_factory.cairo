@@ -75,6 +75,17 @@ fn test_factory_deploys_account_and_links_identity() {
 }
 
 #[test]
+#[should_panic(expected: 'Only owner')]
+fn test_deploy_account_rejects_non_owner() {
+    let (factory, factory_addr, _, _) = setup();
+    let owner_key = StarkCurveKeyPairImpl::from_secret_key(0x123);
+    let public_key = owner_key.public_key;
+
+    start_cheat_caller_address(factory_addr, other());
+    factory.deploy_account(public_key, 0x999, "");
+}
+
+#[test]
 fn test_factory_deploys_multiple_accounts() {
     let (factory, _, _, factory_registry) = setup();
 
@@ -182,7 +193,8 @@ fn test_transfer_ownership() {
     factory.transfer_ownership(new_owner);
     stop_cheat_caller_address(factory_addr);
 
-    assert(factory.get_owner() == new_owner, 'Owner transferred');
+    assert(factory.get_owner() == owner, 'Owner should remain');
+    assert(factory.get_pending_owner() == new_owner, 'Pending owner set');
 }
 
 #[test]
@@ -193,6 +205,11 @@ fn test_transfer_ownership_new_owner_can_admin() {
 
     start_cheat_caller_address(factory_addr, owner);
     factory.transfer_ownership(new_owner);
+    stop_cheat_caller_address(factory_addr);
+
+    // Pending owner accepts ownership
+    start_cheat_caller_address(factory_addr, new_owner);
+    factory.accept_ownership();
     stop_cheat_caller_address(factory_addr);
 
     // New owner can set class hash
@@ -215,10 +232,46 @@ fn test_transfer_ownership_old_owner_loses_access() {
     factory.transfer_ownership(new_owner);
     stop_cheat_caller_address(factory_addr);
 
+    // Ownership is finalized only after accept.
+    start_cheat_caller_address(factory_addr, new_owner);
+    factory.accept_ownership();
+    stop_cheat_caller_address(factory_addr);
+
     // Old owner can no longer admin
     let new_hash: ClassHash = 0xeee.try_into().unwrap();
     start_cheat_caller_address(factory_addr, owner);
     factory.set_account_class_hash(new_hash);
+}
+
+#[test]
+#[should_panic(expected: 'Only owner')]
+fn test_pending_owner_cannot_admin_before_accept() {
+    let (factory, factory_addr, _, _) = setup();
+    let owner = factory.get_owner();
+    let new_owner = other();
+
+    start_cheat_caller_address(factory_addr, owner);
+    factory.transfer_ownership(new_owner);
+    stop_cheat_caller_address(factory_addr);
+
+    let new_hash: ClassHash = 0xabc.try_into().unwrap();
+    start_cheat_caller_address(factory_addr, new_owner);
+    factory.set_account_class_hash(new_hash);
+}
+
+#[test]
+#[should_panic(expected: 'Only pending owner')]
+fn test_accept_ownership_rejects_non_pending_owner() {
+    let (factory, factory_addr, _, _) = setup();
+    let owner = factory.get_owner();
+    let new_owner = other();
+
+    start_cheat_caller_address(factory_addr, owner);
+    factory.transfer_ownership(new_owner);
+    stop_cheat_caller_address(factory_addr);
+
+    start_cheat_caller_address(factory_addr, addr(0x1234));
+    factory.accept_ownership();
 }
 
 #[test]
