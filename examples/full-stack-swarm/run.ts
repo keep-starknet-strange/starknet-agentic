@@ -291,6 +291,8 @@ async function main() {
   const avnuPaymasterUrl = required("AVNU_PAYMASTER_URL");
   const avnuPaymasterApiKey = required("AVNU_PAYMASTER_API_KEY");
   const gasfree = envBool("GASFREE", true);
+  const gasfreeOwner = envBool("GASFREE_OWNER", gasfree);
+  const gasfreeSwap = envBool("GASFREE_SWAP", gasfree);
 
   const identityRegistry = required("ERC8004_IDENTITY_REGISTRY_ADDRESS");
   const sessionAccountClassHash = required("SESSION_ACCOUNT_CLASS_HASH");
@@ -462,7 +464,7 @@ async function main() {
           if (!agent.agentId) {
             const tokenUri = `${tokenUriBase}${tokenUriBase.includes("?") ? "&" : "?"}agent=${agent.id}`;
             const reg = parseToolTextJson(
-              await sidecar.callTool("starknet_register_agent", { token_uri: tokenUri, gasfree }),
+              await sidecar.callTool("starknet_register_agent", { token_uri: tokenUri, gasfree: gasfreeOwner }),
             );
             agent.agentId = reg.agentId ?? null;
           }
@@ -472,7 +474,7 @@ async function main() {
               contractAddress: agent.sessionAccountAddress,
               entrypoint: "set_agent_id",
               calldata: [String(agent.agentId)],
-              gasfree,
+              gasfree: gasfreeOwner,
             });
           }
 
@@ -485,7 +487,7 @@ async function main() {
               contractAddress: agent.sessionAccountAddress,
               entrypoint: "add_or_update_session_key",
               calldata: [agent.sessionPublicKey, String(validUntil), String(maxCalls), "0"],
-              gasfree,
+              gasfree: gasfreeOwner,
             });
           }
 
@@ -504,7 +506,7 @@ async function main() {
               maxPerWindowHigh,
               String(windowSeconds),
             ],
-            gasfree,
+            gasfree: gasfreeOwner,
           });
 
           return { agent: agent.id, ok: true, agentId: agent.agentId, sessionPublicKey: agent.sessionPublicKey };
@@ -592,7 +594,7 @@ async function main() {
               buyToken,
               amount,
               slippage,
-              gasfree,
+              gasfree: gasfreeSwap,
               ...(paymasterFeeMode === "default" ? { gasToken: paymasterGasToken } : {}),
             }),
           );
@@ -606,7 +608,7 @@ async function main() {
               buyToken,
               amount: String(Number(amount) * 10),
               slippage,
-              gasfree,
+              gasfree: gasfreeSwap,
               ...(paymasterFeeMode === "default" ? { gasToken: paymasterGasToken } : {}),
             });
             deniedByPolicy = false;
@@ -637,6 +639,8 @@ async function main() {
       agentCount,
       concurrency,
       gasfree,
+      gasfreeOwner,
+      gasfreeSwap,
       sellToken,
       buyToken,
       amount,
