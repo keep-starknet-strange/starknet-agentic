@@ -860,6 +860,62 @@ fn test_read_all_feedback_paginated_limits_work_and_sets_truncated() {
 }
 
 #[test]
+fn test_read_all_feedback_handles_large_scan_below_event_limit() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // Use a high-volume fixture while staying under snforge event limits.
+    let mut i: u32 = 0;
+    while i < 450 {
+        give_feedback_helper(
+            reputation_registry, reputation_address, agent_id, client(), 1, 0, "tag1", "tag2",
+        );
+        i += 1;
+    };
+
+    let empty_clients: Span<ContractAddress> = array![].span();
+    let (clients_arr, indexes_arr, values_arr, _, _, _, _) = reputation_registry
+        .read_all_feedback(agent_id, empty_clients, "", "", false);
+    assert_eq!(clients_arr.len(), 450);
+    assert_eq!(indexes_arr.len(), 450);
+    assert_eq!(values_arr.len(), 450);
+}
+
+#[test]
+fn test_read_all_feedback_paginated_handles_large_feedback_sets() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    // Same high-volume setup, and paginated reads should remain usable.
+    let mut i: u32 = 0;
+    while i < 450 {
+        give_feedback_helper(
+            reputation_registry, reputation_address, agent_id, client(), 1, 0, "tag1", "tag2",
+        );
+        i += 1;
+    };
+
+    let empty_clients: Span<ContractAddress> = array![].span();
+    let (clients_arr, indexes_arr, values_arr, _, _, _, _, truncated) = reputation_registry
+        .read_all_feedback_paginated(
+            agent_id, empty_clients, "", "", false, 0, 1, 0, 100,
+        );
+
+    assert_eq!(clients_arr.len(), 100);
+    assert_eq!(indexes_arr.len(), 100);
+    assert_eq!(values_arr.len(), 100);
+    assert(truncated, 'truncated');
+}
+
+#[test]
 fn test_read_all_feedback_excludes_revoked() {
     let (identity_registry, reputation_registry, identity_address, reputation_address) =
         deploy_contracts();

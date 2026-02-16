@@ -37,6 +37,9 @@ pub mod ReputationRegistry {
     // ============ Constants ============
     // Maximum absolute value for feedback (matches Solidity: 1e38)
     const MAX_ABS_VALUE: i128 = 100000000000000000000000000000000000000; // 1e38
+    // Defensive ceiling for the legacy non-paginated reader.
+    // Large reads should use `read_all_feedback_paginated`.
+    const MAX_READ_ALL_FEEDBACK_ENTRIES: u32 = 2048;
 
     // ============ Component Declarations ============
     component!(
@@ -588,12 +591,18 @@ pub mod ReputationRegistry {
             };
 
             let mut i: u32 = 0;
+            let mut scanned_feedbacks: u32 = 0;
             while i < client_list.len() {
                 let client = *client_list.at(i);
                 let last_idx = self.last_index.entry((agent_id, client)).read();
 
                 let mut j: u64 = 1;
                 while j <= last_idx {
+                    scanned_feedbacks += 1;
+                    assert(
+                        scanned_feedbacks <= MAX_READ_ALL_FEEDBACK_ENTRIES,
+                        'Use read_all_feedback_paginated',
+                    );
                     let fb = self.feedback_core.entry((agent_id, client, j)).read();
                     let stored_tag1 = self.feedback_tag1.entry((agent_id, client, j)).read();
                     let stored_tag2 = self.feedback_tag2.entry((agent_id, client, j)).read();
@@ -614,6 +623,10 @@ pub mod ReputationRegistry {
                         continue;
                     }
 
+                    assert(
+                        clients_arr.len() < MAX_READ_ALL_FEEDBACK_ENTRIES,
+                        'Use read_all_feedback_paginated',
+                    );
                     clients_arr.append(client);
                     indexes_arr.append(j);
                     values_arr.append(fb.value);

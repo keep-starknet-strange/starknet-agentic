@@ -21,7 +21,7 @@ fn deploy_agent_account() -> (IAgentAccountDispatcher, ContractAddress) {
 fn test_set_upgrade_delay_non_self_panics() {
     let (agent, addr) = deploy_agent_account();
     start_cheat_caller_address(addr, attacker());
-    agent.set_upgrade_delay(60);
+    agent.set_upgrade_delay(3600);
     stop_cheat_caller_address(addr);
 }
 
@@ -38,10 +38,18 @@ fn test_set_upgrade_delay_zero_panics() {
 fn test_set_upgrade_delay_updates_value() {
     let (agent, addr) = deploy_agent_account();
     start_cheat_caller_address(addr, addr);
-    agent.set_upgrade_delay(60);
+    agent.set_upgrade_delay(3600);
     stop_cheat_caller_address(addr);
 
     let (_pending, _scheduled_at, delay, _now) = agent.get_upgrade_info();
-    assert_eq!(delay, 60);
+    assert_eq!(delay, 3600);
 }
 
+#[test]
+#[should_panic(expected: 'Upgrade delay too small')]
+fn test_set_upgrade_delay_below_minimum_panics() {
+    let (agent, addr) = deploy_agent_account();
+    start_cheat_caller_address(addr, addr);
+    agent.set_upgrade_delay(3599);
+    stop_cheat_caller_address(addr);
+}
