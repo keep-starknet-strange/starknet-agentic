@@ -69,10 +69,6 @@ mod SessionAccount {
     use crate::spending_policy::component::SpendingPolicyComponent;
 
     // ── SNIP-12 type hashes ──────────────────────────────────────────────
-    const OUTSIDE_EXECUTION_TYPE_HASH_REV1: felt252 =
-        0x5a4b49e17039355cd95d1f0981d75901191d1319b1f4b05a9a791d218d7e0c;
-    const CALL_TYPE_HASH_REV1: felt252 =
-        0x3635c7f2a7ba93844c0d064e18e487f35ab90f7c39d00f186a781fc3f0c2ca9;
     const STARKNET_DOMAIN_TYPE_HASH_REV1: felt252 =
         0x1ff2f602e42168014d405a94f75e8a93d640751d71d16311266e140d8b0a210;
     const STARKNET_MESSAGE_PREFIX: felt252 = 'StarkNet Message';
@@ -428,7 +424,6 @@ mod SessionAccount {
                     Option::Some(v) => v,
                     Option::None => {
                         core::panic_with_felt252('Session: invalid timestamp');
-                        0
                     },
                 };
                 let session = self.session_keys.read(session_pubkey);
@@ -440,31 +435,20 @@ mod SessionAccount {
                 );
             }
 
-            // 5. Validate signature (dual hash: OZ u128 first, felt fallback)
-            let mut sig_copy1: Array<felt252> = array![];
-            let mut sig_copy2: Array<felt252> = array![];
+            // 5. Validate signature (strict OZ SRC-9/SNIP-12 hash only).
+            let mut sig_copy: Array<felt252> = array![];
             let mut i: u32 = 0;
             loop {
                 if i >= signature.len() {
                     break;
                 }
-                sig_copy1.append(*signature.at(i));
-                sig_copy2.append(*signature.at(i));
+                sig_copy.append(*signature.at(i));
                 i += 1;
             };
 
-            // Try OZ standard hash first (u128 timestamps)
             let oz_hash = outside_execution.get_message_hash(get_contract_address());
-            let is_valid_oz = SRC6Impl::is_valid_signature(@self, oz_hash, sig_copy1);
-            let mut is_valid_signature = is_valid_oz == starknet::VALIDATED || is_valid_oz == 1;
-
-            // Fallback: felt timestamps (older paymaster)
-            if !is_valid_signature {
-                let felt_hash = self._compute_outside_execution_hash(@outside_execution);
-                let is_valid_felt = SRC6Impl::is_valid_signature(@self, felt_hash, sig_copy2);
-                is_valid_signature = is_valid_felt == starknet::VALIDATED || is_valid_felt == 1;
-            }
-
+            let is_valid_oz = SRC6Impl::is_valid_signature(@self, oz_hash, sig_copy);
+            let is_valid_signature = is_valid_oz == starknet::VALIDATED || is_valid_oz == 1;
             assert(is_valid_signature, 'SRC9: invalid signature');
             if is_session_sig {
                 self._consume_session_call(session_pubkey);
@@ -907,63 +891,23 @@ mod SessionAccount {
                 i += 1;
             };
 
-            poseidon_hash_span(hash_data.span())
-        }
-
-        /// SNIP-12 message hash for OutsideExecution with felt timestamps (legacy paymaster fallback).
-        fn _compute_outside_execution_hash(
-            self: @ContractState, outside_execution: @OutsideExecution,
-        ) -> felt252 {
-            let chain_id = get_tx_info().unbox().chain_id;
-
+            let payload_hash = poseidon_hash_span(hash_data.span());
             let domain_hash = poseidon_hash_span(
                 array![
                     STARKNET_DOMAIN_TYPE_HASH_REV1,
-                    'Account.execute_from_outside',
+                    'Session.transaction',
                     2,
-                    chain_id,
+                    tx_info.chain_id.into(),
                     1,
                 ]
                     .span(),
             );
-
-            let calls = *outside_execution.calls;
-            let mut calls_hashes: Array<felt252> = array![];
-            let mut i: u32 = 0;
-            loop {
-                if i >= calls.len() {
-                    break;
-                }
-                let call = calls.at(i);
-                let calldata_hash = poseidon_hash_span(*call.calldata);
-                let call_hash = poseidon_hash_span(
-                    array![CALL_TYPE_HASH_REV1, (*call.to).into(), *call.selector, calldata_hash]
-                        .span(),
-                );
-                calls_hashes.append(call_hash);
-                i += 1;
-            };
-
-            let calls_array_hash = poseidon_hash_span(calls_hashes.span());
-
-            let struct_hash = poseidon_hash_span(
-                array![
-                    OUTSIDE_EXECUTION_TYPE_HASH_REV1,
-                    (*outside_execution.caller).into(),
-                    *outside_execution.nonce,
-                    (*outside_execution.execute_after).into(),
-                    (*outside_execution.execute_before).into(),
-                    calls_array_hash,
-                ]
-                    .span(),
-            );
-
             poseidon_hash_span(
                 array![
                     STARKNET_MESSAGE_PREFIX,
                     domain_hash,
                     get_contract_address().into(),
-                    struct_hash,
+                    payload_hash,
                 ]
                     .span(),
             )
