@@ -51,6 +51,9 @@ trait IUpgradeTimelock<TState> {
 const OWNER_PUBKEY: felt252 = 0x1234;
 const TEST_CHAIN_ID: felt252 = 0x534e5f5345504f4c4941; // 'SN_SEPOLIA'
 const TEST_NONCE: felt252 = 42;
+const STARKNET_DOMAIN_TYPE_HASH_REV1: felt252 =
+    0x1ff2f602e42168014d405a94f75e8a93d640751d71d16311266e140d8b0a210;
+const STARKNET_MESSAGE_PREFIX: felt252 = 'StarkNet Message';
 
 const AGENT_IDENTITY_ID: felt252 =
     0x02d7c1413db950e74e13e7b1e5b64a7a69a35e081c15f9a09d7cd3a2a4e739f8;
@@ -149,7 +152,27 @@ fn compute_session_hash(
         i += 1;
     };
 
-    poseidon_hash_span(hash_data.span())
+    let payload_hash = poseidon_hash_span(hash_data.span());
+    let domain_hash = poseidon_hash_span(
+        array![
+            STARKNET_DOMAIN_TYPE_HASH_REV1,
+            'Session.transaction',
+            2,
+            chain_id,
+            1,
+        ]
+            .span(),
+    );
+
+    poseidon_hash_span(
+        array![
+            STARKNET_MESSAGE_PREFIX,
+            domain_hash,
+            account_address.into(),
+            payload_hash,
+        ]
+            .span(),
+    )
 }
 
 fn setup_session_tx_context(

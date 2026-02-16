@@ -646,7 +646,7 @@ fn test_same_block_spending_accumulation() {
 #[should_panic(expected: ('Spending: exceeds window limit',))]
 fn test_same_block_exceeds_window_limit() {
     let current_time = 1_000_000_u64;
-    let (account, spending_mgr, exec, token) = setup_enforcement(current_time, 600, 1000, 3600);
+    let (account, _spending_mgr, exec, token) = setup_enforcement(current_time, 600, 1000, 3600);
 
     // First transaction: spend 600
     let calls1 = array![make_transfer_call(token, 600)];
