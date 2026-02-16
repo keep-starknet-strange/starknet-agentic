@@ -19,7 +19,10 @@ pub struct SpendingPolicy {
     pub window_seconds: u64,
     /// Amount spent in the current window so far.
     pub spent_in_window: u256,
-    /// Timestamp when the current window started (0 until first spend).
+    /// Timestamp when the current window started.
+    /// Invariant: window_start == 0 and spent_in_window == 0 means uninitialized.
+    /// On first spend, window_start is set to current block timestamp.
+    /// Window resets only when now > window_start + window_seconds.
     pub window_start: u64,
 }
 

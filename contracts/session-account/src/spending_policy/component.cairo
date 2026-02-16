@@ -193,7 +193,7 @@ pub mod SpendingPolicyComponent {
                         assert(amount <= policy.max_per_call, 'Spending: exceeds per-call');
 
                         // Lazy-init window anchor on first spend.
-                        if policy.window_start == 0 {
+                        if policy.window_start == 0 && policy.spent_in_window == 0 {
                             policy.window_start = now;
                         }
 
