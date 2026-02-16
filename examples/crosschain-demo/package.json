@@ -13,13 +13,13 @@
   },
   "dependencies": {
     "@starknet-agentic/onboarding-utils": "workspace:*",
-    "dotenv": "^16.4.0",
+    "dotenv": "^17.3.1",
     "ethers": "^6.16.0",
-    "starknet": "^8.9.1"
+    "starknet": "^9.2.1"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
     "typescript": "^5.9.0",
-    "vitest": "^2.1.9"
+    "vitest": "^4.0.18"
   }
 }

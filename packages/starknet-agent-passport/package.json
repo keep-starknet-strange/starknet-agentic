@@ -14,11 +14,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "starknet": "^8.9.1"
+    "starknet": "^9.2.1"
   },
   "devDependencies": {
     "tsup": "^8.5.0",
     "typescript": "^5.9.0",
-    "vitest": "^2.1.9"
+    "vitest": "^4.0.18"
   }
 }
