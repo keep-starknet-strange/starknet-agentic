@@ -85,6 +85,20 @@ interface VerificationResult {
 }
 
 /**
+ * Redact sensitive credential values before printing verification output.
+ */
+function sanitizeVerificationResultForOutput(result: VerificationResult): VerificationResult {
+  return {
+    ...result,
+    credentials: {
+      ...result.credentials,
+      accountAddressValue: result.credentials.accountAddressValue ? "[redacted]" : undefined,
+      rpcUrlValue: result.credentials.rpcUrlValue ? "[redacted]" : undefined,
+    },
+  };
+}
+
+/**
  * Parsed verify command arguments
  */
 export interface VerifyArgs {
@@ -718,7 +732,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
 
   if (!args.jsonOutput) {
     if (credentialsResult.accountAddressPresent) {
-      console.log(`  ${pc.green("✓")} Account address configured: ${credentialsResult.accountAddressValue}`);
+      console.log(`  ${pc.green("✓")} Account address configured`);
     } else {
       console.log(`  ${pc.red("✗")} Account address not configured`);
     }
@@ -730,7 +744,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     }
 
     if (credentialsResult.rpcUrlPresent) {
-      console.log(`  ${pc.green("✓")} RPC URL: ${credentialsResult.rpcUrlValue}`);
+      console.log(`  ${pc.green("✓")} RPC URL configured`);
     } else {
       console.log(`  ${pc.yellow("○")} RPC URL not set ${pc.dim("(will use default public RPC)")}`);
     }
@@ -832,7 +846,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
 
   // Output JSON if requested
   if (args.jsonOutput) {
-    console.log(JSON.stringify(verificationResult, null, 2));
+    console.log(JSON.stringify(sanitizeVerificationResultForOutput(verificationResult), null, 2));
     process.exit(exitCode);
   }
 
