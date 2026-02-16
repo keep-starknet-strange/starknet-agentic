@@ -17,8 +17,8 @@ Please include:
 ## Disclosure Process
 
 - We will acknowledge receipt as soon as possible.
-- We will triage severity and scope, then prepare a fix.
-- We will coordinate disclosure timing with the reporter.
+- The team will triage severity and scope, then prepare a fix.
+- Disclosure timing will be coordinated with the reporter.
 
 ## Scope
 
