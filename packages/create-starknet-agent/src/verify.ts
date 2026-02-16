@@ -84,6 +84,9 @@ interface VerificationResult {
   exitCode: number;
 }
 
+/**
+ * Redact sensitive credential values before printing verification output.
+ */
 function sanitizeVerificationResultForOutput(result: VerificationResult): VerificationResult {
   return {
     ...result,
