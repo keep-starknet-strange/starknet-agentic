@@ -741,6 +741,144 @@ describe("MCP Tool Handlers", () => {
     });
   });
 
+  describe("starknet_vesu_deposit", () => {
+    const VTOKEN_STRK =
+      "0x01a1b2c3d4e5f60708192a3b4c5d6e7f8090a1b2c3d4e5f60708192a3b4c5d6e";
+
+    it("deposits to Vesu Prime pool successfully", async () => {
+      mockCallContract.mockResolvedValueOnce([VTOKEN_STRK]);
+      mockExecute.mockResolvedValue({ transaction_hash: "0xvesu123" });
+      mockWaitForTransaction.mockResolvedValue({});
+
+      const response = await callTool("starknet_vesu_deposit", {
+        token: "STRK",
+        amount: "10",
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.transactionHash).toBe("0xvesu123");
+      expect(result.token).toBe("STRK");
+      expect(result.amount).toBe("10");
+      expect(result.pool).toBe("prime");
+      expect(mockExecute).toHaveBeenCalled();
+    });
+
+    it("uses custom pool when provided", async () => {
+      mockCallContract.mockResolvedValueOnce([VTOKEN_STRK]);
+      mockExecute.mockResolvedValue({ transaction_hash: "0xvesu456" });
+      mockWaitForTransaction.mockResolvedValue({});
+
+      const response = await callTool("starknet_vesu_deposit", {
+        token: "USDC",
+        amount: "100",
+        pool: "0x0451fe483d5921a2919ddd81d0de6696669bccdacd859f72a4fba7656b97c3b5",
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(mockCallContract).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entrypoint: "v_token_for_asset",
+        })
+      );
+    });
+
+    it("returns error for invalid amount", async () => {
+      const response = await callTool("starknet_vesu_deposit", {
+        token: "STRK",
+        amount: "1e18",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toMatch(/Invalid amount|Invalid decimal/);
+    });
+
+    it("returns error when vToken not found", async () => {
+      mockCallContract.mockResolvedValueOnce([]);
+
+      const response = await callTool("starknet_vesu_deposit", {
+        token: "STRK",
+        amount: "1",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toMatch(/vToken not found|not found/);
+    });
+  });
+
+  describe("starknet_vesu_withdraw", () => {
+    const VTOKEN_STRK =
+      "0x01a1b2c3d4e5f60708192a3b4c5d6e7f8090a1b2c3d4e5f60708192a3b4c5d6e";
+
+    it("withdraws from Vesu successfully", async () => {
+      mockCallContract.mockResolvedValueOnce([VTOKEN_STRK]);
+      mockExecute.mockResolvedValue({ transaction_hash: "0xwithdraw123" });
+      mockWaitForTransaction.mockResolvedValue({});
+
+      const response = await callTool("starknet_vesu_withdraw", {
+        token: "STRK",
+        amount: "5",
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.transactionHash).toBe("0xwithdraw123");
+      expect(result.token).toBe("STRK");
+      expect(result.amount).toBe("5");
+      expect(mockExecute).toHaveBeenCalled();
+    });
+
+    it("returns error for zero amount", async () => {
+      const response = await callTool("starknet_vesu_withdraw", {
+        token: "STRK",
+        amount: "0",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toMatch(/Invalid amount|positive|zero/);
+    });
+  });
+
+  describe("starknet_vesu_positions", () => {
+    const VTOKEN_STRK =
+      "0x01a1b2c3d4e5f60708192a3b4c5d6e7f8090a1b2c3d4e5f60708192a3b4c5d6e";
+
+    it("returns lending positions for user", async () => {
+      const oneEth = "0xde0b6b3a7640000"; // 1e18
+      mockCallContract
+        .mockResolvedValueOnce([VTOKEN_STRK])
+        .mockResolvedValueOnce([oneEth, "0x0"])
+        .mockResolvedValueOnce([oneEth, "0x0"]);
+
+      const response = await callTool("starknet_vesu_positions", {
+        tokens: ["STRK"],
+      });
+
+      const result = parseResponse(response);
+      expect(result.positions).toBeDefined();
+      expect(Array.isArray(result.positions)).toBe(true);
+      expect(result.positions.length).toBeGreaterThan(0);
+      expect(result.positions[0]).toHaveProperty("token");
+      expect(result.positions[0]).toHaveProperty("tokenAddress");
+      expect(result.positions[0]).toHaveProperty("shares");
+      expect(result.positions[0]).toHaveProperty("assets");
+    });
+
+    it("returns error for empty tokens", async () => {
+      const response = await callTool("starknet_vesu_positions", {
+        tokens: [],
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.message).toMatch(/required|At least one/);
+    });
+  });
+
   describe("starknet_swap", () => {
     const mockQuote = {
       quoteId: "quote-123",
@@ -1458,10 +1596,13 @@ describe("Tool list", () => {
 
     const response = await capturedListHandler();
 
-    expect(response.tools).toHaveLength(18);
+    expect(response.tools).toHaveLength(21);
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_get_balance");
     expect(toolNames).toContain("starknet_get_balances");
+    expect(toolNames).toContain("starknet_vesu_deposit");
+    expect(toolNames).toContain("starknet_vesu_withdraw");
+    expect(toolNames).toContain("starknet_vesu_positions");
     expect(toolNames).toContain("starknet_transfer");
     expect(toolNames).toContain("starknet_call_contract");
     expect(toolNames).toContain("starknet_invoke_contract");
@@ -1496,7 +1637,7 @@ describe("Tool list", () => {
     const response = await capturedListHandler();
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).toContain("starknet_deploy_agent_account");
-    expect(response.tools).toHaveLength(19);
+    expect(response.tools).toHaveLength(22);
 
     delete process.env.AGENT_ACCOUNT_FACTORY_ADDRESS;
   });

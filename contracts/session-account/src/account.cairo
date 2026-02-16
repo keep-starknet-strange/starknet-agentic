@@ -73,6 +73,8 @@ mod SessionAccount {
         0x1ff2f602e42168014d405a94f75e8a93d640751d71d16311266e140d8b0a210;
     const STARKNET_MESSAGE_PREFIX: felt252 = 'StarkNet Message';
     const DEFAULT_UPGRADE_DELAY: u64 = 3600;
+    // Session accounts intentionally allow a lower minimum delay than agent accounts
+    // to support short-lived session workflows while preserving a non-zero safety window.
     const MIN_UPGRADE_DELAY: u64 = 60;
 
     // ── Components ────────────────────────────────────────────────────────
@@ -170,6 +172,7 @@ mod SessionAccount {
         SessionKeyAdded: SessionKeyAdded,
         SessionKeyRevoked: SessionKeyRevoked,
         AgentIdSet: AgentIdSet,
+        CallFailed: CallFailed,
         UpgradeScheduled: UpgradeScheduled,
         UpgradeExecuted: UpgradeExecuted,
         UpgradeCancelled: UpgradeCancelled,
@@ -194,6 +197,15 @@ mod SessionAccount {
     struct AgentIdSet {
         #[key]
         agent_id: felt252,
+    }
+
+    /// Emitted when a call inside `_execute_calls` fails but execution continues.
+    #[derive(Drop, starknet::Event)]
+    struct CallFailed {
+        #[key]
+        call_index: u32,
+        to: starknet::ContractAddress,
+        selector: felt252,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -918,6 +930,7 @@ mod SessionAccount {
             ref self: ContractState, mut calls: Array<Call>,
         ) -> Array<Span<felt252>> {
             let mut res = array![];
+            let mut call_index: u32 = 0;
             loop {
                 match calls.pop_front() {
                     Option::Some(call) => {
@@ -932,8 +945,16 @@ mod SessionAccount {
                             // intentionally fails calls to avoid spending limit deduction.
                             // This is fail-closed behavior: failed transfers still count.
                             // MCP callers should check on-chain state to detect failures.
-                            Result::Err(_) => res.append(array![].span()),
+                            Result::Err(_) => {
+                                self.emit(CallFailed {
+                                    call_index,
+                                    to: call.to,
+                                    selector: call.selector,
+                                });
+                                res.append(array![].span());
+                            },
                         }
+                        call_index += 1;
                     },
                     Option::None => { break; },
                 }
