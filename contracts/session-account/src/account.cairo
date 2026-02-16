@@ -73,6 +73,8 @@ mod SessionAccount {
         0x1ff2f602e42168014d405a94f75e8a93d640751d71d16311266e140d8b0a210;
     const STARKNET_MESSAGE_PREFIX: felt252 = 'StarkNet Message';
     const DEFAULT_UPGRADE_DELAY: u64 = 3600;
+    // Session accounts intentionally allow a lower minimum delay than agent accounts
+    // to support short-lived session workflows while preserving a non-zero safety window.
     const MIN_UPGRADE_DELAY: u64 = 60;
 
     // ── Components ────────────────────────────────────────────────────────
