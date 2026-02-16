@@ -192,6 +192,10 @@ function startSisna(args: {
   if (!defaultKeyId) {
     throw new Error("Internal error: no signing keys provided to SISNA");
   }
+  const defaultClientId = Object.keys(args.allowedKeyIdsByClientId)[0];
+  if (!defaultClientId) {
+    throw new Error("Internal error: no auth clients provided to SISNA");
+  }
   const keyringAllowedChainIds = "0x534e5f5345504f4c4941"; // "SN_SEPOLIA" as felt
   const env = {
     ...process.env,
@@ -201,7 +205,7 @@ function startSisna(args: {
     KEYRING_TRANSPORT: "http",
     KEYRING_ALLOWED_CHAIN_IDS: keyringAllowedChainIds,
     KEYRING_HMAC_SECRET: args.hmacSecret,
-    KEYRING_DEFAULT_AUTH_CLIENT_ID: "swarm",
+    KEYRING_DEFAULT_AUTH_CLIENT_ID: defaultClientId,
     // SISNA requires KEYRING_DEFAULT_KEY_ID to exist in signing keys.
     KEYRING_DEFAULT_KEY_ID: defaultKeyId,
     KEYRING_SIGNING_KEYS_JSON: JSON.stringify(
