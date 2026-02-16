@@ -529,8 +529,9 @@ pub mod IdentityRegistry {
             // SNIP-6 standard: returns 'VALID' (0x56414c4944) if signature is valid
             let result = account.is_valid_signature(message_hash, signature_array);
 
-            // Check if result equals 'VALID'
-            result == 'VALID' || result == starknet::VALIDATED
+            // SNIP-6 requires `is_valid_signature` to return 'VALID' on success.
+            // We intentionally do not accept alternative return markers here.
+            result == 'VALID'
         }
     }
 

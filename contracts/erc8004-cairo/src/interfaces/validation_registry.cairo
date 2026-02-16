@@ -71,7 +71,7 @@ pub trait IValidationRegistry<TState> {
         request_hash: u256,
     );
 
-    /// @notice Respond to a validation request
+    /// @notice Respond to a validation request (single immutable response)
     /// @param request_hash Hash of the original request
     /// @param response The validation result (0-100)
     /// @param response_uri URI containing response details

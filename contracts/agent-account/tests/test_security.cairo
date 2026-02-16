@@ -746,7 +746,7 @@ fn test_non_transfer_call_not_tracked_as_spending() {
         valid_after: 0,
         valid_until: 999_999,
         spending_limit: 0, // zero limit — any tracked selector would panic
-        spending_token: token_addr(),
+        spending_token: zero_addr(),
         allowed_contract: addr, // allow calling the account itself
     };
     register_key(agent, addr, session_kp.public_key, policy);
@@ -774,9 +774,32 @@ fn test_non_transfer_call_not_tracked_as_spending() {
 }
 
 #[test]
-fn test_transfer_from_snake_not_debited_as_spending() {
-    // transfer_from is intentionally untracked to avoid double-counting approval
-    // exposure. With spending_limit=0, any tracked selector would panic.
+#[should_panic(expected: 'Session: admin selector blocked')]
+fn test_session_key_cannot_call_admin_selector_even_when_allowed_contract_matches() {
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 0,
+        spending_token: zero_addr(),
+        allowed_contract: addr,
+    };
+    register_key(agent, addr, session_kp.public_key, policy);
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let calls = array![generic_call(addr, selector!("set_agent_id"))];
+    account.__execute__(calls);
+}
+
+#[test]
+#[should_panic(expected: 'Session: transferFrom blocked')]
+fn test_transfer_from_snake_is_blocked_for_session_keys() {
     let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
     let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
     let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
@@ -786,7 +809,7 @@ fn test_transfer_from_snake_not_debited_as_spending() {
         valid_after: 0,
         valid_until: 999_999,
         spending_limit: 0,
-        spending_token: mock_token,
+        spending_token: zero_addr(),
         allowed_contract: mock_token,
     };
     register_key(agent, addr, session_kp.public_key, policy);
@@ -796,17 +819,12 @@ fn test_transfer_from_snake_not_debited_as_spending() {
     start_cheat_block_timestamp(addr, 100);
 
     let calls = array![transfer_from_call(mock_token, 0x1, 0x2, 1)];
-    let results = account.__execute__(calls);
-    assert_eq!(results.len(), 1);
-
-    stop_cheat_block_timestamp(addr);
-    stop_cheat_caller_address(addr);
-    cleanup_cheats();
+    account.__execute__(calls);
 }
 
 #[test]
-fn test_transfer_from_camel_not_debited_as_spending() {
-    // Same invariant as above, but for transferFrom camelCase selector.
+#[should_panic(expected: 'Session: transferFrom blocked')]
+fn test_transfer_from_camel_is_blocked_for_session_keys() {
     let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
     let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
     let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
@@ -816,7 +834,7 @@ fn test_transfer_from_camel_not_debited_as_spending() {
         valid_after: 0,
         valid_until: 999_999,
         spending_limit: 0,
-        spending_token: mock_token,
+        spending_token: zero_addr(),
         allowed_contract: mock_token,
     };
     register_key(agent, addr, session_kp.public_key, policy);
@@ -826,12 +844,7 @@ fn test_transfer_from_camel_not_debited_as_spending() {
     start_cheat_block_timestamp(addr, 100);
 
     let calls = array![transfer_from_camel_call(mock_token, 0x1, 0x2, 1)];
-    let results = account.__execute__(calls);
-    assert_eq!(results.len(), 1);
-
-    stop_cheat_block_timestamp(addr);
-    stop_cheat_caller_address(addr);
-    cleanup_cheats();
+    account.__execute__(calls);
 }
 
 #[test]
