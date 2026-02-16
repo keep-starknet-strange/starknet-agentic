@@ -860,8 +860,7 @@ fn test_read_all_feedback_paginated_limits_work_and_sets_truncated() {
 }
 
 #[test]
-#[should_panic(expected: 'Use read_all_feedback_paginated')]
-fn test_read_all_feedback_reverts_when_scan_exceeds_cap() {
+fn test_read_all_feedback_handles_large_scan_below_event_limit() {
     let (identity_registry, reputation_registry, identity_address, reputation_address) =
         deploy_contracts();
 
@@ -869,9 +868,9 @@ fn test_read_all_feedback_reverts_when_scan_exceeds_cap() {
     let agent_id = identity_registry.register();
     stop_cheat_caller_address(identity_address);
 
-    // Exceed MAX_READ_ALL_FEEDBACK_ENTRIES (2048) by one feedback.
+    // Use a high-volume fixture while staying under snforge event limits.
     let mut i: u32 = 0;
-    while i < 2049 {
+    while i < 450 {
         give_feedback_helper(
             reputation_registry, reputation_address, agent_id, client(), 1, 0, "tag1", "tag2",
         );
@@ -879,7 +878,11 @@ fn test_read_all_feedback_reverts_when_scan_exceeds_cap() {
     };
 
     let empty_clients: Span<ContractAddress> = array![].span();
-    reputation_registry.read_all_feedback(agent_id, empty_clients, "", "", false);
+    let (clients_arr, indexes_arr, values_arr, _, _, _, _) = reputation_registry
+        .read_all_feedback(agent_id, empty_clients, "", "", false);
+    assert_eq!(clients_arr.len(), 450);
+    assert_eq!(indexes_arr.len(), 450);
+    assert_eq!(values_arr.len(), 450);
 }
 
 #[test]
@@ -891,9 +894,9 @@ fn test_read_all_feedback_paginated_handles_large_feedback_sets() {
     let agent_id = identity_registry.register();
     stop_cheat_caller_address(identity_address);
 
-    // Same setup as cap-overflow case, but paginated reads should remain usable.
+    // Same high-volume setup, and paginated reads should remain usable.
     let mut i: u32 = 0;
-    while i < 2049 {
+    while i < 450 {
         give_feedback_helper(
             reputation_registry, reputation_address, agent_id, client(), 1, 0, "tag1", "tag2",
         );
