@@ -69,13 +69,11 @@ mod SessionAccount {
     use crate::spending_policy::component::SpendingPolicyComponent;
 
     // ── SNIP-12 type hashes ──────────────────────────────────────────────
-    const OUTSIDE_EXECUTION_TYPE_HASH_REV1: felt252 =
-        0x5a4b49e17039355cd95d1f0981d75901191d1319b1f4b05a9a791d218d7e0c;
-    const CALL_TYPE_HASH_REV1: felt252 =
-        0x3635c7f2a7ba93844c0d064e18e487f35ab90f7c39d00f186a781fc3f0c2ca9;
     const STARKNET_DOMAIN_TYPE_HASH_REV1: felt252 =
         0x1ff2f602e42168014d405a94f75e8a93d640751d71d16311266e140d8b0a210;
     const STARKNET_MESSAGE_PREFIX: felt252 = 'StarkNet Message';
+    const DEFAULT_UPGRADE_DELAY: u64 = 3600;
+    const MIN_UPGRADE_DELAY: u64 = 60;
 
     // ── Components ────────────────────────────────────────────────────────
     component!(path: AccountComponent, storage: account, event: AccountEvent);
@@ -149,6 +147,10 @@ mod SessionAccount {
         session_keys: Map<felt252, SessionData>,
         session_entrypoints: Map<(felt252, u32), felt252>,
         agent_id: felt252,
+        validate_self_call_active: bool,
+        pending_upgrade: ClassHash,
+        upgrade_scheduled_at: u64,
+        upgrade_delay: u64,
     }
 
     // ── Events ────────────────────────────────────────────────────────────
@@ -168,6 +170,10 @@ mod SessionAccount {
         SessionKeyAdded: SessionKeyAdded,
         SessionKeyRevoked: SessionKeyRevoked,
         AgentIdSet: AgentIdSet,
+        UpgradeScheduled: UpgradeScheduled,
+        UpgradeExecuted: UpgradeExecuted,
+        UpgradeCancelled: UpgradeCancelled,
+        UpgradeDelayUpdated: UpgradeDelayUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -190,6 +196,30 @@ mod SessionAccount {
         agent_id: felt252,
     }
 
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeScheduled {
+        new_class_hash: ClassHash,
+        scheduled_at: u64,
+        executable_after: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeExecuted {
+        new_class_hash: ClassHash,
+        executed_at: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeCancelled {
+        cancelled_at: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradeDelayUpdated {
+        old_delay: u64,
+        new_delay: u64,
+    }
+
     // ── Constructor ───────────────────────────────────────────────────────
     #[constructor]
     fn constructor(ref self: ContractState, public_key: felt252) {
@@ -197,6 +227,9 @@ mod SessionAccount {
         self.src9.initializer();
         self.src5.register_interface(SESSION_KEY_MANAGER_ID);
         self.src5.register_interface(AGENT_IDENTITY_ID);
+        self.upgrade_delay.write(DEFAULT_UPGRADE_DELAY);
+        self.upgrade_scheduled_at.write(0);
+        self.pending_upgrade.write(0.try_into().unwrap());
     }
 
     // ── SRC-6 ──────────────────────────────────────────────────────────────
@@ -214,9 +247,10 @@ mod SessionAccount {
             let signature = tx_info.signature;
             let caller = get_caller_address();
 
-            // Self-calls via __execute__ carry no tx signature
+            // Self-calls with empty signatures are only valid while executing
+            // an internal batch (set by __execute__/execute_from_outside_v2).
             if signature.len() == 0 {
-                if caller == get_contract_address() {
+                if caller == get_contract_address() && self.validate_self_call_active.read() {
                     return starknet::VALIDATED;
                 } else {
                     return 0;
@@ -277,7 +311,10 @@ mod SessionAccount {
                 self.spending_policy.check_and_update_spending(session_pubkey, calls.span());
             }
 
-            self._execute_calls(calls)
+            self.validate_self_call_active.write(true);
+            let result = self._execute_calls(calls);
+            self.validate_self_call_active.write(false);
+            result
         }
 
         #[external(v0)]
@@ -387,7 +424,6 @@ mod SessionAccount {
                     Option::Some(v) => v,
                     Option::None => {
                         core::panic_with_felt252('Session: invalid timestamp');
-                        0
                     },
                 };
                 let session = self.session_keys.read(session_pubkey);
@@ -399,31 +435,20 @@ mod SessionAccount {
                 );
             }
 
-            // 5. Validate signature (dual hash: OZ u128 first, felt fallback)
-            let mut sig_copy1: Array<felt252> = array![];
-            let mut sig_copy2: Array<felt252> = array![];
+            // 5. Validate signature (strict OZ SRC-9/SNIP-12 hash only).
+            let mut sig_copy: Array<felt252> = array![];
             let mut i: u32 = 0;
             loop {
                 if i >= signature.len() {
                     break;
                 }
-                sig_copy1.append(*signature.at(i));
-                sig_copy2.append(*signature.at(i));
+                sig_copy.append(*signature.at(i));
                 i += 1;
             };
 
-            // Try OZ standard hash first (u128 timestamps)
             let oz_hash = outside_execution.get_message_hash(get_contract_address());
-            let is_valid_oz = SRC6Impl::is_valid_signature(@self, oz_hash, sig_copy1);
-            let mut is_valid_signature = is_valid_oz == starknet::VALIDATED || is_valid_oz == 1;
-
-            // Fallback: felt timestamps (older paymaster)
-            if !is_valid_signature {
-                let felt_hash = self._compute_outside_execution_hash(@outside_execution);
-                let is_valid_felt = SRC6Impl::is_valid_signature(@self, felt_hash, sig_copy2);
-                is_valid_signature = is_valid_felt == starknet::VALIDATED || is_valid_felt == 1;
-            }
-
+            let is_valid_oz = SRC6Impl::is_valid_signature(@self, oz_hash, sig_copy);
+            let is_valid_signature = is_valid_oz == starknet::VALIDATED || is_valid_oz == 1;
             assert(is_valid_signature, 'SRC9: invalid signature');
             if is_session_sig {
                 self._consume_session_call(session_pubkey);
@@ -436,7 +461,10 @@ mod SessionAccount {
             }
 
             // 6. Execute
-            self._execute_calls(outside_execution.calls.into())
+            self.validate_self_call_active.write(true);
+            let result = self._execute_calls(outside_execution.calls.into());
+            self.validate_self_call_active.write(false);
+            result
         }
 
         fn is_valid_outside_execution_nonce(self: @ContractState, nonce: felt252) -> bool {
@@ -449,7 +477,82 @@ mod SessionAccount {
     impl UpgradeableImpl of IUpgradeable<ContractState> {
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.account.assert_only_self();
-            self.upgradeable.upgrade(new_class_hash);
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            assert(new_class_hash != zero_class, 'Session: zero class hash');
+            assert(self.pending_upgrade.read() == zero_class, 'Session: upgrade pending');
+
+            let now = get_block_timestamp();
+            let delay = self.upgrade_delay.read();
+            self.pending_upgrade.write(new_class_hash);
+            self.upgrade_scheduled_at.write(now);
+
+            self.emit(
+                UpgradeScheduled {
+                    new_class_hash,
+                    scheduled_at: now,
+                    executable_after: now + delay,
+                },
+            );
+        }
+    }
+
+    #[starknet::interface]
+    trait IUpgradeTimelock<TState> {
+        fn execute_upgrade(ref self: TState);
+        fn cancel_upgrade(ref self: TState);
+        fn set_upgrade_delay(ref self: TState, new_delay: u64);
+        fn get_upgrade_info(self: @TState) -> (ClassHash, u64, u64, u64);
+    }
+
+    #[abi(embed_v0)]
+    impl UpgradeTimelockImpl of IUpgradeTimelock<ContractState> {
+        fn execute_upgrade(ref self: ContractState) {
+            self.account.assert_only_self();
+
+            let pending = self.pending_upgrade.read();
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            assert(pending != zero_class, 'Session: no pending upgrade');
+
+            let now = get_block_timestamp();
+            let scheduled_at = self.upgrade_scheduled_at.read();
+            let delay = self.upgrade_delay.read();
+            assert(now >= scheduled_at + delay, 'Session: upgrade timelock');
+
+            self.pending_upgrade.write(zero_class);
+            self.upgrade_scheduled_at.write(0);
+            self.upgradeable.upgrade(pending);
+
+            self.emit(UpgradeExecuted { new_class_hash: pending, executed_at: now });
+        }
+
+        fn cancel_upgrade(ref self: ContractState) {
+            self.account.assert_only_self();
+
+            let pending = self.pending_upgrade.read();
+            let zero_class: ClassHash = 0.try_into().unwrap();
+            assert(pending != zero_class, 'Session: no pending upgrade');
+
+            self.pending_upgrade.write(zero_class);
+            self.upgrade_scheduled_at.write(0);
+            self.emit(UpgradeCancelled { cancelled_at: get_block_timestamp() });
+        }
+
+        fn set_upgrade_delay(ref self: ContractState, new_delay: u64) {
+            self.account.assert_only_self();
+            assert(new_delay >= MIN_UPGRADE_DELAY, 'Session: delay too small');
+
+            let old_delay = self.upgrade_delay.read();
+            self.upgrade_delay.write(new_delay);
+            self.emit(UpgradeDelayUpdated { old_delay, new_delay });
+        }
+
+        fn get_upgrade_info(self: @ContractState) -> (ClassHash, u64, u64, u64) {
+            (
+                self.pending_upgrade.read(),
+                self.upgrade_scheduled_at.read(),
+                self.upgrade_delay.read(),
+                get_block_timestamp(),
+            )
         }
     }
 
@@ -651,6 +754,9 @@ mod SessionAccount {
 
             // Admin selector blocklist
             let UPGRADE_SELECTOR: felt252 = selector!("upgrade");
+            let EXECUTE_UPGRADE_SELECTOR: felt252 = selector!("execute_upgrade");
+            let CANCEL_UPGRADE_SELECTOR: felt252 = selector!("cancel_upgrade");
+            let SET_UPGRADE_DELAY_SELECTOR: felt252 = selector!("set_upgrade_delay");
             let ADD_SESSION_SELECTOR: felt252 = selector!("add_or_update_session_key");
             let REVOKE_SESSION_SELECTOR: felt252 = selector!("revoke_session_key");
             let EXECUTE_SELECTOR: felt252 = selector!("__execute__");
@@ -677,6 +783,9 @@ mod SessionAccount {
                 let sel = *call.selector;
 
                 if sel == UPGRADE_SELECTOR
+                    || sel == EXECUTE_UPGRADE_SELECTOR
+                    || sel == CANCEL_UPGRADE_SELECTOR
+                    || sel == SET_UPGRADE_DELAY_SELECTOR
                     || sel == ADD_SESSION_SELECTOR
                     || sel == REVOKE_SESSION_SELECTOR
                     || sel == EXECUTE_SELECTOR
@@ -782,63 +891,23 @@ mod SessionAccount {
                 i += 1;
             };
 
-            poseidon_hash_span(hash_data.span())
-        }
-
-        /// SNIP-12 message hash for OutsideExecution with felt timestamps (legacy paymaster fallback).
-        fn _compute_outside_execution_hash(
-            self: @ContractState, outside_execution: @OutsideExecution,
-        ) -> felt252 {
-            let chain_id = get_tx_info().unbox().chain_id;
-
+            let payload_hash = poseidon_hash_span(hash_data.span());
             let domain_hash = poseidon_hash_span(
                 array![
                     STARKNET_DOMAIN_TYPE_HASH_REV1,
-                    'Account.execute_from_outside',
+                    'Session.transaction',
                     2,
-                    chain_id,
+                    tx_info.chain_id.into(),
                     1,
                 ]
                     .span(),
             );
-
-            let calls = *outside_execution.calls;
-            let mut calls_hashes: Array<felt252> = array![];
-            let mut i: u32 = 0;
-            loop {
-                if i >= calls.len() {
-                    break;
-                }
-                let call = calls.at(i);
-                let calldata_hash = poseidon_hash_span(*call.calldata);
-                let call_hash = poseidon_hash_span(
-                    array![CALL_TYPE_HASH_REV1, (*call.to).into(), *call.selector, calldata_hash]
-                        .span(),
-                );
-                calls_hashes.append(call_hash);
-                i += 1;
-            };
-
-            let calls_array_hash = poseidon_hash_span(calls_hashes.span());
-
-            let struct_hash = poseidon_hash_span(
-                array![
-                    OUTSIDE_EXECUTION_TYPE_HASH_REV1,
-                    (*outside_execution.caller).into(),
-                    *outside_execution.nonce,
-                    (*outside_execution.execute_after).into(),
-                    (*outside_execution.execute_before).into(),
-                    calls_array_hash,
-                ]
-                    .span(),
-            );
-
             poseidon_hash_span(
                 array![
                     STARKNET_MESSAGE_PREFIX,
                     domain_hash,
                     get_contract_address().into(),
-                    struct_hash,
+                    payload_hash,
                 ]
                     .span(),
             )

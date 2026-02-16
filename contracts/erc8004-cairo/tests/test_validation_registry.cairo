@@ -332,7 +332,8 @@ fn test_validation_response_success() {
 }
 
 #[test]
-fn test_validation_response_multiple_responses() {
+#[should_panic(expected: 'Response already submitted')]
+fn test_validation_response_second_submit_reverts() {
     let (identity_registry, validation_registry, identity_address, validation_address) =
         deploy_contracts();
 
@@ -357,14 +358,11 @@ fn test_validation_response_multiple_responses() {
     let (_, _, response1, _, _, _) = validation_registry.get_validation_status(request_hash);
     assert_eq!(response1, 20);
 
-    // Second response (80) - updates the first
+    // Second response must revert (immutable response policy)
     start_cheat_caller_address(validation_address, validator());
     let tag2: ByteArray = "hard-finality";
     validation_registry.validation_response(request_hash, 80, response_uri, 0, tag2);
     stop_cheat_caller_address(validation_address);
-
-    let (_, _, response2, _, _, _) = validation_registry.get_validation_status(request_hash);
-    assert_eq!(response2, 80);
 }
 
 #[test]

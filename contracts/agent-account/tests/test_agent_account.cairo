@@ -143,6 +143,36 @@ fn test_set_agent_id_non_self_panics() {
     stop_cheat_caller_address(addr);
 }
 
+#[test]
+#[should_panic(expected: 'Invalid spending config')]
+fn test_register_rejects_nonzero_limit_with_zero_token() {
+    let (agent, addr) = deploy_agent_account();
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 100,
+        spending_token: zero_addr(),
+        allowed_contract: zero_addr(),
+    };
+
+    register_key(agent, addr, 0xCAFE, policy);
+}
+
+#[test]
+#[should_panic(expected: 'Invalid spending config')]
+fn test_register_rejects_zero_limit_with_nonzero_token() {
+    let (agent, addr) = deploy_agent_account();
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 0,
+        spending_token: token_addr(),
+        allowed_contract: zero_addr(),
+    };
+
+    register_key(agent, addr, 0xBEEF, policy);
+}
+
 // ===========================================================================
 // FINDING: Double-registration guard
 // ===========================================================================

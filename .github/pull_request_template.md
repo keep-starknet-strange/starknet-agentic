@@ -2,6 +2,18 @@
 - What changed?
 - Why now?
 
+## Cross-repo boundary awareness
+
+Boundary change: no
+
+Counterpart repos:
+- keep-starknet-strange/starkclaw: Not impacted
+- omarespejel/SISNA: Not impacted
+
+## Spec impact
+
+Spec impact: none
+
 ## Validation
 - [ ] `pnpm run build`
 - [ ] `pnpm run test`

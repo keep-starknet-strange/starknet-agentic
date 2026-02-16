@@ -1,0 +1,20 @@
+{
+  "requiredHeadings": [
+    "Summary",
+    "Cross-repo boundary awareness",
+    "Spec impact",
+    "Validation",
+    "Risk",
+    "Security Notes",
+    "Checklist"
+  ],
+  "boundaryPatterns": [
+    ".github/workflows/",
+    "contracts/",
+    "docs/"
+  ],
+  "counterpartRepos": [
+    "keep-starknet-strange/starkclaw",
+    "omarespejel/SISNA"
+  ]
+}
