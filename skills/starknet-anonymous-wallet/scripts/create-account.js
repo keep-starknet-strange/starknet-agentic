@@ -14,10 +14,10 @@ import path from 'path';
 import os from 'os';
 import { randomBytes } from 'crypto';
 import { TyphoonSDK } from 'typhoon-sdk';
+import { resolveRpcUrl } from './_rpc.js';
 
 const ARGENTX_CLASS_HASH = '0x036078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f';
 const SECRETS_DIR = path.join(os.homedir(), '.openclaw', 'secrets', 'starknet');
-import { resolveRpcUrl } from './_rpc.js';
 
 function fail(message, stack) {
   console.error(JSON.stringify({ error: message, stack }));
@@ -139,8 +139,8 @@ async function main() {
   // Capture latest block AFTER deployment (best-effort provenance)
   let latestBlock = null;
   try {
-    const rpcUrl = resolveRpcUrl({});
-  const provider = new Provider({ nodeUrl: rpcUrl });
+    const rpcUrl = resolveRpcUrl();
+    const provider = new Provider({ nodeUrl: rpcUrl });
     const b = await provider.getBlock('latest');
     latestBlock = {
       blockNumber: b.block_number,
