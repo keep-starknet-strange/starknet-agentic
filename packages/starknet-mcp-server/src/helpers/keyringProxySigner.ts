@@ -29,13 +29,13 @@ type KeyringProxySignerConfig = {
 
 type KeyringSignResponse = {
   signature: unknown[];
-  signatureMode?: string;
-  signatureKind?: string;
-  signerProvider?: string;
+  signatureMode: "v2_snip12";
+  signatureKind: "Snip12";
+  signerProvider?: "local" | "dfns";
   sessionPublicKey?: string;
-  domainHash?: string;
+  domainHash: string;
   requestId?: string;
-  messageHash?: string;
+  messageHash: string;
 };
 
 type MtlsClientMaterial = {
@@ -260,6 +260,10 @@ export class KeyringProxySigner extends SignerInterface {
       }
 
       const parsed = JSON.parse(responseBodyText) as KeyringSignResponse;
+      // SECURITY-SENSITIVE SIGNER BOUNDARY VALIDATION:
+      // Enforces KeyringSignResponse invariants from SISNA before the client
+      // accepts a proxy signature. Changes here require explicit human security
+      // review and cross-repo compatibility verification (SISNA + starkclaw).
       if (parsed.signatureMode !== "v2_snip12") {
         throw new Error(
           "Invalid signature response from keyring proxy: signatureMode must be v2_snip12"
@@ -275,11 +279,7 @@ export class KeyringProxySigner extends SignerInterface {
           "Invalid signature response from keyring proxy: missing domainHash/messageHash"
         );
       }
-      if (
-        parsed.signerProvider !== undefined &&
-        parsed.signerProvider !== "local" &&
-        parsed.signerProvider !== "dfns"
-      ) {
+      if (parsed.signerProvider !== undefined && parsed.signerProvider !== "local" && parsed.signerProvider !== "dfns") {
         throw new Error(
           "Invalid signature response from keyring proxy: signerProvider must be local or dfns"
         );
