@@ -11,6 +11,7 @@
 
 import { getQuotes, executeSwap } from '@avnu/avnu-sdk';
 import { RpcProvider, Account, PaymasterRpc } from 'starknet';
+import { fileURLToPath } from 'url';
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
 
@@ -196,10 +197,12 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.log(JSON.stringify({ error: err.message }));
-  process.exit(1);
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch(err => {
+    console.log(JSON.stringify({ error: err.message }));
+    process.exit(1);
+  });
+}
 
 // Export for use as module
 export { getSwapQuote, executeAvnuSwap, matchTokens, getAllTokens };
