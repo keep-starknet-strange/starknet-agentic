@@ -45,6 +45,7 @@ const SKILL_ROOT = join(__dirname, '..');
 // parse-smart issues a short-lived one-time token. resolve-smart must see it.
 const ATTEST_DIR = join(homedir(), '.openclaw', 'typhoon-attest');
 const ATTEST_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const MIN_RECIPIENT_HEX_LEN = 10;
 
 function attestIssue() {
   // Use random bytes; do NOT derive from secrets.
@@ -490,11 +491,15 @@ async function main() {
   if (isTransferIntent) {
     const missing = [];
 
-    // Recipient: look for 0x... anywhere; also detect "to <word>" invalid recipient.
-    const recipientMatch = prompt.match(/0x[0-9a-fA-F]+/);
+    // Recipient: look for valid 0x... anywhere; also detect "to <word>" invalid recipient.
+    const recipientRegex = new RegExp(`0x[0-9a-fA-F]{${MIN_RECIPIENT_HEX_LEN},}`);
+    const exactRecipientRegex = new RegExp(`^0x[0-9a-fA-F]{${MIN_RECIPIENT_HEX_LEN},}$`);
+    const recipientMatch = prompt.match(recipientRegex);
     const toWord = prompt.match(/\bto\s+([^\s]+)/i);
     const recipient = recipientMatch ? recipientMatch[0] : null;
-    const hasInvalidRecipient = (!recipient && toWord && toWord[1] && !/^0x[0-9a-fA-F]+$/.test(toWord[1]));
+    const toCandidate = toWord?.[1] || null;
+    const looksHexButTooShort = !!(toCandidate && /^0x[0-9a-fA-F]+$/.test(toCandidate) && toCandidate.length < (2 + MIN_RECIPIENT_HEX_LEN));
+    const hasInvalidRecipient = !!(toCandidate && (!exactRecipientRegex.test(toCandidate) || looksHexButTooShort));
 
     // Amount: first decimal/integer number
     const amountMatch = prompt.match(/\b\d+(?:\.\d+)?\b/);
