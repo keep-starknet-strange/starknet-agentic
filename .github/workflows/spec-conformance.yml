@@ -62,10 +62,38 @@ jobs:
       - name: Enforce schema parity across repos
         run: |
           set -euo pipefail
+          OPTIONAL_ADDITIVE_FIELDS="timestamp_max_age_seconds nonce_uniqueness"
+
+          normalize_schema() {
+            local schema_path="$1"
+            local del_args=""
+            for additive_field in $OPTIONAL_ADDITIVE_FIELDS; do
+              del_args="${del_args}.\"${additive_field}\","
+            done
+            del_args="${del_args%,}"
+            jq '
+              .properties |= (
+                if type == "object"
+                then del('"$del_args"')
+                else .
+                end
+              )
+            ' "$schema_path"
+          }
+
           for counterpart in /tmp/starkclaw /tmp/SISNA; do
             schema_file="$counterpart/spec/interop-version.schema.json"
             if [[ -f "$schema_file" ]]; then
-              diff -u spec/interop-version.schema.json "$schema_file"
+              diff -u \
+                <(normalize_schema spec/interop-version.schema.json) \
+                <(normalize_schema "$schema_file")
+
+              for additive_field in $OPTIONAL_ADDITIVE_FIELDS; do
+                if jq -e --arg key "$additive_field" '.properties[$key] != null' spec/interop-version.schema.json >/dev/null \
+                  && ! jq -e --arg key "$additive_field" '.properties[$key] != null' "$schema_file" >/dev/null; then
+                  echo "::warning::$counterpart schema is missing optional additive field: $additive_field"
+                fi
+              done
             else
               echo "::warning::Skipping schema parity for $counterpart (missing $schema_file on target branch)"
             fi

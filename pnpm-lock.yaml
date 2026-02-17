@@ -5,7 +5,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  qs: '6.14.2'
+  qs: 6.14.2
+
 importers:
 
   .:
@@ -96,6 +97,25 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@22.19.7)
 
+  examples/full-stack-swarm:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.26.0
+        version: 1.26.0(zod@4.3.6)
+      dotenv:
+        specifier: ^16.4.0
+        version: 16.6.1
+      starknet:
+        specifier: ^8.9.1
+        version: 8.9.2
+    devDependencies:
+      tsx:
+        specifier: ^4.7.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   examples/hello-agent:
     dependencies:
       dotenv:
@@ -123,12 +143,6 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
-
-  examples/openclaw-agent-loop:
-    dependencies:
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.12.1
-        version: 1.26.0(zod@4.3.6)
 
   packages/create-starknet-agent:
     dependencies:
