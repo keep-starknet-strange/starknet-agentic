@@ -479,7 +479,9 @@ async function main() {
   // Step 3: Load data
   const PROTOCOLS = loadProtocols();
   const avnuTokens = await fetchAllTokens();
-  const availableTokens = avnuTokens.map(t => t.symbol);
+  const availableTokens = avnuTokens
+    .map(t => t?.symbol)
+    .filter(s => typeof s === 'string' && s.length > 0);
   // Build minimal token metadata map for tokens mentioned in prompt (symbol -> {address, decimals})
   const tokenMap = {};
   const knownProtocols = Object.keys(PROTOCOLS);

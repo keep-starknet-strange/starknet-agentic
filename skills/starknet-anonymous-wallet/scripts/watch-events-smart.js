@@ -25,7 +25,7 @@
 
 import { RpcProvider, hash } from 'starknet';
 import { WebSocket } from 'ws';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
@@ -124,7 +124,7 @@ exec node "${scriptPath}" '@${configPath}'
     const newCrontab = lines.join('\n') + '\n';
     const tmpCrontab = join(tmpdir(), `crontab-${process.pid}.tmp`);
     writeFileSync(tmpCrontab, newCrontab);
-    execSync(`crontab ${tmpCrontab}`);
+    execFileSync('crontab', [tmpCrontab]);
     try { unlinkSync(tmpCrontab); } catch {}
 
     return {
@@ -266,7 +266,7 @@ class SmartEventWatcher {
         const newCrontab = lines.join('\n') + '\n';
         const tmpCrontab = join(tmpdir(), `crontab-${process.pid}.tmp`);
         writeFileSync(tmpCrontab, newCrontab);
-        execSync(`crontab ${tmpCrontab}`);
+        execFileSync('crontab', [tmpCrontab]);
         try { unlinkSync(tmpCrontab); } catch {}
 
         // Delete files
@@ -290,7 +290,7 @@ class SmartEventWatcher {
             const newCrontab = lines.join('\n') + '\n';
             const tmpCrontab = join(tmpdir(), `crontab-${process.pid}-2.tmp`);
             writeFileSync(tmpCrontab, newCrontab);
-            execSync(`crontab ${tmpCrontab}`);
+            execFileSync('crontab', [tmpCrontab]);
             try { unlinkSync(tmpCrontab); } catch {}
 
             try { unlinkSync(shellPath); } catch (e) { console.error('Failed to delete shellPath:', shellPath, e); }
