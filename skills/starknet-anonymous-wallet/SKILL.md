@@ -167,10 +167,23 @@ RULE:
 
 ## OPERATION TYPES
 
-- WRITE: Contract calls (AVNU auto-detected via "0x01" or protocol name)
-- READ: View functions
-- EVENT_WATCH: Pure event watching
-- CONDITIONAL: Watch + execute action
+- WRITE: Contract calls. For all DeFi/contract WRITE paths, use AVNU SDK integration (not raw RPC for swap routing/execution).
+- READ: View functions.
+- EVENT_WATCH: Pure event watching.
+- CONDITIONAL: Watch + execute action. If execution is DeFi-related, use the same AVNU SDK write flow.
+
+AVNU SDK sequence for WRITE/CONDITIONAL (boilerplate):
+
+1. Initialize provider/account (`RpcProvider` + `Account`).
+2. Resolve tokens/amounts and fetch AVNU quote(s).
+3. Validate quote and build execution params (slippage, taker address).
+4. Execute via AVNU SDK and wait for tx receipt.
+5. Handle errors with clear recovery messages (quote unavailable, insufficient funds, RPC timeout, tx failure).
+
+Typical AVNU SDK calls in this skill:
+- `fetchTokens(...)`
+- `getQuotes(...)`
+- `executeSwap(...)`
 
 ## CONDITIONAL SCHEMA
 
