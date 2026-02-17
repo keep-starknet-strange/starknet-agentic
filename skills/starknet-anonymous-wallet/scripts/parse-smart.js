@@ -24,7 +24,7 @@
  *   }
  */
 
-import { Provider } from 'starknet';
+import { RpcProvider } from 'starknet';
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -55,8 +55,9 @@ function attestIssue() {
     mkdirSync(ATTEST_DIR, { recursive: true });
     const p = join(ATTEST_DIR, `${token}.json`);
     writeFileSync(p, JSON.stringify({ createdAt: now, expiresAt: now + ATTEST_TTL_MS }), 'utf8');
-  } catch {
+  } catch (err) {
     // If we can't write, still return token; resolve will fail closed.
+    console.error(`Failed to write attestation for token ${token} in ${ATTEST_DIR}: ${err.message}`);
   }
   return token;
 }
@@ -107,12 +108,15 @@ function buildNoAccountGuide() {
 // ============ REGISTRY LOADING ============
 function loadRegistry(filename) {
   const filepath = join(SKILL_ROOT, filename);
+  if (!existsSync(filepath)) {
+    return {};
+  }
+
   try {
-    if (existsSync(filepath)) {
-      return JSON.parse(readFileSync(filepath, 'utf8'));
-    }
-  } catch (e) {}
-  return {};
+    return JSON.parse(readFileSync(filepath, 'utf8'));
+  } catch (err) {
+    throw new Error(`Failed to parse registry file ${filepath}: ${err.message}`);
+  }
 }
 
 function saveRegistry(filename, data) {
@@ -184,7 +188,7 @@ function validatePromptSecurity(prompt) {
     { pattern: /p-r-i-v-a-t-e\s*key/i, threat: 'key_exposure' },
     { pattern: /pr\\u0069vate\s*key/i, threat: 'key_exposure' },
     { pattern: /prıvate\s*key/i, threat: 'key_exposure' },
-    { pattern: /^[A-Za-z0-9+/]{16,}={0,2}$/m, threat: 'obfuscation' },
+    { pattern: /^(?=.{32,}$)(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/m, threat: 'obfuscation' },
 
     // Social-engineering patterns to bypass confirmation
     { pattern: /\b(skip|bypass|without)\b.{0,40}\b(confirmation|confirm|authorization|approval|asking)\b/i, threat: 'auth_bypass' },
@@ -266,8 +270,9 @@ async function fetchABI(address, provider) {
   try {
     const response = await provider.getClassAt(address);
     return response.abi || [];
-  } catch (e) {
-    return [];
+  } catch (err) {
+    console.error(`ABI fetch failed for ${address}: ${err.message}`);
+    return null;
   }
 }
 
@@ -422,6 +427,14 @@ async function main() {
     const { type, name, address } = register;
     
     if (type === 'protocol') {
+      if (!name || !/^[A-Za-z0-9_-]+$/.test(name)) {
+        console.log(JSON.stringify({
+          success: false,
+          error: "Invalid protocol name format"
+        }));
+        process.exit(1);
+      }
+
       if (!address || !address.startsWith('0x')) {
         console.log(JSON.stringify({
           success: false,
@@ -613,7 +626,7 @@ async function main() {
   
   // Step 7: Fetch ABIs for registered protocols (AVNU gets fake ABI)
   const rpcUrl = resolveRpcUrl();
-  const provider = new Provider({ nodeUrl: rpcUrl });
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
   const abis = {};
   const addresses = {};
   
@@ -642,7 +655,7 @@ async function main() {
       
       try {
         const abi = await fetchABI(address, provider);
-        abis[protocol] = extractFunctions(abi);
+        abis[protocol] = abi === null ? [] : extractFunctions(abi);
       } catch (e) {
         abis[protocol] = [];
       }
