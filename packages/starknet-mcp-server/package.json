@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "dev": "tsup src/index.ts --format esm --watch",
+    "pretest": "pnpm --filter @starknet-agentic/x402-starknet build",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
