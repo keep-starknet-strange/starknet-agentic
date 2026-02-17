@@ -27,7 +27,7 @@ import { Provider, hash } from 'starknet';
 import { WebSocket } from 'ws';
 import { execSync } from 'child_process';
 import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync } from 'fs';
-import { homedir } from 'os';
+import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
 
 import { resolveRpcUrl } from './_rpc.js';
@@ -108,7 +108,10 @@ exec node "${scriptPath}" '@${configPath}'
     lines.push(cronEntry);
     
     const newCrontab = lines.join('\n') + '\n';
-    execSync(`echo "${newCrontab.replace(/"/g, '\\"')}" | crontab -`);
+    const tmpCrontab = join(tmpdir(), `crontab-${process.pid}.tmp`);
+    writeFileSync(tmpCrontab, newCrontab);
+    execSync(`crontab ${tmpCrontab}`);
+    try { unlinkSync(tmpCrontab); } catch {}
 
     return {
       success: true,
@@ -238,7 +241,10 @@ class SmartEventWatcher {
         const currentCrontab = execSync('crontab -l 2>/dev/null || echo ""').toString();
         const lines = currentCrontab.split('\n').filter(line => !line.includes(shellPath));
         const newCrontab = lines.join('\n') + '\n';
-        execSync(`echo "${newCrontab.replace(/"/g, '\\"')}" | crontab -`);
+        const tmpCrontab = join(tmpdir(), `crontab-${process.pid}.tmp`);
+        writeFileSync(tmpCrontab, newCrontab);
+        execSync(`crontab ${tmpCrontab}`);
+        try { unlinkSync(tmpCrontab); } catch {}
 
         // Delete files
         try { unlinkSync(shellPath); } catch (e) {}
@@ -259,7 +265,10 @@ class SmartEventWatcher {
             const currentCrontab = execSync('crontab -l 2>/dev/null || echo ""').toString();
             const lines = currentCrontab.split('\n').filter(line => !line.includes(shellPath));
             const newCrontab = lines.join('\n') + '\n';
-            execSync(`echo "${newCrontab.replace(/"/g, '\\"')}" | crontab -`);
+            const tmpCrontab = join(tmpdir(), `crontab-${process.pid}-2.tmp`);
+            writeFileSync(tmpCrontab, newCrontab);
+            execSync(`crontab ${tmpCrontab}`);
+            try { unlinkSync(tmpCrontab); } catch {}
 
             try { unlinkSync(shellPath); } catch (e) {}
             try { unlinkSync(shellPath.replace(/\.sh$/i, '.json')); } catch (e) {}

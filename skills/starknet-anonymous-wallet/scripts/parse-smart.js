@@ -288,6 +288,10 @@ function extractFunctions(abi) {
 }
 
 // ============ PROMPT PARSING ============
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function extractTokensAndProtocols(prompt, availableTokens, knownProtocols) {
   const doc = nlp(prompt);
   const text = doc.out('text');
@@ -302,7 +306,7 @@ function extractTokensAndProtocols(prompt, availableTokens, knownProtocols) {
     const protocol = knownProtocols[i];
     const lowerProtocol = lowerKnownProtocols[i];
     // Case-insensitive pattern that matches any casing
-    const pattern = new RegExp(`\\b${lowerProtocol}\\b`, 'i');
+    const pattern = new RegExp(`\\b${escapeRegex(lowerProtocol)}\\b`, 'i');
     if (pattern.test(text)) {
       foundProtocols.push(protocol);
     }
@@ -310,7 +314,7 @@ function extractTokensAndProtocols(prompt, availableTokens, knownProtocols) {
   
   // Find tokens - but exclude protocol matches
   for (const token of availableTokens) {
-    const pattern = new RegExp(`\\b${token}\\b`, 'i');
+    const pattern = new RegExp(`\\b${escapeRegex(token)}\\b`, 'i');
     if (pattern.test(text)) {
       // Check if this match is actually a protocol (case insensitive)
       const isProtocol = foundProtocols.some(p => p.toLowerCase() === token.toLowerCase());
