@@ -27,7 +27,12 @@ describe("KeyringProxySigner", () => {
       ok: true,
       json: async () => ({
         signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
         sessionPublicKey: "0x123",
+        domainHash: "0x1",
+        messageHash: "0x2",
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -138,6 +143,11 @@ describe("KeyringProxySigner", () => {
       ok: true,
       json: async () => ({
         signature: ["0x123", "0xaaa", "0xbbb"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
+        domainHash: "0x1",
+        messageHash: "0x2",
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -159,12 +169,49 @@ describe("KeyringProxySigner", () => {
     ).rejects.toThrow("expected [pubkey, r, s, valid_until]");
   });
 
+  it("rejects proxy signatures when signatureMode is not v2_snip12", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+        signatureMode: "v1",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
+        sessionPublicKey: "0x123",
+        domainHash: "0x1",
+        messageHash: "0x2",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("signatureMode must be v2_snip12");
+  });
+
   it("rejects proxy signatures when sessionPublicKey mismatches signature pubkey", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         signature: ["0x123", "0xaaa", "0xbbb", "0xccc"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
         sessionPublicKey: "0x456",
+        domainHash: "0x1",
+        messageHash: "0x2",
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -191,7 +238,12 @@ describe("KeyringProxySigner", () => {
       ok: true,
       json: async () => ({
         signature: ["0x123", "0xaaa", "0xbbb", "0x99999999"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
         sessionPublicKey: "0x123",
+        domainHash: "0x1",
+        messageHash: "0x2",
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -220,14 +272,24 @@ describe("KeyringProxySigner", () => {
         ok: true,
         json: async () => ({
           signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+          signatureMode: "v2_snip12",
+          signatureKind: "Snip12",
+          signerProvider: "dfns",
           sessionPublicKey: "0x123",
+          domainHash: "0x1",
+          messageHash: "0x2",
         }),
       })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           signature: ["0x456", "0xaaa", "0xbbb", "0x698f136c"],
+          signatureMode: "v2_snip12",
+          signatureKind: "Snip12",
+          signerProvider: "dfns",
           sessionPublicKey: "0x456",
+          domainHash: "0x1",
+          messageHash: "0x2",
         }),
       });
     vi.stubGlobal("fetch", fetchMock);
@@ -297,7 +359,12 @@ describe("KeyringProxySigner", () => {
           Buffer.from(
             JSON.stringify({
               signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+              signatureMode: "v2_snip12",
+              signatureKind: "Snip12",
+              signerProvider: "dfns",
               sessionPublicKey: "0x123",
+              domainHash: "0x1",
+              messageHash: "0x2",
             })
           )
         );

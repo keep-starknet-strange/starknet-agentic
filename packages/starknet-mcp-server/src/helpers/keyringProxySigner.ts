@@ -29,7 +29,11 @@ type KeyringProxySignerConfig = {
 
 type KeyringSignResponse = {
   signature: unknown[];
+  signatureMode?: string;
+  signatureKind?: string;
+  signerProvider?: string;
   sessionPublicKey?: string;
+  domainHash?: string;
   requestId?: string;
   messageHash?: string;
 };
@@ -256,6 +260,30 @@ export class KeyringProxySigner extends SignerInterface {
       }
 
       const parsed = JSON.parse(responseBodyText) as KeyringSignResponse;
+      if (parsed.signatureMode !== "v2_snip12") {
+        throw new Error(
+          "Invalid signature response from keyring proxy: signatureMode must be v2_snip12"
+        );
+      }
+      if (parsed.signatureKind !== "Snip12") {
+        throw new Error(
+          "Invalid signature response from keyring proxy: signatureKind must be Snip12"
+        );
+      }
+      if (!isHexFelt(parsed.domainHash) || !isHexFelt(parsed.messageHash)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: missing domainHash/messageHash"
+        );
+      }
+      if (
+        parsed.signerProvider !== undefined &&
+        parsed.signerProvider !== "local" &&
+        parsed.signerProvider !== "dfns"
+      ) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: signerProvider must be local or dfns"
+        );
+      }
       if (!Array.isArray(parsed.signature) || parsed.signature.length !== 4) {
         throw new Error(
           "Invalid signature response from keyring proxy: expected [pubkey, r, s, valid_until]"
