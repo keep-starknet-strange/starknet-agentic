@@ -25,7 +25,7 @@ describe("KeyringProxySigner", () => {
 
   it("matches canonical session-signature-v2 vector hashes", () => {
     const vectors = JSON.parse(
-      fs.readFileSync(path.resolve(process.cwd(), "../../spec/session-signature-v2.json"), "utf8"),
+      fs.readFileSync(new URL("../../../../spec/session-signature-v2.json", import.meta.url), "utf8"),
     ) as {
       vectors: Array<{
         id: string;
