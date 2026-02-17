@@ -46,7 +46,11 @@ async function main() {
 
   const rpcUrl = resolveRpcUrl();
   const provider = new Provider({ nodeUrl: rpcUrl });
-  const account = new Account(provider, input.accountAddress, privateKey);
+  const account = new Account({
+    provider,
+    address: input.accountAddress,
+    signer: privateKey
+  });
 
   const classResponse = await provider.getClassAt(input.contractAddress);
   if (!classResponse.abi) fail('Contract has no ABI on chain.');

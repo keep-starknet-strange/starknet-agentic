@@ -125,7 +125,7 @@ exec node "${scriptPath}" '@${configPath}'
     const tmpCrontab = join(tmpdir(), `crontab-${process.pid}.tmp`);
     writeFileSync(tmpCrontab, newCrontab);
     execFileSync('crontab', [tmpCrontab]);
-    try { unlinkSync(tmpCrontab); } catch {}
+    try { unlinkSync(tmpCrontab); } catch (e) { log(`Failed to remove temp crontab (${tmpCrontab}): ${e}`, 'warn'); }
 
     return {
       success: true,
@@ -267,11 +267,11 @@ class SmartEventWatcher {
         const tmpCrontab = join(tmpdir(), `crontab-${process.pid}.tmp`);
         writeFileSync(tmpCrontab, newCrontab);
         execFileSync('crontab', [tmpCrontab]);
-        try { unlinkSync(tmpCrontab); } catch {}
+        try { unlinkSync(tmpCrontab); } catch (e) { log(`Failed to remove temp crontab (${tmpCrontab}): ${e}`, 'warn'); }
 
         // Delete files
-        try { unlinkSync(shellPath); } catch (e) { console.error('Failed to delete shellPath:', shellPath, e); }
-        try { unlinkSync(configPath); } catch (e) { console.error('Failed to delete configPath:', configPath, e); }
+        try { unlinkSync(shellPath); } catch (e) { log(`Failed to remove shellPath (${shellPath}): ${e}`, 'warn'); }
+        try { unlinkSync(configPath); } catch (e) { log(`Failed to remove configPath (${configPath}): ${e}`, 'warn'); }
 
         log(`Removed cron job: ${jobName}`, 'info');
         removed = true;
@@ -291,11 +291,11 @@ class SmartEventWatcher {
             const tmpCrontab = join(tmpdir(), `crontab-${process.pid}-2.tmp`);
             writeFileSync(tmpCrontab, newCrontab);
             execFileSync('crontab', [tmpCrontab]);
-            try { unlinkSync(tmpCrontab); } catch {}
+            try { unlinkSync(tmpCrontab); } catch (e) { log(`Failed to remove temp crontab (${tmpCrontab}): ${e}`, 'warn'); }
 
-            try { unlinkSync(shellPath); } catch (e) { console.error('Failed to delete shellPath:', shellPath, e); }
+            try { unlinkSync(shellPath); } catch (e) { log(`Failed to remove shellPath (${shellPath}): ${e}`, 'warn'); }
             const derivedConfigPath = shellPath.replace(/\.sh$/i, '.json');
-            try { unlinkSync(derivedConfigPath); } catch (e) { console.error('Failed to delete configPath:', derivedConfigPath, e); }
+            try { unlinkSync(derivedConfigPath); } catch (e) { log(`Failed to remove configPath (${derivedConfigPath}): ${e}`, 'warn'); }
 
             log(`Removed cron job: ${file}`, 'info');
             removed = true;
@@ -582,6 +582,7 @@ class SmartEventWatcher {
         }
 
         log('Health check: Attempting WebSocket recovery...');
+        this.wsReconnectAttempts = 0;
         this.stopPolling();
         this.tryWebSocket().then(success => {
           if (!success) {

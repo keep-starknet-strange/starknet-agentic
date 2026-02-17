@@ -320,7 +320,11 @@ async function main() {
   if (!privateKey) fail('Missing privateKey (or PRIVATE_KEY env) for write mode');
   if (!accountAddress) fail('Missing accountAddress for write mode');
 
-  const account = new Account(provider, accountAddress, privateKey);
+  const account = new Account({
+    provider,
+    address: accountAddress,
+    signer: privateKey
+  });
 
   if (mode === 'mint_game') {
     // Minimal mint_game:
@@ -348,15 +352,14 @@ async function main() {
     const abi = await abiAt(provider, ADDRS.GAME_TOKEN);
     const contract = new Contract(abi, ADDRS.GAME_TOKEN, account);
 
-    const calldata = CallData.compile(args, contract.abi.find(x => x.name === 'mint_game'));
-    // calldata compilation above is fragile across starknet.js versions; fall back to invoke with object if possible.
+    // Try invoke with object args first; if it fails, compile calldata and retry.
     let tx;
     try {
       const res = await contract.invoke('mint_game', args, { waitForTransaction: true });
       tx = res.transaction_hash;
     } catch (e) {
-      // Fallback: try invoke with compiled calldata array
       try {
+        const calldata = CallData.compile(args, contract.abi.find(x => x.name === 'mint_game'));
         const res2 = await contract.invoke('mint_game', calldata, { waitForTransaction: true });
         tx = res2.transaction_hash;
       } catch (e2) {

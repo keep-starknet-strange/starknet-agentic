@@ -93,7 +93,9 @@ export const REVERSE_SYNONYMS = buildReverseMap(ALL_SYNONYMS);
 
 // Function to find canonical action
 export function findCanonicalAction(action, abiFunctions = []) {
-  const lowerAction = action.toLowerCase();
+  const lowerAction = String(action || '').toLowerCase();
+  if (!Array.isArray(abiFunctions)) abiFunctions = [];
+  if (!lowerAction) return undefined;
   
   // 1. Exact match in ABI
   const exactMatch = abiFunctions.find(f => f.toLowerCase() === lowerAction);

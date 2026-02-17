@@ -9,35 +9,32 @@
  *   node avnu-swap.js '{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x...","privateKey":"0x..."}'
  */
 
-import { getQuotes, executeSwap, fetchTokens } from '@avnu/avnu-sdk';
+import { getQuotes, executeSwap } from '@avnu/avnu-sdk';
 import { RpcProvider, Account, PaymasterRpc } from 'starknet';
 import { resolveRpcUrl } from './_rpc.js';
+import { fetchVerifiedTokens } from './_tokens.js';
 
 
 
-// Token cache to avoid repeated API calls
-let tokenCache = null;
-let lastTokenFetch = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_SLIPPAGE = 0.001; // 0.1%
+
+function amountToBigInt(amount, decimals) {
+  const dec = Number(decimals ?? 18);
+  if (!Number.isInteger(dec) || dec < 0) throw new Error('Invalid decimals');
+  const s = String(amount).trim();
+  if (!/^\d+(?:\.\d+)?$/.test(s)) throw new Error(`Invalid amount format: ${amount}`);
+  const [i, f = ''] = s.split('.');
+  if (f.length > dec) throw new Error(`Too many decimal places: ${f.length} > ${dec}`);
+  const frac = (f + '0'.repeat(dec)).slice(0, dec);
+  const digits = `${i}${frac}`.replace(/^0+(?=\d)/, '');
+  return BigInt(digits || '0');
+}
 
 /**
  * Fetch all verified tokens from AVNU
  */
 async function getAllTokens() {
-  const now = Date.now();
-  if (tokenCache && (now - lastTokenFetch) < CACHE_TTL) {
-    return tokenCache;
-  }
-  
-  const tokens = await fetchTokens({
-    page: 0,
-    size: 200, // Get up to 200 tokens
-    tags: ['Verified']
-  });
-  
-  tokenCache = tokens.content || [];
-  lastTokenFetch = now;
-  return tokenCache;
+  return fetchVerifiedTokens();
 }
 
 /**
@@ -63,8 +60,8 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
   if (!sellToken) throw new Error(`Unknown sell token: ${sellTokenSymbol}`);
   if (!buyToken) throw new Error(`Unknown buy token: ${buyTokenSymbol}`);
   
-  // Parse amount with correct decimals
-  const amountBigInt = BigInt(Math.floor(parseFloat(sellAmount) * (10 ** sellToken.decimals)));
+  // Parse amount with exact decimal conversion
+  const amountBigInt = amountToBigInt(sellAmount, sellToken.decimals);
   
   const quotes = await getQuotes({
     sellTokenAddress: sellToken.address,
@@ -82,10 +79,10 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
 }
 
 const paymaster = new PaymasterRpc({
-  nodeUrl: 'https://starknet.paymaster.avnu.fi',
+  nodeUrl: process.env.PAYMASTER_URL || 'https://starknet.paymaster.avnu.fi',
 });
 
-async function executeAvnuSwap(quote, account, slippage = 0.01) {
+async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE) {
   const result = await executeSwap({
     paymaster: paymaster,
     provider: account,
@@ -119,7 +116,7 @@ async function main() {
     sellToken, 
     buyToken, 
     sellAmount, 
-    slippage = 0.001,
+    slippage = DEFAULT_SLIPPAGE,
     accountAddress,
     privateKey
   } = input;
@@ -141,11 +138,11 @@ async function main() {
   // Create account from passed arguments (no secrets access)
   const rpcUrl = resolveRpcUrl();
   const provider = new RpcProvider({ nodeUrl: rpcUrl });
-  const account = new Account(
+  const account = new Account({
     provider,
-    accountAddress,
-    privateKey
-  );
+    address: accountAddress,
+    signer: privateKey
+  });
   
   try {
     // Step 1: Get quote

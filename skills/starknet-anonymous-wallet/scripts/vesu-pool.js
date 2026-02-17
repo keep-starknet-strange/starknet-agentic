@@ -21,9 +21,9 @@ import { Provider, Contract } from 'starknet';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { fetchTokens } from '@avnu/avnu-sdk';
 
 import { resolveRpcUrl } from './_rpc.js';
+import { fetchVerifiedTokens } from './_tokens.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -97,16 +97,19 @@ function u256ToBigInt(v) {
   return BigInt(String(v));
 }
 
-let tokenCache = null;
-async function getVerifiedTokens() {
-  if (tokenCache) return tokenCache;
-  const resp = await fetchTokens({ page: 0, size: 200, tags: ['Verified'] });
-  tokenCache = resp.content || [];
-  return tokenCache;
+function formatUnits(value, decimals) {
+  const d = Number(decimals ?? 18);
+  const negative = value < 0n;
+  const abs = negative ? -value : value;
+  const base = 10n ** BigInt(d);
+  const whole = abs / base;
+  const frac = abs % base;
+  const fracStr = frac.toString().padStart(d, '0').replace(/0+$/, '');
+  return `${negative ? '-' : ''}${whole.toString()}${fracStr ? `.${fracStr}` : ''}`;
 }
 
 async function resolveToken(symbol) {
-  const tokens = await getVerifiedTokens();
+  const tokens = await fetchVerifiedTokens();
   const t = tokens.find(x => x.symbol?.toLowerCase() === String(symbol || '').toLowerCase());
   if (!t?.address) return null;
   return { symbol: t.symbol, address: t.address, decimals: Number(t.decimals ?? 18) };
@@ -133,7 +136,7 @@ async function main() {
   const rpcUrl = resolveRpcUrl();
 
   if (!['supply', 'borrow', 'position', 'stats'].includes(action)) {
-    console.log(JSON.stringify({ success: false, error: 'Unsupported action (expected supply|borrow|position)' }));
+    console.log(JSON.stringify({ success: false, error: 'Unsupported action (expected supply|borrow|position|stats)' }));
     process.exit(1);
   }
 
@@ -189,9 +192,6 @@ async function main() {
       process.exit(1);
     }
   }
-
-  let collateralInfo = null;
-  let debtInfo = null;
 
   if (normalizedAction === 'position') {
     // Position stats require pair identification.
@@ -257,8 +257,8 @@ async function main() {
     const collateralAssets = u256ToBigInt([out[4], out[5]]);
     const debtAssets = u256ToBigInt([out[6], out[7]]);
 
-    const collateralHuman = (Number(collateralAssets) / 10 ** collateralInfo.decimals);
-    const debtHuman = (Number(debtAssets) / 10 ** debtInfo.decimals);
+    const collateralHuman = formatUnits(collateralAssets, collateralInfo.decimals);
+    const debtHuman = formatUnits(debtAssets, debtInfo.decimals);
 
     // Optional: oracle-based LTV if oracleAddress configured and oracle call works
     let ltv = null;

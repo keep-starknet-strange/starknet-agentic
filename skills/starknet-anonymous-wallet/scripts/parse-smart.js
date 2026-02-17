@@ -32,8 +32,8 @@ import { homedir } from 'os';
 import crypto from 'crypto';
 import vard from '@andersmyrmel/vard';
 import nlp from 'compromise';
-import { fetchTokens } from '@avnu/avnu-sdk';
 import { resolveRpcUrl } from './_rpc.js';
+import { fetchVerifiedTokens } from './_tokens.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -240,29 +240,8 @@ function validatePromptSecurity(prompt) {
 }
 
 // ============ TOKEN FETCHING ============
-let tokenCache = null;
-let lastTokenFetch = 0;
-const CACHE_TTL = 5 * 60 * 1000;
-
 async function fetchAllTokens() {
-  const now = Date.now();
-  if (tokenCache && (now - lastTokenFetch) < CACHE_TTL) {
-    return tokenCache;
-  }
-  
-  try {
-    const tokens = await fetchTokens({
-      page: 0,
-      size: 200,
-      tags: ['Verified']
-    });
-    
-    tokenCache = tokens.content || [];
-    lastTokenFetch = now;
-    return tokenCache;
-  } catch (e) {
-    return tokenCache || [];
-  }
+  return fetchVerifiedTokens();
 }
 
 // ============ ABI FETCHING ============
@@ -430,7 +409,7 @@ async function main() {
       if (!name || !/^[A-Za-z0-9_-]+$/.test(name)) {
         console.log(JSON.stringify({
           success: false,
-          error: "Invalid protocol name format"
+          error: "Invalid name format"
         }));
         process.exit(1);
       }

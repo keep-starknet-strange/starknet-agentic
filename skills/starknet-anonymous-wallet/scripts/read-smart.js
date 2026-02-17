@@ -63,9 +63,10 @@ function calculateSimilarity(action, funcName) {
         score += 15;
         matchedTokens++;
       } else {
-        // Check for common substrings
+        // Check for common substrings (bounded)
         const minLen = Math.min(at.length, ft.length);
-        for (let len = 3; len <= minLen; len++) {
+        const maxSubstringLen = Math.min(5, minLen);
+        for (let len = 3; len <= maxSubstringLen; len++) {
           for (let i = 0; i <= at.length - len; i++) {
             const sub = at.substring(i, i + len);
             if (ft.includes(sub)) {
@@ -73,6 +74,7 @@ function calculateSimilarity(action, funcName) {
               break;
             }
           }
+          if (score >= 120) break;
         }
       }
     }
@@ -134,6 +136,15 @@ function serialize(v, decodeStrings = false) {
   }
   if (decodeStrings && typeof v === 'string') return decodeShortString(v);
   return v;
+}
+
+function isUint256LikeOutput(functionAbi) {
+  const outputs = functionAbi?.outputs || [];
+  if (!Array.isArray(outputs) || outputs.length === 0) return false;
+  return outputs.some((out) => {
+    const t = String(out?.type || out?.name || '').toLowerCase();
+    return t.includes('uint256') || t.includes('u256') || t.includes('core::integer::u256');
+  });
 }
 
 async function main() {
@@ -227,7 +238,7 @@ async function main() {
       });
       rawResult = Array.isArray(r) ? r : (r?.result || null);
       
-      if (rawResult && Array.isArray(rawResult) && rawResult.length === 2) {
+      if (rawResult && Array.isArray(rawResult) && rawResult.length === 2 && isUint256LikeOutput(matchedFunction)) {
         const low = BigInt(rawResult[0]);
         const high = BigInt(rawResult[1]);
         uint256 = {
