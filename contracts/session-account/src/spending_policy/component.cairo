@@ -97,12 +97,9 @@ pub mod SpendingPolicyComponent {
                 max_per_window,
                 window_seconds,
                 spent_in_window: 0,
-                // IMPORTANT: window_start is set at policy creation time, not first use.
-                // If policy is created well before first spend, the first window may be
-                // shorter than window_seconds. This matches ChipiPay v33 behavior.
-                // Future enhancement: Consider lazy initialization on first spend for
-                // guaranteed full window from first use.
-                window_start: get_block_timestamp(),
+                // Lazy-init window_start on first spend to guarantee a full window
+                // from first use (prevents creation-time anchoring bias).
+                window_start: 0,
             };
             self.policies.write((session_key, token), policy);
 
@@ -194,6 +191,11 @@ pub mod SpendingPolicyComponent {
 
                         // Check per-call limit
                         assert(amount <= policy.max_per_call, 'Spending: exceeds per-call');
+
+                        // Lazy-init window anchor on first spend.
+                        if policy.window_start == 0 && policy.spent_in_window == 0 {
+                            policy.window_start = now;
+                        }
 
                         // Auto-reset window if expired
                         if now > policy.window_start + policy.window_seconds.into() {

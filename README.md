@@ -201,3 +201,5 @@ For contract-specific behavior and deployment addresses:
 - Start with `CONTRIBUTING.md`
 - Roadmap: `docs/ROADMAP.md`
 - Good first tasks: `docs/GOOD_FIRST_ISSUES.md`
+
+Validation: dependency-review live run check (2026-02-14).

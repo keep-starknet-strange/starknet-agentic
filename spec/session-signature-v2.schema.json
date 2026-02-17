@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keep-starknet-strange.github.io/starknet-agentic/spec/session-signature-v2.schema.json",
+  "title": "Session signature v2 SNIP-12 conformance vectors",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec",
+    "version",
+    "vectors"
+  ],
+  "properties": {
+    "spec": {
+      "type": "string",
+      "const": "session-signature-v2"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "vectors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/vector"
+      }
+    }
+  },
+  "$defs": {
+    "felt": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{1,63}$"
+    },
+    "bigNumberish": {
+      "type": "string",
+      "pattern": "^(0x[0-9a-fA-F]{1,63}|[0-9]{1,76})$"
+    },
+    "call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "to",
+        "selector",
+        "calldata"
+      ],
+      "properties": {
+        "to": {
+          "$ref": "#/$defs/felt"
+        },
+        "selector": {
+          "$ref": "#/$defs/felt"
+        },
+        "calldata": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/felt"
+          }
+        }
+      }
+    },
+    "domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "chainId",
+        "revision"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "const": "2"
+        },
+        "chainId": {
+          "$ref": "#/$defs/felt"
+        },
+        "revision": {
+          "$ref": "#/$defs/bigNumberish"
+        }
+      }
+    },
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caller",
+        "nonce",
+        "execute_after",
+        "execute_before",
+        "calls"
+      ],
+      "properties": {
+        "caller": {
+          "$ref": "#/$defs/bigNumberish"
+        },
+        "nonce": {
+          "$ref": "#/$defs/bigNumberish"
+        },
+        "execute_after": {
+          "$ref": "#/$defs/bigNumberish"
+        },
+        "execute_before": {
+          "$ref": "#/$defs/bigNumberish"
+        },
+        "calls": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/call"
+          }
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domainHash",
+        "messageHash"
+      ],
+      "properties": {
+        "domainHash": {
+          "$ref": "#/$defs/felt"
+        },
+        "messageHash": {
+          "$ref": "#/$defs/felt"
+        },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "r",
+            "s"
+          ],
+          "properties": {
+            "r": {
+              "$ref": "#/$defs/felt"
+            },
+            "s": {
+              "$ref": "#/$defs/felt"
+            }
+          }
+        }
+      }
+    },
+    "vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "description",
+        "mode",
+        "accountAddress",
+        "domain",
+        "message",
+        "expected"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "type": "string",
+          "const": "v2_snip12"
+        },
+        "accountAddress": {
+          "$ref": "#/$defs/felt"
+        },
+        "domain": {
+          "$ref": "#/$defs/domain"
+        },
+        "message": {
+          "$ref": "#/$defs/message"
+        },
+        "expected": {
+          "$ref": "#/$defs/expected"
+        }
+      }
+    }
+  }
+}

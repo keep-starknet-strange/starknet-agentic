@@ -61,6 +61,13 @@ KEYRING_HMAC_SECRET=replace-with-long-random-secret
 # KEYRING_SESSION_VALIDITY_SECONDS=300
 ```
 
+SISNA server-side production key-custody guard:
+- Current SISNA builds fail production startup unless
+  `KEYRING_ALLOW_INSECURE_IN_PROCESS_KEYS_IN_PRODUCTION=true` is explicitly set
+  while in-process key custody is still used.
+- This is a temporary explicit-risk acknowledgement until external KMS/HSM
+  signing mode is available in SISNA.
+
 Production startup guard: `KEYRING_PROXY_URL` must use `https://` unless loopback is used (`http://127.0.0.1`, `http://localhost`, or `http://[::1]`).
 Production startup guard (non-loopback signer URLs): `KEYRING_TLS_CLIENT_CERT_PATH`, `KEYRING_TLS_CLIENT_KEY_PATH`, and `KEYRING_TLS_CA_PATH` are required.
 
@@ -228,6 +235,8 @@ The server uses:
 - Production startup guard: rejects `STARKNET_PRIVATE_KEY` when `STARKNET_SIGNER_MODE=proxy`
 - Production startup guard: non-loopback proxy URLs require mTLS client cert/key/CA paths
 - Proxy mode keeps signing outside MCP process (`starknet-keyring-proxy`)
+- SISNA currently requires explicit production acknowledgement for in-process
+  key custody: `KEYRING_ALLOW_INSECURE_IN_PROCESS_KEYS_IN_PRODUCTION=true`
 - Direct private key mode is intended for local development only
 - All inputs are validated before execution
 - Transactions wait for confirmation before returning
