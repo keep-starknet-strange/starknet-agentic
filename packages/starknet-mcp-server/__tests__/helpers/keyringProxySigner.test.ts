@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import https from "node:https";
+import { num, outsideExecution, typedData } from "starknet";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KeyringProxySigner } from "../../src/helpers/keyringProxySigner.js";
 
@@ -22,12 +23,72 @@ describe("KeyringProxySigner", () => {
     vi.unstubAllGlobals();
   });
 
+  it("matches canonical session-signature-v2 vector domain hash and runtime message hash", () => {
+    const vectors = JSON.parse(
+      fs.readFileSync(new URL("../../../../spec/session-signature-v2.json", import.meta.url), "utf8"),
+    ) as {
+      vectors: Array<{
+        id: string;
+        accountAddress: string;
+        domain: { chainId: string };
+        message: {
+          caller: string;
+          nonce: string;
+          execute_after: string;
+          execute_before: string;
+          calls: Array<{ to: string; selector: string; calldata: string[] }>;
+        };
+        expected: { domainHash: string; messageHash: string };
+      }>;
+    };
+    const vector = vectors.vectors.find((item) => item.id === "outside_execution_single_call_sepolia_v2");
+    expect(vector).toBeDefined();
+    const typed = outsideExecution.getTypedData(
+      vector!.domain.chainId,
+      {
+        caller: vector!.message.caller,
+        execute_after: vector!.message.execute_after,
+        execute_before: BigInt(vector!.message.execute_before),
+      },
+      vector!.message.nonce,
+      vector!.message.calls.map((call) => ({
+        contractAddress: call.to,
+        entrypoint: call.selector,
+        calldata: call.calldata,
+      })),
+      "2",
+    );
+    const domainType = (typed as { types: Record<string, unknown> }).types.StarknetDomain
+      ? "StarknetDomain"
+      : "StarkNetDomain";
+    const computedDomainHash = typedData.getStructHash(
+      (typed as { types: Record<string, unknown> }).types as never,
+      domainType,
+      (typed as { domain: Record<string, unknown> }).domain as never,
+      (typed as { domain?: { revision?: string } }).domain?.revision as never,
+    );
+    const computedMessageHash = typedData.getMessageHash(
+      typed,
+      num.toHex(BigInt(vector!.accountAddress)),
+    );
+    const expectedRuntimeMessageHash =
+      "0x31a7322b5e322da06a35b192db191a1c218b6924a68e257bf15f92264ba8f09";
+
+    expect(num.toHex(BigInt(computedDomainHash))).toBe(num.toHex(BigInt(vector!.expected.domainHash)));
+    expect(num.toHex(BigInt(computedMessageHash))).toBe(expectedRuntimeMessageHash);
+  });
+
   it("signs transactions through keyring proxy with HMAC headers", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
         sessionPublicKey: "0x123",
+        domainHash: "0x1",
+        messageHash: "0x2",
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -138,6 +199,11 @@ describe("KeyringProxySigner", () => {
       ok: true,
       json: async () => ({
         signature: ["0x123", "0xaaa", "0xbbb"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
+        domainHash: "0x1",
+        messageHash: "0x2",
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -159,12 +225,49 @@ describe("KeyringProxySigner", () => {
     ).rejects.toThrow("expected [pubkey, r, s, valid_until]");
   });
 
+  it("rejects proxy signatures when signatureMode is not v2_snip12", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+        signatureMode: "v1",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
+        sessionPublicKey: "0x123",
+        domainHash: "0x1",
+        messageHash: "0x2",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("signatureMode must be v2_snip12");
+  });
+
   it("rejects proxy signatures when sessionPublicKey mismatches signature pubkey", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         signature: ["0x123", "0xaaa", "0xbbb", "0xccc"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
         sessionPublicKey: "0x456",
+        domainHash: "0x1",
+        messageHash: "0x2",
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -191,7 +294,12 @@ describe("KeyringProxySigner", () => {
       ok: true,
       json: async () => ({
         signature: ["0x123", "0xaaa", "0xbbb", "0x99999999"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
         sessionPublicKey: "0x123",
+        domainHash: "0x1",
+        messageHash: "0x2",
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -220,14 +328,24 @@ describe("KeyringProxySigner", () => {
         ok: true,
         json: async () => ({
           signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+          signatureMode: "v2_snip12",
+          signatureKind: "Snip12",
+          signerProvider: "dfns",
           sessionPublicKey: "0x123",
+          domainHash: "0x1",
+          messageHash: "0x2",
         }),
       })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           signature: ["0x456", "0xaaa", "0xbbb", "0x698f136c"],
+          signatureMode: "v2_snip12",
+          signatureKind: "Snip12",
+          signerProvider: "dfns",
           sessionPublicKey: "0x456",
+          domainHash: "0x1",
+          messageHash: "0x2",
         }),
       });
     vi.stubGlobal("fetch", fetchMock);
@@ -297,7 +415,12 @@ describe("KeyringProxySigner", () => {
           Buffer.from(
             JSON.stringify({
               signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+              signatureMode: "v2_snip12",
+              signatureKind: "Snip12",
+              signerProvider: "dfns",
               sessionPublicKey: "0x123",
+              domainHash: "0x1",
+              messageHash: "0x2",
             })
           )
         );
