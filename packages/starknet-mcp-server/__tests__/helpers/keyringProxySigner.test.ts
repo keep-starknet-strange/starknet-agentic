@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import https from "node:https";
+import { num, outsideExecution, typedData } from "starknet";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KeyringProxySigner } from "../../src/helpers/keyringProxySigner.js";
 
@@ -20,6 +21,59 @@ describe("KeyringProxySigner", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("matches canonical session-signature-v2 vector hashes", () => {
+    const vectors = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), "spec/session-signature-v2.json"), "utf8"),
+    ) as {
+      vectors: Array<{
+        id: string;
+        accountAddress: string;
+        domain: { chainId: string };
+        message: {
+          caller: string;
+          nonce: string;
+          execute_after: string;
+          execute_before: string;
+          calls: Array<{ to: string; selector: string; calldata: string[] }>;
+        };
+        expected: { domainHash: string; messageHash: string };
+      }>;
+    };
+    const vector = vectors.vectors.find((item) => item.id === "outside_execution_single_call_sepolia_v2");
+    expect(vector).toBeDefined();
+    const typed = outsideExecution.getTypedData(
+      vector!.domain.chainId,
+      {
+        caller: vector!.message.caller,
+        execute_after: vector!.message.execute_after,
+        execute_before: BigInt(vector!.message.execute_before),
+      },
+      vector!.message.nonce,
+      vector!.message.calls.map((call) => ({
+        contractAddress: call.to,
+        entrypoint: call.selector,
+        calldata: call.calldata,
+      })),
+      "2",
+    );
+    const domainType = (typed as { types: Record<string, unknown> }).types.StarknetDomain
+      ? "StarknetDomain"
+      : "StarkNetDomain";
+    const computedDomainHash = typedData.getStructHash(
+      (typed as { types: Record<string, unknown> }).types as never,
+      domainType,
+      (typed as { domain: Record<string, unknown> }).domain as never,
+      (typed as { domain?: { revision?: string } }).domain?.revision as never,
+    );
+    const computedMessageHash = typedData.getMessageHash(
+      typed,
+      num.toHex(BigInt(vector!.accountAddress)),
+    );
+
+    expect(num.toHex(BigInt(computedDomainHash))).toBe(num.toHex(BigInt(vector!.expected.domainHash)));
+    expect(num.toHex(BigInt(computedMessageHash))).toBe(num.toHex(BigInt(vector!.expected.messageHash)));
   });
 
   it("signs transactions through keyring proxy with HMAC headers", async () => {
