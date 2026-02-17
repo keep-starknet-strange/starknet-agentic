@@ -79,6 +79,33 @@ function envBigInt(name: string): bigint {
   }
 }
 
+type SisnaSignerProvider = "local" | "dfns";
+
+function parseHexMapEnv(name: string): Record<string, string> {
+  const raw = envString(name, "{}")!;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`${name} must be valid JSON object`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${name} must be a JSON object`);
+  }
+  const normalized: Record<string, string> = {};
+  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof v !== "string" || v.trim() === "") {
+      throw new Error(`${name}.${k} must be a non-empty string`);
+    }
+    try {
+      normalized[k] = num.toHex(BigInt(v));
+    } catch {
+      throw new Error(`${name}.${k} must be a felt-compatible integer string`);
+    }
+  }
+  return normalized;
+}
+
 function toU256Calldata(value: bigint): [string, string] {
   const low = value & ((1n << 128n) - 1n);
   const high = value >> 128n;
@@ -185,19 +212,38 @@ function startSisna(args: {
   sisnaDir: string;
   port: number;
   hmacSecret: string;
+  signerProvider: SisnaSignerProvider;
   signingKeysById: Record<string, string>;
   allowedKeyIdsByClientId: Record<string, string[]>;
+  dfnsSignerUrl?: string;
+  dfnsAuthToken?: string;
+  dfnsUserActionSignature?: string;
+  dfnsPinnedPubkeysByKeyId?: Record<string, string>;
 }) {
-  const defaultKeyId = Object.keys(args.signingKeysById)[0];
+  const defaultKeyId =
+    args.signerProvider === "local"
+      ? Object.keys(args.signingKeysById)[0]
+      : Object.values(args.allowedKeyIdsByClientId)[0]?.[0];
   if (!defaultKeyId) {
-    throw new Error("Internal error: no signing keys provided to SISNA");
+    throw new Error("Internal error: no default key id available for SISNA");
   }
   const defaultClientId = Object.keys(args.allowedKeyIdsByClientId)[0];
   if (!defaultClientId) {
     throw new Error("Internal error: no auth clients provided to SISNA");
   }
+  if (args.signerProvider === "local" && Object.keys(args.signingKeysById).length === 0) {
+    throw new Error("Internal error: no local signing keys provided to SISNA");
+  }
+  if (args.signerProvider === "dfns") {
+    if (!args.dfnsSignerUrl || !args.dfnsAuthToken || !args.dfnsUserActionSignature) {
+      throw new Error("DFNS mode requires signer URL + auth token + user action signature");
+    }
+    if (!args.dfnsPinnedPubkeysByKeyId || Object.keys(args.dfnsPinnedPubkeysByKeyId).length === 0) {
+      throw new Error("DFNS mode requires pinned pubkeys by keyId");
+    }
+  }
   const keyringAllowedChainIds = "0x534e5f5345504f4c4941"; // "SN_SEPOLIA" as felt
-  const env = {
+  const env: Record<string, string> = {
     ...process.env,
     NODE_ENV: "development",
     PORT: String(args.port),
@@ -205,12 +251,11 @@ function startSisna(args: {
     KEYRING_TRANSPORT: "http",
     KEYRING_ALLOWED_CHAIN_IDS: keyringAllowedChainIds,
     KEYRING_HMAC_SECRET: args.hmacSecret,
+    KEYRING_SIGNER_PROVIDER: args.signerProvider,
+    KEYRING_SIGNER_FALLBACK_PROVIDER: "none",
     KEYRING_DEFAULT_AUTH_CLIENT_ID: defaultClientId,
-    // SISNA requires KEYRING_DEFAULT_KEY_ID to exist in signing keys.
+    // SISNA requires KEYRING_DEFAULT_KEY_ID to map to an authorized keyId.
     KEYRING_DEFAULT_KEY_ID: defaultKeyId,
-    KEYRING_SIGNING_KEYS_JSON: JSON.stringify(
-      Object.entries(args.signingKeysById).map(([keyId, privateKey]) => ({ keyId, privateKey })),
-    ),
     KEYRING_AUTH_CLIENTS_JSON: JSON.stringify(
       Object.entries(args.allowedKeyIdsByClientId).map(([clientId, allowedKeyIds]) => ({
         clientId,
@@ -219,6 +264,16 @@ function startSisna(args: {
       })),
     ),
   };
+  if (args.signerProvider === "local") {
+    env.KEYRING_SIGNING_KEYS_JSON = JSON.stringify(
+      Object.entries(args.signingKeysById).map(([keyId, privateKey]) => ({ keyId, privateKey })),
+    );
+  } else {
+    env.KEYRING_DFNS_SIGNER_URL = args.dfnsSignerUrl!;
+    env.KEYRING_DFNS_AUTH_TOKEN = args.dfnsAuthToken!;
+    env.KEYRING_DFNS_USER_ACTION_SIGNATURE = args.dfnsUserActionSignature!;
+    env.KEYRING_DFNS_PINNED_PUBKEYS_JSON = JSON.stringify(args.dfnsPinnedPubkeysByKeyId);
+  }
 
   const child = spawn("npm", ["run", "dev"], { cwd: args.sisnaDir, env, stdio: "inherit" });
 
@@ -333,6 +388,15 @@ async function main() {
   const startSisnaFlag = envBool("START_SISNA", true);
   const sisnaDir = envString("SISNA_DIR", "");
   const sisnaPort = envInt("SISNA_PORT", 8545);
+  const sisnaSignerProviderRaw = (envString("SISNA_SIGNER_PROVIDER", "local") || "local").toLowerCase();
+  if (sisnaSignerProviderRaw !== "local" && sisnaSignerProviderRaw !== "dfns") {
+    throw new Error("SISNA_SIGNER_PROVIDER must be one of: local, dfns");
+  }
+  const sisnaSignerProvider = sisnaSignerProviderRaw as SisnaSignerProvider;
+  const dfnsSignerUrl = envString("KEYRING_DFNS_SIGNER_URL", "");
+  const dfnsAuthToken = envString("KEYRING_DFNS_AUTH_TOKEN", "");
+  const dfnsUserActionSignature = envString("KEYRING_DFNS_USER_ACTION_SIGNATURE", "");
+  const dfnsPinnedPubkeysByKeyId = parseHexMapEnv("KEYRING_DFNS_PINNED_PUBKEYS_JSON");
   const keyringHmacSecret = required("KEYRING_HMAC_SECRET");
   const externalProxyUrl = envString("KEYRING_PROXY_URL", "");
 
@@ -479,9 +543,25 @@ async function main() {
           }
 
           // Register session key (empty whitelist => allow all non-admin selectors)
-          if (!agent.sessionPrivateKey || !agent.sessionPublicKey) {
+          if (sisnaSignerProvider === "dfns") {
+            const pinned = dfnsPinnedPubkeysByKeyId[agent.sessionKeyId];
+            if (!pinned) {
+              throw new Error(`Missing KEYRING_DFNS_PINNED_PUBKEYS_JSON entry for keyId=${agent.sessionKeyId}`);
+            }
+            if (agent.sessionPublicKey && num.toHex(BigInt(agent.sessionPublicKey)) !== pinned) {
+              throw new Error(`Existing session public key mismatch for keyId=${agent.sessionKeyId}`);
+            }
+            agent.sessionPrivateKey = null;
+            agent.sessionPublicKey = pinned;
+          } else if (!agent.sessionPrivateKey || !agent.sessionPublicKey) {
             agent.sessionPrivateKey = randomPrivateKeyHex();
             agent.sessionPublicKey = pubKeyFromPriv(agent.sessionPrivateKey);
+          }
+
+          if (!agent.sessionPublicKey) {
+            throw new Error(`Missing session public key for agent=${agent.id}`);
+          }
+          if (!agent.sessionKeyRegistered) {
             const validUntil = Math.floor(Date.now() / 1000) + sessionKeyLifetimeSeconds;
             await sidecar.callTool("starknet_invoke_contract", {
               contractAddress: agent.sessionAccountAddress,
@@ -489,6 +569,7 @@ async function main() {
               calldata: [agent.sessionPublicKey, String(validUntil), String(maxCalls), "0"],
               gasfree: gasfreeOwner,
             });
+            agent.sessionKeyRegistered = true;
           }
 
           // Spending policy for the sell token (per-call + per-window)
@@ -531,25 +612,51 @@ async function main() {
     const signingKeysById: Record<string, string> = {};
     const allowedKeyIdsByClientId: Record<string, string[]> = {};
     for (const agent of state.agents as any[]) {
-      if (!agent.sessionPrivateKey) continue;
-      signingKeysById[agent.sessionKeyId] = agent.sessionPrivateKey;
       allowedKeyIdsByClientId[`mcp-${agent.sessionKeyId}`] = [agent.sessionKeyId];
+      if (sisnaSignerProvider === "local") {
+        if (!agent.sessionPrivateKey) continue;
+        signingKeysById[agent.sessionKeyId] = agent.sessionPrivateKey;
+      }
     }
 
-    if (Object.keys(signingKeysById).length === 0) {
-      // Don't start SISNA if we failed to configure any session keys.
+    if (sisnaSignerProvider === "dfns") {
+      if (!dfnsSignerUrl || !dfnsAuthToken || !dfnsUserActionSignature) {
+        throw new Error(
+          "DFNS mode requires KEYRING_DFNS_SIGNER_URL, KEYRING_DFNS_AUTH_TOKEN, KEYRING_DFNS_USER_ACTION_SIGNATURE",
+        );
+      }
+      for (const agent of state.agents as any[]) {
+        if (!dfnsPinnedPubkeysByKeyId[agent.sessionKeyId]) {
+          throw new Error(`Missing pinned DFNS pubkey for keyId=${agent.sessionKeyId}`);
+        }
+      }
+    }
+
+    if (Object.keys(allowedKeyIdsByClientId).length === 0) {
+      proxyUrl = "";
+    } else if (sisnaSignerProvider === "local" && Object.keys(signingKeysById).length === 0) {
+      // Don't start SISNA local mode if we failed to configure any session private keys.
       proxyUrl = "";
     } else {
-    const started = startSisna({
-      sisnaDir: path.resolve(SCRIPT_DIR, sisnaDir),
-      port: sisnaPort,
-      hmacSecret: keyringHmacSecret,
-      signingKeysById,
-      allowedKeyIdsByClientId,
-    });
-    sisna = started;
-    proxyUrl = started.proxyUrl;
-    await new Promise((r) => setTimeout(r, 1_200));
+      const started = startSisna({
+        sisnaDir: path.resolve(SCRIPT_DIR, sisnaDir),
+        port: sisnaPort,
+        hmacSecret: keyringHmacSecret,
+        signerProvider: sisnaSignerProvider,
+        signingKeysById,
+        allowedKeyIdsByClientId,
+        ...(sisnaSignerProvider === "dfns"
+          ? {
+              dfnsSignerUrl: dfnsSignerUrl!,
+              dfnsAuthToken: dfnsAuthToken!,
+              dfnsUserActionSignature: dfnsUserActionSignature!,
+              dfnsPinnedPubkeysByKeyId: dfnsPinnedPubkeysByKeyId,
+            }
+          : {}),
+      });
+      sisna = started;
+      proxyUrl = started.proxyUrl;
+      await new Promise((r) => setTimeout(r, 1_200));
     }
   }
 
@@ -641,6 +748,7 @@ async function main() {
       gasfree,
       gasfreeOwner,
       gasfreeSwap,
+      sisnaSignerProvider,
       sellToken,
       buyToken,
       amount,

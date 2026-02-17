@@ -45,6 +45,17 @@ Fill in:
 - `AVNU_PAYMASTER_API_KEY`
 - `KEYRING_HMAC_SECRET` (use `openssl rand -hex 32`)
 
+Signer provider options:
+
+- Local session keys (default):
+  - `SISNA_SIGNER_PROVIDER=local`
+- DFNS signer mode:
+  - `SISNA_SIGNER_PROVIDER=dfns`
+  - `KEYRING_DFNS_SIGNER_URL`
+  - `KEYRING_DFNS_AUTH_TOKEN`
+  - `KEYRING_DFNS_USER_ACTION_SIGNATURE`
+  - `KEYRING_DFNS_PINNED_PUBKEYS_JSON` (must include one entry per `sessionKeyId`, e.g. `agent-1`)
+
 ## Run
 
 ```bash
@@ -58,4 +69,4 @@ The script writes a local `state.json` (contains keys; do not share) and prints 
 - This demo is designed for Sepolia. Don’t use real mainnet keys.
 - If AVNU rate-limits, lower `CONCURRENCY`.
 - If you want to declare the SessionAccount class from source, set `DECLARE_SESSION_ACCOUNT_CLASS=1` (requires `scarb`).
-
+- In DFNS mode, session keys are pinned by keyId and must match on-chain registered session pubkeys.
