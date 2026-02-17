@@ -7,7 +7,7 @@
  * 
  * INPUT: JSON as first argument
  * {
- *   "privateKeyPath": "/path/to/key",
+ *   "privateKey": "0x...",      // Private key passed from resolve-smart.js
  *   "accountAddress": "0x...",
  *   "contractAddress": "0x...",
  *   "method": "transfer",
@@ -18,7 +18,6 @@
  */
 
 import { Provider, Account, Contract } from 'starknet';
-import fs from 'fs';
 
 import { resolveRpcUrl } from './_rpc.js';
 
@@ -38,22 +37,21 @@ async function main() {
     fail(`JSON parse error: ${e.message}`);
   }
 
-  if (!input.privateKeyPath) fail('Missing "privateKeyPath".');
+  if (!input.privateKey) fail('Missing "privateKey" (passed from resolve-smart.js).');
   if (!input.accountAddress) fail('Missing "accountAddress".');
   if (!input.contractAddress) fail('Missing "contractAddress".');
   if (!input.method) fail('Missing "method".');
 
-  if (!fs.existsSync(input.privateKeyPath)) fail(`Key not found: ${input.privateKeyPath}`);
-  const privateKey = fs.readFileSync(input.privateKeyPath, 'utf-8').trim();
+  const privateKey = input.privateKey;
 
-  const rpcUrl = resolveRpcUrl(input);
+  const rpcUrl = resolveRpcUrl();
   const provider = new Provider({ nodeUrl: rpcUrl });
-  const account = new Account({ provider, address: input.accountAddress, signer: privateKey });
+  const account = new Account(provider, input.accountAddress, privateKey);
 
   const classResponse = await provider.getClassAt(input.contractAddress);
   if (!classResponse.abi) fail('Contract has no ABI on chain.');
 
-  const contract = new Contract({ abi: classResponse.abi, address: input.contractAddress, providerOrAccount: account });
+  const contract = new Contract(classResponse.abi, input.contractAddress, account);
 
   // Build args
   let args = input.args || [];
@@ -83,7 +81,7 @@ async function main() {
     success: true,
     method: input.method,
     contractAddress: input.contractAddress,
-    transactionHash: result.transaction_hash,
+    txHash: result.transaction_hash,
     explorer: `https://voyager.online/tx/${result.transaction_hash}`,
   };
 
