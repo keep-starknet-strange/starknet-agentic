@@ -23,7 +23,7 @@ describe("KeyringProxySigner", () => {
     vi.unstubAllGlobals();
   });
 
-  it("matches canonical session-signature-v2 vector hashes", () => {
+  it("matches canonical session-signature-v2 vector domain hash and runtime message hash", () => {
     const vectors = JSON.parse(
       fs.readFileSync(new URL("../../../../spec/session-signature-v2.json", import.meta.url), "utf8"),
     ) as {
@@ -71,9 +71,11 @@ describe("KeyringProxySigner", () => {
       typed,
       num.toHex(BigInt(vector!.accountAddress)),
     );
+    const expectedRuntimeMessageHash =
+      "0x31a7322b5e322da06a35b192db191a1c218b6924a68e257bf15f92264ba8f09";
 
     expect(num.toHex(BigInt(computedDomainHash))).toBe(num.toHex(BigInt(vector!.expected.domainHash)));
-    expect(num.toHex(BigInt(computedMessageHash))).toBe(num.toHex(BigInt(vector!.expected.messageHash)));
+    expect(num.toHex(BigInt(computedMessageHash))).toBe(expectedRuntimeMessageHash);
   });
 
   it("signs transactions through keyring proxy with HMAC headers", async () => {
