@@ -279,7 +279,11 @@ export class KeyringProxySigner extends SignerInterface {
           "Invalid signature response from keyring proxy: missing domainHash/messageHash"
         );
       }
-      if (parsed.signerProvider !== undefined && parsed.signerProvider !== "local" && parsed.signerProvider !== "dfns") {
+      const allowedSignerProviders = ["local", "dfns"] as const;
+      if (
+        parsed.signerProvider !== undefined &&
+        !allowedSignerProviders.includes(parsed.signerProvider)
+      ) {
         throw new Error(
           "Invalid signature response from keyring proxy: signerProvider must be local or dfns"
         );
