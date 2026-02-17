@@ -12,7 +12,7 @@ vi.mock("starknet", async (importOriginal) => {
   const actual = await importOriginal<typeof import("starknet")>();
   return {
     ...actual,
-    Contract: vi.fn().mockImplementation(({ address }: { address: string }) => {
+    Contract: vi.fn().mockImplementation(function MockContract({ address }: { address: string }) {
       if (address === BALANCE_CHECKER_ADDRESS) {
         return { get_balances: mockBalanceCheckerCall };
       }
@@ -21,7 +21,9 @@ vi.mock("starknet", async (importOriginal) => {
         decimals: mockErc20Decimals,
       };
     }),
-    RpcProvider: vi.fn().mockImplementation(() => ({})),
+    RpcProvider: vi.fn().mockImplementation(function MockRpcProvider() {
+      return {};
+    }),
   };
 });
 

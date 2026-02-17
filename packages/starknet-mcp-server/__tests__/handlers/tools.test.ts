@@ -32,28 +32,36 @@ const mockExecutePaymasterTransaction = vi.fn();
 const mockWaitForTransaction = vi.fn();
 const mockCallContract = vi.fn();
 const mockBalanceOf = vi.fn();
-const mockAccountConstructor = vi.fn().mockImplementation(() => ({
+const mockAccountConstructor = vi.fn().mockImplementation(function MockAccount() {
+  return {
   address: mockEnv.STARKNET_ACCOUNT_ADDRESS,
   execute: mockExecute,
   estimateInvokeFee: mockEstimateInvokeFee,
   estimatePaymasterTransactionFee: mockEstimatePaymasterTransactionFee,
   executePaymasterTransaction: mockExecutePaymasterTransaction,
-}));
+  };
+});
 const mockValidateAndParseAddress = vi.fn((addr: string) =>
   addr.toLowerCase().padStart(66, "0x".padEnd(66, "0"))
 );
 
 vi.mock("starknet", () => ({
   Account: mockAccountConstructor,
-  RpcProvider: vi.fn().mockImplementation(() => ({
-    callContract: mockCallContract,
-    waitForTransaction: mockWaitForTransaction,
-  })),
-  PaymasterRpc: vi.fn().mockImplementation((opts) => opts || {}),
-  Contract: vi.fn().mockImplementation(() => ({
-    balanceOf: mockBalanceOf,
-    get_balances: vi.fn(),
-  })),
+  RpcProvider: vi.fn().mockImplementation(function MockRpcProvider() {
+    return {
+      callContract: mockCallContract,
+      waitForTransaction: mockWaitForTransaction,
+    };
+  }),
+  PaymasterRpc: vi.fn().mockImplementation(function MockPaymasterRpc(opts) {
+    return opts || {};
+  }),
+  Contract: vi.fn().mockImplementation(function MockContract() {
+    return {
+      balanceOf: mockBalanceOf,
+      get_balances: vi.fn(),
+    };
+  }),
   CallData: {
     compile: vi.fn((data) => Object.values(data)),
   },
@@ -117,16 +125,18 @@ let capturedToolHandler: ((request: any) => Promise<any>) | null = null;
 let capturedListHandler: (() => Promise<any>) | null = null;
 
 vi.mock("@modelcontextprotocol/sdk/server/index.js", () => ({
-  Server: vi.fn().mockImplementation(() => ({
-    setRequestHandler: vi.fn((schema: any, handler: any) => {
-      if (schema.method === "tools/list") {
-        capturedListHandler = handler;
-      } else if (schema.method === "tools/call") {
-        capturedToolHandler = handler;
-      }
-    }),
-    connect: mockServerConnect,
-  })),
+  Server: vi.fn().mockImplementation(function MockServer() {
+    return {
+      setRequestHandler: vi.fn((schema: any, handler: any) => {
+        if (schema.method === "tools/list") {
+          capturedListHandler = handler;
+        } else if (schema.method === "tools/call") {
+          capturedToolHandler = handler;
+        }
+      }),
+      connect: mockServerConnect,
+    };
+  }),
 }));
 
 vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({

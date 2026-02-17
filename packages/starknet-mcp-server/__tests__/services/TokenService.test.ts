@@ -287,7 +287,7 @@ describe("TokenService", () => {
         name: vi.fn().mockResolvedValue({ name: BigInt("0x4c6f726473") }), // "Lords" as felt
         decimals: vi.fn().mockResolvedValue({ decimals: 18 }),
       };
-      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+      vi.mocked(Contract).mockImplementation(function MockContract() { return mockContract as unknown as InstanceType<typeof Contract>; });
 
       // Configure provider
       const mockProvider = {} as Parameters<typeof service.setProvider>[0];
@@ -314,7 +314,7 @@ describe("TokenService", () => {
         name: vi.fn().mockRejectedValue(new Error("call failed")),
         decimals: vi.fn().mockRejectedValue(new Error("call failed")),
       };
-      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+      vi.mocked(Contract).mockImplementation(function MockContract() { return mockContract as unknown as InstanceType<typeof Contract>; });
 
       // Configure provider
       const mockProvider = {} as Parameters<typeof service.setProvider>[0];
@@ -336,7 +336,7 @@ describe("TokenService", () => {
         name: vi.fn().mockRejectedValue(new Error("call failed")),
         decimals: vi.fn().mockRejectedValue(new Error("call failed")),
       };
-      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+      vi.mocked(Contract).mockImplementation(function MockContract() { return mockContract as unknown as InstanceType<typeof Contract>; });
 
       const mockProvider = {} as Parameters<typeof service.setProvider>[0];
       service.setProvider(mockProvider);
@@ -364,7 +364,7 @@ describe("TokenService", () => {
         name: vi.fn().mockResolvedValue({ name: BigInt("0x4d79546f6b656e") }), // "MyToken"
         decimals: vi.fn().mockResolvedValue({ decimals: 6 }),
       };
-      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+      vi.mocked(Contract).mockImplementation(function MockContract() { return mockContract as unknown as InstanceType<typeof Contract>; });
 
       const mockProvider = {} as Parameters<typeof service.setProvider>[0];
       service.setProvider(mockProvider);
@@ -400,7 +400,7 @@ describe("TokenService", () => {
         }),
         decimals: vi.fn().mockResolvedValue({ decimals: 6 }),
       };
-      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+      vi.mocked(Contract).mockImplementation(function MockContract() { return mockContract as unknown as InstanceType<typeof Contract>; });
 
       const mockProvider = {} as Parameters<typeof service.setProvider>[0];
       service.setProvider(mockProvider);
@@ -430,7 +430,7 @@ describe("TokenService", () => {
         }),
         decimals: vi.fn().mockResolvedValue(18), // Direct number response
       };
-      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+      vi.mocked(Contract).mockImplementation(function MockContract() { return mockContract as unknown as InstanceType<typeof Contract>; });
 
       const mockProvider = {} as Parameters<typeof service.setProvider>[0];
       service.setProvider(mockProvider);
@@ -468,7 +468,7 @@ describe("TokenService", () => {
         name: vi.fn().mockResolvedValue({ name: nameByteArray }),
         decimals: vi.fn().mockResolvedValue({ decimals: 18 }),
       };
-      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+      vi.mocked(Contract).mockImplementation(function MockContract() { return mockContract as unknown as InstanceType<typeof Contract>; });
 
       const mockProvider = {} as Parameters<typeof service.setProvider>[0];
       service.setProvider(mockProvider);
@@ -490,7 +490,7 @@ describe("TokenService", () => {
         name: vi.fn().mockResolvedValue({ name: BigInt("0x54657374") }), // "Test"
         decimals: vi.fn().mockResolvedValue({ decimals: 8 }),
       };
-      vi.mocked(Contract).mockImplementation(() => mockContract as unknown as InstanceType<typeof Contract>);
+      vi.mocked(Contract).mockImplementation(function MockContract() { return mockContract as unknown as InstanceType<typeof Contract>; });
 
       const mockProvider = {} as Parameters<typeof service.setProvider>[0];
       service.setProvider(mockProvider);
