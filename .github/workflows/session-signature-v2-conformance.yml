@@ -1,0 +1,94 @@
+name: session-signature-v2-conformance
+
+on:
+  pull_request:
+    paths:
+      - "spec/session-signature-v2.json"
+      - "spec/session-signature-v2.schema.json"
+      - ".github/workflows/session-signature-v2-conformance.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "spec/session-signature-v2.json"
+      - "spec/session-signature-v2.schema.json"
+      - ".github/workflows/session-signature-v2-conformance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install AJV CLI
+        run: npm install --global ajv-cli@5
+
+      - name: Validate vector file against schema
+        run: |
+          ajv validate \
+            --spec=draft2020 \
+            --strict=true \
+            -s spec/session-signature-v2.schema.json \
+            -d spec/session-signature-v2.json
+
+      - name: Validate vector invariants
+        run: |
+          node <<'EOF'
+          const fs = require("fs");
+          const data = JSON.parse(fs.readFileSync("spec/session-signature-v2.json", "utf8"));
+          const ids = new Set();
+          for (const vector of data.vectors) {
+            if (ids.has(vector.id)) {
+              throw new Error(`Duplicate vector id: ${vector.id}`);
+            }
+            ids.add(vector.id);
+            if (vector.mode !== "v2_snip12") {
+              throw new Error(`Unexpected mode for ${vector.id}: ${vector.mode}`);
+            }
+            if (vector.domain.name !== "Account.execute_from_outside") {
+              throw new Error(`Unexpected domain.name for ${vector.id}: ${vector.domain.name}`);
+            }
+            if (vector.domain.version !== "2") {
+              throw new Error(`Unexpected domain.version for ${vector.id}: ${vector.domain.version}`);
+            }
+            if (!Array.isArray(vector.message.calls) || vector.message.calls.length === 0) {
+              throw new Error(`Vector ${vector.id} has no calls`);
+            }
+          }
+          console.log(`Validated ${data.vectors.length} vectors`);
+          EOF
+
+  parity_with_sisna:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compare vectors with SISNA main
+        run: |
+          if ! curl -fsSL \
+            https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.schema.json \
+            -o /tmp/sisna-session-signature-v2.schema.json; then
+            echo "SISNA schema not published yet on main; skipping parity check."
+            exit 0
+          fi
+          if ! curl -fsSL \
+            https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.json \
+            -o /tmp/sisna-session-signature-v2.json; then
+            echo "SISNA vector file not published yet on main; skipping parity check."
+            exit 0
+          fi
+          diff -u /tmp/sisna-session-signature-v2.schema.json spec/session-signature-v2.schema.json
+          diff -u /tmp/sisna-session-signature-v2.json spec/session-signature-v2.json

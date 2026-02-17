@@ -1,0 +1,42 @@
+{
+  "spec": "session-signature-v2",
+  "version": "1.0.0",
+  "vectors": [
+    {
+      "id": "outside_execution_single_call_sepolia_v2",
+      "description": "Canonical single-call SNIP-12 outside execution payload for v2 signature mode.",
+      "mode": "v2_snip12",
+      "accountAddress": "0x0123456789abcdef",
+      "domain": {
+        "name": "Account.execute_from_outside",
+        "version": "2",
+        "chainId": "0x534e5f5345504f4c4941",
+        "revision": "1"
+      },
+      "message": {
+        "caller": "0x0",
+        "nonce": "0x1",
+        "execute_after": "0x0",
+        "execute_before": "0xffffffffffffffff",
+        "calls": [
+          {
+            "to": "0x1111111111111111",
+            "selector": "0x2222222222222222",
+            "calldata": [
+              "0x1",
+              "0x2"
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "domainHash": "0x2534050c42890f9cad3cf470a8b54a39c4d283a246dfceb486a8755e44a91df",
+        "messageHash": "0x42020b70d5ca7dea4ce8b7866cb1477b218825e4378f69ffd5b5f712406fcef",
+        "signature": {
+          "r": "0x01020304",
+          "s": "0x05060708"
+        }
+      }
+    }
+  ]
+}
