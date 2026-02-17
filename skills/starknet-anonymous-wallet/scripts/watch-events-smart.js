@@ -166,6 +166,7 @@ class SmartEventWatcher {
     this.durationMs = config.durationMs || null;
     this.startTime = Date.now();
     this.ttlTimer = null;
+    this.lastLoggedMinute = null;
   }
 
   async start() {
@@ -201,8 +202,12 @@ class SmartEventWatcher {
       if (remaining <= 0) {
         log(`TTL expired after ${this.durationMs}ms. Self-destructing...`, 'info');
         this.selfDestruct();
-      } else if (remaining % 60000 < 1000) { // Log every minute
-        log(`TTL: ${Math.ceil(remaining / 1000 / 60)} minutes remaining`, 'info');
+      } else {
+        const currentMinute = Math.ceil(remaining / 1000 / 60);
+        if (currentMinute !== this.lastLoggedMinute) {
+          this.lastLoggedMinute = currentMinute;
+          log(`TTL: ${currentMinute} minutes remaining`, 'info');
+        }
       }
     }, 1000); // Check every second
   }
