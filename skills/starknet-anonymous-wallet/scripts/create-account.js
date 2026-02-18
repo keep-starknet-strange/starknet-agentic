@@ -24,6 +24,39 @@ function fail(message, stack) {
   process.exit(1);
 }
 
+function printCreateAccountGuide(reason = 'CREATE_ACCOUNT_REQUIRED') {
+  console.log(JSON.stringify({
+    success: true,
+    canProceed: false,
+    nextStep: 'CREATE_ACCOUNT_REQUIRED',
+    reason,
+    message: 'No account note provided yet. Follow the steps below to create your Starknet account.',
+    instructions: [
+      'Step 1: Go to https://www.typhoon-finance.com/app',
+      'Step 2: Make a deposit and download your note file (recommended: STRK for deploy + gas)',
+      'Step 3: Paste the full note JSON here with secret, nullifier, txHash, pool, day'
+    ],
+    noAccountGuide: {
+      title: 'Create Starknet Account via Typhoon',
+      explanation: 'To create an anonymous Starknet account, provide your Typhoon deposit note JSON.',
+      requiredFields: ['secret', 'nullifier', 'txHash', 'pool', 'day'],
+      steps: [
+        { step: 1, title: 'Go to the Typhoon website', url: 'https://www.typhoon-finance.com/app' },
+        { step: 2, title: 'Make a deposit and download your deposit note', description: 'Recommended: deposit STRK so the account has funds for deploy + fees' },
+        { step: 3, title: 'Paste your note JSON', description: 'Paste the full note JSON (secret, nullifier, txHash, pool, day)' }
+      ]
+    },
+    exampleInput: {
+      secret: '...',
+      nullifier: '...',
+      txHash: '0x...',
+      pool: '0x...',
+      day: 0
+    }
+  }));
+  process.exit(0);
+}
+
 function parseInput() {
   // Try first argument, then stdin
   let raw = process.argv[2];
@@ -33,12 +66,12 @@ function parseInput() {
     try {
       raw = fs.readFileSync(0, 'utf-8');
     } catch {
-      fail('No input. Pass JSON as argument or via stdin.');
+      printCreateAccountGuide('NO_INPUT');
     }
   }
   
   if (!raw || !raw.trim()) {
-    fail('Empty input.');
+    printCreateAccountGuide('EMPTY_INPUT');
   }
 
   let notes;
@@ -62,7 +95,7 @@ function parseInput() {
   return notes.map((note, i) => {
     for (const field of required) {
       if (note[field] === undefined || note[field] === null) {
-        fail(`Note ${i}: missing field "${field}"`);
+        printCreateAccountGuide(`MISSING_FIELD_${field.toUpperCase()}`);
       }
     }
     return {

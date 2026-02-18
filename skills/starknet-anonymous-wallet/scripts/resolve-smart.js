@@ -1514,11 +1514,13 @@ async function main() {
             };
           }
 
+          const inferredSymbol = String(op.token || op.tokenIn || op.tokenOut || op.asset || op.symbol || '').toUpperCase();
+          const inferredAddressFromTokenMap = parsed?.tokenMap?.[inferredSymbol]?.address || null;
           return {
             index: i,
             script: "read-smart.js",
             args: {
-              contractAddress: addresses[op.protocol] || op.contractAddress,
+              contractAddress: addresses[op.protocol] || op.contractAddress || inferredAddressFromTokenMap,
               method: op.action,
               args: op.params || []
             }
@@ -2232,13 +2234,14 @@ async function main() {
             args: { mode: 'state', adventurerId: a.adventurerId }
           };
         }
+        const existingArgs = Array.isArray(op.params) && op.params.length > 0 ? op.params : [account.address];
         return {
           index: i,
           script: "read-smart.js",
           args: {
             contractAddress: result.resolutions[i]?.contractAddress,
             method: result.resolutions[i]?.functionMatch?.name || op.action,
-            args: [account.address]
+            args: existingArgs
           }
         };
       })
@@ -2422,16 +2425,23 @@ async function main() {
             eventScore: res?.eventMatch?.score,
             protocol: w.condition.protocol
           },
-          action: w.action !== 'watch' ? {  // Only if there's an action (not pure watch)
-            script: "invoke-contract.js",
-            args: {
-              privateKey: account.privateKey, // Passed from resolve-smart (only secrets reader)
-              accountAddress: account.address,
-              contractAddress: res?.contractAddress,
-              method: res?.functionMatch?.name || w.action,
-              args: []
-            }
-          } : null
+          action: w.action !== 'watch'
+            ? (res?.contractAddress
+              ? {
+                  script: "invoke-contract.js",
+                  args: {
+                    privateKey: account.privateKey, // Passed from resolve-smart (only secrets reader)
+                    accountAddress: account.address,
+                    contractAddress: res.contractAddress,
+                    method: res?.functionMatch?.name || w.action,
+                    args: []
+                  }
+                }
+              : {
+                  script: null,
+                  error: `No contractAddress resolved for conditional action: ${w.action}`
+                })
+            : null
         };
       })
     };
@@ -2446,6 +2456,15 @@ async function main() {
         // For multi-address protocols, use the first address (main contract)
         const protocolAddresses = PROTOCOLS[op.protocol];
         const contractAddr = Array.isArray(protocolAddresses) ? protocolAddresses[0] : protocolAddresses;
+        if (!contractAddr) {
+          return {
+            index: i,
+            script: null,
+            error: `No contractAddress resolved for watch protocol: ${op.protocol}`,
+            protocol: op.protocol,
+            description: `Watch for '${op.eventName}' events on ${op.protocol}`
+          };
+        }
         return {
           index: i,
           script: "watch-events-smart.js",

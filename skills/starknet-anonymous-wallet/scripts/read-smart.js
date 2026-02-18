@@ -6,7 +6,7 @@
  * Fetches ABI, analyzes prompt, finds best match purely by string analysis.
  */
 
-import { RpcProvider, Contract, shortString } from 'starknet';
+import { Provider, shortString } from 'starknet';
 
 import { resolveRpcUrl } from './_rpc.js';
 
@@ -138,6 +138,22 @@ function serialize(v, decodeStrings = false) {
   return v;
 }
 
+
+function normalizeAbi(rawAbi) {
+  if (!rawAbi) return null;
+  if (Array.isArray(rawAbi)) return rawAbi;
+  if (typeof rawAbi === 'string') {
+    try { return JSON.parse(rawAbi); } catch { return null; }
+  }
+  if (typeof rawAbi === 'object') {
+    if (Array.isArray(rawAbi.abi)) return rawAbi.abi;
+    if (typeof rawAbi.abi === 'string') {
+      try { return JSON.parse(rawAbi.abi); } catch { return null; }
+    }
+  }
+  return null;
+}
+
 function isUint256LikeOutput(functionAbi) {
   const outputs = functionAbi?.outputs || [];
   if (!Array.isArray(outputs) || outputs.length === 0) return false;
@@ -174,17 +190,17 @@ async function main() {
   }
   
   const rpcUrl = resolveRpcUrl();
-  const provider = new RpcProvider({ nodeUrl: rpcUrl });
+  const provider = new Provider({ nodeUrl: rpcUrl });
   
   // Fetch ABI from blockchain
   let abi;
   try {
     const classResponse = await provider.getClassAt(contractAddress);
-    if (!classResponse.abi) {
+    abi = normalizeAbi(classResponse?.abi ?? classResponse);
+    if (!abi || !Array.isArray(abi) || abi.length === 0) {
       console.log(JSON.stringify({ error: "Contract has no ABI on chain" }));
       process.exit(1);
     }
-    abi = classResponse.abi;
   } catch (err) {
     console.log(JSON.stringify({ error: `Failed to fetch ABI: ${err.message}` }));
     process.exit(1);
@@ -222,49 +238,37 @@ async function main() {
   }
   
   // Execute call
-  if (!matchedFunction) {
-    console.log(JSON.stringify({
-      success: false,
-      error: `Method not found in ABI: ${method}`,
-      requestedMethod: method,
-      suggestions: functions
-        .map(f => ({
-          name: f.name,
-          score: calculateSimilarity(method, f.name),
-          stateMutability: f.stateMutability
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10),
-      allFunctions: functions.map(f => f.name).slice(0, 30)
-    }, null, 2));
-    process.exit(1);
-  }
-
   try {
+    let result;
     let rawResult = null;
-    let result = null;
+    let uint256 = null;
 
-    // Raw RPC call is the most robust path across ABI shape differences.
-    const r = await provider.callContract({
-      contractAddress,
-      entrypoint: resolvedMethod,
-      calldata: args.map(String)
-    });
-    rawResult = Array.isArray(r) ? r : (r?.result || null);
-
-    // Best-effort typed decode via Contract.call; if starknet.js ABI internals fail,
-    // fall back to raw result instead of crashing.
     try {
-      const contract = new Contract(abi, contractAddress, provider);
       result = await contract.call(resolvedMethod, args);
-    } catch (callErr) {
-      if (!String(callErr?.message || '').includes("reading 'find'")) {
-        throw callErr;
-      }
+    } catch (typedCallErr) {
+      // Fallback to raw RPC call when typed call path fails (e.g. ABI parser quirks)
+      const r = await provider.callContract({
+        contractAddress,
+        entrypoint: resolvedMethod,
+        calldata: args.map(String)
+      });
+      rawResult = Array.isArray(r) ? r : (r?.result || null);
       result = rawResult;
     }
 
-    let uint256 = null;
+    if (!rawResult) {
+      try {
+        const r = await provider.callContract({
+          contractAddress,
+          entrypoint: resolvedMethod,
+          calldata: args.map(String)
+        });
+        rawResult = Array.isArray(r) ? r : (r?.result || null);
+      } catch {
+        // ignore
+      }
+    }
+
     if (rawResult && Array.isArray(rawResult) && rawResult.length === 2 && isUint256LikeOutput(matchedFunction)) {
       const low = BigInt(rawResult[0]);
       const high = BigInt(rawResult[1]);
@@ -274,23 +278,23 @@ async function main() {
         value: (low + (high << 128n)).toString()
       };
     }
-
+    
     const output = {
       success: true,
       contractAddress,
       method: resolvedMethod,
       requestedMethod: method !== resolvedMethod ? method : undefined,
-      matchScore: !exactMatch && matchedFunction ?
+      matchScore: !exactMatch && matchedFunction ? 
         calculateSimilarity(method, resolvedMethod).toFixed(2) : undefined,
       args,
       result: serialize(result, decodeShortStrings),
       raw: rawResult
     };
-
+    
     if (uint256) output.uint256 = uint256;
-
+    
     console.log(JSON.stringify(output, null, 2));
-
+    
   } catch (err) {
     // Show all functions sorted by relevance on error
     const scored = functions
