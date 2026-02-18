@@ -1,0 +1,27 @@
+{
+  "name": "@aircade/strategy-marketplace",
+  "version": "1.0.0",
+  "description": "Strategy marketplace skill for starknet-agentic - register, track, and sell agent strategies",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@starknet-agentic/core": "*",
+    "x402": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "starknet",
+    "agent",
+    "strategy",
+    "marketplace",
+    "gaming",
+    "erc-8004"
+  ],
+  "license": "MIT"
+}
