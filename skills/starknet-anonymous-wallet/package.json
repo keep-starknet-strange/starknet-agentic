@@ -1,6 +1,6 @@
 {
   "name": "typhoon-starknet-account-scripts",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Scripts for typhoon-starknet-account skill",
   "type": "module",
   "scripts": {
