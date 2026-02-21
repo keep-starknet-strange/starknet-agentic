@@ -1,0 +1,20 @@
+# ZK Circuit Build Artifacts
+*.r1cs
+*.wasm
+*.wtns
+*.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Node modules
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
