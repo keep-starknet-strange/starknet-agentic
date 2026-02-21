@@ -2,16 +2,14 @@
   "name": "@aircade/strategy-marketplace",
   "version": "1.0.0",
   "description": "Strategy marketplace skill for starknet-agentic - register, track, and sell agent strategies",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "bun test ./src/strategy-marketplace.test.ts"
   },
-  "dependencies": {
-    "@starknet-agentic/core": "*",
-    "x402": "*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^25.3.0",
     "typescript": "^5.0.0"

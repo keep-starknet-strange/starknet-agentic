@@ -47,5 +47,3 @@ export * from './marketplace';
  *   trackRecord: { wins: 45, losses: 12, avgRoi: 1.8, totalGames: 57 }
  * });
  */
-
-console.log('[Strategy Marketplace] Skill loaded');

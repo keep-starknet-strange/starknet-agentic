@@ -33,6 +33,7 @@ export async function registerAgent(config: AgentRegistration): Promise<Register
   const agent: RegisteredAgent = {
     id: generateAgentId(),
     address: getCurrentAgentAddress(),
+    network,
     name,
     description,
     capabilities,

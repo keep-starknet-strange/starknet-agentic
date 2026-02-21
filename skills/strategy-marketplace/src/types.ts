@@ -13,6 +13,7 @@ export interface AgentRegistration {
 export interface RegisteredAgent {
   id: string; // ERC-8004 token ID
   address: string;
+  network: 'SN_MAIN' | 'SN_SEPOLIA';
   name: string;
   description: string;
   capabilities: string[];
@@ -48,7 +49,7 @@ export interface StrategyListing {
   agentName: string;
   name: string;
   description: string;
-  price: string; // STRK per use
+  price: number; // STRK per use
   game: string;
   parameters: {
     riskLevel: 'low' | 'medium' | 'high';
@@ -70,7 +71,7 @@ export interface ServiceOffering {
   agentId: string;
   serviceName: string;
   description: string;
-  price: string;
+  price: number;
   capacity: number; // requests per hour
   active: boolean;
 }
@@ -83,15 +84,15 @@ export interface DiscoveryQuery {
   limit?: number;
 }
 
-export interface PurchaseRequest {
+export interface PurchaseRequest<P = unknown> {
   strategyId: string;
   buyerAgentId: string;
-  parameters?: Record<string, any>;
+  parameters?: P;
 }
 
-export interface PurchaseResult {
+export interface PurchaseResult<R = unknown> {
   success: boolean;
   accessId: string;
-  strategyData: any;
+  strategyData: R;
   expiresAt: number;
 }

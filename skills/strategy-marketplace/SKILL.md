@@ -1,42 +1,61 @@
+---
+name: strategy-marketplace
+description: Register agents, track outcomes, and publish or purchase reusable strategy listings.
+keywords:
+  - strategy
+  - marketplace
+  - agents
+  - performance
+  - trading
+allowed-tools:
+  - bash
+  - node
+  - bun
+  - typescript
+user-invocable: true
+---
+
 # Strategy Marketplace Skill
 
-A skill for starknet-agentic that enables agents to register, track performance, and offer their strategies as sellable products in the Agent Arcade marketplace.
+This skill helps agents become reusable products by exposing six core flows:
+registration, performance tracking, strategy publishing, service offering,
+strategy discovery, and strategy purchase.
 
-## Overview
+## Quick Reference
 
-This skill transforms agents from "tools that do things" into "valuable assets with track records." Agents can:
-- Register with an ERC-8004 identity
-- Track their performance across games/strategies
-- Publish strategies to the marketplace
-- Offer inference/strategy services to other agents
+| Function | Purpose | Returns |
+| --- | --- | --- |
+| `registerAgent` | Creates an agent registry entry. | `RegisteredAgent` |
+| `trackPerformance` | Stores one game outcome and ROI. | `Promise<void>` |
+| `publishStrategy` | Creates a purchasable strategy listing. | `StrategyListing` |
+| `offerService` | Creates a purchasable service offering. | `ServiceOffering` |
+| `discoverStrategies` | Filters and sorts strategy listings. | `StrategyListing[]` |
+| `purchaseStrategy` | Validates buyer and returns access payload. | `PurchaseResult` |
 
 ## Installation
 
 ```bash
-# This skill integrates with starknet-agentic
-# Clone into your skills directory
+pnpm --dir skills/strategy-marketplace install
+pnpm --dir skills/strategy-marketplace run build
 ```
 
 ## Capabilities
 
-### 1. Register Agent
-Register your agent in the marketplace with ERC-8004 identity.
+### Register Agent
 
 ```typescript
 import { registerAgent } from "@aircade/strategy-marketplace";
 
 const agent = await registerAgent({
   name: "loot-survivor-pro",
-  description: "Specialized in Loot Survivor late-game survival",
+  description: "Loot Survivor endgame specialist",
   capabilities: ["gaming", "strategy"],
   games: ["loot-survivor"],
-  network: "SN_MAIN"
+  network: "SN_MAIN",
 });
-// Returns agent ID, ERC-8004 token ID
 ```
 
-### 2. Track Performance
-Automatically track wins/losses, strategy effectiveness, ROI.
+### Track Performance
 
 ```typescript
 import { trackPerformance } from "@aircade/strategy-marketplace";
@@ -44,40 +63,39 @@ import { trackPerformance } from "@aircade/strategy-marketplace";
 await trackPerformance({
   agentId: "0x...",
   game: "loot-survivor",
-  result: "win", // "win" | "loss" | "draw"
-  roi: 2.5, // 2.5x return
+  result: "win",
+  roi: 2.5,
   strategy: "aggressive-grind",
-  duration: 3600 // seconds played
+  duration: 3600,
 });
 ```
 
-### 3. Publish Strategy
-Make your strategy available for others to use.
+### Publish Strategy
 
 ```typescript
 import { publishStrategy } from "@aircade/strategy-marketplace";
 
-const strategy = await publishStrategy({
+const listing = await publishStrategy({
   agentId: "0x...",
-  name: "Loot Survivor Late-Game",
-  description: "Optimized for survival beyond day 30",
-  price: "0.001", // STRK per use
+  name: "Late-Game Survivor",
+  description: "Optimized for day-30+ play",
+  price: "0.001",
   game: "loot-survivor",
   parameters: {
     riskLevel: "high",
     playStyle: "aggressive",
-    minCapital: "10"
+    minCapital: "10",
   },
   trackRecord: {
     wins: 45,
     losses: 12,
-    avgRoi: 1.8
-  }
+    avgRoi: 1.8,
+    totalGames: 57,
+  },
 });
 ```
 
-### 4. Offer Service
-Offer your agent as a service (inference, advice, etc.)
+### Offer Service
 
 ```typescript
 import { offerService } from "@aircade/strategy-marketplace";
@@ -85,135 +103,138 @@ import { offerService } from "@aircade/strategy-marketplace";
 await offerService({
   agentId: "0x...",
   serviceName: "strategy-consultation",
-  description: "I'll analyze your game state and recommend optimal moves",
-  price: "0.0001", // per request
-  capacity: 100 // requests per hour
+  description: "State review + next action recommendation",
+  price: "0.0001",
+  capacity: 100,
 });
 ```
 
-### 5. Discover Strategies
-Find strategies by game, performance, price.
+### Discover Strategies
 
 ```typescript
 import { discoverStrategies } from "@aircade/strategy-marketplace";
 
-const strategies = await discoverStrategies({
+const listings = await discoverStrategies({
   game: "loot-survivor",
   minRoi: 1.5,
   maxPrice: 0.01,
-  sortBy: "roi" // "roi" | "wins" | "price"
+  sortBy: "roi",
+  limit: 20,
 });
 ```
 
-### 6. Purchase Strategy
-Buy/rent a strategy for your own use.
+### Purchase Strategy
 
 ```typescript
 import { purchaseStrategy } from "@aircade/strategy-marketplace";
 
 const access = await purchaseStrategy({
-  strategyId: "0x...",
-  buyerAgentId: "0x..."
-  // Payment handled via x402
+  strategyId: "strat_abc123",
+  buyerAgentId: "0x...",
 });
 ```
 
+## starknet.js Example
+
+Use this pattern when you need wallet-backed execution tied to listing flow.
+
+```typescript
+import { Account, RpcProvider } from "starknet";
+import { registerAgent, purchaseStrategy } from "@aircade/strategy-marketplace";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL! });
+const account = new Account(
+  provider,
+  process.env.AGENT_ADDRESS!,
+  process.env.AGENT_PRIVATE_KEY!,
+);
+
+const agent = await registerAgent({
+  name: "wallet-backed-agent",
+  description: "Signs marketplace purchases",
+  capabilities: ["execution"],
+  games: ["loot-survivor"],
+  network: "SN_MAIN",
+});
+
+const access = await purchaseStrategy({
+  strategyId: "strat_abc123",
+  buyerAgentId: agent.id,
+});
+
+console.log(access.accessId);
+```
+
+## Error Codes & Recovery
+
+| Error Code | Meaning | Recovery |
+| --- | --- | --- |
+| `AGENT_NOT_FOUND` | Agent ID does not exist in registry. | Re-check `agentId`, register first if needed. |
+| `BUYER_AGENT_NOT_FOUND` | Purchase request uses unknown buyer agent. | Register buyer agent before purchase. |
+| `INVALID_PRICE` | Strategy/service price is non-numeric or negative. | Send a non-negative numeric price. |
+| `STRATEGY_NOT_FOUND` | Requested listing ID does not exist. | Refresh discovery results and retry. |
+| `STRATEGY_NOT_AVAILABLE` | Listing was removed or unavailable at execution time. | Re-query listings and choose another strategy. |
+| `INSUFFICIENT_FUNDS` | Wallet cannot cover payment and gas. | Top up account and retry purchase. |
+| `INVALID_SIGNATURE` | Signed request payload is invalid/expired. | Re-sign payload with current account nonce. |
+
 ## Architecture
 
-```
-Strategy Marketplace Skill
-├── registry/           # ERC-8004 agent registration
-├── tracking/           # Performance tracking
-├── marketplace/       # Strategy publishing & discovery
-├── payments/          # x402 payment integration
-└── certification/     # Strategy verification
+```text
+skills/strategy-marketplace/
+├── README.md
+├── SKILL.md
+├── package.json
+├── tsconfig.json
+├── src/
+│   ├── index.ts
+│   ├── marketplace.ts
+│   ├── registry.ts
+│   ├── tracking.ts
+│   ├── types.ts
+│   └── strategy-marketplace.test.ts
+├── references/
+│   ├── api-spec.md
+│   ├── certification-criteria.md
+│   └── design-notes.md
+└── scripts/
+    ├── publishStrategy.ts
+    ├── registerAgent.ts
+    └── trackPerformance.ts
 ```
 
 ## Use Cases
 
 ### For Strategy Creators
-1. Train agent on specific game
-2. Build track record through gameplay
-3. Publish winning strategies to marketplace
-4. Earn from strategy sales/rentals
 
-### For Strategy Users
-1. Browse strategies by game/performance
-2. Purchase strategies that match risk tolerance
-3. Use strategies directly or as inspiration
-4. Follow top performers (like social trading)
+1. Register an agent identity.
+2. Track gameplay outcomes over time.
+3. Publish high-performing strategies.
+4. Monetize strategies via listing purchases.
 
-### For Vault Operators
-1. Aggregate multiple strategies
-2. Create diversified vault products
-3. Track vault performance
-4. Offer as managed products
+### For Strategy Consumers
+
+1. Discover strategies by ROI, price, and game.
+2. Purchase strategies that match risk profile.
+3. Integrate returned parameters into agent logic.
+
+### For Vault/Portfolio Operators
+
+1. Aggregate strategies from multiple agents.
+2. Compare track records using unified metrics.
+3. Build managed products around top listings.
 
 ## Integration Points
 
-- **ERC-8004**: Agent identity and reputation
-- **x402**: Payment for strategies/services
-- **A2A**: Agent-to-agent communication for strategy queries
-- **Daydreams**: Game integration for actual gameplay
-- **Cartridge Controller**: Execute strategies on-chain
-
-## Example: Complete Workflow
-
-```typescript
-import { 
-  registerAgent, 
-  trackPerformance, 
-  publishStrategy 
-} from "@aircade/strategy-marketplace";
-
-// 1. Register agent
-const agent = await registerAgent({
-  name: "eternum-warrior",
-  description: "Specialized in Eternum troop optimization",
-  capabilities: ["gaming", "optimization"],
-  games: ["eternum"]
-});
-
-// 2. Play games and track (repeat)
-for (const game of games) {
-  const result = await playGame(game);
-  await trackPerformance({
-    agentId: agent.id,
-    game: "eternum",
-    ...result
-  });
-}
-
-// 3. Publish successful strategy
-await publishStrategy({
-  agentId: agent.id,
-  name: "Eternum Troop Optimization",
-  price: "0.005",
-  trackRecord: agent.stats
-});
-```
-
-## Certification System
-
-Strategies can be certified based on:
-- **Verified track record** (on-chain)
-- **Minimum performance threshold**
-- **Age of strategy**
-- **Consistency score**
-
-Certified strategies get:
-- Badge on marketplace
-- Higher visibility
-- Premium pricing option
+- `ERC-8004`: identity and registry semantics.
+- `x402`: payment rails for strategy/service access.
+- `A2A`: agent-to-agent strategy discovery and exchange.
+- `Daydreams`: gameplay loop where outcomes are produced.
+- `Cartridge Controller`: execution path for on-chain actions.
 
 ## Next Steps
 
-- [ ] Deploy marketplace contracts
-- [ ] Integrate with ERC-8004 registry
-- [ ] Add x402 payment flow
-- [ ] Build discovery UI
-- [ ] Implement vault mechanics
+- [ ] Add concrete docs to `references/` (`api-spec.md`, `design-notes.md`).
+- [ ] Add runnable examples in `scripts/` (`registerAgent.ts`, `publishStrategy.ts`, `trackPerformance.ts`).
+- [ ] Replace in-memory stores with contract-backed persistence.
+- [ ] Add settlement flow for real on-chain purchases.
 
----
-
-**Part of Agent Arcade (aircade.xyz)** — The strategy marketplace for AI agents

@@ -22,7 +22,7 @@ export async function publishStrategy(config: {
   agentId: string;
   name: string;
   description: string;
-  price: string;
+  price: string | number;
   game: string;
   parameters: StrategyListing['parameters'];
   trackRecord: StrategyListing['trackRecord'];
@@ -31,6 +31,8 @@ export async function publishStrategy(config: {
   if (!agent) {
     throw new Error(`Agent not found: ${config.agentId}`);
   }
+
+  const validatedPrice = parseNonNegativePrice(config.price, 'strategy price');
   
   // Check certification requirements
   const certified = await checkCertification(config.agentId, config.trackRecord);
@@ -41,7 +43,7 @@ export async function publishStrategy(config: {
     agentName: agent.name,
     name: config.name,
     description: config.description,
-    price: config.price,
+    price: validatedPrice,
     game: config.game,
     parameters: config.parameters,
     trackRecord: config.trackRecord,
@@ -61,16 +63,17 @@ export async function publishStrategy(config: {
  */
 export async function discoverStrategies(query: DiscoveryQuery): Promise<StrategyListing[]> {
   let listings = await getAllListings();
+  const { game, minRoi, maxPrice } = query;
   
   // Apply filters
-  if (query.game) {
-    listings = listings.filter(l => l.game === query.game);
+  if (game !== undefined) {
+    listings = listings.filter(l => l.game === game);
   }
-  if (query.minRoi) {
-    listings = listings.filter(l => l.trackRecord.avgRoi >= query.minRoi!);
+  if (minRoi !== undefined) {
+    listings = listings.filter(l => l.trackRecord.avgRoi >= minRoi);
   }
-  if (query.maxPrice) {
-    listings = listings.filter(l => parseFloat(l.price) <= query.maxPrice!);
+  if (maxPrice !== undefined) {
+    listings = listings.filter(l => l.price <= maxPrice);
   }
   
   // Sort
@@ -82,7 +85,7 @@ export async function discoverStrategies(query: DiscoveryQuery): Promise<Strateg
       listings.sort((a, b) => b.trackRecord.wins - a.trackRecord.wins);
       break;
     case 'price':
-      listings.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+      listings.sort((a, b) => a.price - b.price);
       break;
     case 'recent':
     default:
@@ -108,6 +111,11 @@ export async function purchaseStrategy(request: PurchaseRequest): Promise<Purcha
   if (!strategy) {
     throw new Error(`Strategy not found: ${request.strategyId}`);
   }
+
+  const buyer = await getAgent(request.buyerAgentId);
+  if (!buyer) {
+    throw new Error(`Buyer agent not found: ${request.buyerAgentId}`);
+  }
   
   // In production: process x402 payment here
   // await processPayment(buyer, strategy.price);
@@ -123,7 +131,7 @@ export async function purchaseStrategy(request: PurchaseRequest): Promise<Purcha
     expiresAt: Date.now() + 3600000 // 1 hour
   };
   
-  console.log(`[Marketplace] Purchased: ${strategy.name} by ${request.buyerAgentId}`);
+  console.log(`[Marketplace] Purchased: ${strategy.name} by ${buyer.id}`);
   
   return access;
 }
@@ -135,20 +143,22 @@ export async function offerService(config: {
   agentId: string;
   serviceName: string;
   description: string;
-  price: string;
+  price: string | number;
   capacity: number;
 }): Promise<ServiceOffering> {
   const agent = await getAgent(config.agentId);
   if (!agent) {
     throw new Error(`Agent not found: ${config.agentId}`);
   }
+
+  const validatedPrice = parseNonNegativePrice(config.price, 'service price');
   
   const offering: ServiceOffering = {
     id: generateOfferingId(),
     agentId: config.agentId,
     serviceName: config.serviceName,
     description: config.description,
-    price: config.price,
+    price: validatedPrice,
     capacity: config.capacity,
     active: true
   };
@@ -189,6 +199,14 @@ function generateOfferingId(): string {
 
 function generateAccessId(): string {
   return 'acc_' + Math.random().toString(36).slice(2, 12);
+}
+
+function parseNonNegativePrice(value: string | number, label: string): number {
+  const price = typeof value === 'number' ? value : Number.parseFloat(value);
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error(`Invalid ${label}: expected a non-negative number`);
+  }
+  return price;
 }
 
 async function storeListing(listing: StrategyListing): Promise<void> {
