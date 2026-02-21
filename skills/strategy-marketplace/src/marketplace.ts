@@ -3,6 +3,7 @@
  * Publish, discover, and purchase strategies
  */
 
+import { randomUUID } from 'node:crypto';
 import type { 
   StrategyListing, 
   ServiceOffering, 
@@ -12,8 +13,23 @@ import type {
 } from './types';
 import { getAgent } from './registry';
 
-const LISTINGS: StrategyListing[] = [];
-const OFFERINGS: ServiceOffering[] = [];
+type MarketplaceState = {
+  listings: StrategyListing[];
+  offerings: ServiceOffering[];
+};
+
+function getMarketplaceState(): MarketplaceState {
+  const globalState = globalThis as typeof globalThis & {
+    __strategyMarketplaceState?: MarketplaceState;
+  };
+  if (!globalState.__strategyMarketplaceState) {
+    globalState.__strategyMarketplaceState = {
+      listings: [],
+      offerings: []
+    };
+  }
+  return globalState.__strategyMarketplaceState;
+}
 
 /**
  * Publish a strategy to the marketplace
@@ -27,26 +43,28 @@ export async function publishStrategy(config: {
   parameters: StrategyListing['parameters'];
   trackRecord: StrategyListing['trackRecord'];
 }): Promise<StrategyListing> {
-  const agent = await getAgent(config.agentId);
+  const validatedConfig = validatePublishStrategyInput(config);
+
+  const agent = await getAgent(validatedConfig.agentId);
   if (!agent) {
-    throw new Error(`Agent not found: ${config.agentId}`);
+    throw new Error(`Agent not found: ${validatedConfig.agentId}`);
   }
 
-  const validatedPrice = parseNonNegativePrice(config.price, 'strategy price');
+  const validatedPrice = parseNonNegativePrice(validatedConfig.price, 'strategy price');
   
   // Check certification requirements
-  const certified = await checkCertification(config.agentId, config.trackRecord);
+  const certified = await checkCertification(validatedConfig.agentId, validatedConfig.trackRecord);
   
   const listing: StrategyListing = {
     id: generateListingId(),
-    agentId: config.agentId,
+    agentId: validatedConfig.agentId,
     agentName: agent.name,
-    name: config.name,
-    description: config.description,
+    name: validatedConfig.name,
+    description: validatedConfig.description,
     price: validatedPrice,
-    game: config.game,
-    parameters: config.parameters,
-    trackRecord: config.trackRecord,
+    game: validatedConfig.game,
+    parameters: validatedConfig.parameters,
+    trackRecord: validatedConfig.trackRecord,
     certified,
     publishedAt: Date.now()
   };
@@ -62,8 +80,9 @@ export async function publishStrategy(config: {
  * Discover strategies matching criteria
  */
 export async function discoverStrategies(query: DiscoveryQuery): Promise<StrategyListing[]> {
+  const normalizedQuery = validateDiscoveryQuery(query);
   let listings = await getAllListings();
-  const { game, minRoi, maxPrice } = query;
+  const { game, minRoi, maxPrice } = normalizedQuery;
   
   // Apply filters
   if (game !== undefined) {
@@ -77,7 +96,7 @@ export async function discoverStrategies(query: DiscoveryQuery): Promise<Strateg
   }
   
   // Sort
-  switch (query.sortBy) {
+  switch (normalizedQuery.sortBy) {
     case 'roi':
       listings.sort((a, b) => b.trackRecord.avgRoi - a.trackRecord.avgRoi);
       break;
@@ -92,29 +111,32 @@ export async function discoverStrategies(query: DiscoveryQuery): Promise<Strateg
       listings.sort((a, b) => b.publishedAt - a.publishedAt);
   }
   
-  return listings.slice(0, query.limit || 20);
+  return listings.slice(0, normalizedQuery.limit || 20);
 }
 
 /**
  * Get strategy details
  */
 export async function getStrategy(strategyId: string): Promise<StrategyListing | null> {
+  const normalizedStrategyId = requireNonEmptyString(strategyId, 'strategyId');
   const listings = await getAllListings();
-  return listings.find(l => l.id === strategyId) || null;
+  return listings.find(l => l.id === normalizedStrategyId) || null;
 }
 
 /**
  * Purchase/rent a strategy
  */
 export async function purchaseStrategy(request: PurchaseRequest): Promise<PurchaseResult> {
-  const strategy = await getStrategy(request.strategyId);
+  const strategyId = requireNonEmptyString(request.strategyId, 'strategyId');
+  const buyerAgentId = requireNonEmptyString(request.buyerAgentId, 'buyerAgentId');
+  const strategy = await getStrategy(strategyId);
   if (!strategy) {
-    throw new Error(`Strategy not found: ${request.strategyId}`);
+    throw new Error(`Strategy not found: ${strategyId}`);
   }
 
-  const buyer = await getAgent(request.buyerAgentId);
+  const buyer = await getAgent(buyerAgentId);
   if (!buyer) {
-    throw new Error(`Buyer agent not found: ${request.buyerAgentId}`);
+    throw new Error(`Buyer agent not found: ${buyerAgentId}`);
   }
   
   // In production: process x402 payment here
@@ -146,20 +168,21 @@ export async function offerService(config: {
   price: string | number;
   capacity: number;
 }): Promise<ServiceOffering> {
-  const agent = await getAgent(config.agentId);
+  const validatedConfig = validateServiceInput(config);
+  const agent = await getAgent(validatedConfig.agentId);
   if (!agent) {
-    throw new Error(`Agent not found: ${config.agentId}`);
+    throw new Error(`Agent not found: ${validatedConfig.agentId}`);
   }
 
-  const validatedPrice = parseNonNegativePrice(config.price, 'service price');
+  const validatedPrice = parseNonNegativePrice(validatedConfig.price, 'service price');
   
   const offering: ServiceOffering = {
     id: generateOfferingId(),
-    agentId: config.agentId,
-    serviceName: config.serviceName,
-    description: config.description,
+    agentId: validatedConfig.agentId,
+    serviceName: validatedConfig.serviceName,
+    description: validatedConfig.description,
     price: validatedPrice,
-    capacity: config.capacity,
+    capacity: validatedConfig.capacity,
     active: true
   };
   
@@ -185,20 +208,21 @@ async function checkCertification(agentId: string, trackRecord: StrategyListing[
   // - Win rate > 50%
   if (trackRecord.totalGames < 10) return false;
   if (trackRecord.avgRoi <= 0) return false;
+  if (trackRecord.totalGames <= 0) return false;
   const winRate = trackRecord.wins / trackRecord.totalGames;
   return winRate > 0.5;
 }
 
 function generateListingId(): string {
-  return 'strat_' + Math.random().toString(36).slice(2, 12);
+  return `strat_${randomUUID().replace(/-/g, '')}`;
 }
 
 function generateOfferingId(): string {
-  return 'svc_' + Math.random().toString(36).slice(2, 12);
+  return `svc_${randomUUID().replace(/-/g, '')}`;
 }
 
 function generateAccessId(): string {
-  return 'acc_' + Math.random().toString(36).slice(2, 12);
+  return `acc_${randomUUID().replace(/-/g, '')}`;
 }
 
 function parseNonNegativePrice(value: string | number, label: string): number {
@@ -210,34 +234,161 @@ function parseNonNegativePrice(value: string | number, label: string): number {
 }
 
 async function storeListing(listing: StrategyListing): Promise<void> {
-  const idx = LISTINGS.findIndex(item => item.id === listing.id);
+  const listings = getMarketplaceState().listings;
+  const idx = listings.findIndex(item => item.id === listing.id);
   if (idx >= 0) {
-    LISTINGS[idx] = listing;
+    listings[idx] = listing;
   } else {
-    LISTINGS.push(listing);
+    listings.push(listing);
   }
   console.log(`[Marketplace] Stored listing: ${listing.id}`);
 }
 
 async function getAllListings(): Promise<StrategyListing[]> {
-  return [...LISTINGS];
+  return [...getMarketplaceState().listings];
 }
 
 async function storeOffering(offering: ServiceOffering): Promise<void> {
-  const idx = OFFERINGS.findIndex(item => item.id === offering.id);
+  const offerings = getMarketplaceState().offerings;
+  const idx = offerings.findIndex(item => item.id === offering.id);
   if (idx >= 0) {
-    OFFERINGS[idx] = offering;
+    offerings[idx] = offering;
   } else {
-    OFFERINGS.push(offering);
+    offerings.push(offering);
   }
   console.log(`[Marketplace] Stored offering: ${offering.id}`);
 }
 
 async function getAllOfferings(): Promise<ServiceOffering[]> {
-  return [...OFFERINGS];
+  return [...getMarketplaceState().offerings];
 }
 
 export function __resetMarketplaceForTests(): void {
-  LISTINGS.length = 0;
-  OFFERINGS.length = 0;
+  const state = getMarketplaceState();
+  state.listings.length = 0;
+  state.offerings.length = 0;
+}
+
+function requireNonEmptyString(value: string, field: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new Error(`Invalid ${field}: expected a non-empty string`);
+  }
+  return normalized;
+}
+
+function requireFiniteNumber(value: number, field: string): number {
+  if (!Number.isFinite(value)) {
+    throw new Error(`Invalid ${field}: expected a finite number`);
+  }
+  return value;
+}
+
+function validateTrackRecord(trackRecord: StrategyListing['trackRecord']): StrategyListing['trackRecord'] {
+  const wins = Math.trunc(requireFiniteNumber(trackRecord.wins, 'trackRecord.wins'));
+  const losses = Math.trunc(requireFiniteNumber(trackRecord.losses, 'trackRecord.losses'));
+  const totalGames = Math.trunc(requireFiniteNumber(trackRecord.totalGames, 'trackRecord.totalGames'));
+  const avgRoi = requireFiniteNumber(trackRecord.avgRoi, 'trackRecord.avgRoi');
+
+  if (wins < 0 || losses < 0 || totalGames < 0) {
+    throw new Error('Invalid trackRecord: wins, losses, and totalGames must be non-negative');
+  }
+  if (totalGames === 0) {
+    throw new Error('Invalid trackRecord: totalGames must be greater than 0');
+  }
+  if (wins + losses > totalGames) {
+    throw new Error('Invalid trackRecord: wins + losses cannot exceed totalGames');
+  }
+
+  return { wins, losses, totalGames, avgRoi };
+}
+
+function validatePublishStrategyInput(config: {
+  agentId: string;
+  name: string;
+  description: string;
+  price: string | number;
+  game: string;
+  parameters: StrategyListing['parameters'];
+  trackRecord: StrategyListing['trackRecord'];
+}): {
+  agentId: string;
+  name: string;
+  description: string;
+  price: string | number;
+  game: string;
+  parameters: StrategyListing['parameters'];
+  trackRecord: StrategyListing['trackRecord'];
+} {
+  const agentId = requireNonEmptyString(config.agentId, 'agentId');
+  const name = requireNonEmptyString(config.name, 'name');
+  const description = requireNonEmptyString(config.description, 'description');
+  const game = requireNonEmptyString(config.game, 'game');
+  const playStyle = requireNonEmptyString(config.parameters.playStyle, 'parameters.playStyle');
+  const minCapital = requireNonEmptyString(config.parameters.minCapital, 'parameters.minCapital');
+  const trackRecord = validateTrackRecord(config.trackRecord);
+  parseNonNegativePrice(config.price, 'strategy price');
+
+  return {
+    ...config,
+    agentId,
+    name,
+    description,
+    game,
+    parameters: {
+      ...config.parameters,
+      playStyle,
+      minCapital
+    },
+    trackRecord
+  };
+}
+
+function validateServiceInput(config: {
+  agentId: string;
+  serviceName: string;
+  description: string;
+  price: string | number;
+  capacity: number;
+}): {
+  agentId: string;
+  serviceName: string;
+  description: string;
+  price: string | number;
+  capacity: number;
+} {
+  const capacity = Math.trunc(requireFiniteNumber(config.capacity, 'capacity'));
+  if (capacity <= 0) {
+    throw new Error('Invalid capacity: expected a positive integer');
+  }
+  parseNonNegativePrice(config.price, 'service price');
+
+  return {
+    ...config,
+    agentId: requireNonEmptyString(config.agentId, 'agentId'),
+    serviceName: requireNonEmptyString(config.serviceName, 'serviceName'),
+    description: requireNonEmptyString(config.description, 'description'),
+    capacity
+  };
+}
+
+function validateDiscoveryQuery(query: DiscoveryQuery): DiscoveryQuery {
+  const normalized: DiscoveryQuery = { ...query };
+  if (normalized.game !== undefined) {
+    normalized.game = requireNonEmptyString(normalized.game, 'game');
+  }
+  if (normalized.minRoi !== undefined) {
+    normalized.minRoi = requireFiniteNumber(normalized.minRoi, 'minRoi');
+  }
+  if (normalized.maxPrice !== undefined) {
+    normalized.maxPrice = parseNonNegativePrice(normalized.maxPrice, 'maxPrice');
+  }
+  if (normalized.limit !== undefined) {
+    const limit = Math.trunc(requireFiniteNumber(normalized.limit, 'limit'));
+    if (limit <= 0) {
+      throw new Error('Invalid limit: expected a positive integer');
+    }
+    normalized.limit = limit;
+  }
+  return normalized;
 }
