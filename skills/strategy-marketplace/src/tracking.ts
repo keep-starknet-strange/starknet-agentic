@@ -6,11 +6,14 @@
 import type { PerformanceRecord, AgentStats } from './types';
 import { getAgent } from './registry';
 
+const PERFORMANCE_HISTORY = new Map<string, PerformanceRecord[]>();
+type PerformanceInput = Omit<PerformanceRecord, 'timestamp'> & { timestamp?: number };
+
 /**
  * Track a game result
  */
-export async function trackPerformance(record: PerformanceRecord): Promise<void> {
-  const { agentId, game, result, roi, strategy, duration } = record;
+export async function trackPerformance(record: PerformanceInput): Promise<void> {
+  const { agentId, game, result, roi } = record;
   
   // Validate agent exists
   const agent = await getAgent(agentId);
@@ -20,7 +23,7 @@ export async function trackPerformance(record: PerformanceRecord): Promise<void>
   
   const performance: PerformanceRecord = {
     ...record,
-    timestamp: Date.now()
+    timestamp: record.timestamp ?? Date.now()
   };
   
   // Store performance record
@@ -117,11 +120,16 @@ export async function getTopStrategies(agentId: string, limit = 5): Promise<Arra
 // Helper functions
 
 async function storePerformance(record: PerformanceRecord): Promise<void> {
-  // In production: store on-chain for verifiable track record
+  const history = PERFORMANCE_HISTORY.get(record.agentId) ?? [];
+  history.push(record);
+  PERFORMANCE_HISTORY.set(record.agentId, history);
   console.log(`[Tracking] Stored: ${record.agentId} - ${record.game}/${record.strategy}`);
 }
 
 async function getPerformanceHistory(agentId: string): Promise<PerformanceRecord[]> {
-  // In production: query from on-chain
-  return [];
+  return [...(PERFORMANCE_HISTORY.get(agentId) ?? [])];
+}
+
+export function __resetTrackingForTests(): void {
+  PERFORMANCE_HISTORY.clear();
 }

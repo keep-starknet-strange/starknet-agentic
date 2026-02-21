@@ -8,11 +8,12 @@ import type {
   ServiceOffering, 
   DiscoveryQuery,
   PurchaseRequest,
-  PurchaseResult,
-  AgentStats
+  PurchaseResult
 } from './types';
 import { getAgent } from './registry';
-import { getAgentStats } from './tracking';
+
+const LISTINGS: StrategyListing[] = [];
+const OFFERINGS: ServiceOffering[] = [];
 
 /**
  * Publish a strategy to the marketplace
@@ -191,17 +192,34 @@ function generateAccessId(): string {
 }
 
 async function storeListing(listing: StrategyListing): Promise<void> {
+  const idx = LISTINGS.findIndex(item => item.id === listing.id);
+  if (idx >= 0) {
+    LISTINGS[idx] = listing;
+  } else {
+    LISTINGS.push(listing);
+  }
   console.log(`[Marketplace] Stored listing: ${listing.id}`);
 }
 
 async function getAllListings(): Promise<StrategyListing[]> {
-  return [];
+  return [...LISTINGS];
 }
 
 async function storeOffering(offering: ServiceOffering): Promise<void> {
+  const idx = OFFERINGS.findIndex(item => item.id === offering.id);
+  if (idx >= 0) {
+    OFFERINGS[idx] = offering;
+  } else {
+    OFFERINGS.push(offering);
+  }
   console.log(`[Marketplace] Stored offering: ${offering.id}`);
 }
 
 async function getAllOfferings(): Promise<ServiceOffering[]> {
-  return [];
+  return [...OFFERINGS];
+}
+
+export function __resetMarketplaceForTests(): void {
+  LISTINGS.length = 0;
+  OFFERINGS.length = 0;
 }

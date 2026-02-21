@@ -17,6 +17,9 @@ const MARKETPLACE_CONTRACTS = {
   }
 };
 
+// In-memory demo store used by skill functions and tests.
+const AGENTS = new Map<string, RegisteredAgent>();
+
 /**
  * Register an agent in the marketplace
  * This creates an ERC-8004 identity for the agent
@@ -91,18 +94,15 @@ function getCurrentAgentAddress(): string {
 }
 
 async function storeAgent(agent: RegisteredAgent): Promise<void> {
-  const agents = await getStoredAgents();
-  const idx = agents.findIndex(a => a.id === agent.id);
-  if (idx >= 0) {
-    agents[idx] = agent;
-  } else {
-    agents.push(agent);
-  }
+  AGENTS.set(agent.id, agent);
   // In production: store on-chain via contract
   console.log(`[Registry] Stored agent: ${agent.name}`);
 }
 
 async function getStoredAgents(): Promise<RegisteredAgent[]> {
-  // In production: query from on-chain
-  return [];
+  return Array.from(AGENTS.values());
+}
+
+export function __resetRegistryForTests(): void {
+  AGENTS.clear();
 }

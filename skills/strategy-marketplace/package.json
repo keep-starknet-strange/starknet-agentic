@@ -5,14 +5,15 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "test": "bun test"
+    "build": "tsc -p tsconfig.json",
+    "test": "bun test ./src/strategy-marketplace.test.ts"
   },
   "dependencies": {
     "@starknet-agentic/core": "*",
     "x402": "*"
   },
   "devDependencies": {
+    "@types/node": "^25.3.0",
     "typescript": "^5.0.0"
   },
   "keywords": [
