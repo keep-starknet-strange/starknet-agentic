@@ -42,7 +42,7 @@ jobs:
           cd ../starknet-agent-passport && npm pack --pack-destination ../../dist-release
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be
+        uses: actions/attest-build-provenance@62fc1d596301d0ab9914e1fec14dc5c8d93f65cd # v3.2.0
         with:
           subject-path: 'dist-release/*.tgz'
 
