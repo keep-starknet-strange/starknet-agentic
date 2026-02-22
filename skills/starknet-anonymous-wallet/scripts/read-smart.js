@@ -6,7 +6,7 @@
  * Fetches ABI, analyzes prompt, finds best match purely by string analysis.
  */
 
-import { Provider, shortString } from 'starknet';
+import { Contract, RpcProvider, shortString } from 'starknet';
 
 import { resolveRpcUrl } from './_rpc.js';
 
@@ -190,7 +190,7 @@ async function main() {
   }
   
   const rpcUrl = resolveRpcUrl();
-  const provider = new Provider({ nodeUrl: rpcUrl });
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
   
   // Fetch ABI from blockchain
   let abi;
@@ -207,6 +207,12 @@ async function main() {
   }
   
   const functions = extractFunctions(abi);
+  const contract = new Contract({
+    abi,
+    address: contractAddress,
+    providerOrAccount: provider
+  });
+  const callArgs = Array.isArray(args) ? args : (args === undefined || args === null ? [] : [args]);
   
   if (functions.length === 0) {
     console.log(JSON.stringify({ error: "No functions found in ABI" }));
@@ -244,13 +250,13 @@ async function main() {
     let uint256 = null;
 
     try {
-      result = await contract.call(resolvedMethod, args);
+      result = await contract.call(resolvedMethod, callArgs);
     } catch (typedCallErr) {
       // Fallback to raw RPC call when typed call path fails (e.g. ABI parser quirks)
       const r = await provider.callContract({
         contractAddress,
         entrypoint: resolvedMethod,
-        calldata: args.map(String)
+        calldata: callArgs.map(String)
       });
       rawResult = Array.isArray(r) ? r : (r?.result || null);
       result = rawResult;
@@ -261,7 +267,7 @@ async function main() {
         const r = await provider.callContract({
           contractAddress,
           entrypoint: resolvedMethod,
-          calldata: args.map(String)
+          calldata: callArgs.map(String)
         });
         rawResult = Array.isArray(r) ? r : (r?.result || null);
       } catch {
@@ -286,7 +292,7 @@ async function main() {
       requestedMethod: method !== resolvedMethod ? method : undefined,
       matchScore: !exactMatch && matchedFunction ? 
         calculateSimilarity(method, resolvedMethod).toFixed(2) : undefined,
-      args,
+      args: callArgs,
       result: serialize(result, decodeShortStrings),
       raw: rawResult
     };
@@ -301,7 +307,7 @@ async function main() {
       .map(f => ({ 
         name: f.name, 
         score: calculateSimilarity(method, f.name),
-        stateMutability: f.stateMutability 
+        stateMutability: f.state_mutability || f.stateMutability 
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);

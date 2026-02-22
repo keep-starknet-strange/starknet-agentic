@@ -11,8 +11,27 @@ export async function fetchVerifiedTokens() {
   }
 
   try {
-    const resp = await fetchTokens({ page: 0, size: 200, tags: ['Verified'] });
-    tokenCache = resp?.content || [];
+    const size = 200;
+    const all = [];
+    let page = 0;
+
+    while (true) {
+      const resp = await fetchTokens({ page, size, tags: ['Verified'] });
+      const content = Array.isArray(resp?.content) ? resp.content : [];
+      all.push(...content);
+
+      const totalPages = Number(
+        resp?.totalPages ?? resp?.pages ?? resp?.total_pages ?? NaN
+      );
+      if (content.length === 0) break;
+      page += 1;
+
+      if (Number.isFinite(totalPages) && page >= totalPages) break;
+      if (!Number.isFinite(totalPages) && content.length < size) break;
+      if (page > 100) break;
+    }
+
+    tokenCache = all;
     lastTokenFetch = now;
     return tokenCache;
   } catch {

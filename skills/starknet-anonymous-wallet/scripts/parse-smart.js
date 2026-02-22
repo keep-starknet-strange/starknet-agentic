@@ -406,18 +406,18 @@ async function main() {
     const { type, name, address } = register;
     
     if (type === 'protocol') {
-      if (!name || !/^[A-Za-z0-9_-]+$/.test(name)) {
+      if (!name || !/^[A-Za-z0-9_-]{2,64}$/.test(name)) {
         console.log(JSON.stringify({
           success: false,
-          error: "Invalid name format"
+          error: "Invalid protocol name format (expected 2-64 chars: letters, numbers, _, -)"
         }));
         process.exit(1);
       }
 
-      if (!address || !address.startsWith('0x')) {
+      if (!address || !/^0x[0-9a-fA-F]+$/.test(address)) {
         console.log(JSON.stringify({
           success: false,
-          error: "Invalid address format"
+          error: "Invalid protocol address format (expected 0x-prefixed hex)"
         }));
         process.exit(1);
       }

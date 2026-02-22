@@ -7,7 +7,7 @@
  * 
  * INPUT: JSON as first argument
  * {
- *   "privateKey": "0x...",      // Private key passed from resolve-smart.js
+ *   "privateKey": "0x...",      // Optional (or use PRIVATE_KEY env)
  *   "accountAddress": "0x...",
  *   "contractAddress": "0x...",
  *   "method": "transfer",
@@ -37,12 +37,12 @@ async function main() {
     fail(`JSON parse error: ${e.message}`);
   }
 
-  if (!input.privateKey) fail('Missing "privateKey" (passed from resolve-smart.js).');
   if (!input.accountAddress) fail('Missing "accountAddress".');
   if (!input.contractAddress) fail('Missing "contractAddress".');
   if (!input.method) fail('Missing "method".');
 
-  const privateKey = input.privateKey;
+  const privateKey = input.privateKey || process.env.PRIVATE_KEY;
+  if (!privateKey) fail('Missing private key (input.privateKey or PRIVATE_KEY env).');
 
   const rpcUrl = resolveRpcUrl();
   const provider = new Provider({ nodeUrl: rpcUrl });
@@ -55,7 +55,11 @@ async function main() {
   const classResponse = await provider.getClassAt(input.contractAddress);
   if (!classResponse.abi) fail('Contract has no ABI on chain.');
 
-  const contract = new Contract(classResponse.abi, input.contractAddress, account);
+  const contract = new Contract({
+    abi: classResponse.abi,
+    address: input.contractAddress,
+    providerOrAccount: account
+  });
 
   // Build args
   let args = input.args || [];

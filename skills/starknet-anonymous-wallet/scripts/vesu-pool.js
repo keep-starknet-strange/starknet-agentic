@@ -161,7 +161,7 @@ async function main() {
       success: false,
       error: `Unknown/unconfigured pool: ${poolName}`,
       nextStep: 'CONFIGURE_VESU_POOL',
-      message: 'Add this pool to vesu-pools.json with a verified poolAddress.'
+      message: 'Add this pool to protocols.json (under VESU.pools) with a verified poolAddress.'
     }));
     process.exit(1);
   }

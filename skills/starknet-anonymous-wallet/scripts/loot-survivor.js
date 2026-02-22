@@ -79,7 +79,7 @@ function lootStateGetPending(accountAddress) {
 }
 
 function lootStateSetLatest(accountAddress, adventurerId) {
-  if (!accountAddress || !adventurerId) return;
+  if (accountAddress == null || adventurerId == null || adventurerId === '') return;
   try {
     mkdirSync(LOOT_STATE_DIR, { recursive: true });
     const map = lootStateLoad();
@@ -104,6 +104,14 @@ function lootStateSetPending(accountAddress, pending) {
   } catch {
     // best-effort
   }
+}
+
+function loadPersistedAdventurerId(accountAddress) {
+  return lootStateGetLatest(accountAddress);
+}
+
+function savePersistedAdventurerId(accountAddress, adventurerId) {
+  lootStateSetLatest(accountAddress, adventurerId);
 }
 
 function fail(message, extra = {}) {
@@ -159,14 +167,22 @@ function tryDecodeFeltToString(feltHex) {
 
 async function readGameState(provider, adventurerId) {
   const abi = await abiAt(provider, ADDRS.GAME);
-  const contract = new Contract(abi, ADDRS.GAME, provider);
+  const contract = new Contract({
+    abi,
+    address: ADDRS.GAME,
+    providerOrAccount: provider
+  });
   const res = await contract.call('get_game_state', [toU64(adventurerId, 'adventurerId')]);
   return res;
 }
 
 async function invoke(account, contractAddress, method, args) {
   const abi = await abiAt(account.provider, contractAddress);
-  const contract = new Contract(abi, contractAddress, account);
+  const contract = new Contract({
+    abi,
+    address: contractAddress,
+    providerOrAccount: account
+  });
   const result = await contract.invoke(method, args, { waitForTransaction: true });
   return {
     txHash: result.transaction_hash,
@@ -301,15 +317,15 @@ async function main() {
 
   if (mode === 'state') {
     let adventurerId = input.adventurerId;
-    if (!adventurerId && input.accountAddress) {
-      adventurerId = lootStateGetLatest(input.accountAddress);
+    if ((adventurerId === undefined || adventurerId === null || adventurerId === '') && input.accountAddress) {
+      adventurerId = loadPersistedAdventurerId(input.accountAddress);
     }
-    if (!adventurerId) {
+    if (adventurerId === undefined || adventurerId === null || adventurerId === '') {
       fail('Missing adventurerId and no latest adventurer stored yet. Start/mint once or provide adventurerId.');
     }
     const state = await readGameState(provider, adventurerId);
     // Persist best-effort
-    if (input.accountAddress) lootStateSetLatest(input.accountAddress, adventurerId);
+    if (input.accountAddress) savePersistedAdventurerId(input.accountAddress, adventurerId);
     console.log(JSON.stringify({ success: true, mode, adventurerId, state }, null, 2));
     return;
   }
@@ -350,7 +366,11 @@ async function main() {
     };
 
     const abi = await abiAt(provider, ADDRS.GAME_TOKEN);
-    const contract = new Contract(abi, ADDRS.GAME_TOKEN, account);
+    const contract = new Contract({
+      abi,
+      address: ADDRS.GAME_TOKEN,
+      providerOrAccount: account
+    });
 
     // Try invoke with object args first; if it fails, compile calldata and retry.
     let tx;
@@ -359,7 +379,8 @@ async function main() {
       tx = res.transaction_hash;
     } catch (e) {
       try {
-        const calldata = CallData.compile(args, contract.abi.find(x => x.name === 'mint_game'));
+        const calldataBuilder = new CallData(contract.abi);
+        const calldata = calldataBuilder.compile('mint_game', args);
         const res2 = await contract.invoke('mint_game', calldata, { waitForTransaction: true });
         tx = res2.transaction_hash;
       } catch (e2) {
@@ -369,6 +390,9 @@ async function main() {
 
     const receipt = await getReceipt(provider, tx);
     const minted = tryExtractMintedAdventurerIdFromReceipt(receipt);
+    if (minted) {
+      savePersistedAdventurerId(accountAddress, minted);
+    }
     console.log(JSON.stringify({
       success: true,
       mode,
@@ -384,10 +408,14 @@ async function main() {
   // Other write modes: Game contract
   const ensuredAdventurerId = (v) => {
     let id = v;
-    if (!id && accountAddress) id = lootStateGetLatest(accountAddress);
-    if (!id) fail('Missing adventurerId and no latest adventurer stored yet. Start/mint once or provide adventurerId.');
+    if ((id === undefined || id === null || id === '') && accountAddress) {
+      id = loadPersistedAdventurerId(accountAddress);
+    }
+    if (id === undefined || id === null || id === '') {
+      fail('Missing adventurerId and no latest adventurer stored yet. Start/mint once or provide adventurerId.');
+    }
     // Persist intent
-    if (accountAddress) lootStateSetLatest(accountAddress, id);
+    if (accountAddress) savePersistedAdventurerId(accountAddress, id);
     return id;
   };
 
@@ -395,7 +423,10 @@ async function main() {
     const adventurerId = ensuredAdventurerId(input.adventurerId);
     const weapon = input.weapon ?? 0;
     const tx = await invoke(account, ADDRS.GAME, 'start_game', [toU64(adventurerId, 'adventurerId'), toU8(weapon, 'weapon')]);
-    if (accountAddress) lootStateSetLatest(accountAddress, adventurerId);
+    if (accountAddress) {
+      savePersistedAdventurerId(accountAddress, adventurerId);
+      lootStateSetPending(accountAddress, false);
+    }
 
     const postState = await readGameState(provider, adventurerId);
     const summary = buildSummaryFromGameState(postState);
@@ -408,7 +439,7 @@ async function main() {
     const adventurerId = ensuredAdventurerId(input.adventurerId);
     const tillBeast = toBool(input.tillBeast, false);
     const tx = await invoke(account, ADDRS.GAME, 'explore', [toU64(adventurerId, 'adventurerId'), tillBeast ? '1' : '0']);
-    if (accountAddress) lootStateSetLatest(accountAddress, adventurerId);
+    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
 
     const postState = await readGameState(provider, adventurerId);
     const summary = buildSummaryFromGameState(postState);
@@ -433,7 +464,7 @@ async function main() {
     const adventurerId = ensuredAdventurerId(input.adventurerId);
     const toTheDeath = toBool(input.toTheDeath, false);
     const tx = await invoke(account, ADDRS.GAME, 'attack', [toU64(adventurerId, 'adventurerId'), toTheDeath ? '1' : '0']);
-    if (accountAddress) lootStateSetLatest(accountAddress, adventurerId);
+    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
 
     const postState = await readGameState(provider, adventurerId);
     const summary = buildSummaryFromGameState(postState);
@@ -457,7 +488,7 @@ async function main() {
     const adventurerId = ensuredAdventurerId(input.adventurerId);
     const toTheDeath = toBool(input.toTheDeath, false);
     const tx = await invoke(account, ADDRS.GAME, 'flee', [toU64(adventurerId, 'adventurerId'), toTheDeath ? '1' : '0']);
-    if (accountAddress) lootStateSetLatest(accountAddress, adventurerId);
+    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
 
     const postState = await readGameState(provider, adventurerId);
     const summary = buildSummaryFromGameState(postState);

@@ -6,7 +6,7 @@
  * This script receives account info via arguments - NO secrets access.
  * 
  * Usage:
- *   node avnu-swap.js '{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x...","privateKey":"0x..."}'
+ *   node avnu-swap.js '{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x..."}'
  */
 
 import { getQuotes, executeSwap } from '@avnu/avnu-sdk';
@@ -100,7 +100,7 @@ async function main() {
   if (!rawInput) {
     console.log(JSON.stringify({
       error: "No input provided",
-      usage: 'node avnu-swap.js \'{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x...","privateKey":"0x..."}\''
+      usage: 'node avnu-swap.js \'{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x..."}\''
     }));
     process.exit(1);
   }
@@ -119,7 +119,7 @@ async function main() {
     sellAmount, 
     slippage = DEFAULT_SLIPPAGE,
     accountAddress,
-    privateKey
+    privateKey: privateKeyInput
   } = input;
   
   if (!sellToken || !buyToken || !sellAmount) {
@@ -129,9 +129,10 @@ async function main() {
     process.exit(1);
   }
   
+  const privateKey = privateKeyInput || process.env.PRIVATE_KEY;
   if (!accountAddress || !privateKey) {
     console.log(JSON.stringify({
-      error: "Missing required fields: accountAddress, privateKey (passed from resolve-smart.js)"
+      error: "Missing required fields: accountAddress and private key (input.privateKey or PRIVATE_KEY env)"
     }));
     process.exit(1);
   }
