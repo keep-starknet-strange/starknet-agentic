@@ -1005,6 +1005,32 @@ fn test_session_empty_whitelist_blocks_self_calls() {
 }
 
 #[test]
+fn test_session_explicit_whitelist_still_blocks_self_calls() {
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let account_addr = deploy_with_key(owner_kp.public_key);
+    let account = src6_dispatcher(account_addr);
+
+    let valid_until: u64 = 9999;
+    // Explicitly whitelist a non-admin selector.
+    register_session_key(
+        account_addr, session_kp.public_key, valid_until, 100, array![selector!("get_contract_info")],
+    );
+
+    // Even with an explicit whitelist, session key cannot target account itself.
+    let calls = array![external_call(account_addr, selector!("get_contract_info"))];
+    let msg_hash = compute_session_hash(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls.span(),
+    );
+    let (r, s) = session_kp.sign(msg_hash).unwrap();
+    setup_session_tx_context(account_addr, session_kp.public_key, r, s, valid_until, 100);
+
+    let result = account.__validate__(calls);
+    assert(result == 0, 'self blocked wl');
+    cleanup_session_cheats(account_addr);
+}
+
+#[test]
 fn test_session_empty_whitelist_allows_external_calls() {
     let result = validate_session_call(
         0x5678, 0x1234,
@@ -1287,6 +1313,39 @@ fn test_session_multicall_self_call_mixed_with_external() {
 
     let result = account.__validate__(calls);
     assert(result == 0, 'self-call in multicall blocked');
+    cleanup_session_cheats(account_addr);
+}
+
+#[test]
+fn test_session_multicall_self_call_blocked_even_with_whitelist() {
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let account_addr = deploy_with_key(owner_kp.public_key);
+    let account = src6_dispatcher(account_addr);
+
+    let valid_until: u64 = 9999;
+    // Explicit whitelist includes both selectors used below.
+    register_session_key(
+        account_addr,
+        session_kp.public_key,
+        valid_until,
+        100,
+        array![selector!("transfer"), selector!("get_contract_info")],
+    );
+
+    let external_target: ContractAddress = 0xAAA.try_into().unwrap();
+    let calls = array![
+        external_call(external_target, selector!("transfer")),
+        external_call(account_addr, selector!("get_contract_info")),
+    ];
+    let msg_hash = compute_session_hash(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls.span(),
+    );
+    let (r, s) = session_kp.sign(msg_hash).unwrap();
+    setup_session_tx_context(account_addr, session_kp.public_key, r, s, valid_until, 100);
+
+    let result = account.__validate__(calls);
+    assert(result == 0, 'self blocked multicall');
     cleanup_session_cheats(account_addr);
 }
 

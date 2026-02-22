@@ -320,6 +320,7 @@ mod SessionAccount {
             let signature = tx_info.signature;
             if signature.len() == 4 {
                 let session_pubkey = *signature.at(0);
+                assert(self._calls_avoid_self(calls.span()), 'Session: self-call blocked');
                 self.spending_policy.check_and_update_spending(session_pubkey, calls.span());
             }
 
@@ -444,6 +445,10 @@ mod SessionAccount {
                 assert(
                     self._is_session_allowed_for_calls(session_pubkey, outside_execution.calls),
                     'Session: unauthorized selector',
+                );
+                assert(
+                    self._calls_avoid_self(outside_execution.calls),
+                    'Session: self-call blocked',
                 );
             }
 
@@ -748,8 +753,25 @@ mod SessionAccount {
             self.session_entrypoints.read((session_key, index))
         }
 
+        /// Returns true if no call in the batch targets this account itself.
+        fn _calls_avoid_self(self: @ContractState, calls: Span<Call>) -> bool {
+            let account_address = get_contract_address();
+            let mut i = 0;
+            loop {
+                if i >= calls.len() {
+                    break;
+                }
+                let call = calls.at(i);
+                if *call.to == account_address {
+                    return false;
+                }
+                i += 1;
+            };
+            true
+        }
+
         /// Returns true if the session key is allowed to execute the given calls.
-        /// Two layers: (1) admin selector blocklist, (2) self-call block for empty whitelist.
+        /// Two layers: (1) admin selector blocklist, (2) unconditional self-call block.
         fn _is_session_allowed_for_calls(
             self: @ContractState, session_key: felt252, calls: Span<Call>,
         ) -> bool {
@@ -766,11 +788,14 @@ mod SessionAccount {
 
             // Admin selector blocklist
             let UPGRADE_SELECTOR: felt252 = selector!("upgrade");
+            let SCHEDULE_UPGRADE_SELECTOR: felt252 = selector!("schedule_upgrade");
             let EXECUTE_UPGRADE_SELECTOR: felt252 = selector!("execute_upgrade");
             let CANCEL_UPGRADE_SELECTOR: felt252 = selector!("cancel_upgrade");
             let SET_UPGRADE_DELAY_SELECTOR: felt252 = selector!("set_upgrade_delay");
+            let REGISTER_SESSION_SELECTOR: felt252 = selector!("register_session_key");
             let ADD_SESSION_SELECTOR: felt252 = selector!("add_or_update_session_key");
             let REVOKE_SESSION_SELECTOR: felt252 = selector!("revoke_session_key");
+            let EMERGENCY_REVOKE_ALL_SELECTOR: felt252 = selector!("emergency_revoke_all");
             let EXECUTE_SELECTOR: felt252 = selector!("__execute__");
             let SET_PUBLIC_KEY_SELECTOR: felt252 = selector!("set_public_key");
             let SET_PUBLIC_KEY_CAMEL_SELECTOR: felt252 = selector!("setPublicKey");
@@ -795,11 +820,14 @@ mod SessionAccount {
                 let sel = *call.selector;
 
                 if sel == UPGRADE_SELECTOR
+                    || sel == SCHEDULE_UPGRADE_SELECTOR
                     || sel == EXECUTE_UPGRADE_SELECTOR
                     || sel == CANCEL_UPGRADE_SELECTOR
                     || sel == SET_UPGRADE_DELAY_SELECTOR
+                    || sel == REGISTER_SESSION_SELECTOR
                     || sel == ADD_SESSION_SELECTOR
                     || sel == REVOKE_SESSION_SELECTOR
+                    || sel == EMERGENCY_REVOKE_ALL_SELECTOR
                     || sel == EXECUTE_SELECTOR
                     || sel == SET_PUBLIC_KEY_SELECTOR
                     || sel == SET_PUBLIC_KEY_CAMEL_SELECTOR
@@ -817,20 +845,14 @@ mod SessionAccount {
                 i += 1;
             };
 
-            // Empty whitelist: block calls targeting this account
+            // Session path must never target this account (self-call escalation guard),
+            // even when a non-empty whitelist is provided.
+            if !self._calls_avoid_self(calls) {
+                return false;
+            }
+
+            // Empty whitelist: any non-self selector is allowed.
             if session.allowed_entrypoints_len == 0 {
-                let account_address = get_contract_address();
-                let mut i = 0;
-                loop {
-                    if i >= calls.len() {
-                        break;
-                    }
-                    let call = calls.at(i);
-                    if *call.to == account_address {
-                        return false;
-                    }
-                    i += 1;
-                };
                 return true;
             }
 
