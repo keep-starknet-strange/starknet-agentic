@@ -22,7 +22,7 @@ Snapshot as of 2026-02-10:
 | Agent Account contract | `contracts/agent-account` | Active, tested (110 Cairo tests) |
 | ERC-8004 Cairo contracts | `contracts/erc8004-cairo` | Active, tested (131+ unit + 47 E2E tests) |
 | Huginn registry contract | `contracts/huginn-registry` | Active, tested (6 Cairo tests) |
-| MCP package | `packages/starknet-mcp-server` | Active (9 tools, input validation) |
+| MCP package | `packages/starknet-mcp-server` | Active (tool catalog + input validation) |
 | A2A package | `packages/starknet-a2a` | Active |
 | CLI scaffolding | `packages/create-starknet-agent` | Complete (npm publish pending) |
 | Additional packages | `packages/*` | Active/MVP by package |
@@ -121,7 +121,7 @@ starknet-agentic/
 │   └── huginn-registry/                  # Thought provenance registry
 ├── packages/
 │   ├── create-starknet-agent/            # CLI scaffolding tool
-│   ├── starknet-mcp-server/              # MCP server (9 tools)
+│   ├── starknet-mcp-server/              # MCP server (tool catalog)
 │   ├── starknet-a2a/                     # A2A protocol adapter
 │   ├── starknet-agent-passport/          # Capability metadata client
 │   ├── x402-starknet/                    # X-402 payment protocol

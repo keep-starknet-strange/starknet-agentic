@@ -254,7 +254,7 @@ This section clarifies v1 invariants for `contracts/huginn-registry/`:
 
 ## 4. MCP Server
 
-**Status:** Production-ready at `packages/starknet-mcp-server/` (1,600+ lines, 9 tools implemented).
+**Status:** Production-ready at `packages/starknet-mcp-server/` (tool inventory maintained in `src/index.ts`).
 
 ### 4.1 Tool Definitions
 

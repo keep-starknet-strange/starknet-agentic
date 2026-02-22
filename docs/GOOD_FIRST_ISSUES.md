@@ -78,17 +78,17 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 
 ---
 
-## 5) Agent Account: Sepolia Deployment
+## 5) Agent Account: Deployment Docs Refresh
 
-**Goal:** Deploy the Agent Account contract to Sepolia testnet.
+**Goal:** Refresh docs to match deployed AgentAccountFactory reality and current deployment truth sources.
 
-**Context:** Contract is fully tested (110 tests) but not yet deployed.
+**Context:** Sepolia deployment exists; remaining work is documentation/ops alignment and mainnet planning.
 
 **Acceptance:**
-- [ ] Deployment script created at `contracts/agent-account/scripts/`
-- [ ] Contract deployed to Sepolia
-- [ ] Deployed address documented in README
-- [ ] Basic interaction script verifying deployment works
+- [ ] Update docs to reference `docs/DEPLOYMENT_TRUTH_SHEET.md`
+- [ ] Document current Sepolia factory address + linked IdentityRegistry
+- [ ] Add mainnet deployment checklist item for AgentAccountFactory
+- [ ] Add owner/multisig verification checklist for post-deploy validation
 
 **Files:** `contracts/agent-account/scripts/`, `contracts/agent-account/README.md`
 

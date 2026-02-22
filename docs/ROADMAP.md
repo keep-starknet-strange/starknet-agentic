@@ -241,7 +241,7 @@ Features that enhance the platform but are not required for v1.0 release.
 
 ### 2.1 Agent Account Contract Deployment
 
-**Description**: The Agent Account contract is fully tested (110 tests across 4 suites). Next step is Sepolia deployment.
+**Description**: The Agent Account contract is fully tested (110 tests across 4 suites) and deployed on Sepolia. Next step is mainnet deployment readiness and operations hardening.
 
 **Requirements**:
 - [x] ~~Create tests directory~~ — 4 test files exist in `contracts/agent-account/tests/`
@@ -252,8 +252,9 @@ Features that enhance the platform but are not required for v1.0 release.
 - [x] ~~Write snforge tests for emergency revoke mechanism~~
 - [x] ~~Write snforge tests for agent ID linking~~
 - [x] Create Sepolia deployment script
-- [ ] Deploy to Sepolia testnet
-- [ ] Document deployed contract address
+- [x] Deploy to Sepolia testnet
+- [x] Document deployed contract address
+- [ ] Deploy AgentAccountFactory to mainnet
 
 **Implementation Notes**:
 - Contract at `contracts/agent-account/src/agent_account.cairo` (~570 lines)
