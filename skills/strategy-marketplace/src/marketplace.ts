@@ -53,7 +53,7 @@ export async function publishStrategy(config: {
   const validatedPrice = parseNonNegativePrice(validatedConfig.price, 'strategy price');
   
   // Check certification requirements
-  const certified = await checkCertification(validatedConfig.agentId, validatedConfig.trackRecord);
+  const certified = await checkCertification(validatedConfig.trackRecord);
   
   const listing: StrategyListing = {
     id: generateListingId(),
@@ -139,8 +139,10 @@ export async function purchaseStrategy(request: PurchaseRequest): Promise<Purcha
     throw new Error(`Buyer agent not found: ${buyerAgentId}`);
   }
   
-  // In production: process x402 payment here
-  // await processPayment(buyer, strategy.price);
+  const paymentVerified = await verifyPaymentStub(buyerAgentId, strategy.id, strategy.price);
+  if (!paymentVerified) {
+    throw new Error('Strategy purchase failed: payment verification unsuccessful');
+  }
   
   const access: PurchaseResult = {
     success: true,
@@ -195,20 +197,20 @@ export async function offerService(config: {
  * Get services for an agent
  */
 export async function getAgentServices(agentId: string): Promise<ServiceOffering[]> {
+  const normalizedAgentId = requireNonEmptyString(agentId, 'agentId');
   const offerings = await getAllOfferings();
-  return offerings.filter(o => o.agentId === agentId);
+  return offerings.filter(o => o.agentId === normalizedAgentId);
 }
 
 // Helper functions
 
-async function checkCertification(agentId: string, trackRecord: StrategyListing['trackRecord']): Promise<boolean> {
+async function checkCertification(trackRecord: StrategyListing['trackRecord']): Promise<boolean> {
   // Certification criteria:
   // - Minimum 10 games played
   // - Positive average ROI
   // - Win rate > 50%
   if (trackRecord.totalGames < 10) return false;
   if (trackRecord.avgRoi <= 0) return false;
-  if (trackRecord.totalGames <= 0) return false;
   const winRate = trackRecord.wins / trackRecord.totalGames;
   return winRate > 0.5;
 }
@@ -391,4 +393,16 @@ function validateDiscoveryQuery(query: DiscoveryQuery): DiscoveryQuery {
     normalized.limit = limit;
   }
   return normalized;
+}
+
+async function verifyPaymentStub(
+  buyerAgentId: string,
+  strategyId: string,
+  expectedPrice: number
+): Promise<boolean> {
+  void buyerAgentId;
+  void strategyId;
+  void expectedPrice;
+  // Placeholder for x402 settlement hook.
+  return true;
 }

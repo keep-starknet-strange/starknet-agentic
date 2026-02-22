@@ -66,8 +66,9 @@ export async function registerAgent(config: AgentRegistration): Promise<Register
  * Get agent details by ID
  */
 export async function getAgent(agentId: string): Promise<RegisteredAgent | null> {
+  const normalizedAgentId = requireNonEmptyString(agentId, 'agentId');
   const agents = await getStoredAgents();
-  return agents.find(a => a.id === agentId) || null;
+  return agents.find(a => a.id === normalizedAgentId) || null;
 }
 
 /**
@@ -100,13 +101,23 @@ export async function updateAgent(
 // Helper functions (placeholder implementations)
 
 function generateAgentId(): string {
-  // In production: use actual ERC-8004 mint event
+  // In production, use token_id emitted from ERC-8004 mint transfer event.
+  const mintedTokenId = process.env.ERC8004_TOKEN_ID;
+  if (mintedTokenId) {
+    return mintedTokenId;
+  }
   return `0x${randomBytes(32).toString('hex')}`;
 }
 
 function getCurrentAgentAddress(): string {
-  // Get from starknet-agentic context
-  return process.env.AGENT_ADDRESS || '0x...';
+  const address = process.env.AGENT_ADDRESS;
+  if (address && /^0x[0-9a-fA-F]+$/.test(address)) {
+    return address;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('AGENT_ADDRESS must be set to a valid felt in production');
+  }
+  return `0x${'0'.repeat(64)}`;
 }
 
 async function storeAgent(agent: RegisteredAgent): Promise<void> {

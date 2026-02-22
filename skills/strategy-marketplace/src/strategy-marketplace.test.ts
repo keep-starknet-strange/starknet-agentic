@@ -132,4 +132,58 @@ describe('strategy marketplace skill', () => {
     const services = await getAgentServices(agent.id);
     expect(services.map(service => service.id)).toContain(offering.id);
   });
+
+  it('rejects invalid registration and performance payloads', async () => {
+    await expect(registerAgent({
+      name: 'Invalid Name',
+      description: 'bad',
+      capabilities: ['gaming'],
+      games: ['loot-survivor'],
+      network: 'SN_MAIN'
+    })).rejects.toThrow();
+
+    const agent = await registerAgent({
+      name: 'valid-agent',
+      description: 'Valid registration',
+      capabilities: ['gaming'],
+      games: ['loot-survivor'],
+      network: 'SN_MAIN'
+    });
+
+    await expect(trackPerformance({
+      agentId: agent.id,
+      game: 'loot-survivor',
+      result: 'win',
+      roi: 1.2,
+      strategy: 'alpha',
+      duration: -1
+    })).rejects.toThrow();
+  });
+
+  it('rejects invalid marketplace flows', async () => {
+    const seller = await registerAgent({
+      name: 'seller-bot',
+      description: 'Marketplace seller',
+      capabilities: ['strategy'],
+      games: ['loot-survivor'],
+      network: 'SN_MAIN'
+    });
+
+    await expect(publishStrategy({
+      agentId: seller.id,
+      name: 'Bad Track Record',
+      description: 'invalid listing',
+      price: '0.1',
+      game: 'loot-survivor',
+      parameters: { riskLevel: 'low', playStyle: 'safe', minCapital: '1' },
+      trackRecord: { wins: 1, losses: 0, avgRoi: 1.1, totalGames: 0 }
+    })).rejects.toThrow();
+
+    await expect(purchaseStrategy({
+      strategyId: 'strat_missing',
+      buyerAgentId: seller.id
+    })).rejects.toThrow();
+
+    await expect(getTopStrategies(seller.id, 0)).rejects.toThrow();
+  });
 });

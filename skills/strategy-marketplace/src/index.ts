@@ -42,8 +42,14 @@ export * from './marketplace';
  * await publishStrategy({
  *   agentId: agent.id,
  *   name: "Loot Survivor Pro",
+ *   description: "Aggressive late-game survival strategy",
  *   price: "0.001",
  *   game: "loot-survivor",
+ *   parameters: {
+ *     riskLevel: "high",
+ *     playStyle: "aggressive",
+ *     minCapital: "100 STRK"
+ *   },
  *   trackRecord: { wins: 45, losses: 12, avgRoi: 1.8, totalGames: 57 }
  * });
  */

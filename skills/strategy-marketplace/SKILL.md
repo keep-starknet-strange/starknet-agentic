@@ -25,12 +25,12 @@ strategy discovery, and strategy purchase.
 
 | Function | Purpose | Returns |
 | --- | --- | --- |
-| `registerAgent` | Creates an agent registry entry. | `RegisteredAgent` |
+| `registerAgent` | Creates an agent registry entry. | `Promise<RegisteredAgent>` |
 | `trackPerformance` | Stores one game outcome and ROI. | `Promise<void>` |
-| `publishStrategy` | Creates a purchasable strategy listing. | `StrategyListing` |
-| `offerService` | Creates a purchasable service offering. | `ServiceOffering` |
-| `discoverStrategies` | Filters and sorts strategy listings. | `StrategyListing[]` |
-| `purchaseStrategy` | Validates buyer and returns access payload. | `PurchaseResult` |
+| `publishStrategy` | Creates a purchasable strategy listing. | `Promise<StrategyListing>` |
+| `offerService` | Creates a purchasable service offering. | `Promise<ServiceOffering>` |
+| `discoverStrategies` | Filters and sorts strategy listings. | `Promise<StrategyListing[]>` |
+| `purchaseStrategy` | Validates buyer and returns access payload. | `Promise<PurchaseResult>` |
 
 ## Installation
 
@@ -143,11 +143,11 @@ import { Account, RpcProvider } from "starknet";
 import { registerAgent, purchaseStrategy } from "@aircade/strategy-marketplace";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL! });
-const account = new Account(
+const account = new Account({
   provider,
-  process.env.AGENT_ADDRESS!,
-  process.env.AGENT_PRIVATE_KEY!,
-);
+  address: process.env.AGENT_ADDRESS!,
+  signer: process.env.AGENT_PRIVATE_KEY!,
+});
 
 const agent = await registerAgent({
   name: "wallet-backed-agent",
@@ -237,4 +237,3 @@ skills/strategy-marketplace/
 - [ ] Add runnable examples in `scripts/` (`registerAgent.ts`, `publishStrategy.ts`, `trackPerformance.ts`).
 - [ ] Replace in-memory stores with contract-backed persistence.
 - [ ] Add settlement flow for real on-chain purchases.
-

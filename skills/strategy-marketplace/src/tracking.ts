@@ -49,11 +49,12 @@ export async function trackPerformance(record: PerformanceInput): Promise<void> 
  * Get agent statistics
  */
 export async function getAgentStats(agentId: string): Promise<AgentStats> {
-  const performances = await getPerformanceHistory(agentId);
+  const normalizedAgentId = requireNonEmptyString(agentId, 'agentId');
+  const performances = await getPerformanceHistory(normalizedAgentId);
   
   if (performances.length === 0) {
     return {
-      agentId,
+      agentId: normalizedAgentId,
       totalGames: 0,
       wins: 0,
       losses: 0,
@@ -71,23 +72,30 @@ export async function getAgentStats(agentId: string): Promise<AgentStats> {
   const totalRoi = performances.reduce((sum, p) => sum + p.roi, 0);
   
   const gamesByType: Record<string, number> = {};
-  const strategies: Record<string, { games: number; wins: number; avgRoi: number }> = {};
+  const strategyStats: Record<string, { games: number; wins: number; totalRoi: number }> = {};
   
   for (const p of performances) {
     gamesByType[p.game] = (gamesByType[p.game] || 0) + 1;
     
-    if (!strategies[p.strategy]) {
-      strategies[p.strategy] = { games: 0, wins: 0, avgRoi: 0 };
+    if (!strategyStats[p.strategy]) {
+      strategyStats[p.strategy] = { games: 0, wins: 0, totalRoi: 0 };
     }
-    strategies[p.strategy].games++;
-    if (p.result === 'win') strategies[p.strategy].wins++;
-    strategies[p.strategy].avgRoi = 
-      (strategies[p.strategy].avgRoi * (strategies[p.strategy].games - 1) + p.roi) / 
-      strategies[p.strategy].games;
+    strategyStats[p.strategy].games++;
+    strategyStats[p.strategy].totalRoi += p.roi;
+    if (p.result === 'win') strategyStats[p.strategy].wins++;
+  }
+
+  const strategies: Record<string, { games: number; wins: number; avgRoi: number }> = {};
+  for (const [strategy, data] of Object.entries(strategyStats)) {
+    strategies[strategy] = {
+      games: data.games,
+      wins: data.wins,
+      avgRoi: data.totalRoi / data.games
+    };
   }
   
   return {
-    agentId,
+    agentId: normalizedAgentId,
     totalGames: performances.length,
     wins,
     losses,
