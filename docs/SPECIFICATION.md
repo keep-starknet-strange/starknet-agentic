@@ -21,9 +21,9 @@ This specification describes both implemented features and planned designs:
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Agent Account Contract | **Tested** | 110 tests across 4 test suites |
-| Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on Sepolia |
+| Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on mainnet + Sepolia (see `docs/DEPLOYMENT_TRUTH_SHEET.md`) |
 | Huginn Registry Contract | **Functional** | Starknet-native reasoning registry at `contracts/huginn-registry/` |
-| MCP Server | **Production** | 9 tools implemented |
+| MCP Server | **Production** | Active tool catalog maintained in `packages/starknet-mcp-server/src/index.ts` |
 | A2A Adapter | **Functional** | Basic implementation complete |
 | Skills | **Mixed** | 6 skills in repo (complete + template + onboarding) |
 | Framework Extensions | **Planned** | Deferred to v2.0 |

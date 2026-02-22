@@ -13,14 +13,18 @@ Tracking issue: [#78](https://github.com/keep-starknet-strange/starknet-agentic/
 
 ## Registry Implementation Status
 
-All three ERC-8004 registries are implemented, tested, and deployed on Sepolia.
+All three ERC-8004 registries are implemented and tested in Cairo.
 
-| Registry | Contract | Tests | Sepolia |
-|----------|----------|-------|---------|
-| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | 131+ unit + 47 E2E | `0x7856...e417` |
-| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | Included in suite above | `0x1420...495a` |
-| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | Included in suite above | `0x1373...8e1` |
-| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 110+ Cairo tests | `0x3583...720e` (factory) |
+For deployment status, use these canonical sources:
+- [`docs/DEPLOYMENT_TRUTH_SHEET.md`](DEPLOYMENT_TRUTH_SHEET.md) (on-chain verified snapshot)
+- [`contracts/erc8004-cairo/README.md`](../contracts/erc8004-cairo/README.md) (contract-local quick reference)
+
+| Registry | Contract | Tests | Deployment status |
+|----------|----------|-------|-------------------|
+| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | 131+ unit + 47 E2E | Mainnet + Sepolia live |
+| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | Included in suite above | Mainnet + Sepolia live |
+| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | Included in suite above | Mainnet + Sepolia live |
+| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 110+ Cairo tests | Factory live on Sepolia; no documented mainnet factory |
 
 ---
 
@@ -61,7 +65,7 @@ Each function is classified as **Parity** (aligned with Solidity reference) or *
 | Function | Solidity reference | Cairo behavior | Type |
 |----------|--------------------|----------------|------|
 | `validation_request` | Requester designates validator, emits event | Same semantic, reentrancy guard | Parity |
-| `validation_response` | Designated validator responds (0-100 score) | Same semantic, progressive updates | Parity |
+| `validation_response` | Designated validator responds (0-100 score) | Same semantic with finalize-once response immutability | Parity + Extension |
 | `get_validation_status` | Query by `requestHash` | Same return shape | Parity |
 | `get_summary` | `(count, averageResponse)` | Same semantic | Parity |
 | `get_agent_validations` / `get_validator_requests` | Full list reads | Same semantic (O(n)) | Parity |
@@ -185,7 +189,23 @@ Chain-local state (reputation, validation history) remains chain-scoped. Cross-c
 
 ## Deployment
 
-### Sepolia (live)
+### Mainnet (live registries)
+
+| Contract | Address |
+|----------|---------|
+| IdentityRegistry | `0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595` |
+| ReputationRegistry | `0x698849defe3997eccd3dc5e096c01ae8f4fbc2e49e8d67efcb0b0642447944` |
+| ValidationRegistry | `0x3c2aae404b64ddf09f7ef07dfb4f723c9053443d35038263acf7d5d77efcd83` |
+
+### Sepolia (current registry set)
+
+| Contract | Address |
+|----------|---------|
+| IdentityRegistry | `0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631` |
+| ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
+| ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
+
+### Sepolia (legacy set still live)
 
 | Contract | Address |
 |----------|---------|
@@ -194,9 +214,7 @@ Chain-local state (reputation, validation history) remains chain-scoped. Cross-c
 | ValidationRegistry | `0x13739de746a432b9fe36925cf4dfe469221bdc82e19f43fa4f95f8593aa8e1` |
 | AgentAccountFactory | `0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e` |
 
-### Mainnet
-
-Not yet deployed. Planned after Sepolia validation.
+See [`docs/DEPLOYMENT_TRUTH_SHEET.md`](DEPLOYMENT_TRUTH_SHEET.md) for verified class hashes, first-seen block/timestamp, and drift vs `origin/main`.
 
 ---
 

@@ -20,6 +20,8 @@ Cairo implementation of the [ERC-8004 Trustless Agent Registry](https://eips.eth
 | ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
 | ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
 
+Historical Sepolia addresses (including legacy registry set and AgentAccountFactory) and deployment reconciliation data are documented in [`docs/DEPLOYMENT_TRUTH_SHEET.md`](../../docs/DEPLOYMENT_TRUTH_SHEET.md).
+
 ## About
 
 This repository implements ERC-8004 (Trustless Agents): a lightweight set of on-chain registries that make agents discoverable and enable trust signals across organizational boundaries.
@@ -139,14 +141,14 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 
 `agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
 
-### Validation Registry: Overwrite Semantics
+### Validation Registry: Response Finalization Semantics
 
-Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. When the designated validator calls `validation_response` again for the same request, the previous response is **silently overwritten**.
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. A response is **finalized once**.
 
-- **Intentional**: the `last_update` timestamp tracks when the response was last set, enabling update workflows (e.g., validator re-evaluates after agent fix).
-- **Not accumulative**: there is no history of previous responses for a given request. If audit trails are needed, index `ValidationResponse` events off-chain.
-- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`). Only the response is mutable.
+- **Immutable after first submit**: `validation_response` reverts if a response already exists (`'Response already submitted'`).
+- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
+- **Audit trail guidance**: index `ValidationRequest` and `ValidationResponse` events off-chain for full chronology.
 
 ### Reputation Registry: Spam and Griefing Tradeoffs
 
@@ -280,17 +282,17 @@ This implementation uses **Poseidon hashing** (native to Starknet) instead of ke
 
 ## Prerequisites
 
-- Scarb 2.12.1
-- Cairo 2.12.1
-- Snforge 0.43.1
+- Scarb 2.14.x
+- Cairo 2.14.x
+- Snforge 0.54.x
 - Node.js >= 18.0.0
 
 ## Setup
 
 ```bash
 # Clone and build
-git clone git@github.com:Akashneelesh/erc8004-cairo.git
-cd erc8004-cairo
+git clone git@github.com:keep-starknet-strange/starknet-agentic.git
+cd starknet-agentic/contracts/erc8004-cairo
 
 # Build contracts
 scarb build

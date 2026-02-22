@@ -123,7 +123,7 @@ Core infrastructure features required for v1.0 release. MVP definition: MCP serv
 
 **Implementation Notes**:
 - Basic structure exists at `skills/starknet-identity/SKILL.md` (303 lines)
-- ERC-8004 contracts are production-ready in `packages/starknet-identity/erc8004-cairo/`
+- ERC-8004 contracts are production-ready in `contracts/erc8004-cairo/`
 - Include agent-passport integration
 
 ---
