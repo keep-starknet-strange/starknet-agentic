@@ -841,8 +841,9 @@ mod SessionAccount {
                 i += 1;
             };
 
-            // Session path must never target this account (self-call escalation guard),
-            // even when a non-empty whitelist is provided.
+            // Canonical self-call escalation guard used by session validation paths,
+            // including SRC-9 execute_from_outside_v2 via _is_session_allowed_for_calls.
+            // Session path must never target this account, even with a non-empty whitelist.
             if !self._calls_avoid_self(calls) {
                 return false;
             }
