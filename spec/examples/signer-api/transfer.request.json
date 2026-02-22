@@ -1,0 +1,20 @@
+{
+  "accountAddress": "0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50",
+  "keyId": "default",
+  "chainId": "0x534e5f5345504f4c4941",
+  "nonce": "0x2a",
+  "validUntil": 1770984300,
+  "calls": [
+    {
+      "contractAddress": "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+      "entrypoint": "transfer",
+      "calldata": ["0x0123", "0x2386f26fc10000", "0x0"]
+    }
+  ],
+  "context": {
+    "requester": "starknet-mcp-server",
+    "tool": "starknet_transfer",
+    "reason": "user approved token transfer",
+    "traceId": "req-transfer-001"
+  }
+}

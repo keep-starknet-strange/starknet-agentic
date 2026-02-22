@@ -417,6 +417,7 @@ Implements the Lucid Agents `Extension` interface:
 | Unauthorized transactions | Session key policies (allowed contracts, methods, time bounds) |
 | Prompt injection via skills | Skill sandboxing; input validation in MCP tools |
 | Replay attacks | Chain ID + nonce in all signatures |
+| Signer-proxy impersonation/replay | HMAC headers + nonce + timestamp, mTLS for non-loopback production, versioned signer API (`spec/signer-api-v1.openapi.yaml`) |
 | Agent impersonation | On-chain identity verification via ERC-8004 |
 | Rug pull by agent | Emergency kill switch for human owner |
 

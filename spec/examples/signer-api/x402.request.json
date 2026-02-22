@@ -1,0 +1,20 @@
+{
+  "accountAddress": "0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50",
+  "keyId": "default",
+  "chainId": "0x534e5f5345504f4c4941",
+  "nonce": "0x2c",
+  "validUntil": 1770984300,
+  "calls": [
+    {
+      "contractAddress": "0x053c91253bc9682c04929ca02d5d548f9c6f5f5d0f03f4e2f0f2de5ec9f6b31a",
+      "entrypoint": "transfer",
+      "calldata": ["0x07ab1c9e", "0x2710", "0x0"]
+    }
+  ],
+  "context": {
+    "requester": "starknet-mcp-server",
+    "tool": "x402_starknet_sign_payment_required",
+    "reason": "x402 payment settlement transfer",
+    "traceId": "req-x402-001"
+  }
+}

@@ -61,6 +61,11 @@ KEYRING_HMAC_SECRET=replace-with-long-random-secret
 # KEYRING_SESSION_VALIDITY_SECONDS=300
 ```
 
+Signer boundary contract:
+- OpenAPI: `spec/signer-api-v1.openapi.yaml`
+- JSON Schema: `spec/signer-api-v1.schema.json`
+- Security notes: `docs/security/SIGNER_API_SPEC.md`
+
 SISNA server-side production key-custody guard:
 - Current SISNA builds fail production startup unless
   `KEYRING_ALLOW_INSECURE_IN_PROCESS_KEYS_IN_PRODUCTION=true` is explicitly set
@@ -235,6 +240,7 @@ The server uses:
 - Production startup guard: rejects `STARKNET_PRIVATE_KEY` when `STARKNET_SIGNER_MODE=proxy`
 - Production startup guard: non-loopback proxy URLs require mTLS client cert/key/CA paths
 - Proxy mode keeps signing outside MCP process (`starknet-keyring-proxy`)
+- Signer boundary API is versioned at `/v1/sign/session-transaction`
 - SISNA currently requires explicit production acknowledgement for in-process
   key custody: `KEYRING_ALLOW_INSECURE_IN_PROCESS_KEYS_IN_PRODUCTION=true`
 - Direct private key mode is intended for local development only
