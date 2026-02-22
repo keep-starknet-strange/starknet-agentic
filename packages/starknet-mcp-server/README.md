@@ -50,12 +50,12 @@ STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_SIGNER_MODE=proxy
 KEYRING_PROXY_URL=https://signer.internal:8545
 KEYRING_HMAC_SECRET=replace-with-long-random-secret
+KEYRING_CLIENT_ID=starknet-mcp-server
 # mTLS client material (required in production for non-loopback signer URLs)
 # KEYRING_TLS_CLIENT_CERT_PATH=/etc/starknet-mcp/tls/client.crt
 # KEYRING_TLS_CLIENT_KEY_PATH=/etc/starknet-mcp/tls/client.key
 # KEYRING_TLS_CA_PATH=/etc/starknet-mcp/tls/ca.crt
 # Optional:
-# KEYRING_CLIENT_ID=starknet-mcp-server
 # KEYRING_SIGNING_KEY_ID=default
 # KEYRING_REQUEST_TIMEOUT_MS=5000
 # KEYRING_SESSION_VALIDITY_SECONDS=300

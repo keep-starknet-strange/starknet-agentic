@@ -7,8 +7,15 @@ info:
     Versioned signer boundary between `starknet-mcp-server` and a remote keyring signer.
 
     Signature envelope is fixed to `[session_pubkey, r, s, valid_until]` and `signatureMode=v2_snip12`.
+    Header authentication is declared at the API level below; mTLS is enforced by deployment
+    policy and infrastructure controls (documented in `docs/security/SIGNER_API_SPEC.md`).
 servers:
   - url: https://signer.internal:8545
+security:
+  - keyringHmac: []
+    keyringClientId: []
+    keyringTimestamp: []
+    keyringNonce: []
 paths:
   /v1/sign/session-transaction:
     post:
@@ -19,11 +26,6 @@ paths:
 
         HMAC signing payload is:
         `X-Keyring-Timestamp + "." + X-Keyring-Nonce + ".POST./v1/sign/session-transaction." + sha256(raw_json_body)`
-      security:
-        - keyringHmac: []
-          keyringClientId: []
-          keyringTimestamp: []
-          keyringNonce: []
       requestBody:
         required: true
         content:
@@ -112,8 +114,6 @@ components:
       type: apiKey
       in: header
       name: X-Keyring-Nonce
-    mutualTLS:
-      type: mutualTLS
   schemas:
     FeltHex:
       type: string
