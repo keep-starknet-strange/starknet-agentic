@@ -8,7 +8,6 @@
     "spec_version",
     "session_signature_envelope",
     "signer_api_path",
-    "signer_api_spec",
     "required_auth_headers"
   ],
   "properties": {
@@ -24,19 +23,14 @@
       "type": "string",
       "const": "/v1/sign/session-transaction"
     },
-    "signer_api_spec": {
-      "type": "string",
-      "const": "spec/signer-api-v1.openapi.yaml"
-    },
     "required_auth_headers": {
       "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
+      "minItems": 3,
+      "maxItems": 3,
       "items": {
         "type": "string"
       },
       "const": [
-        "X-Keyring-Client-Id",
         "X-Keyring-Timestamp",
         "X-Keyring-Nonce",
         "X-Keyring-Signature"
