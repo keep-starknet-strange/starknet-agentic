@@ -137,7 +137,7 @@ struct SessionPolicy {
 
 Based on ERC-8004, with Starknet-specific enhancements:
 
-- Uses the existing [erc8004-cairo](https://github.com/Akashneelesh/erc8004-cairo) as the foundation
+- Uses the existing [`contracts/erc8004-cairo/`](../contracts/erc8004-cairo/) implementation as the foundation
 - Adds A2A Agent Card URI to agent metadata
 - Integrates with Agent Account contract for automated identity binding
 - Leverages Starknet's native signature verification (SNIP-6)
