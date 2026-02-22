@@ -33,7 +33,7 @@ The x402 examples document the signer API contract for interoperable clients and
 - `X-Keyring-Signature`
 
 2. HMAC payload format (must match exactly):
-- `<timestamp>.<nonce>.POST.</v1/sign/session-transaction>.<sha256(raw_json_body)>`
+- `<timestamp>.<nonce>.POST./v1/sign/session-transaction.<sha256(raw_json_body)>`
 
 3. mTLS:
 - Required for non-loopback production deployments.

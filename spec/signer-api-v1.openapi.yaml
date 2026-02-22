@@ -18,7 +18,7 @@ paths:
         Signs an invoke transaction request under server-side policy checks.
 
         HMAC signing payload is:
-        `X-Keyring-Timestamp + "." + X-Keyring-Nonce + ".POST." + /v1/sign/session-transaction + "." + sha256(raw_json_body)`
+        `X-Keyring-Timestamp + "." + X-Keyring-Nonce + ".POST./v1/sign/session-transaction." + sha256(raw_json_body)`
       security:
         - keyringHmac: []
           keyringClientId: []
