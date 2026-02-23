@@ -107,9 +107,11 @@ Typical read paths:
 
 - `read_feedback(agent_id, client_address, feedback_index)`
 - `read_all_feedback(agent_id, client_addresses, tag1, tag2, include_revoked)`
+- `read_all_feedback_paginated(agent_id, client_addresses, tag1, tag2, include_revoked, client_offset, client_limit, feedback_offset, feedback_limit)`
 - `get_summary(agent_id, client_addresses, tag1, tag2)` -> returns `(count, summary_value, summary_value_decimals)`
 
 Note: `get_summary` requires `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
+Note: `read_all_feedback` is a legacy convenience reader with a defensive scan ceiling (`MAX_READ_ALL_FEEDBACK_ENTRIES`, currently `2048`) across both client and feedback traversal. Large reads should use `read_all_feedback_paginated`.
 
 **Responses and Revocation**
 
@@ -217,7 +219,7 @@ Operators and integrators should treat `agentWallet` as a verified-control-of-ke
 2. Publish a registration file (e.g., on IPFS/HTTPS) and set it as the token URI via `set_token_uri(agent_id, ...)`.
 3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (SNIP-6 signature proof bound to this chain and registry contract).
 4. Collect feedback from users/clients via `give_feedback(...)` on the Reputation Registry.
-5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback(...)` for off-chain scoring.
+5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback_paginated(...)` for bounded off-chain scoring.
 
 ## Features
 

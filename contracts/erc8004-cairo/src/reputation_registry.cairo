@@ -591,8 +591,14 @@ pub mod ReputationRegistry {
             };
 
             let mut i: u32 = 0;
+            let mut scanned_clients: u32 = 0;
             let mut scanned_feedbacks: u32 = 0;
             while i < client_list.len() {
+                scanned_clients += 1;
+                assert(
+                    scanned_clients <= MAX_READ_ALL_FEEDBACK_ENTRIES,
+                    'Use read_all_feedback_paginated',
+                );
                 let client = *client_list.at(i);
                 let last_idx = self.last_index.entry((agent_id, client)).read();
 

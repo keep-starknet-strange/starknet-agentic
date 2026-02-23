@@ -133,9 +133,11 @@ This prevents:
 - **Cross-registry replay**: A signature for one registry cannot be reused on another.
 - **Signature reuse**: Nonce increments after each successful `set_agent_wallet`, making signatures one-time use.
 
-### Bounded Summary Reads
+### Bounded Read Paths
 
 Both Reputation and Validation registries add `get_summary_paginated` for bounded reads. The standard `get_summary` functions are O(n) over all entries -- the paginated variants allow production systems to cap gas and latency.
+
+Reputation registry also exposes `read_all_feedback_paginated` for bounded raw-feedback traversal. The legacy `read_all_feedback` path includes a defensive scan ceiling (`MAX_READ_ALL_FEEDBACK_ENTRIES`) across client and feedback iteration and now reverts with `Use read_all_feedback_paginated` when that ceiling is exceeded.
 
 ### Timelocked Upgrades
 
