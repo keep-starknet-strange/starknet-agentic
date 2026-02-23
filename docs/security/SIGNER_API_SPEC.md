@@ -26,16 +26,16 @@ The x402 examples document the signer API contract for interoperable clients and
 
 ## Required Authentication and Transport
 
-1. HMAC headers (all required):
+HMAC headers (all required):
 - `X-Keyring-Client-Id`
 - `X-Keyring-Timestamp`
 - `X-Keyring-Nonce`
 - `X-Keyring-Signature`
 
-1. HMAC payload format (must match exactly):
+HMAC payload format (must match exactly):
 - `<timestamp>.<nonce>.POST./v1/sign/session-transaction.<sha256(raw_json_body)>`
 
-1. mTLS:
+mTLS:
 - Required for non-loopback production deployments.
 - Client certificate, key, and CA chain must be configured together.
 

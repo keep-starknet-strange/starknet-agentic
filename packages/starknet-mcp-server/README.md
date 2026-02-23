@@ -66,6 +66,10 @@ Signer boundary contract:
 - JSON Schema: `spec/signer-api-v1.schema.json`
 - Security notes: `docs/security/SIGNER_API_SPEC.md`
 
+Interop note:
+- `spec/interop-version.json` remains at `0.1.0` until cross-repo conformance updates land.
+- Proxy clients should follow the signer API v1 contract above, including `X-Keyring-Client-Id`.
+
 SISNA server-side production key-custody guard:
 - Current SISNA builds fail production startup unless
   `KEYRING_ALLOW_INSECURE_IN_PROCESS_KEYS_IN_PRODUCTION=true` is explicitly set
