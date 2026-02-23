@@ -1,4 +1,4 @@
-import { constants, RpcProvider } from "starknet";
+import { constants, RpcProvider, validateAndParseAddress } from "starknet";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -25,12 +25,7 @@ function normalizeAddress(address) {
   if (address === undefined || address === null) {
     return "";
   }
-  let hex = String(address).trim().toLowerCase();
-  if (hex.startsWith("0x")) {
-    hex = hex.slice(2);
-  }
-  hex = hex.replace(/^0+/, "");
-  return `0x${hex || "0"}`;
+  return validateAndParseAddress(String(address)).toLowerCase();
 }
 
 function resolveNetwork(chainId) {
