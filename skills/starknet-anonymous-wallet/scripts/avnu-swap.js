@@ -43,13 +43,15 @@ async function getAllTokens() {
  */
 async function matchTokens(sellSymbol, buySymbol) {
   const tokens = await getAllTokens();
+  const normalizedSell = String(sellSymbol || '').toLowerCase();
+  const normalizedBuy = String(buySymbol || '').toLowerCase();
   
   const sellToken = tokens.find(t => 
-    t.symbol.toLowerCase() === sellSymbol.toLowerCase()
+    String(t?.symbol || '').toLowerCase() === normalizedSell
   );
   
   const buyToken = tokens.find(t => 
-    t.symbol.toLowerCase() === buySymbol.toLowerCase()
+    String(t?.symbol || '').toLowerCase() === normalizedBuy
   );
   
   return { sellToken, buyToken };

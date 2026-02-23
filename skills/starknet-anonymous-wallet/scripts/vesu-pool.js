@@ -12,8 +12,7 @@
  *   "collateralAmount": "1000.0",
  *   "debtToken": "USDC",
  *   "debtAmount": "100.0",
- *   "accountAddress": "0x...",
- *   "rpcUrl": "https://..." (optional)
+ *   "accountAddress": "0x..."
  * }
  */
 

@@ -8,7 +8,7 @@
  * ERRORS: JSON to stderr
  */
 
-import { stark, hash, ec, Provider } from 'starknet';
+import { stark, hash, ec, RpcProvider } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -173,7 +173,7 @@ async function main() {
   let latestBlock = null;
   try {
     const rpcUrl = resolveRpcUrl();
-    const provider = new Provider({ nodeUrl: rpcUrl });
+    const provider = new RpcProvider({ nodeUrl: rpcUrl });
     const b = await provider.getBlock('latest');
     latestBlock = {
       blockNumber: b.block_number,
