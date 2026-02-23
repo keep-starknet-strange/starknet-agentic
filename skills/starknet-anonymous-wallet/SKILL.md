@@ -17,6 +17,17 @@ This skill provides **agent-facing scripts** for:
 - Preflight (simulate + fee estimate)
 - Allowance checks with human amounts
 
+## Quick Reference
+
+- `parse-smart.js`: parse/sanitize user prompt, detect operation type, return protocol + ABI context.
+- `resolve-smart.js`: build a safe execution plan from parsed LLM output (plan-only; no direct execute mode).
+- `read-smart.js`: dynamically match ABI functions and perform read calls.
+- `invoke-contract.js`: execute a direct contract write call.
+- `estimate-fee.js`: estimate transaction fee before execution.
+- `simulate-smart.js`: dry-run write calldata and surface likely failures.
+- `avnu-swap.js`: AVNU quote + swap execution flow for DeFi swaps.
+- `vesu-pool.js`: Vesu supply/borrow/position helper mapped to `modify_position`.
+
 ## Prerequisites
 
 ```bash

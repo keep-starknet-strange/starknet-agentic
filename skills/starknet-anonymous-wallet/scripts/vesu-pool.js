@@ -179,6 +179,8 @@ async function main() {
   // For supply-only, debt_asset is still required by the protocol; use configured defaultDebtAssetSymbol.
   const collateralToken = input.collateralToken || input.token;
   const debtToken = input.debtToken;
+  let collateralInfo = null;
+  let debtInfo = null;
 
   if (supportedCollaterals && collateralToken) {
     const sym = String(collateralToken).toUpperCase();

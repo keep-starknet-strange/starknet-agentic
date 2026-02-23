@@ -587,6 +587,17 @@ async function main() {
   }
   
   const { accountIndex = 0, execute = false, parsed } = input;
+  const executeRequested = execute === true || String(execute).toLowerCase() === 'true';
+  if (executeRequested) {
+    console.log(JSON.stringify({
+      success: false,
+      canProceed: false,
+      nextStep: 'EXECUTION_MODE_UNSUPPORTED',
+      error: 'resolve-smart currently returns an execution plan only; direct execute mode is not implemented.',
+      hint: 'Set execute=false, request explicit user authorization, then execute via the target script from executionPlan.calls.'
+    }));
+    process.exit(1);
+  }
 
   // Attestation check (must come from parse-smart)
   const attestationToken = input?.attestation?.token || parsed?.attestation?.token;
