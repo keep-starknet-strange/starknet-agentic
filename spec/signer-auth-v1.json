@@ -1,0 +1,150 @@
+{
+  "spec": "signer-auth-v1",
+  "version": "1.0.0",
+  "defaults": {
+    "method": "POST",
+    "path": "/v1/sign/session-transaction",
+    "nowMs": 1770984000000,
+    "timestampMaxAgeMs": 60000,
+    "nonceTtlSeconds": 120,
+    "requireMtls": true
+  },
+  "vectors": [
+    {
+      "id": "valid_hmac_mtls_single_use",
+      "description": "Accepts a canonical HMAC-authenticated request with mTLS present.",
+      "clientsById": {
+        "mcp-tests": { "hmacSecrets": ["current-secret"] }
+      },
+      "steps": [
+        {
+          "clientId": "mcp-tests",
+          "timestamp": "1770983999900",
+          "nonce": "nonce-valid-001",
+          "rawBody": "{\"accountAddress\":\"0xabc\"}",
+          "isMtlsAuthenticated": true,
+          "signWithSecret": "current-secret",
+          "expect": { "ok": true }
+        }
+      ]
+    },
+    {
+      "id": "replay_nonce_rejected",
+      "description": "Rejects reused nonces inside the replay TTL window.",
+      "clientsById": {
+        "mcp-tests": { "hmacSecrets": ["current-secret"] }
+      },
+      "steps": [
+        {
+          "clientId": "mcp-tests",
+          "timestamp": "1770983999900",
+          "nonce": "nonce-replay-001",
+          "rawBody": "{\"accountAddress\":\"0xabc\"}",
+          "isMtlsAuthenticated": true,
+          "signWithSecret": "current-secret",
+          "expect": { "ok": true }
+        },
+        {
+          "clientId": "mcp-tests",
+          "timestamp": "1770983999950",
+          "nonce": "nonce-replay-001",
+          "rawBody": "{\"accountAddress\":\"0xabc\"}",
+          "isMtlsAuthenticated": true,
+          "signWithSecret": "current-secret",
+          "expect": { "ok": false, "errorCode": "REPLAY_NONCE_USED" }
+        }
+      ]
+    },
+    {
+      "id": "timestamp_skew_rejected",
+      "description": "Rejects stale timestamps outside the configured drift window.",
+      "clientsById": {
+        "mcp-tests": { "hmacSecrets": ["current-secret"] }
+      },
+      "steps": [
+        {
+          "clientId": "mcp-tests",
+          "timestamp": "1770983899000",
+          "nonce": "nonce-stale-001",
+          "rawBody": "{\"accountAddress\":\"0xabc\"}",
+          "isMtlsAuthenticated": true,
+          "signWithSecret": "current-secret",
+          "expect": { "ok": false, "errorCode": "AUTH_TIMESTAMP_SKEW" }
+        }
+      ]
+    },
+    {
+      "id": "mtls_required_rejected",
+      "description": "Fails closed when mTLS is required by policy but absent.",
+      "clientsById": {
+        "mcp-tests": { "hmacSecrets": ["current-secret"] }
+      },
+      "steps": [
+        {
+          "clientId": "mcp-tests",
+          "timestamp": "1770983999900",
+          "nonce": "nonce-mtls-001",
+          "rawBody": "{\"accountAddress\":\"0xabc\"}",
+          "isMtlsAuthenticated": false,
+          "signWithSecret": "current-secret",
+          "expect": { "ok": false, "errorCode": "AUTH_MTLS_REQUIRED" }
+        }
+      ]
+    },
+    {
+      "id": "rotated_secret_accepted",
+      "description": "Allows overlap windows during HMAC key rotation.",
+      "clientsById": {
+        "mcp-tests": { "hmacSecrets": ["current-secret", "next-secret"] }
+      },
+      "steps": [
+        {
+          "clientId": "mcp-tests",
+          "timestamp": "1770983999900",
+          "nonce": "nonce-rotated-001",
+          "rawBody": "{\"accountAddress\":\"0xabc\"}",
+          "isMtlsAuthenticated": true,
+          "signWithSecret": "next-secret",
+          "expect": { "ok": true }
+        }
+      ]
+    },
+    {
+      "id": "invalid_hmac_rejected",
+      "description": "Rejects malformed/tampered HMAC signatures.",
+      "clientsById": {
+        "mcp-tests": { "hmacSecrets": ["current-secret"] }
+      },
+      "steps": [
+        {
+          "clientId": "mcp-tests",
+          "timestamp": "1770983999900",
+          "nonce": "nonce-hmac-001",
+          "rawBody": "{\"accountAddress\":\"0xabc\"}",
+          "isMtlsAuthenticated": true,
+          "signWithSecret": "current-secret",
+          "overrideSignature": "deadbeef",
+          "expect": { "ok": false, "errorCode": "AUTH_INVALID_HMAC" }
+        }
+      ]
+    },
+    {
+      "id": "unknown_client_rejected",
+      "description": "Rejects unknown client IDs before HMAC processing.",
+      "clientsById": {
+        "other-client": { "hmacSecrets": ["current-secret"] }
+      },
+      "steps": [
+        {
+          "clientId": "mcp-tests",
+          "timestamp": "1770983999900",
+          "nonce": "nonce-client-001",
+          "rawBody": "{\"accountAddress\":\"0xabc\"}",
+          "isMtlsAuthenticated": true,
+          "signWithSecret": "current-secret",
+          "expect": { "ok": false, "errorCode": "AUTH_INVALID_CLIENT" }
+        }
+      ]
+    }
+  ]
+}

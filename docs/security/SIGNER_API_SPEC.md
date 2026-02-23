@@ -6,6 +6,8 @@ This document defines the contract between `packages/starknet-mcp-server` (proxy
 
 - OpenAPI: `spec/signer-api-v1.openapi.yaml`
 - JSON Schema: `spec/signer-api-v1.schema.json`
+- Auth vectors schema: `spec/signer-auth-v1.schema.json`
+- Auth vectors: `spec/signer-auth-v1.json`
 - Examples:
   - `spec/examples/signer-api/transfer.request.json`
   - `spec/examples/signer-api/transfer.response.json`
@@ -38,6 +40,14 @@ HMAC payload format (HMAC-SHA256, lowercase hex; must match exactly):
 mTLS:
 - Required for non-loopback production deployments.
 - Client certificate, key, and CA chain must be configured together.
+
+Replay protection:
+- Nonces are one-time use per client (`client_id + nonce`) within the configured TTL window.
+- Production deployment target is a shared replay store (Redis TTL) so all signer replicas enforce the same nonce uniqueness boundary.
+
+Timestamp policy:
+- `X-Keyring-Timestamp` must be an epoch-milliseconds integer string.
+- Requests outside `timestamp_max_age_ms` are rejected (`AUTH_TIMESTAMP_SKEW`).
 
 ## Required Security Validation (Client-side)
 
@@ -104,3 +114,7 @@ The response also carries a top-level `requestId` for response/error correlation
   - new path version (for example `/v2/...`) or
   - a migration window with explicit dual-mode support.
 - Cross-repo conformance vectors must be updated in lockstep with this contract.
+
+## Operations
+
+- Key rotation + cert rotation procedure: `docs/security/SIGNER_PROXY_ROTATION_RUNBOOK.md`
