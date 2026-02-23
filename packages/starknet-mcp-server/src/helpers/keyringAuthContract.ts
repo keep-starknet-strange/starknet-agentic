@@ -93,6 +93,9 @@ export function buildKeyringSigningPayload(args: {
 }
 
 export class InMemoryNonceStore implements KeyringAuthNonceStore {
+  // This in-process store is for local/dev use only.
+  // Multi-instance production deployments must use an external atomic store
+  // (for example Redis SET NX EX) to avoid replay races across workers.
   private readonly nonceExpirations = new Map<string, number>();
   private readonly cleanupEvery: number;
   private consumeCount = 0;
@@ -103,11 +106,8 @@ export class InMemoryNonceStore implements KeyringAuthNonceStore {
 
   async consumeOnce(key: string, ttlSeconds: number, nowMs: number): Promise<boolean> {
     const existingExpiration = this.nonceExpirations.get(key);
-    if (existingExpiration !== undefined) {
-      if (existingExpiration > nowMs) {
-        return false;
-      }
-      this.nonceExpirations.delete(key);
+    if (existingExpiration !== undefined && existingExpiration > nowMs) {
+      return false;
     }
 
     this.consumeCount += 1;
@@ -143,8 +143,9 @@ export async function validateKeyringRequestAuth(
         ]
       : []
   ).filter((secret) => typeof secret === "string" && secret.length > 0);
+  const uniqueClientSecrets = [...new Set(clientSecrets)];
 
-  if (!client || clientSecrets.length === 0) {
+  if (!client || uniqueClientSecrets.length === 0) {
     return fail("AUTH_INVALID_CLIENT", "Unknown keyring client");
   }
 
@@ -169,7 +170,7 @@ export async function validateKeyringRequestAuth(
     return fail("AUTH_TIMESTAMP_SKEW", "Timestamp outside allowed drift window");
   }
 
-  if (!nonce || nonce.length > 256) {
+  if (!nonce || nonce.length === 0 || nonce.length > 256) {
     return fail("AUTH_INVALID_HMAC", "Invalid X-Keyring-Nonce");
   }
   if (!signatureRaw || !isHex(signatureRaw)) {
@@ -184,12 +185,14 @@ export async function validateKeyringRequestAuth(
     rawBody: input.rawBody,
   });
   const suppliedSignature = signatureRaw.toLowerCase();
-  let hmacMatchedFlag = 0;
-  for (const secret of clientSecrets) {
+  const HMAC_COMPARE_FLOOR = 4;
+  const compareCount = Math.max(HMAC_COMPARE_FLOOR, uniqueClientSecrets.length);
+  let hmacMatched = false;
+  for (let i = 0; i < compareCount; i += 1) {
+    const secret = uniqueClientSecrets[i] ?? "__keyring_dummy_secret__";
     const expectedSignature = createHmac("sha256", secret).update(signingPayload).digest("hex");
-    hmacMatchedFlag |= Number(constantTimeHexEqual(suppliedSignature, expectedSignature));
+    hmacMatched = hmacMatched || constantTimeHexEqual(suppliedSignature, expectedSignature);
   }
-  const hmacMatched = hmacMatchedFlag === 1;
   if (!hmacMatched) {
     return fail("AUTH_INVALID_HMAC", "HMAC verification failed");
   }

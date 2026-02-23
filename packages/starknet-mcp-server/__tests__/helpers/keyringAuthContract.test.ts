@@ -188,6 +188,84 @@ describe("keyring auth contract", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("accepts duplicated rotated secrets without false negatives", async () => {
+    const nowMs = 1_770_984_000_000;
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonce = "nonce-rotated-dupe";
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret: "next-secret",
+    });
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "mcp-tests",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: {
+        "mcp-tests": { hmacSecrets: ["current-secret", "next-secret", "next-secret"] },
+      },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects empty nonces", async () => {
+    const nowMs = 1_770_984_000_000;
+    const secret = "super-secret";
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonce = "";
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret,
+    });
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "mcp-tests",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: { "mcp-tests": { hmacSecret: secret } },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorCode).toBe("AUTH_INVALID_HMAC");
+    }
+  });
+
   it("fails closed when mTLS is required but unavailable", async () => {
     const nowMs = 1_770_984_000_000;
     const secret = "super-secret";
