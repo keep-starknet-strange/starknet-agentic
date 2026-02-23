@@ -3,6 +3,7 @@
     {
       "id": "1113371",
       "package": "minimatch",
+      "advisoryUrl": "https://npmjs.com/advisories/1113371",
       "threatModelEntry": "ADV-1113371-MINIMATCH",
       "scope": "dev-tooling-only",
       "reason": "Transitive dev-tooling advisory; no user-controlled glob patterns are processed in production runtime paths.",
