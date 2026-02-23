@@ -53,8 +53,21 @@ function resolveContractAddresses(network) {
     reputation: process.env.ERC8004_REPUTATION_REGISTRY_ADDRESS,
     validation: process.env.ERC8004_VALIDATION_REGISTRY_ADDRESS,
   };
+  const providedOverrideKeys = Object.entries(overrideAddresses)
+    .filter(([, value]) => value !== undefined && String(value).trim().length > 0)
+    .map(([key]) => key);
 
-  if (overrideAddresses.identity && overrideAddresses.reputation && overrideAddresses.validation) {
+  if (providedOverrideKeys.length > 0 && providedOverrideKeys.length < 3) {
+    const requiredKeys = ["identity", "reputation", "validation"];
+    const missingKeys = requiredKeys.filter((key) => !providedOverrideKeys.includes(key));
+    throw new Error(
+      `Partial ERC-8004 address override detected. Missing: ${missingKeys.join(
+        ", "
+      )}. Set all three of ERC8004_IDENTITY_REGISTRY_ADDRESS, ERC8004_REPUTATION_REGISTRY_ADDRESS, and ERC8004_VALIDATION_REGISTRY_ADDRESS.`
+    );
+  }
+
+  if (providedOverrideKeys.length === 3) {
     return {
       addresses: {
         identity: normalizeAddress(overrideAddresses.identity),
@@ -78,12 +91,24 @@ function resolveContractAddresses(network) {
 }
 
 async function readOwner(provider, contractAddress) {
-  const result = await provider.callContract({
-    contractAddress,
-    entrypoint: "owner",
-    calldata: [],
-  });
-  return normalizeAddress(result[0]);
+  try {
+    const result = await provider.callContract({
+      contractAddress,
+      entrypoint: "owner",
+      calldata: [],
+    });
+
+    if (!Array.isArray(result) || result.length === 0) {
+      throw new Error("owner() returned no values");
+    }
+
+    return normalizeAddress(result[0]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `owner() call failed for ${normalizeAddress(contractAddress)}: ${message}`
+    );
+  }
 }
 
 async function main() {
@@ -110,9 +135,23 @@ async function main() {
   console.log("");
 
   const ownerRows = [];
+  const readFailures = [];
   for (const [name, address] of Object.entries(addresses)) {
-    const owner = await readOwner(provider, address);
-    ownerRows.push({ name, address: normalizeAddress(address), owner });
+    const normalizedAddress = normalizeAddress(address);
+    try {
+      const owner = await readOwner(provider, normalizedAddress);
+      ownerRows.push({ name, address: normalizedAddress, owner });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      readFailures.push({ name, address: normalizedAddress, message });
+    }
+  }
+
+  if (readFailures.length > 0) {
+    const failureSummary = readFailures
+      .map((failure) => `${failure.name} (${failure.address}): ${failure.message}`)
+      .join("; ");
+    throw new Error(`Failed to read owner from one or more registries: ${failureSummary}`);
   }
 
   for (const row of ownerRows) {
