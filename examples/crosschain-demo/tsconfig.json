@@ -14,7 +14,7 @@
     "skipLibCheck": true,
     "types": ["node"],
     "outDir": "dist",
-    "rootDir": ".",
+    "rootDir": "../..",
     "declaration": true,
     "sourceMap": true
   },
