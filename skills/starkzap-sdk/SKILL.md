@@ -84,7 +84,11 @@ const account = new Account({
   cairoVersion: "1",
 });
 
-const contract = new Contract(abi, process.env.CONTRACT_ADDRESS!, account);
+const contract = new Contract({
+  abi,
+  address: process.env.CONTRACT_ADDRESS!,
+  providerOrAccount: account,
+});
 await contract.call("balance_of", [account.address]); // read
 
 const tx = await account.execute([
