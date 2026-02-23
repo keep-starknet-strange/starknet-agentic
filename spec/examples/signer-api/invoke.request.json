@@ -15,6 +15,8 @@
     "requester": "starknet-mcp-server",
     "tool": "starknet_invoke_contract",
     "reason": "user approved contract invocation",
+    "actor": "starknet-mcp-server",
+    "requestId": "req-invoke-001",
     "traceId": "req-invoke-001"
   }
 }

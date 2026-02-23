@@ -27,6 +27,13 @@ type KeyringProxySignerConfig = {
   tlsCaPath?: string;
 };
 
+type KeyringSignAudit = {
+  policyDecision: "allow";
+  decidedAt: string;
+  keyId: string;
+  traceId: string;
+};
+
 type KeyringSignResponse = {
   signature: unknown[];
   signatureMode: "v2_snip12";
@@ -34,8 +41,9 @@ type KeyringSignResponse = {
   signerProvider?: "local" | "dfns";
   sessionPublicKey?: string;
   domainHash: string;
-  requestId?: string;
+  requestId: string;
   messageHash: string;
+  audit: KeyringSignAudit;
 };
 
 type MtlsClientMaterial = {
@@ -83,6 +91,10 @@ function formatProxyError(status: number, rawText: string): string {
 
 function isHexFelt(value: unknown): value is string {
   return typeof value === "string" && /^0x[0-9a-fA-F]+$/.test(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function feltEqualsHex(a: string, b: string): boolean {
@@ -190,6 +202,9 @@ export class KeyringProxySigner extends SignerInterface {
   ): Promise<Signature> {
     const validUntil = Math.floor(Date.now() / 1000) + this.config.sessionValiditySeconds;
     const requestedValidUntilHex = num.toHex(validUntil);
+    const timestamp = Date.now().toString();
+    const nonce = randomBytes(16).toString("hex");
+    const traceId = `kr-${timestamp}-${nonce}`;
     const requestPayload = {
       accountAddress: this.config.accountAddress,
       keyId: this.config.keyId,
@@ -207,12 +222,13 @@ export class KeyringProxySigner extends SignerInterface {
         requester: "starknet-mcp-server",
         tool: "account.execute",
         reason: "transaction signing request",
+        actor: "starknet-mcp-server",
+        requestId: traceId,
+        traceId,
       },
     };
 
     const rawBody = JSON.stringify(requestPayload);
-    const timestamp = Date.now().toString();
-    const nonce = randomBytes(16).toString("hex");
     const url = new URL(this.endpointPath, this.config.proxyUrl);
     const signingPayload = buildHmacPayload({
       timestamp,
@@ -277,6 +293,36 @@ export class KeyringProxySigner extends SignerInterface {
       if (!isHexFelt(parsed.domainHash) || !isHexFelt(parsed.messageHash)) {
         throw new Error(
           "Invalid signature response from keyring proxy: missing domainHash/messageHash"
+        );
+      }
+      if (!isNonEmptyString(parsed.requestId)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: requestId is required"
+        );
+      }
+      if (!parsed.audit || typeof parsed.audit !== "object") {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit object is required"
+        );
+      }
+      if (parsed.audit.policyDecision !== "allow") {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.policyDecision must be allow"
+        );
+      }
+      if (!isNonEmptyString(parsed.audit.decidedAt) || Number.isNaN(Date.parse(parsed.audit.decidedAt))) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.decidedAt must be an RFC3339 timestamp"
+        );
+      }
+      if (!isNonEmptyString(parsed.audit.keyId)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.keyId is required"
+        );
+      }
+      if (!isNonEmptyString(parsed.audit.traceId)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.traceId is required"
         );
       }
       const allowedSignerProviders = ["local", "dfns"] as const;

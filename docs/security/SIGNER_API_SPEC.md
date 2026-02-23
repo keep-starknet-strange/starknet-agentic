@@ -30,9 +30,9 @@ HMAC headers (all required):
 - `X-Keyring-Client-Id`
 - `X-Keyring-Timestamp`
 - `X-Keyring-Nonce`
-- `X-Keyring-Signature`
+- `X-Keyring-Signature` (HMAC-SHA256 digest encoded as lowercase hex)
 
-HMAC payload format (must match exactly):
+HMAC payload format (HMAC-SHA256, lowercase hex; must match exactly):
 - `<timestamp>.<nonce>.POST./v1/sign/session-transaction.<sha256(raw_json_body)>`
 
 mTLS:
@@ -80,13 +80,14 @@ Required request context fields:
 - `requester`
 - `tool`
 - `reason`
+- `actor`
+- `requestId`
+- `traceId`
 
 Recommended request context fields:
-- `traceId`
-- `actor`
 - `sessionId`
 
-Recommended response audit fields:
+Required response audit fields:
 - `policyDecision`
 - `decidedAt`
 - `keyId`

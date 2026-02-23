@@ -89,6 +89,13 @@ describe("KeyringProxySigner", () => {
         sessionPublicKey: "0x123",
         domainHash: "0x1",
         messageHash: "0x2",
+        requestId: "sign-req-001",
+        audit: {
+          policyDecision: "allow",
+          decidedAt: "2026-02-13T12:00:00Z",
+          keyId: "default",
+          traceId: "trace-001",
+        },
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -204,6 +211,13 @@ describe("KeyringProxySigner", () => {
         signerProvider: "dfns",
         domainHash: "0x1",
         messageHash: "0x2",
+        requestId: "sign-req-002",
+        audit: {
+          policyDecision: "allow",
+          decidedAt: "2026-02-13T12:00:00Z",
+          keyId: "default",
+          traceId: "trace-002",
+        },
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -236,6 +250,13 @@ describe("KeyringProxySigner", () => {
         sessionPublicKey: "0x123",
         domainHash: "0x1",
         messageHash: "0x2",
+        requestId: "sign-req-003",
+        audit: {
+          policyDecision: "allow",
+          decidedAt: "2026-02-13T12:00:00Z",
+          keyId: "default",
+          traceId: "trace-003",
+        },
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -268,6 +289,13 @@ describe("KeyringProxySigner", () => {
         sessionPublicKey: "0x456",
         domainHash: "0x1",
         messageHash: "0x2",
+        requestId: "sign-req-004",
+        audit: {
+          policyDecision: "allow",
+          decidedAt: "2026-02-13T12:00:00Z",
+          keyId: "default",
+          traceId: "trace-004",
+        },
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -300,6 +328,13 @@ describe("KeyringProxySigner", () => {
         sessionPublicKey: "0x123",
         domainHash: "0x1",
         messageHash: "0x2",
+        requestId: "sign-req-005",
+        audit: {
+          policyDecision: "allow",
+          decidedAt: "2026-02-13T12:00:00Z",
+          keyId: "default",
+          traceId: "trace-005",
+        },
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -334,6 +369,13 @@ describe("KeyringProxySigner", () => {
           sessionPublicKey: "0x123",
           domainHash: "0x1",
           messageHash: "0x2",
+          requestId: "sign-req-006",
+          audit: {
+            policyDecision: "allow",
+            decidedAt: "2026-02-13T12:00:00Z",
+            keyId: "default",
+            traceId: "trace-006",
+          },
         }),
       })
       .mockResolvedValueOnce({
@@ -346,6 +388,13 @@ describe("KeyringProxySigner", () => {
           sessionPublicKey: "0x456",
           domainHash: "0x1",
           messageHash: "0x2",
+          requestId: "sign-req-007",
+          audit: {
+            policyDecision: "allow",
+            decidedAt: "2026-02-13T12:00:00Z",
+            keyId: "default",
+            traceId: "trace-007",
+          },
         }),
       });
     vi.stubGlobal("fetch", fetchMock);
@@ -421,6 +470,13 @@ describe("KeyringProxySigner", () => {
               sessionPublicKey: "0x123",
               domainHash: "0x1",
               messageHash: "0x2",
+              requestId: "sign-req-008",
+              audit: {
+                policyDecision: "allow",
+                decidedAt: "2026-02-13T12:00:00Z",
+                keyId: "default",
+                traceId: "trace-008",
+              },
             })
           )
         );

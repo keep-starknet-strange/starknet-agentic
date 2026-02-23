@@ -15,6 +15,8 @@
     "requester": "starknet-mcp-server",
     "tool": "x402_starknet_sign_payment_required",
     "reason": "x402 payment settlement transfer",
+    "actor": "starknet-mcp-server",
+    "requestId": "req-x402-001",
     "traceId": "req-x402-001"
   }
 }
