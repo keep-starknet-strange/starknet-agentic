@@ -10,7 +10,7 @@ import { calculateSimilarity, escapeRegExp } from './parse-utils.js';
 const availableTokens = ['ETH', 'STRK', 'USDC', 'USDT', 'WBTC', 'DAI'];
 const knownActions = ['swap', 'send', 'transfer', 'deposit', 'withdraw', 'stake', 'unstake', 'claim', 'harvest', 'mint', 'burn', 'buy', 'sell', 'trade', 'bridge', 'lock', 'unlock', 'vote', 'propose', 'execute', 'cancel', 'approve', 'check', 'get', 'view', 'read', 'query', 'watch', 'balance', 'allowance'];
 
-function parseOperation(segment, availableTokens = [], previousOp = null, knownActions = []) {
+function parseOperation(segment, tokenUniverse = [], previousOp = null, actionUniverse = []) {
   const doc = nlp(segment);
   
   // Check for WATCH patterns
@@ -33,11 +33,11 @@ function parseOperation(segment, availableTokens = [], previousOp = null, knownA
   let action = rawAction;
   let actionCorrected = false;
   
-  if (knownActions.length > 0 && rawAction) {
+  if (actionUniverse.length > 0 && rawAction) {
     let bestMatch = null;
     let bestScore = 0;
     
-    for (const knownAction of knownActions) {
+    for (const knownAction of actionUniverse) {
       const score = calculateSimilarity(rawAction, knownAction);
       if (score > bestScore && score >= 25) { // Lowered threshold for typo tolerance
         bestScore = score;
@@ -68,9 +68,10 @@ function parseOperation(segment, availableTokens = [], previousOp = null, knownA
   
   // Extract tokenIn - prefer exact matches
   let tokenIn = null;
+  let inferredTokenIn = false;
   
   // First try exact matches (case insensitive)
-  for (const token of availableTokens) {
+  for (const token of tokenUniverse) {
     const tokenPattern = new RegExp(`\\b${escapeRegExp(token)}\\b`, 'i');
     if (tokenPattern.test(text)) {
       tokenIn = token;
@@ -81,6 +82,7 @@ function parseOperation(segment, availableTokens = [], previousOp = null, knownA
   // INFERENCE from previous operation
   if (!tokenIn && previousOp && (previousOp.tokenOut || previousOp.tokenIn)) {
     tokenIn = previousOp.tokenOut || previousOp.tokenIn;
+    inferredTokenIn = true;
   }
   
   // Check for pronouns
@@ -88,11 +90,11 @@ function parseOperation(segment, availableTokens = [], previousOp = null, knownA
   
   // Extract tokenOut
   let tokenOut = null;
-  const toMatch = doc.match('to [#Noun]');
-  if (toMatch.found) {
-    const candidate = toMatch.nouns(0).out('text').toUpperCase();
+  const toMatch = text.match(/\bto\s+([A-Za-z0-9._-]{2,16})\b/i);
+  if (toMatch && toMatch[1]) {
+    const candidate = toMatch[1].toUpperCase().replace(/[^A-Z0-9]/g, '');
     // Validate against available tokens
-    for (const token of availableTokens) {
+    for (const token of tokenUniverse) {
       if (token === candidate) {
         tokenOut = candidate;
         break;
@@ -107,9 +109,10 @@ function parseOperation(segment, availableTokens = [], previousOp = null, knownA
     protocol = prepMatch.nouns(0).out('text');
   }
   
-  // INFERENCE from reference
+  // INFERENCE from references such as "stake it"
   if (!tokenIn && isReference && previousOp && (previousOp.tokenOut || previousOp.tokenIn)) {
     tokenIn = previousOp.tokenOut || previousOp.tokenIn;
+    inferredTokenIn = true;
   }
   
   const isRead = /^(balance|get|check|view|read|query|allowance|name|symbol|decimals|total)/i.test(action);
@@ -124,20 +127,20 @@ function parseOperation(segment, availableTokens = [], previousOp = null, knownA
     isReference, 
     isRead,
     actionCorrected,
-    inferred: (!tokenIn && previousOp) ? { tokenIn: true } : undefined
+    inferred: inferredTokenIn ? { tokenIn: true } : undefined
   };
 }
 
-function parsePrompt(prompt, availableTokens = [], knownActions = []) {
+function parsePrompt(prompt, tokenUniverse = [], actionUniverse = []) {
   const operations = [];
-  const segments = prompt.split(/\b(then|and|after|next)\b|,|;|\./i);
+  const segments = prompt.split(/\b(?:then|and|after|next)\b|,|;/i);
   
   for (const seg of segments) {
     const s = seg.trim();
     if (!s || /^(then|and|after|next)$/i.test(s)) continue;
     
     const previousOp = operations.length > 0 ? operations[operations.length - 1] : null;
-    const op = parseOperation(s, availableTokens, previousOp, knownActions);
+    const op = parseOperation(s, tokenUniverse, previousOp, actionUniverse);
     if (!op) continue;
     
     if (op.isReference && previousOp) {
@@ -165,7 +168,23 @@ const testPrompts = [
   "bridge 20 STRK to Ethereum"
 ];
 
+const expectations = [
+  (result) => result.operations.length === 1 && result.operations[0].action === 'swap' && result.operations[0].tokenIn === 'ETH' && result.operations[0].tokenOut === 'STRK',
+  (result) => result.operations.length >= 2 && result.operations[0].action === 'swap' && result.operations[1].action === 'deposit',
+  (result) => result.operations.length === 1 && ['swp', 'swap'].includes(result.operations[0].action),
+  (result) => result.operations.length === 1 && ['trasnfer', 'transfer'].includes(result.operations[0].action) && result.operations[0].tokenIn === 'STRK',
+  (result) => result.operations.length === 1 && result.operations[0].isRead === true,
+  (result) => result.operations.length >= 2 && result.operations[1].isReference === true && result.operations[1].action === 'stake',
+  (result) => result.operations.length >= 2 && result.operations[1].isReference === true && result.operations[1].action === 'sell',
+  (result) => result.operations.length === 1 && result.operations[0].action === 'deposit',
+  (result) => result.operations.length === 1 && result.operations[0].amount === 'all',
+  (result) => result.operations.length === 1 && result.operations[0].action === 'bridge'
+];
+
 console.log("=== PARSING TEST RESULTS ===\n");
+let passed = 0;
+let failed = 0;
+const failures = [];
 
 for (let i = 0; i < testPrompts.length; i++) {
   const prompt = testPrompts[i];
@@ -183,5 +202,19 @@ for (let i = 0; i < testPrompts.length; i++) {
     console.log(`     isReference: ${op.isReference}`);
     console.log(`     actionCorrected: ${op.actionCorrected}`);
   });
+  const ok = expectations[i] ? expectations[i](result) : true;
+  if (ok) {
+    passed += 1;
+  } else {
+    failed += 1;
+    failures.push({ prompt, result });
+  }
+  console.log(`Assertion: ${ok ? 'PASS' : 'FAIL'}`);
   console.log('');
+}
+
+console.log(`Summary: ${passed} passed, ${failed} failed`);
+if (failed > 0) {
+  console.log(JSON.stringify({ failed, failures }, null, 2));
+  process.exit(1);
 }

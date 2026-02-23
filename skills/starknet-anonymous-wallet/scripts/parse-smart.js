@@ -57,7 +57,7 @@ function attestIssue() {
     writeFileSync(p, JSON.stringify({ createdAt: now, expiresAt: now + ATTEST_TTL_MS }), 'utf8');
   } catch (err) {
     // If we can't write, still return token; resolve will fail closed.
-    console.error(`Failed to write attestation for token ${token} in ${ATTEST_DIR}: ${err.message}`);
+    console.error(`Failed to write attestation file in ${ATTEST_DIR}: ${err.message}`);
   }
   return token;
 }
@@ -220,7 +220,7 @@ function validatePromptSecurity(prompt) {
 
     { pattern: /\bthen\s+(run|execute)\b\s*:/i, threat: 'command_injection' },
     { pattern: /\b(openclaw|crontab|curl|wget)\b/i, threat: 'tool_invocation' },
-    { pattern: /[;&|]{1,2}/, threat: 'shell_metachar' },
+    { pattern: /(?:&&|\|\||;|`|\$\()/, threat: 'shell_metachar' },
 
     // Structured payload injection
     { pattern: /"parsed"\s*:/i, threat: 'structured_injection' },
@@ -321,6 +321,15 @@ function extractTokensAndProtocols(prompt, availableTokens, knownProtocols) {
   }
   
   return { tokens: foundTokens, protocols: foundProtocols };
+}
+
+function extractProtocolMentions(prompt) {
+  const found = [];
+  const regex = /\b(?:at|on|via|in)\s+([A-Za-z][A-Za-z0-9_-]{1,63})\b/gi;
+  for (const match of prompt.matchAll(regex)) {
+    if (match[1]) found.push(match[1]);
+  }
+  return found;
 }
 
 // ============ MAIN ============
@@ -592,13 +601,11 @@ async function main() {
   }
   
   // Step 6: Check for unregistered protocols (AVNU is now treated as registered)
-  const mentionedProtocols = extractTokensAndProtocols(
-    prompt,
-    [],
-    prompt.toLowerCase().match(/\b(?:at|on|via|in)\s+([A-Za-z]+)/gi)?.map(m => m.split(/\s+/)[1]) || []
-  );
-  
-  const unregistered = mentionedProtocols.protocols.filter(p => {
+  const mentionedProtocolCandidates = [
+    ...new Set([...protocols, ...extractProtocolMentions(prompt)])
+  ];
+
+  const unregistered = mentionedProtocolCandidates.filter(p => {
     // Skip AVNU - it's treated as a special but registered protocol
     if (p.toLowerCase() === 'avnu') return false;
     return !knownProtocols.some(kp => kp.toLowerCase() === p.toLowerCase());

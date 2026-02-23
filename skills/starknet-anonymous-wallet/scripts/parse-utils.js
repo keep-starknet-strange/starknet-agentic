@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 function tokenize(value) {
   return String(value || '')
     .replace(/([A-Z])/g, '_$1')
@@ -44,7 +42,7 @@ export function calculateSimilarity(query, target) {
     }
   }
 
-  return score;
+  return Math.min(100, Math.round(score));
 }
 
 export function escapeRegExp(value) {

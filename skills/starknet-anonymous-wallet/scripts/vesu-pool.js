@@ -28,6 +28,7 @@ import { fetchVerifiedTokens } from './_tokens.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const SKILL_ROOT = join(__dirname, '..');
+const DENOMINATION_ASSETS = '1';
 
 function isHexAddress(v) {
   return typeof v === 'string' && /^0x[0-9a-fA-F]+$/.test(v);
@@ -489,6 +490,14 @@ async function main() {
     console.log(JSON.stringify({ success: false, error: 'Missing collateralAmount (or amount alias)' }));
     process.exit(1);
   }
+  if (!collateralInfo || !debtInfo) {
+    console.log(JSON.stringify({
+      success: false,
+      error: `Token resolution failed for action=${action}`,
+      nextStep: 'CHOOSE_TOKEN'
+    }));
+    process.exit(1);
+  }
 
   const collateralBase = parseAmountToBaseUnits(collateralAmountHuman, collateralInfo.decimals);
   const debtBase = parseAmountToBaseUnits(debtAmountHuman, debtInfo.decimals);
@@ -533,10 +542,10 @@ async function main() {
     toFelt(collateralInfo.address),  // collateral_asset
     toFelt(debtInfo.address),        // debt_asset
     toFelt(user),                    // user
-    '1',                             // collateral.denomination (Assets = 1)
+    DENOMINATION_ASSETS,             // collateral.denomination (Assets)
     cLow,                            // collateral.value.low
     cHigh,                           // collateral.value.high
-    '1',                             // debt.denomination (Assets = 1)
+    DENOMINATION_ASSETS,             // debt.denomination (Assets)
     dLow,                            // debt.value.low
     dHigh                            // debt.value.high
   ];

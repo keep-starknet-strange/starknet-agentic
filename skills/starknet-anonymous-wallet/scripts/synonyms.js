@@ -97,6 +97,22 @@ export const ALL_SYNONYMS = {
 // Reverse lookup for all
 export const REVERSE_SYNONYMS = buildReverseMap(ALL_SYNONYMS);
 
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeVariant(value) {
+  return String(value || '').toLowerCase().trim().replace(/\s+/g, '_');
+}
+
+function hasBoundaryMatch(target, variant) {
+  const candidate = normalizeVariant(variant);
+  if (!candidate || candidate.length < 3) return false;
+  const lowerTarget = String(target || '').toLowerCase();
+  const pattern = new RegExp(`(^|[_:])${escapeRegExp(candidate)}($|[_:])`);
+  return pattern.test(lowerTarget);
+}
+
 // Function to find canonical action
 export function findCanonicalAction(action, abiFunctions = []) {
   const lowerAction = String(action || '').toLowerCase();
@@ -120,13 +136,13 @@ export function findCanonicalAction(action, abiFunctions = []) {
     // Check variant matches
     const variants = ALL_SYNONYMS[canonical] || [];
     for (const variant of [canonical, ...variants]) {
-      const match = abiFunctions.find(f => f.toLowerCase().includes(variant.toLowerCase()));
+      const match = abiFunctions.find(f => hasBoundaryMatch(f, variant));
       if (match) return match;
     }
   }
   
-  // 3. Partial match in ABI (fallback)
-  return abiFunctions.find(f => f.toLowerCase().includes(lowerAction));
+  // 3. Token-boundary fallback in ABI
+  return abiFunctions.find(f => hasBoundaryMatch(f, lowerAction));
 }
 
 export default {

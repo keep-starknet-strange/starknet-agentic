@@ -678,7 +678,18 @@ async function main() {
           // If no contractAddress provided, resolve from AVNU token list.
           if (!contractAddress && String(op.action).toLowerCase() === 'transfer') {
             const symbol = op.tokenIn || op.protocol; // allow either
-            const tokenInfo = await findTokenFallback(symbol);
+            let tokenInfo = null;
+            try {
+              tokenInfo = await findTokenFallback(symbol);
+            } catch (err) {
+              errors.push({
+                index: i,
+                type: 'TOKEN_LOOKUP_FAILED',
+                symbol,
+                message: err?.message || String(err)
+              });
+              continue;
+            }
             if (!tokenInfo?.address) {
               errors.push({ index: i, type: 'UNKNOWN_TOKEN', symbol, message: `Token ${symbol} not found in AVNU verified tokens` });
             } else {
@@ -969,10 +980,12 @@ async function main() {
             const durationMs = tc.unit?.startsWith('minute') ? tc.amount * 60 * 1000 :
                               tc.unit?.startsWith('hour') ? tc.amount * 60 * 60 * 1000 :
                               tc.amount * 1000; // default to seconds
+            const scheduleProtocol = String(watchProtocol || 'watch').toLowerCase();
+            const scheduleEvent = String(w.condition?.eventName || w.eventName || 'event').toLowerCase();
             
             watcherConfig.args.schedule = {
               enabled: true,
-              name: `${watchProtocol.toLowerCase()}-${w.condition.eventName.toLowerCase()}-monitor`,
+              name: `${scheduleProtocol}-${scheduleEvent}-monitor`,
               durationMs: durationMs
             };
           }
@@ -1043,7 +1056,11 @@ async function main() {
       };
     }
     
-    if (result.canProceed !== false) {
+    if (!result.executionPlan && result.canProceed !== false) {
+      result.canProceed = false;
+      result.nextStep = "UNSUPPORTED_OPERATION_TYPE";
+      result.error = `Unsupported operationType: ${operationType}`;
+    } else if (result.canProceed !== false) {
       result.canProceed = true;
       result.nextStep = "USER_AUTHORIZATION";
       result.authorizationDetails = {

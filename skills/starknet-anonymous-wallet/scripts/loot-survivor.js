@@ -21,7 +21,7 @@
  */
 
 import { RpcProvider, Account, Contract, CallData, shortString, hash } from 'starknet';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, openSync, closeSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { resolveRpcUrl } from './_rpc.js';
@@ -36,6 +36,53 @@ const ADDRS = {
 // Local UX state: latest adventurer id per account
 const LOOT_STATE_DIR = join(homedir(), '.openclaw', 'typhoon-loot-survivor');
 const LOOT_STATE_FILE = join(LOOT_STATE_DIR, 'latest.json');
+const LOOT_STATE_TMP_FILE = join(LOOT_STATE_DIR, 'latest.json.tmp');
+const LOOT_STATE_LOCK_FILE = join(LOOT_STATE_DIR, '.latest.lock');
+
+function sleepBusy(ms) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    // busy wait (short lock contention windows only)
+  }
+}
+
+function withLootStateLock(fn) {
+  mkdirSync(LOOT_STATE_DIR, { recursive: true });
+  const deadlineMs = Date.now() + 1000;
+  let lockFd = null;
+  while (lockFd === null) {
+    try {
+      lockFd = openSync(LOOT_STATE_LOCK_FILE, 'wx');
+    } catch (err) {
+      if (err?.code !== 'EEXIST' || Date.now() >= deadlineMs) {
+        throw err;
+      }
+      sleepBusy(20);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    try { closeSync(lockFd); } catch {}
+    try { unlinkSync(LOOT_STATE_LOCK_FILE); } catch {}
+  }
+}
+
+function lootStateMutate(accountAddress, mutateEntry) {
+  if (!accountAddress) return;
+  try {
+    withLootStateLock(() => {
+      const map = lootStateLoad();
+      const entry = lootStateGetEntry(map, accountAddress);
+      mutateEntry(entry);
+      lootStateWriteEntry(map, accountAddress, entry);
+      writeFileSync(LOOT_STATE_TMP_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
+      renameSync(LOOT_STATE_TMP_FILE, LOOT_STATE_FILE);
+    });
+  } catch {
+    // best-effort
+  }
+}
 
 function lootStateLoad() {
   try {
@@ -80,30 +127,16 @@ function lootStateGetPending(accountAddress) {
 
 function lootStateSetLatest(accountAddress, adventurerId) {
   if (accountAddress == null || adventurerId == null || adventurerId === '') return;
-  try {
-    mkdirSync(LOOT_STATE_DIR, { recursive: true });
-    const map = lootStateLoad();
-    const entry = lootStateGetEntry(map, accountAddress);
+  lootStateMutate(accountAddress, (entry) => {
     entry.latestAdventurerId = String(adventurerId);
-    lootStateWriteEntry(map, accountAddress, entry);
-    writeFileSync(LOOT_STATE_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
-  } catch {
-    // best-effort
-  }
+  });
 }
 
 function lootStateSetPending(accountAddress, pending) {
   if (!accountAddress) return;
-  try {
-    mkdirSync(LOOT_STATE_DIR, { recursive: true });
-    const map = lootStateLoad();
-    const entry = lootStateGetEntry(map, accountAddress);
+  lootStateMutate(accountAddress, (entry) => {
     entry.pendingEncounter = Boolean(pending);
-    lootStateWriteEntry(map, accountAddress, entry);
-    writeFileSync(LOOT_STATE_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
-  } catch {
-    // best-effort
-  }
+  });
 }
 
 function loadPersistedAdventurerId(accountAddress) {
@@ -436,6 +469,43 @@ async function main() {
     return id;
   };
 
+  const runEncounterMode = async ({
+    modeName,
+    entrypoint,
+    optionField,
+    optionValue,
+    choicePrompt
+  }) => {
+    const adventurerId = ensuredAdventurerId(input.adventurerId);
+    const tx = await invoke(account, ADDRS.GAME, entrypoint, [
+      toU64(adventurerId, 'adventurerId'),
+      optionValue ? '1' : '0'
+    ]);
+    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
+
+    const postState = await readGameState(provider, adventurerId);
+    const summary = buildSummaryFromGameState(postState);
+    const inEncounter = isBeastEncounter(summary);
+    if (accountAddress) lootStateSetPending(accountAddress, inEncounter);
+
+    const out = {
+      success: true,
+      mode: modeName,
+      adventurerId,
+      [optionField]: optionValue,
+      ...tx,
+      postState,
+      summary
+    };
+    if (inEncounter) {
+      out.nextStep = 'USER_CHOICE';
+      out.choices = ['attack', 'flee'];
+      out.choicePrompt = choicePrompt;
+      out.beastStats = extractBeastStats(postState);
+    }
+    console.log(JSON.stringify(out, null, 2));
+  };
+
   if (mode === 'start_game') {
     const adventurerId = ensuredAdventurerId(input.adventurerId);
     const weapon = input.weapon ?? 0;
@@ -453,75 +523,38 @@ async function main() {
   }
 
   if (mode === 'explore') {
-    const adventurerId = ensuredAdventurerId(input.adventurerId);
     const tillBeast = toBool(input.tillBeast, false);
-    const tx = await invoke(account, ADDRS.GAME, 'explore', [toU64(adventurerId, 'adventurerId'), tillBeast ? '1' : '0']);
-    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
-
-    const postState = await readGameState(provider, adventurerId);
-    const summary = buildSummaryFromGameState(postState);
-
-    // If exploration resulted in a beast encounter, prompt user to attack or flee.
-    const beastEncounter = isBeastEncounter(summary);
-    if (accountAddress) lootStateSetPending(accountAddress, beastEncounter);
-
-    const out = { success: true, mode, adventurerId, tillBeast, ...tx, postState, summary };
-    if (beastEncounter) {
-      out.nextStep = 'USER_CHOICE';
-      out.choices = ['attack', 'flee'];
-      out.choicePrompt = 'Beast encountered. Do you want to attack or flee?';
-      out.beastStats = extractBeastStats(postState);
-    }
-
-    console.log(JSON.stringify(out, null, 2));
+    await runEncounterMode({
+      modeName: mode,
+      entrypoint: 'explore',
+      optionField: 'tillBeast',
+      optionValue: tillBeast,
+      choicePrompt: 'Beast encountered. Do you want to attack or flee?'
+    });
     return;
   }
 
   if (mode === 'attack') {
-    const adventurerId = ensuredAdventurerId(input.adventurerId);
     const toTheDeath = toBool(input.toTheDeath, false);
-    const tx = await invoke(account, ADDRS.GAME, 'attack', [toU64(adventurerId, 'adventurerId'), toTheDeath ? '1' : '0']);
-    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
-
-    const postState = await readGameState(provider, adventurerId);
-    const summary = buildSummaryFromGameState(postState);
-
-    const stillEncounter = isBeastEncounter(summary);
-    if (accountAddress) lootStateSetPending(accountAddress, stillEncounter);
-
-    const out = { success: true, mode, adventurerId, toTheDeath, ...tx, postState, summary };
-    if (stillEncounter) {
-      out.nextStep = 'USER_CHOICE';
-      out.choices = ['attack', 'flee'];
-      out.choicePrompt = 'Combat continues. Do you want to attack again or flee?';
-      out.beastStats = extractBeastStats(postState);
-    }
-
-    console.log(JSON.stringify(out, null, 2));
+    await runEncounterMode({
+      modeName: mode,
+      entrypoint: 'attack',
+      optionField: 'toTheDeath',
+      optionValue: toTheDeath,
+      choicePrompt: 'Combat continues. Do you want to attack again or flee?'
+    });
     return;
   }
 
   if (mode === 'flee') {
-    const adventurerId = ensuredAdventurerId(input.adventurerId);
     const toTheDeath = toBool(input.toTheDeath, false);
-    const tx = await invoke(account, ADDRS.GAME, 'flee', [toU64(adventurerId, 'adventurerId'), toTheDeath ? '1' : '0']);
-    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
-
-    const postState = await readGameState(provider, adventurerId);
-    const summary = buildSummaryFromGameState(postState);
-
-    const stillEncounter = isBeastEncounter(summary);
-    if (accountAddress) lootStateSetPending(accountAddress, stillEncounter);
-
-    const out = { success: true, mode, adventurerId, toTheDeath, ...tx, postState, summary };
-    if (stillEncounter) {
-      out.nextStep = 'USER_CHOICE';
-      out.choices = ['attack', 'flee'];
-      out.choicePrompt = 'You are still in combat. Do you want to attack or flee?';
-      out.beastStats = extractBeastStats(postState);
-    }
-
-    console.log(JSON.stringify(out, null, 2));
+    await runEncounterMode({
+      modeName: mode,
+      entrypoint: 'flee',
+      optionField: 'toTheDeath',
+      optionValue: toTheDeath,
+      choicePrompt: 'You are still in combat. Do you want to attack or flee?'
+    });
     return;
   }
 
