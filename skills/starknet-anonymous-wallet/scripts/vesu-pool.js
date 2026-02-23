@@ -17,7 +17,7 @@
  * }
  */
 
-import { Provider, Contract } from 'starknet';
+import { RpcProvider, Contract } from 'starknet';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -166,7 +166,7 @@ async function main() {
 
   const poolAddress = poolCfg.poolAddress;
 
-  const provider = new Provider({ nodeUrl: rpcUrl });
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
 
   // Resolve tokens
   // For Vesu modify_position we need collateral_asset + debt_asset.
@@ -482,13 +482,11 @@ async function main() {
   }
 
   // Amounts (execution path)
-  const collateralAmountHuman = action === 'borrow'
-    ? input.collateralAmount
-    : (input.collateralAmount ?? input.amount);
+  const collateralAmountHuman = input.collateralAmount ?? input.amount;
   const debtAmountHuman = action === 'borrow' ? input.debtAmount : '0';
 
   if (!collateralAmountHuman) {
-    console.log(JSON.stringify({ success: false, error: 'Missing collateralAmount (or amount for supply)' }));
+    console.log(JSON.stringify({ success: false, error: 'Missing collateralAmount (or amount alias)' }));
     process.exit(1);
   }
 

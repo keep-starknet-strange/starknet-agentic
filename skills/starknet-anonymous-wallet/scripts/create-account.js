@@ -67,11 +67,13 @@ function parseInput() {
       raw = fs.readFileSync(0, 'utf-8');
     } catch {
       printCreateAccountGuide('NO_INPUT');
+      return;
     }
   }
   
   if (!raw || !raw.trim()) {
     printCreateAccountGuide('EMPTY_INPUT');
+    return;
   }
 
   let notes;

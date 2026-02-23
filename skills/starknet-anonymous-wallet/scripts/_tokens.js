@@ -34,7 +34,13 @@ export async function fetchVerifiedTokens() {
     tokenCache = all;
     lastTokenFetch = now;
     return tokenCache;
-  } catch {
+  } catch (err) {
+    if (process.env.OPENCLAW_DEBUG === '1') {
+      console.error(JSON.stringify({
+        warning: 'Failed to fetch verified tokens from AVNU',
+        error: err?.message || String(err)
+      }));
+    }
     return tokenCache || [];
   }
 }

@@ -4,78 +4,11 @@
  */
 
 import nlp from 'compromise';
+import { calculateSimilarity, escapeRegExp } from './parse-utils.js';
 
 // Mock data
 const availableTokens = ['ETH', 'STRK', 'USDC', 'USDT', 'WBTC', 'DAI'];
 const knownActions = ['swap', 'send', 'transfer', 'deposit', 'withdraw', 'stake', 'unstake', 'claim', 'harvest', 'mint', 'burn', 'buy', 'sell', 'trade', 'bridge', 'lock', 'unlock', 'vote', 'propose', 'execute', 'cancel', 'approve', 'check', 'get', 'view', 'read', 'query', 'watch', 'balance', 'allowance'];
-
-function calculateSimilarity(query, target) {
-  const q = query.toLowerCase();
-  const t = target.toLowerCase();
-  
-  // Exact match
-  if (t === q) return 100;
-  
-  // One contains the other
-  if (t.includes(q)) return 70 + (q.length / t.length) * 20;
-  if (q.includes(t)) return 60 + (t.length / q.length) * 15;
-  
-  let score = 0;
-  
-  // Common starting substring bonus (important for typos like "swp" -> "swap")
-  let commonStart = 0;
-  for (let i = 0; i < Math.min(q.length, t.length); i++) {
-    if (q[i] === t[i]) {
-      commonStart++;
-    } else {
-      break;
-    }
-  }
-  score += commonStart * 5; // Increased bonus for matching start
-  
-  // Character-level matching
-  let common = 0;
-  const maxLen = Math.max(q.length, t.length);
-  if (maxLen > 0) {
-    let qi = 0;
-    for (let ti = 0; ti < t.length && qi < q.length; ti++) {
-      if (q[qi] === t[ti]) {
-        common++;
-        qi++;
-      }
-    }
-    score += (common / maxLen) * 25;
-  }
-  
-  // Token-based matching
-  const qTokens = q.split(/[_\-]+/).filter(Boolean);
-  const tTokens = t.split(/[_\-]+/).filter(Boolean);
-  
-  for (const qt of qTokens) {
-    for (const tt of tTokens) {
-      if (qt === tt) {
-        score += 30;
-      } else if (tt.includes(qt)) {
-        score += 20;
-      } else if (qt.includes(tt)) {
-        score += 15;
-      } else {
-        // Common substrings
-        for (let len = 2; len <= Math.min(qt.length, tt.length); len++) {
-          for (let i = 0; i <= qt.length - len; i++) {
-            const sub = qt.substring(i, i + len);
-            if (tt.includes(sub)) {
-              score += len * 1.5;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  return score;
-}
 
 function parseOperation(segment, availableTokens = [], previousOp = null, knownActions = []) {
   const doc = nlp(segment);
@@ -138,7 +71,7 @@ function parseOperation(segment, availableTokens = [], previousOp = null, knownA
   
   // First try exact matches (case insensitive)
   for (const token of availableTokens) {
-    const tokenPattern = new RegExp(`\\b${token}\\b`, 'i');
+    const tokenPattern = new RegExp(`\\b${escapeRegExp(token)}\\b`, 'i');
     if (tokenPattern.test(text)) {
       tokenIn = token;
       break;

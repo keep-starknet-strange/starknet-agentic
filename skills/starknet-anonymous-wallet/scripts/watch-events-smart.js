@@ -515,18 +515,24 @@ class SmartEventWatcher {
       const keys = this.eventNames.length > 0 
         ? this.eventNames.map(name => hash.getSelectorFromName(name))
         : undefined;
-      
-      const events = await this.provider.getEvents({
-        fromBlock: { block_number: blockNumber },
-        toBlock: { block_number: blockNumber },
-        address: this.contractAddress,
-        keys: keys ? [keys] : undefined,
-        chunk_size: 100
-      });
-      
-      for (const event of events.events || []) {
-        this.handleEvent(event, 'polling');
-      }
+
+      let continuationToken = undefined;
+      do {
+        const page = await this.provider.getEvents({
+          fromBlock: { block_number: blockNumber },
+          toBlock: { block_number: blockNumber },
+          address: this.contractAddress,
+          keys: keys ? [keys] : undefined,
+          chunk_size: 100,
+          continuation_token: continuationToken
+        });
+
+        for (const event of page.events || []) {
+          this.handleEvent(event, 'polling');
+        }
+
+        continuationToken = page.continuation_token;
+      } while (continuationToken);
     } catch (err) {
       log(`Block ${blockNumber} error: ${err.message}`, 'error');
     }

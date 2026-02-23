@@ -10,13 +10,13 @@
  * 5. Handles event watching with callbacks
  */
 
-import { Provider, CallData } from 'starknet';
+import { RpcProvider, CallData } from 'starknet';
 import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, mkdirSync } from 'fs';
 import { join, dirname, isAbsolute } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
-import { spawn } from 'child_process';
 import { findCanonicalAction, ALL_SYNONYMS } from './synonyms.js';
+import { calculateSimilarity } from './parse-utils.js';
 
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
@@ -141,11 +141,6 @@ function loadRegistry(filename) {
   return {};
 }
 
-function saveRegistry(filename, data) {
-  const filepath = join(SKILL_ROOT, filename);
-  writeFileSync(filepath, JSON.stringify(data, null, 2) + '\n');
-}
-
 function loadProtocols() {
   const registry = loadRegistry('protocols.json');
   const protocols = {};
@@ -235,15 +230,6 @@ function loadFriends() {
 // ============ CONFIGURATION (loaded from JSON files) ============
 // Loaded dynamically in main() to allow registration during execution
 
-// ============ HELPERS ============
-function tryParseJSON(str) {
-  try {
-    return JSON.parse(str);
-  } catch {
-    return null;
-  }
-}
-
 // ============ SECRETS MANAGEMENT (SINGLE ACCESS) ============
 function getSecretsDir() {
   return join(homedir(), '.openclaw', 'secrets', 'starknet');
@@ -302,47 +288,6 @@ function loadAccount(index = 0) {
 }
 
 // ============ ABI ANALYSIS ============
-function tokenize(str) {
-  return str.replace(/([A-Z])/g, '_$1').replace(/^_/, '').toLowerCase().split(/[_\-]+/).filter(Boolean);
-}
-
-function calculateSimilarity(query, target) {
-  const q = query.toLowerCase();
-  const t = target.toLowerCase();
-  
-  if (t === q) return 100;
-  if (t.includes(q)) return 70 + (q.length / t.length) * 20;
-  if (q.includes(t)) return 60 + (t.length / q.length) * 15;
-  
-  let score = 0;
-  const qTokens = tokenize(query);
-  const tTokens = tokenize(target);
-  const MAX_SUBSTRING_LEN = 6;
-  const MAX_SUBSTRING_STARTS = 12;
-  
-  for (const qt of qTokens) {
-    for (const tt of tTokens) {
-      if (qt === tt) score += 30;
-      else if (tt.includes(qt)) score += 20;
-      else if (qt.includes(tt)) score += 15;
-      else {
-        // Common substrings (bounded to avoid runaway O(n^3)-style costs)
-        const maxLen = Math.min(MAX_SUBSTRING_LEN, qt.length, tt.length);
-        for (let len = 3; len <= maxLen; len++) {
-          const maxStarts = Math.min(qt.length - len + 1, MAX_SUBSTRING_STARTS);
-          for (let i = 0; i < maxStarts; i++) {
-            if (tt.includes(qt.substring(i, i + len))) {
-              score += len * 2;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  return score;
-}
 
 function extractABIItems(abi) {
   const functions = [];
@@ -394,30 +339,6 @@ function isComplexAbiType(typeStr) {
     t.includes('tuple') ||
     t.includes('enum')
   );
-}
-
-function estimateCalldataLenFromInputs(inputs) {
-  if (!Array.isArray(inputs)) return null;
-  let n = 0;
-  for (const inp of inputs) {
-    const t = String(inp?.type || '').toLowerCase();
-    if (!t) return null;
-
-    // Complex types: skip strict length enforcement (avoid false positives)
-    if (isComplexAbiType(t)) {
-      return null;
-    }
-
-    // Cairo u256 / Uint256 is typically 2 felts
-    if (t === 'u256' || t.endsWith('::u256') || t.includes('uint256') || t.includes('core::integer::u256')) {
-      n += 2;
-      continue;
-    }
-
-    // Default: 1 felt
-    n += 1;
-  }
-  return n;
 }
 
 async function resolveFromABI(provider, contractAddress, query, type = 'function') {
@@ -480,21 +401,6 @@ async function getTokenBalance(provider, tokenAddress, accountAddress, decimals)
     }
   } catch {}
   return { raw: "0", human: "0" };
-}
-
-async function getTokenAllowance(provider, tokenAddress, owner, spender) {
-  try {
-    const result = await provider.callContract({
-      contractAddress: tokenAddress,
-      entrypoint: 'allowance',
-      calldata: [owner, spender]
-    });
-    const raw = Array.isArray(result) ? result : (result?.result || []);
-    if (raw.length >= 2) {
-      return BigInt(raw[0]) + (BigInt(raw[1]) << 128n);
-    }
-  } catch {}
-  return 0n;
 }
 
 function toUint256(n) {
@@ -644,7 +550,7 @@ async function main() {
     
     // Build execution plan based on operationType
     const rpcUrl = resolveRpcUrl();
-    const provider = new Provider({ nodeUrl: rpcUrl });
+    const provider = new RpcProvider({ nodeUrl: rpcUrl });
 
     if (operationType === "AVNU_SWAP") {
       const swapOp = operations[0];
@@ -700,7 +606,7 @@ async function main() {
           // Retry once with a fresh provider (some RPC hiccups manifest as stuck provider instances)
           try {
             const rpcUrl = resolveRpcUrl();
-            const p2 = new Provider({ nodeUrl: rpcUrl });
+            const p2 = new RpcProvider({ nodeUrl: rpcUrl });
             const resp2 = await p2.getClassAt(addr);
             a = resp2?.abi || [];
           } catch {
@@ -933,6 +839,7 @@ async function main() {
                 if (!String(inp.type || '').includes('ContractAddress')) continue;
                 const v = args[inp.name];
                 if (typeof v === 'string' && !v.startsWith('0x') && /^[A-Z0-9.]{2,12}$/.test(v)) {
+                  if (!avnuTokens) avnuTokens = await fetchVerifiedTokens();
                   const t = avnuTokens.find(x => String(x.symbol || '').toUpperCase() === v.toUpperCase());
                   if (t?.address) {
                     args[inp.name] = t.address;
@@ -940,8 +847,12 @@ async function main() {
                 }
               }
             }
-          } catch {
-            // best-effort
+          } catch (err) {
+            warnings.push({
+              step: i + 1,
+              type: 'TOKEN_SYMBOL_RESOLUTION_FAILED',
+              message: err?.message || String(err)
+            });
           }
 
           // Compile calldata using starknet.js (enforces types/shape better than our heuristics)
@@ -1158,74 +1069,6 @@ async function main() {
     hint: "Run parse-smart + LLM parsing first, then pass { parsed: {...} }"
   }));
   process.exit(1);
-}
-
-// Wait for user authorization from stdin
-async function waitForAuthorization(skipAuth = false) {
-  if (skipAuth) return true;
-  
-  return new Promise((resolve) => {
-    let input = '';
-    
-    process.stdin.setEncoding('utf8');
-    process.stdin.resume();
-    
-    process.stdin.on('data', (chunk) => {
-      input += chunk;
-      const trimmed = input.trim().toLowerCase();
-      
-      if (trimmed === 'yes' || trimmed === 'y') {
-        process.stdin.pause();
-        resolve(true);
-      } else if (trimmed === 'no' || trimmed === 'n' || trimmed === 'cancel') {
-        process.stdin.pause();
-        resolve(false);
-      }
-    });
-    
-    // Timeout after 5 minutes
-    setTimeout(() => {
-      process.stdin.pause();
-      resolve(false);
-    }, 300000);
-  });
-}
-
-// Execute a child script and return parsed JSON result
-async function executeScript(scriptPath, args, privateKey = null) {
-  const childEnv = privateKey
-    ? { ...process.env, PRIVATE_KEY: privateKey }
-    : process.env;
-  return new Promise((resolve, reject) => {
-    const child = spawn('node', [scriptPath, JSON.stringify(args)], {
-      cwd: __dirname,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: childEnv
-    });
-    
-    let stdout = '';
-    let stderr = '';
-    
-    child.stdout.on('data', (data) => { stdout += data; });
-    child.stderr.on('data', (data) => { stderr += data; });
-    
-    child.on('close', (code) => {
-      try {
-        const result = JSON.parse(stdout.trim());
-        resolve(result);
-      } catch (e) {
-        if (code !== 0) {
-          reject(new Error(stderr || `Script exited with code ${code}`));
-        } else {
-          reject(new Error(`Failed to parse script output: ${stdout}`));
-        }
-      }
-    });
-    
-    child.on('error', (err) => {
-      reject(err);
-    });
-  });
 }
 
 main().catch(err => {

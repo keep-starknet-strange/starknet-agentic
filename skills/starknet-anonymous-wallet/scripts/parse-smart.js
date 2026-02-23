@@ -138,6 +138,17 @@ function loadProtocols() {
   return protocols;
 }
 
+async function isContractDeployed(address) {
+  try {
+    const rpcUrl = resolveRpcUrl();
+    const provider = new RpcProvider({ nodeUrl: rpcUrl });
+    await provider.getClassHashAt(address);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ============ SECURITY VALIDATION ============
 function validatePromptSecurity(prompt) {
   // Use vard.safe() for basic validation
@@ -403,7 +414,7 @@ async function main() {
   
   // Step 2: Handle registration if provided
   if (register) {
-    const { type, name, address } = register;
+    const { type, name, address, force = false } = register;
     
     if (type === 'protocol') {
       if (!name || !/^[A-Za-z0-9_-]{2,64}$/.test(name)) {
@@ -420,6 +431,17 @@ async function main() {
           error: "Invalid protocol address format (expected 0x-prefixed hex)"
         }));
         process.exit(1);
+      }
+      if (!force) {
+        const deployed = await isContractDeployed(address);
+        if (!deployed) {
+          console.log(JSON.stringify({
+            success: false,
+            error: "Protocol address is not deployed on the configured network RPC",
+            hint: "Set register.force=true to bypass this check if you are registering ahead of deployment"
+          }));
+          process.exit(1);
+        }
       }
       
       const registry = loadRegistry('protocols.json');
@@ -615,7 +637,7 @@ async function main() {
     // AVNU gets fake ABI and address so LLM treats it like any protocol
     if (protocol.toLowerCase() === 'avnu') {
       addresses[protocol] = '0x01';  // Special marker address
-      abis[protocol] = ['swap'];     // Single function ABI
+      abis[protocol] = ['swap', 'quote', 'dca', 'stake', 'unstake', 'gasless', 'gasfree'];
       continue;
     }
 

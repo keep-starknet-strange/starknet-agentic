@@ -20,7 +20,7 @@
  * and accountAddress must be provided.
  */
 
-import { Provider, Account, Contract, CallData, shortString } from 'starknet';
+import { RpcProvider, Account, Contract, CallData, shortString, hash } from 'starknet';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -285,30 +285,47 @@ async function getReceipt(provider, txHash) {
 }
 
 function tryExtractMintedAdventurerIdFromReceipt(receipt) {
-  // Heuristic: look for ERC721 Transfer event that includes tokenId (u256) or felt.
-  // We do NOT assume exact layout; we just scan numeric-looking fields and pick plausible u64.
+  // Prefer ERC721 Transfer events and extract token id from event data.
   if (!receipt || !Array.isArray(receipt.events)) return null;
-  const candidates = [];
+  const transferSelector = hash.getSelectorFromName('Transfer');
+  const u64Max = 2n ** 64n - 1n;
+  const transferCandidates = [];
 
   for (const ev of receipt.events) {
+    const eventKey0 = Array.isArray(ev?.keys) ? String(ev.keys[0] || '') : '';
+    if (!eventKey0 || eventKey0.toLowerCase() !== transferSelector.toLowerCase()) {
+      continue;
+    }
+
     const data = ev?.data || [];
+    const preferredSlots = [];
+    if (data.length >= 3) preferredSlots.push(data[2]); // common ERC721 tokenId slot
+    if (data.length > 0) preferredSlots.push(data[data.length - 1]); // fallback to last slot
+
+    for (const x of preferredSlots) {
+      try {
+        const b = BigInt(x);
+        if (b >= 0n && b <= u64Max) return b.toString();
+      } catch {}
+    }
+
     for (const x of data) {
       try {
         const b = BigInt(x);
-        if (b >= 0n && b <= (2n ** 64n - 1n)) candidates.push(b);
+        if (b >= 0n && b <= u64Max) transferCandidates.push(b);
       } catch {}
     }
   }
 
-  // Prefer the largest u64-ish value (token ids are usually not tiny like 0/1)
-  candidates.sort((a, b) => (a > b ? -1 : a < b ? 1 : 0));
-  return candidates[0] ? candidates[0].toString() : null;
+  if (transferCandidates.length === 0) return null;
+  transferCandidates.sort((a, b) => (a > b ? -1 : a < b ? 1 : 0));
+  return transferCandidates[0].toString();
 }
 
 async function main() {
   const input = parseJsonArg();
   const rpcUrl = resolveRpcUrl();
-  const provider = new Provider({ nodeUrl: rpcUrl });
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
 
   const mode = input.mode;
   if (!mode) {
