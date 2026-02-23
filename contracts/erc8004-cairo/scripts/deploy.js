@@ -19,10 +19,37 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from .env file in project root
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-async function main() {
-  console.log("🚀 Deploying ERC-8004 Contracts to Sepolia\n");
-  console.log("═══════════════════════════════════════════════════════════════\n");
+function resolveNetworkMetadata(chainId) {
+  const normalizedChainId = typeof chainId === "bigint" ? `0x${chainId.toString(16)}` : String(chainId);
 
+  const networks = new Map([
+    [String(constants.StarknetChainId.SN_MAIN), {
+      slug: "mainnet",
+      label: "Starknet Mainnet",
+      voyagerContractBase: "https://voyager.online/contract/",
+    }],
+    [String(constants.StarknetChainId.SN_SEPOLIA), {
+      slug: "sepolia",
+      label: "Starknet Sepolia",
+      voyagerContractBase: "https://sepolia.voyager.online/contract/",
+    }],
+    [String(constants.StarknetChainId.SN_INTEGRATION_SEPOLIA), {
+      slug: "integration-sepolia",
+      label: "Starknet Integration Sepolia",
+      voyagerContractBase: "https://integration-sepolia.voyager.online/contract/",
+    }],
+  ]);
+
+  return (
+    networks.get(normalizedChainId) || {
+      slug: "custom",
+      label: `Custom network (${normalizedChainId})`,
+      voyagerContractBase: null,
+    }
+  );
+}
+
+async function main() {
   // Get configuration from environment variables
   const rpcUrl = process.env.STARKNET_RPC_URL;
   const accountAddress = process.env.DEPLOYER_ADDRESS;
@@ -51,6 +78,10 @@ async function main() {
 
   // Check that communication with provider is OK
   const chainId = await provider.getChainId();
+  const network = resolveNetworkMetadata(chainId);
+
+  console.log(`🚀 Deploying ERC-8004 Contracts to ${network.label}\n`);
+  console.log("═══════════════════════════════════════════════════════════════\n");
   console.log("🔗 Chain ID:", chainId);
 
   // starknet.js v9 Account constructor uses options object
@@ -170,7 +201,8 @@ async function main() {
 
   // ==================== SAVE DEPLOYMENT INFO ====================
   const deploymentInfo = {
-    network: "sepolia",
+    network: network.slug,
+    chainId: String(chainId),
     rpcUrl: rpcUrl,
     accountAddress: accountAddress,
     ownerAddress: accountAddress,
@@ -195,8 +227,8 @@ async function main() {
   const outputPath = path.join(__dirname, "..", "deployed_addresses.json");
   fs.writeFileSync(outputPath, JSON.stringify(deploymentInfo, null, 2));
 
-  const sepoliaOutputPath = path.join(__dirname, "..", "deployed_addresses_sepolia.json");
-  fs.writeFileSync(sepoliaOutputPath, JSON.stringify(deploymentInfo, null, 2));
+  const networkOutputPath = path.join(__dirname, "..", `deployed_addresses_${network.slug}.json`);
+  fs.writeFileSync(networkOutputPath, JSON.stringify(deploymentInfo, null, 2));
 
   // ==================== SUMMARY ====================
   console.log("╔════════════════════════════════════════════════════════════════╗");
@@ -210,11 +242,13 @@ async function main() {
   console.log("");
   console.log("📄 Deployment info saved to:");
   console.log("   - deployed_addresses.json");
-  console.log("   - deployed_addresses_sepolia.json");
+  console.log(`   - deployed_addresses_${network.slug}.json`);
   console.log("");
-  console.log("🔍 View on Voyager:");
-  console.log(`   https://sepolia.voyager.online/contract/${identityAddress}`);
-  console.log("");
+  if (network.voyagerContractBase) {
+    console.log("🔍 View on Voyager:");
+    console.log(`   ${network.voyagerContractBase}${identityAddress}`);
+    console.log("");
+  }
   console.log("🧪 To run E2E tests:");
   console.log("   cd e2e-tests && npm install && npm test");
   console.log("");

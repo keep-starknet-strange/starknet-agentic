@@ -21,7 +21,7 @@ This specification describes both implemented features and planned designs:
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Agent Account Contract | **Tested** | 110 tests across 4 test suites |
-| Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on Sepolia |
+| Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on Sepolia + Mainnet |
 | Huginn Registry Contract | **Functional** | Starknet-native reasoning registry at `contracts/huginn-registry/` |
 | MCP Server | **Production** | 9 tools implemented |
 | A2A Adapter | **Functional** | Basic implementation complete |
@@ -177,7 +177,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | Function | Solidity reference semantic | Cairo semantic | Status | Type | Notes |
 |----------|-----------------------------|----------------|--------|------|-------|
 | `validation_request` | Requester designates validator | Same semantic | Implemented | Parity | Includes reentrancy guard |
-| `validation_response` | Only designated validator can respond (0..100) | Same semantic | Implemented | Parity | Progressive updates allowed |
+| `validation_response` | Only designated validator can respond (0..100) | Same semantic | Implemented | Parity | Single immutable response per `request_hash` |
 | `get_validation_status` | Query by `requestHash`, return status tuple | Same semantic shape | Implemented | Parity | Returns zeroed response fields when not responded |
 | `get_summary` | `(count, avgResponse)` | Same semantic | Implemented | Parity |  |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
@@ -212,10 +212,10 @@ Recommended convention for cross-chain portability:
 
 ### 3.6 Operational Notes (Validation/Reputation)
 
-- Progressive overwrite behavior:
-  - `validation_response` is latest-state storage by design.
-  - A designated validator can update the response over time (progressive validation).
-  - Historical evolution is preserved in event logs, not in a full on-chain response history map.
+- Finalize-once validation behavior:
+  - `validation_response` is immutable per `request_hash`.
+  - A designated validator cannot overwrite a submitted response for the same request.
+  - Re-evaluation must use a new validation request (new `request_hash`).
 
 - Unbounded reads:
   - `get_agent_validations`, `get_validator_requests`, and full-list style accessors are O(n).
