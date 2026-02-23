@@ -320,7 +320,6 @@ mod SessionAccount {
             let signature = tx_info.signature;
             if signature.len() == 4 {
                 let session_pubkey = *signature.at(0);
-                assert(self._calls_avoid_self(calls.span()), 'Session: self-call blocked');
                 self.spending_policy.check_and_update_spending(session_pubkey, calls.span());
             }
 
