@@ -33,11 +33,14 @@ To preserve behavior for contracts upgraded from older classes that did not stor
 
 Owner-only entrypoints:
 
-- `get_session_signature_mode()`
 - `set_session_signature_mode(new_mode)`
 - `compute_session_message_hash(...)` (active mode)
 - `compute_session_message_hash_v1(...)`
 - `compute_session_message_hash_v2(...)`
+
+Public read-only entrypoint:
+
+- `get_session_signature_mode()`
 
 Session keys are blocked from calling mode/hash admin entrypoints by selector denylist.
 
