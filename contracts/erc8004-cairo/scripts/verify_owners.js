@@ -130,10 +130,10 @@ async function main() {
     console.log("✅ All three registries share the same owner address.");
   }
 
-  if (expectedOwner && distinctOwners[0] !== expectedOwner) {
+  if (expectedOwner && distinctOwners.length > 0 && distinctOwners[0] !== expectedOwner) {
     hasError = true;
     console.error(`❌ Expected owner mismatch: on-chain owner ${distinctOwners[0]} != ${expectedOwner}`);
-  } else if (expectedOwner) {
+  } else if (expectedOwner && distinctOwners.length > 0) {
     console.log("✅ On-chain owner matches EXPECTED_OWNER_ADDRESS.");
   }
 
