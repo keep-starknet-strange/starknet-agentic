@@ -131,12 +131,26 @@ describe("session signature vectors", () => {
       const signing = computeV2Hashes(vector.signingPayload);
       const verification = computeV2Hashes(vector.verificationPayload);
       const shouldVerify = signing.messageHash === verification.messageHash;
+      const expectedSigningDomainHash = vector.expected.signingDomainHash;
+      const expectedVerificationDomainHash = vector.expected.verificationDomainHash;
+
+      expect(
+        expectedSigningDomainHash,
+        `${vector.id}: missing expected signingDomainHash for v2 vector`,
+      ).toBeDefined();
+      expect(
+        expectedVerificationDomainHash,
+        `${vector.id}: missing expected verificationDomainHash for v2 vector`,
+      ).toBeDefined();
+      if (!expectedSigningDomainHash || !expectedVerificationDomainHash) {
+        return;
+      }
 
       expect(signing.domainHash, `${vector.id}: signing domain hash mismatch`).toBe(
-        normalizeFelt(vector.expected.signingDomainHash ?? signing.domainHash),
+        normalizeFelt(expectedSigningDomainHash),
       );
       expect(verification.domainHash, `${vector.id}: verification domain hash mismatch`).toBe(
-        normalizeFelt(vector.expected.verificationDomainHash ?? verification.domainHash),
+        normalizeFelt(expectedVerificationDomainHash),
       );
       expect(signing.messageHash, `${vector.id}: signing hash mismatch`).toBe(
         normalizeFelt(vector.expected.signingMessageHash),

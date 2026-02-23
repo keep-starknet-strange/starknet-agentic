@@ -766,14 +766,16 @@ mod SessionAccount {
         );
 
         let current_mode = self._effective_session_signature_mode();
+        if current_mode == new_mode {
+            return;
+        }
+
         if current_mode == SESSION_SIGNATURE_MODE_V2 {
             assert(new_mode == SESSION_SIGNATURE_MODE_V2, 'Session: mode downgrade');
         }
 
         self.session_signature_mode.write(new_mode);
-        if current_mode != new_mode {
-            self.emit(SessionSignatureModeUpdated { old_mode: current_mode, new_mode });
-        }
+        self.emit(SessionSignatureModeUpdated { old_mode: current_mode, new_mode });
     }
 
     #[external(v0)]
