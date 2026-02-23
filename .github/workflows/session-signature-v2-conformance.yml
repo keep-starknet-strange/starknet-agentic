@@ -120,8 +120,22 @@ jobs:
             echo "SISNA vector file not published yet on main; skipping SISNA parity check."
             exit 0
           fi
-          diff -u /tmp/sisna-session-signature-v2.schema.json spec/session-signature-v2.schema.json
-          diff -u /tmp/sisna-session-signature-v2.json spec/session-signature-v2.json
+          if ! diff -u /tmp/sisna-session-signature-v2.schema.json spec/session-signature-v2.schema.json; then
+            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+              echo "SISNA schema drift detected on PR; allowing for coordinated rollout."
+            else
+              echo "SISNA schema drift detected on ${GITHUB_EVENT_NAME}; failing."
+              exit 1
+            fi
+          fi
+          if ! diff -u /tmp/sisna-session-signature-v2.json spec/session-signature-v2.json; then
+            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+              echo "SISNA vector drift detected on PR; allowing for coordinated rollout."
+            else
+              echo "SISNA vector drift detected on ${GITHUB_EVENT_NAME}; failing."
+              exit 1
+            fi
+          fi
 
       - name: Compare vectors with starkclaw main
         run: |
@@ -137,5 +151,19 @@ jobs:
             echo "starkclaw vector file not published yet on main; skipping starkclaw parity check."
             exit 0
           fi
-          diff -u /tmp/starkclaw-session-signature-v2.schema.json spec/session-signature-v2.schema.json
-          diff -u /tmp/starkclaw-session-signature-v2.json spec/session-signature-v2.json
+          if ! diff -u /tmp/starkclaw-session-signature-v2.schema.json spec/session-signature-v2.schema.json; then
+            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+              echo "starkclaw schema drift detected on PR; allowing for coordinated rollout."
+            else
+              echo "starkclaw schema drift detected on ${GITHUB_EVENT_NAME}; failing."
+              exit 1
+            fi
+          fi
+          if ! diff -u /tmp/starkclaw-session-signature-v2.json spec/session-signature-v2.json; then
+            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+              echo "starkclaw vector drift detected on PR; allowing for coordinated rollout."
+            else
+              echo "starkclaw vector drift detected on ${GITHUB_EVENT_NAME}; failing."
+              exit 1
+            fi
+          fi
