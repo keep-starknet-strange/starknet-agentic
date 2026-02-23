@@ -770,8 +770,9 @@ mod SessionAccount {
             return;
         }
 
-        if current_mode == SESSION_SIGNATURE_MODE_V2 {
-            assert(new_mode == SESSION_SIGNATURE_MODE_V2, 'Session: mode downgrade');
+        if current_mode == SESSION_SIGNATURE_MODE_V2
+            && new_mode == SESSION_SIGNATURE_MODE_V1 {
+            assert(false, 'Session: mode downgrade');
         }
 
         self.session_signature_mode.write(new_mode);
@@ -942,9 +943,9 @@ mod SessionAccount {
         fn _effective_session_signature_mode(self: @ContractState) -> u8 {
             let raw_mode = self.session_signature_mode.read();
             // Backward compatibility for contracts upgraded from versions that did not
-            // persist this field. A zero value maps to strict v2 semantics.
+            // persist this field. A zero value maps to legacy v1 semantics.
             if raw_mode == 0 {
-                SESSION_SIGNATURE_MODE_V2
+                SESSION_SIGNATURE_MODE_V1
             } else {
                 raw_mode
             }

@@ -16,11 +16,18 @@ This document defines the production migration path for session signature verifi
 
 ## Upgrade compatibility
 
+## ⚠️ Breaking upgrade note
+
+Accounts upgraded from pre-mode versions have `session_signature_mode` storage value `0`.
+To avoid breaking existing signed sessions during class-hash upgrades, `0` is treated as
+effective `v1_legacy` until owners explicitly opt into `v2_snip12`.
+
+If you want strict v2 verification, call `set_session_signature_mode(2)` after upgrade.
+
 To preserve behavior for contracts upgraded from older classes that did not store `session_signature_mode`:
 
-- raw storage value `0` is treated as effective `v2` in verification logic.
-
-This prevents accidental semantic downgrades during class-hash upgrades.
+- raw storage value `0` is treated as effective `v1_legacy` in verification logic.
+- owners can explicitly migrate to `v2_snip12` via `set_session_signature_mode(2)`.
 
 ## Owner utilities
 
