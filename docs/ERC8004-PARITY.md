@@ -51,11 +51,17 @@ Each function is classified as **Parity** (aligned with Solidity reference) or *
 | `revoke_feedback` | Revoke by original author | Same semantic | Parity |
 | `append_response` | Append response to feedback | Same + blocks responses on revoked feedback | Parity + Extension |
 | `get_summary` | `(count, summaryValue, summaryValueDecimals)` | Same semantic, arithmetic mean with WAD normalization | Parity |
-| `read_feedback` | Read single feedback entry | Same semantic | Parity |
-| `read_all_feedback` | Read feedback entries with filters | Requires non-empty explicit `client_addresses`; broad scans should use `read_all_feedback_paginated` | Parity + Extension |
+| `read_feedback` | Read single feedback entry | Same semantic. **Auth/Authz**: public view (no caller role required). | Parity |
+| `read_all_feedback` | Read feedback entries with filters | **Auth/Authz**: public view. Requires non-empty explicit `client_addresses`; broad scans should use `read_all_feedback_paginated`. | Parity + Extension |
+| `read_all_feedback_paginated` | Not in Solidity reference | **Auth/Authz**: public view. Bounded broad-scan endpoint with `client_limit <= 256` and `feedback_limit <= 1024`. Supports explicit client lists or bounded scans over tracked clients. | Extension |
 | `get_response_count` | Count responses for feedback entry | Same semantic. See [Known Divergences](#known-divergences) for empty-responders behavior. | Parity |
 | `get_clients` / `get_last_index` | Query feedback clients and indices | Same semantic | Parity |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window for large datasets | Extension |
+
+Auth/Authz enforcement for feedback read APIs:
+- `read_feedback`: callable by any address (public view), scoped to one `(agent_id, client_address, index)` tuple.
+- `read_all_feedback`: callable by any address (public view), but requires non-empty explicit `client_addresses`.
+- `read_all_feedback_paginated`: callable by any address (public view), intended for broader scans using bounded pagination windows.
 
 ### Validation Registry
 

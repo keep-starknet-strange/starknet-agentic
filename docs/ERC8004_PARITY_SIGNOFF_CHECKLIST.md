@@ -4,6 +4,8 @@ Last updated: 2026-02-23
 
 Use this checklist before claiming launch parity or production readiness.
 
+Maintainer note: for PRs touching `docs/**`, include an explicit `Spec impact:` field in the PR description.
+
 ## 1. Parity Behavior Checks
 
 - [ ] Identity registry registration paths (`register`, `register_with_token_uri`, `register_with_metadata`) pass unit + E2E tests.
@@ -24,6 +26,7 @@ Use this checklist before claiming launch parity or production readiness.
 ## 3. Deployment and Ops Checks
 
 - [ ] `docs/DEPLOYMENT_TRUTH_SHEET.md` reflects the latest deployed addresses.
+- [ ] Sepolia validation is completed before any Mainnet deployment (contracts verified, multisig ownership verified, AgentAccountFactory behavior verified, and results recorded in `docs/DEPLOYMENT_TRUTH_SHEET.md`).
 - [ ] Mainnet ERC-8004 registry addresses verified on explorer.
 - [ ] Sepolia and Mainnet ownership verified as multisig-controlled.
 - [ ] AgentAccountFactory status is accurate (Sepolia live, Mainnet pending until deployed).

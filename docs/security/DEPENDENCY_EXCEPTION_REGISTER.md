@@ -7,9 +7,12 @@ This register tracks temporary dependency-audit exceptions and their risk treatm
 - Advisory ID: `1113371`
 - Package: `minimatch`
 - Severity: `high`
+- Threat model entry ID: `ADV-1113371-MINIMATCH`
 - Scope: Transitive dev-tooling dependency (not a production runtime dependency path).
+- Justification: Temporary dev-only exception while upstream transitive dependency is pending patch uptake.
 - Allowlist expiry: `2026-04-30`
 - Owner: Security maintainers (`@omarespejel`)
+- Linked allowlist entry: `security/audit-allowlist.json` (advisory `1113371`)
 
 ### Residual Risk
 

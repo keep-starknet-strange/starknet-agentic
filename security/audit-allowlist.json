@@ -3,9 +3,15 @@
     {
       "id": "1113371",
       "package": "minimatch",
+      "threatModelEntry": "ADV-1113371-MINIMATCH",
+      "scope": "dev-tooling-only",
       "reason": "Transitive dev-tooling advisory; no user-controlled glob patterns are processed in production runtime paths.",
+      "residualRisk": "Potential CI/dev tooling CPU exhaustion if attacker-controlled wildcard patterns are evaluated.",
       "expiresOn": "2026-04-30",
-      "threatModelRef": "docs/security/DEPENDENCY_EXCEPTION_REGISTER.md#adv-1113371-minimatch"
+      "threatModelRef": "docs/security/DEPENDENCY_EXCEPTION_REGISTER.md#adv-1113371-minimatch",
+      "mitigationsRef": "docs/security/DEPENDENCY_EXCEPTION_REGISTER.md#mitigations",
+      "reviewedBy": "@omarespejel",
+      "reviewedOn": "2026-02-23"
     }
   ]
 }
