@@ -934,6 +934,36 @@ fn test_read_all_feedback_paginated_handles_large_feedback_sets() {
 }
 
 #[test]
+#[should_panic(expected: 'client_limit too large')]
+fn test_read_all_feedback_paginated_rejects_oversized_client_limit() {
+    let (identity_registry, reputation_registry, identity_address, _) = deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let empty_clients: Span<ContractAddress> = array![].span();
+    let _ = reputation_registry.read_all_feedback_paginated(
+        agent_id, empty_clients, "", "", false, 0, 257, 0, 1,
+    );
+}
+
+#[test]
+#[should_panic(expected: 'feedback_limit too large')]
+fn test_read_all_feedback_paginated_rejects_oversized_feedback_limit() {
+    let (identity_registry, reputation_registry, identity_address, _) = deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let empty_clients: Span<ContractAddress> = array![].span();
+    let _ = reputation_registry.read_all_feedback_paginated(
+        agent_id, empty_clients, "", "", false, 0, 1, 0, 1025,
+    );
+}
+
+#[test]
 fn test_read_all_feedback_excludes_revoked() {
     let (identity_registry, reputation_registry, identity_address, reputation_address) =
         deploy_contracts();

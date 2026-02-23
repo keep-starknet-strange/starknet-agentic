@@ -40,6 +40,10 @@ pub mod ReputationRegistry {
     // Defensive ceiling for the legacy non-paginated reader.
     // Large reads should use `read_all_feedback_paginated`.
     const MAX_READ_ALL_FEEDBACK_ENTRIES: u32 = 2048;
+    // Defensive ceilings for paginated scans to avoid unbounded O(n) reads
+    // from user-provided limits.
+    const MAX_PAGINATED_CLIENT_LIMIT: u32 = 256;
+    const MAX_PAGINATED_FEEDBACK_LIMIT: u64 = 1024;
 
     // ============ Component Declarations ============
     component!(
@@ -661,6 +665,10 @@ pub mod ReputationRegistry {
             let mut tag1s_arr: Array<ByteArray> = ArrayTrait::new();
             let mut tag2s_arr: Array<ByteArray> = ArrayTrait::new();
             let mut revoked_arr: Array<bool> = ArrayTrait::new();
+
+            // Harden against pathological scans from oversized caller-provided limits.
+            assert(client_limit <= MAX_PAGINATED_CLIENT_LIMIT, 'client_limit too large');
+            assert(feedback_limit <= MAX_PAGINATED_FEEDBACK_LIMIT, 'feedback_limit too large');
 
             // Degenerate window: no scan, caller can advance pagination window.
             if client_limit == 0 || feedback_limit == 0 {

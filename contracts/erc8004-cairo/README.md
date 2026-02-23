@@ -486,7 +486,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 
 **18. Spam or Abuse Detected**
 - [ ] Identify abusive agent_id or client address
-- [ ] Review feedback entries: `read_all_feedback(agent_id, explicit_client_addresses, ...)`
+- [ ] Review feedback entries: `read_all_feedback(agent_id, client_addresses, ...)`
 - [ ] Review validation requests: `get_agent_validations(agent_id, ...)`
 - [ ] Document abuse pattern (evidence: transaction hashes, addresses, timestamps)
 - [ ] Publish abuse report (if applicable)
