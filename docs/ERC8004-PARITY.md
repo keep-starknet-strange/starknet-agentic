@@ -51,7 +51,8 @@ Each function is classified as **Parity** (aligned with Solidity reference) or *
 | `revoke_feedback` | Revoke by original author | Same semantic | Parity |
 | `append_response` | Append response to feedback | Same + blocks responses on revoked feedback | Parity + Extension |
 | `get_summary` | `(count, summaryValue, summaryValueDecimals)` | Same semantic, arithmetic mean with WAD normalization | Parity |
-| `read_feedback` / `read_all_feedback` | Read feedback entries with filters | Same semantic | Parity |
+| `read_feedback` | Read single feedback entry | Same semantic | Parity |
+| `read_all_feedback` | Read feedback entries with filters | Requires non-empty explicit `client_addresses`; broad scans should use `read_all_feedback_paginated` | Parity + Extension |
 | `get_response_count` | Count responses for feedback entry | Same semantic. See [Known Divergences](#known-divergences) for empty-responders behavior. | Parity |
 | `get_clients` / `get_last_index` | Query feedback clients and indices | Same semantic | Parity |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window for large datasets | Extension |
@@ -76,6 +77,7 @@ Each function is classified as **Parity** (aligned with Solidity reference) or *
 Behavioral differences from the Solidity reference that do not affect API compatibility but matter for cross-chain indexers and integrators:
 
 - **Agent ID offset**: Cairo agent IDs start at 1 (0 is reserved for non-existent agents). Solidity starts at 0. Cross-chain indexers must account for this offset when mapping agent identities across registries.
+- **`read_all_feedback` with empty clients**: In Cairo, passing an empty `client_addresses` array reverts with `explicit clients required`. Solidity accepts empty and can iterate broader sets. Practical consequence: Cairo callers must either provide an explicit client list or use `read_all_feedback_paginated` for bounded broad scans.
 - **`get_response_count` with empty responders**: In Cairo, passing an empty `responders` array returns 0 immediately. In Solidity, an empty array iterates all tracked responders. Practical consequence: Cairo clients calling with an empty array get 0 instead of the global response count. Cairo does not enumerate all responders for a given feedback entry -- callers must supply explicit responder addresses.
 - **`append_response` on revoked feedback**: Cairo explicitly blocks appending responses to revoked feedback (`assert(!fb.is_revoked)`). Solidity does not check revocation status before appending. This is a stricter behavior classified as Extension above.
 - **Reentrancy guards**: Cairo adds reentrancy guards to `give_feedback` and `validation_request`. The Solidity reference does not include explicit reentrancy protection for these functions.

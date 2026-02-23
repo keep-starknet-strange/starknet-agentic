@@ -109,7 +109,8 @@ Typical read paths:
 - `read_all_feedback(agent_id, client_addresses, tag1, tag2, include_revoked)`
 - `get_summary(agent_id, client_addresses, tag1, tag2)` -> returns `(count, summary_value, summary_value_decimals)`
 
-Note: `get_summary` requires `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
+Note: `get_summary` and `read_all_feedback` both require `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
+For broad scans, use `read_all_feedback_paginated(...)` with bounded windows.
 
 **Responses and Revocation**
 
@@ -170,7 +171,8 @@ The following protections **do not exist on-chain** (accepted risk):
 
 **Mitigation guidance for integrators**:
 
-- `get_summary()` requires an explicit `client_addresses` list rather than iterating all clients. This is the primary Sybil defense: curate the address list off-chain.
+- `get_summary()` and `read_all_feedback()` require an explicit `client_addresses` list rather than iterating all clients. This is the primary Sybil defense: curate the address list off-chain.
+- For whole-registry reads, use `read_all_feedback_paginated()` with bounded `client_limit` / `feedback_limit` windows.
 - Off-chain indexers should apply reputation scoring, rate-limit detection, and Sybil filtering before presenting aggregated results.
 - The `response_count` storage tracks per-responder response counts for each feedback entry, enabling off-chain anomaly detection.
 
@@ -217,7 +219,7 @@ Operators and integrators should treat `agentWallet` as a verified-control-of-ke
 2. Publish a registration file (e.g., on IPFS/HTTPS) and set it as the token URI via `set_token_uri(agent_id, ...)`.
 3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (SNIP-6 signature proof bound to this chain and registry contract).
 4. Collect feedback from users/clients via `give_feedback(...)` on the Reputation Registry.
-5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback(...)` for off-chain scoring.
+5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback(...)` with explicit clients. Use `read_all_feedback_paginated(...)` for broad scans.
 
 ## Features
 
@@ -484,7 +486,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 
 **18. Spam or Abuse Detected**
 - [ ] Identify abusive agent_id or client address
-- [ ] Review feedback entries: `read_all_feedback(agent_id, ...)`
+- [ ] Review feedback entries: `read_all_feedback(agent_id, explicit_client_addresses, ...)`
 - [ ] Review validation requests: `get_agent_validations(agent_id, ...)`
 - [ ] Document abuse pattern (evidence: transaction hashes, addresses, timestamps)
 - [ ] Publish abuse report (if applicable)

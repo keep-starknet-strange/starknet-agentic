@@ -193,7 +193,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | `append_response` | Append response to feedback | Same semantic + revoked guard | Implemented | Parity + Extension | Extension: explicit revoked-feedback block |
 | `get_summary` | `(count, summaryValue, summaryValueDecimals)` | Same semantic | Implemented | Parity | Weighted/normalized average behavior aligned |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
-| `read_all_feedback` | Full dataset read by filters | Full dataset read by filters | Implemented | Parity | O(n) read; use bounded summary for large sets |
+| `read_all_feedback` | Full dataset read by filters | Requires explicit non-empty `client_addresses` (no implicit global scan) | Implemented | Parity + Extension | For broad scans use `read_all_feedback_paginated` |
 
 ### 3.5 Workstream D Note: Cross-Chain Hash Interoperability
 

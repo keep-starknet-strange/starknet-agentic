@@ -575,25 +575,14 @@ pub mod ReputationRegistry {
             let mut tag2s_arr: Array<ByteArray> = ArrayTrait::new();
             let mut revoked_arr: Array<bool> = ArrayTrait::new();
 
-            // Get client list
-            let client_list = if client_addresses.len() > 0 {
-                client_addresses
-            } else {
-                // Get all clients from Vec
-                let client_vec = self.clients.entry(agent_id);
-                let mut all_clients: Array<ContractAddress> = ArrayTrait::new();
-                let mut i: u64 = 0;
-                while i < client_vec.len() {
-                    all_clients.append(client_vec.at(i).read());
-                    i += 1;
-                };
-                all_clients.span()
-            };
+            // Hardening: non-paginated reads require explicit client scoping.
+            // For broad scans over all clients, use read_all_feedback_paginated.
+            assert(client_addresses.len() > 0, 'explicit clients required');
 
             let mut i: u32 = 0;
             let mut scanned_feedbacks: u32 = 0;
-            while i < client_list.len() {
-                let client = *client_list.at(i);
+            while i < client_addresses.len() {
+                let client = *client_addresses.at(i);
                 let last_idx = self.last_index.entry((agent_id, client)).read();
 
                 let mut j: u64 = 1;
