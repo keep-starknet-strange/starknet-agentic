@@ -81,13 +81,19 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
   return { quote: quotes[0], sellToken, buyToken };
 }
 
-const paymaster = new PaymasterRpc({
-  nodeUrl: process.env.PAYMASTER_URL || 'https://starknet.paymaster.avnu.fi',
-});
+let cachedPaymaster = null;
+
+function getPaymaster() {
+  if (cachedPaymaster) return cachedPaymaster;
+  cachedPaymaster = new PaymasterRpc({
+    nodeUrl: process.env.PAYMASTER_URL || 'https://starknet.paymaster.avnu.fi',
+  });
+  return cachedPaymaster;
+}
 
 async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE) {
   const result = await executeSwap({
-    paymaster: paymaster,
+    paymaster: getPaymaster(),
     provider: account,
     quote,
     slippage,

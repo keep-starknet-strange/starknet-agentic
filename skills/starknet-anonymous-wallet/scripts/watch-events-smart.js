@@ -37,6 +37,8 @@ const DEFAULT_HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 5000;
 const MAX_BLOCKS_PER_CYCLE = 200;
 const DEFAULT_WS_RECOVERY_COOLDOWN_MS = 5 * 60 * 1000;
+const MAX_PROCESSED_TXS = 10000;
+const PROCESSED_TXS_TRIM_TO = 9000;
 
 let currentMode = 'initializing'; // 'websocket', 'polling', 'initializing'
 let isShuttingDown = false;
@@ -147,17 +149,20 @@ exec node "${scriptPath}" '@${configPath}'
 class SmartEventWatcher {
   constructor(config) {
     this.config = config;
+    this.forcedMode = config.mode || 'auto'; // 'auto', 'websocket', 'polling'
     const rpcUrl = config.httpRpcUrl || resolveRpcUrl();
     this.httpUrl = rpcUrl;
-    // Derive WebSocket URL from HTTP URL if not explicitly provided
-    this.wsUrl = config.wsRpcUrl || this.httpUrl.replace(/^https?:\/\//, (m) => m.startsWith('https') ? 'wss://' : 'ws://').replace(/\/?$/, '/ws');
+    // Require explicit wsRpcUrl. Not all providers expose WebSocket endpoints.
+    this.wsUrl = config.wsRpcUrl || null;
+    if (!this.wsUrl && this.forcedMode !== 'polling') {
+      log('wsRpcUrl not set; WebSocket mode unavailable, using polling fallback', 'warn');
+    }
     this.pollIntervalMs = config.pollIntervalMs || DEFAULT_POLL_INTERVAL;
     this.healthCheckIntervalMs = config.healthCheckIntervalMs || DEFAULT_HEALTH_CHECK_INTERVAL;
     this.webhookTimeoutMs = config.webhookTimeoutMs || DEFAULT_WEBHOOK_TIMEOUT_MS;
     this.webhookUrl = config.webhookUrl || null;
     this.contractAddress = config.contractAddress;
     this.eventNames = config.eventNames || [];
-    this.forcedMode = config.mode || 'auto'; // 'auto', 'websocket', 'polling'
     
     // WebSocket state
     this.ws = null;
@@ -318,6 +323,14 @@ class SmartEventWatcher {
   // Try to connect via WebSocket
   async tryWebSocket() {
     if (isShuttingDown) return;
+    if (!this.wsUrl) {
+      if (this.forcedMode === 'websocket') {
+        log('wsRpcUrl is required when mode=websocket', 'error');
+        process.exit(1);
+      }
+      await this.startPolling();
+      return false;
+    }
     
     currentMode = 'websocket';
     log('Attempting WebSocket connection...');
@@ -525,9 +538,13 @@ class SmartEventWatcher {
     if (this.processedTxs.has(txKey)) return;
     this.processedTxs.add(txKey);
     
-    if (this.processedTxs.size > 10000) {
+    if (this.processedTxs.size > MAX_PROCESSED_TXS) {
       const iter = this.processedTxs.values();
-      this.processedTxs.delete(iter.next().value);
+      while (this.processedTxs.size > PROCESSED_TXS_TRIM_TO) {
+        const next = iter.next();
+        if (next.done) break;
+        this.processedTxs.delete(next.value);
+      }
     }
 
     const eventData = {
@@ -571,6 +588,7 @@ class SmartEventWatcher {
       } else if (currentMode === 'polling') {
         // In auto mode, periodically try to recover WebSocket
         if (this.forcedMode !== 'auto') return;
+        if (!this.wsUrl) return;
 
         if (this.lastWsFailureTime && (Date.now() - this.lastWsFailureTime) >= this.wsRecoveryCooldownMs) {
           this.wsReconnectAttempts = 0;

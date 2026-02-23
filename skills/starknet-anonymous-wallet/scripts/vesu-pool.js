@@ -9,7 +9,8 @@
  *   "pool": "Vesu Main Pool",
  *   "user": "0x..." (optional; defaults to accountAddress),
  *   "collateralToken": "STRK",
- *   "collateralAmount": "1000.0",
+ *   "collateralAmount": "1000.0", // preferred for supply/borrow
+ *   "amount": "1000.0", // optional legacy alias for supply
  *   "debtToken": "USDC",
  *   "debtAmount": "100.0",
  *   "accountAddress": "0x..."
@@ -73,12 +74,6 @@ function parseAmountToBaseUnits(amount, decimals) {
   const fracPadded = (fracRaw + '0'.repeat(dec)).slice(0, dec);
   const fracBI = BigInt(fracPadded || '0');
   return intBI * base + fracBI;
-}
-
-function toUint256(n) {
-  const low = (n & ((1n << 128n) - 1n));
-  const high = (n >> 128n);
-  return { low: low.toString(), high: high.toString() };
 }
 
 function u256ToBigInt(v) {
@@ -213,8 +208,8 @@ async function main() {
       return;
     }
 
-    const collateralInfo = await resolveToken(collSym);
-    const debtInfo = await resolveToken(debtSym);
+    collateralInfo = await resolveToken(collSym);
+    debtInfo = await resolveToken(debtSym);
     if (!collateralInfo || !debtInfo) {
       console.log(JSON.stringify({
         success: false,
@@ -487,11 +482,13 @@ async function main() {
   }
 
   // Amounts (execution path)
-  const collateralAmountHuman = action === 'borrow' ? input.collateralAmount : input.amount;
+  const collateralAmountHuman = action === 'borrow'
+    ? input.collateralAmount
+    : (input.collateralAmount ?? input.amount);
   const debtAmountHuman = action === 'borrow' ? input.debtAmount : '0';
 
   if (!collateralAmountHuman) {
-    console.log(JSON.stringify({ success: false, error: 'Missing amount/collateralAmount' }));
+    console.log(JSON.stringify({ success: false, error: 'Missing collateralAmount (or amount for supply)' }));
     process.exit(1);
   }
 

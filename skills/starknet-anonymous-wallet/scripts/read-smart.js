@@ -206,6 +206,10 @@ async function main() {
     console.log(JSON.stringify({ error: "Missing contractAddress" }));
     process.exit(1);
   }
+  if (method !== undefined && typeof method !== 'string') {
+    console.log(JSON.stringify({ error: "method must be a string" }));
+    process.exit(1);
+  }
   
   const rpcUrl = resolveRpcUrl();
   const provider = new RpcProvider({ nodeUrl: rpcUrl });

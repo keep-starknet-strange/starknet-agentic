@@ -17,7 +17,7 @@
  * }
  */
 
-import { Provider, Account, Contract } from 'starknet';
+import { RpcProvider, Account, Contract } from 'starknet';
 
 import { resolveRpcUrl } from './_rpc.js';
 
@@ -45,7 +45,7 @@ async function main() {
   if (!privateKey) fail('Missing private key (input.privateKey or PRIVATE_KEY env).');
 
   const rpcUrl = resolveRpcUrl();
-  const provider = new Provider({ nodeUrl: rpcUrl });
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
   const account = new Account({
     provider,
     address: input.accountAddress,

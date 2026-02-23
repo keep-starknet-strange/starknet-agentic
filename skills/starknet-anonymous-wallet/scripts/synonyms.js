@@ -73,9 +73,15 @@ export const COMMON_SYNONYMS = {
 export function buildReverseMap(synonymMap) {
   const reverse = {};
   for (const [canonical, variants] of Object.entries(synonymMap)) {
-    reverse[canonical.toLowerCase()] = canonical;
+    const canonicalKey = canonical.toLowerCase();
+    if (reverse[canonicalKey] === undefined) {
+      reverse[canonicalKey] = canonical;
+    }
     for (const variant of variants) {
-      reverse[variant.toLowerCase()] = canonical;
+      const key = variant.toLowerCase();
+      // Preserve first-seen canonical mapping for overlapping variants.
+      if (reverse[key] !== undefined) continue;
+      reverse[key] = canonical;
     }
   }
   return reverse;

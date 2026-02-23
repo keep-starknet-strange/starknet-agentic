@@ -4,7 +4,7 @@
   "description": "Scripts for typhoon-starknet-account skill",
   "type": "module",
   "scripts": {
-    "create": "node create-account.js"
+    "create": "node scripts/create-account.js"
   },
   "dependencies": {
     "@andersmyrmel/vard": "^1.2.0",

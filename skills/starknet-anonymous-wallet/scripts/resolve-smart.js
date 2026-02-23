@@ -1136,10 +1136,10 @@ async function main() {
       result.canProceed = true;
       result.nextStep = "USER_AUTHORIZATION";
       result.authorizationDetails = {
-      operationType,
-      description: `${operationType} operation${operations.length > 1 ? 's' : ''}`,
-      prompt: "Authorize? (yes/no)"
-    };
+        operationType,
+        description: `${operationType} operation${operations.length > 1 ? 's' : ''}`,
+        prompt: "Authorize? (yes/no)"
+      };
     }
 
     if (result.executionPlan) {
