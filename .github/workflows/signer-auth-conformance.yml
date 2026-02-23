@@ -93,11 +93,13 @@ jobs:
             schema_url="https://raw.githubusercontent.com/${owner}/${name}/main/spec/signer-auth-v1.schema.json"
             vectors_url="https://raw.githubusercontent.com/${owner}/${name}/main/spec/signer-auth-v1.json"
 
-            if ! curl -fsSL "$schema_url" -o "/tmp/${name}-signer-auth-v1.schema.json"; then
+            if ! curl -fsSL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 \
+              "$schema_url" -o "/tmp/${name}-signer-auth-v1.schema.json"; then
               echo "::warning::${repo} does not publish signer-auth-v1.schema.json on main yet; skipping parity."
               continue
             fi
-            if ! curl -fsSL "$vectors_url" -o "/tmp/${name}-signer-auth-v1.json"; then
+            if ! curl -fsSL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 \
+              "$vectors_url" -o "/tmp/${name}-signer-auth-v1.json"; then
               echo "::warning::${repo} does not publish signer-auth-v1.json on main yet; skipping parity."
               continue
             fi

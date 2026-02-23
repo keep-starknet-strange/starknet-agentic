@@ -266,6 +266,79 @@ describe("keyring auth contract", () => {
     }
   });
 
+  it("does not collide replay keys for delimiter-like client/nonce pairs", async () => {
+    const nowMs = 1_770_984_000_000;
+    const secret = "shared-secret";
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonceStore = new InMemoryNonceStore();
+
+    const headersA = {
+      "x-keyring-client-id": "a:b",
+      "x-keyring-timestamp": timestamp,
+      "x-keyring-nonce": "c:d",
+      "x-keyring-signature": sign({
+        timestamp,
+        nonce: "c:d",
+        method: "POST",
+        path: "/v1/sign/session-transaction",
+        rawBody,
+        secret,
+      }),
+    };
+
+    const headersB = {
+      "x-keyring-client-id": "a",
+      "x-keyring-timestamp": timestamp,
+      "x-keyring-nonce": "b:c:d",
+      "x-keyring-signature": sign({
+        timestamp,
+        nonce: "b:c:d",
+        method: "POST",
+        path: "/v1/sign/session-transaction",
+        rawBody,
+        secret,
+      }),
+    };
+
+    const first = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: headersA,
+      nowMs,
+      clientsById: {
+        "a:b": { hmacSecret: secret },
+        a: { hmacSecret: secret },
+      },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore,
+    });
+
+    const second = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: headersB,
+      nowMs,
+      clientsById: {
+        "a:b": { hmacSecret: secret },
+        a: { hmacSecret: secret },
+      },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore,
+    });
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+  });
+
   it("fails closed when mTLS is required but unavailable", async () => {
     const nowMs = 1_770_984_000_000;
     const secret = "super-secret";

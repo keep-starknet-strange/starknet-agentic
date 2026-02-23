@@ -1,5 +1,10 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
+// SECURITY REVIEW REQUIRED:
+// This module defines KeyringAuthErrorCode outcomes and performs
+// signature/HMAC verification via createHmac + timingSafeEqual, plus replay protection.
+// Any behavior change here requires explicit human security review sign-off.
+
 export type KeyringAuthErrorCode =
   | "AUTH_INVALID_HMAC"
   | "AUTH_INVALID_CLIENT"
@@ -197,7 +202,7 @@ export async function validateKeyringRequestAuth(
     return fail("AUTH_INVALID_HMAC", "HMAC verification failed");
   }
 
-  const replayKey = `${clientId}:${nonce}`;
+  const replayKey = JSON.stringify([clientId, nonce]);
   try {
     const firstUse = await input.nonceStore.consumeOnce(
       replayKey,
