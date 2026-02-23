@@ -6,6 +6,10 @@ export type KeyringAuthErrorCode =
   | "AUTH_TIMESTAMP_SKEW"
   | "AUTH_MTLS_REQUIRED"
   | "REPLAY_NONCE_USED"
+  | "POLICY_SELECTOR_DENIED"
+  | "POLICY_CALL_NOT_ALLOWED"
+  | "RATE_LIMITED"
+  | "SIGNER_UNAVAILABLE"
   | "INTERNAL_ERROR";
 
 export type KeyringAuthClient = {
@@ -90,16 +94,29 @@ export function buildKeyringSigningPayload(args: {
 
 export class InMemoryNonceStore implements KeyringAuthNonceStore {
   private readonly nonceExpirations = new Map<string, number>();
+  private readonly cleanupEvery: number;
+  private consumeCount = 0;
+
+  constructor(cleanupEvery = 100) {
+    this.cleanupEvery = Math.max(1, cleanupEvery);
+  }
 
   async consumeOnce(key: string, ttlSeconds: number, nowMs: number): Promise<boolean> {
-    for (const [storedKey, expiresAt] of this.nonceExpirations.entries()) {
-      if (expiresAt <= nowMs) {
-        this.nonceExpirations.delete(storedKey);
+    const existingExpiration = this.nonceExpirations.get(key);
+    if (existingExpiration !== undefined) {
+      if (existingExpiration > nowMs) {
+        return false;
       }
+      this.nonceExpirations.delete(key);
     }
 
-    if (this.nonceExpirations.has(key)) {
-      return false;
+    this.consumeCount += 1;
+    if (this.consumeCount % this.cleanupEvery === 0) {
+      for (const [storedKey, expiresAt] of this.nonceExpirations.entries()) {
+        if (expiresAt <= nowMs) {
+          this.nonceExpirations.delete(storedKey);
+        }
+      }
     }
 
     const ttlMs = Math.max(1, ttlSeconds) * 1000;
@@ -167,10 +184,12 @@ export async function validateKeyringRequestAuth(
     rawBody: input.rawBody,
   });
   const suppliedSignature = signatureRaw.toLowerCase();
-  const hmacMatched = clientSecrets.some((secret) => {
+  let hmacMatchedFlag = 0;
+  for (const secret of clientSecrets) {
     const expectedSignature = createHmac("sha256", secret).update(signingPayload).digest("hex");
-    return constantTimeHexEqual(suppliedSignature, expectedSignature);
-  });
+    hmacMatchedFlag |= Number(constantTimeHexEqual(suppliedSignature, expectedSignature));
+  }
+  const hmacMatched = hmacMatchedFlag === 1;
   if (!hmacMatched) {
     return fail("AUTH_INVALID_HMAC", "HMAC verification failed");
   }

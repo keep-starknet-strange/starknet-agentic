@@ -97,6 +97,16 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+const RFC3339_TIMESTAMP_REGEX =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function isStrictRfc3339Timestamp(value: string): boolean {
+  if (!RFC3339_TIMESTAMP_REGEX.test(value)) {
+    return false;
+  }
+  return !Number.isNaN(Date.parse(value));
+}
+
 function feltEqualsHex(a: string, b: string): boolean {
   try {
     return BigInt(a) === BigInt(b);
@@ -312,7 +322,10 @@ export class KeyringProxySigner extends SignerInterface {
           "Invalid signature response from keyring proxy: audit.policyDecision must be allow"
         );
       }
-      if (!isNonEmptyString(parsed.audit.decidedAt) || Number.isNaN(Date.parse(parsed.audit.decidedAt))) {
+      if (
+        !isNonEmptyString(parsed.audit.decidedAt) ||
+        !isStrictRfc3339Timestamp(parsed.audit.decidedAt)
+      ) {
         throw new Error(
           "Invalid signature response from keyring proxy: audit.decidedAt must be an RFC3339 timestamp"
         );

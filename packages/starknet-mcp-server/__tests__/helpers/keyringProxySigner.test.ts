@@ -278,6 +278,45 @@ describe("KeyringProxySigner", () => {
     ).rejects.toThrow("signatureMode must be v2_snip12");
   });
 
+  it("rejects proxy signatures when audit.decidedAt is not strict RFC3339", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
+        sessionPublicKey: "0x123",
+        domainHash: "0x1",
+        messageHash: "0x2",
+        requestId: "sign-req-rfc3339",
+        audit: {
+          policyDecision: "allow",
+          decidedAt: "2026-02-13 12:00:00",
+          keyId: "default",
+          traceId: "trace-rfc3339",
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("audit.decidedAt must be an RFC3339 timestamp");
+  });
+
   it("rejects proxy signatures when sessionPublicKey mismatches signature pubkey", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
