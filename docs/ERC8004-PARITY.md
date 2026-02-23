@@ -13,14 +13,14 @@ Tracking issue: [#78](https://github.com/keep-starknet-strange/starknet-agentic/
 
 ## Registry Implementation Status
 
-All three ERC-8004 registries are implemented, tested, and deployed on Sepolia.
+All three ERC-8004 registries are implemented, tested, and deployed on both Starknet Sepolia and Starknet Mainnet. Agent Account factory is deployed on Sepolia; mainnet deployment is pending.
 
-| Registry | Contract | Tests | Sepolia |
-|----------|----------|-------|---------|
-| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | 131+ unit + 47 E2E | `0x7856...e417` |
-| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | Included in suite above | `0x1420...495a` |
-| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | Included in suite above | `0x1373...8e1` |
-| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 110+ Cairo tests | `0x3583...720e` (factory) |
+| Registry | Contract | Tests | Mainnet | Sepolia |
+|----------|----------|-------|---------|---------|
+| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | See `contracts/erc8004-cairo/tests/` + `contracts/erc8004-cairo/e2e-tests/tests/` | `0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595` | `0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631` |
+| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | Included in suite above | `0x698849defe3997eccd3dc5e096c01ae8f4fbc2e49e8d67efcb0b0642447944` | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
+| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | Included in suite above | `0x3c2aae404b64ddf09f7ef07dfb4f723c9053443d35038263acf7d5d77efcd83` | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
+| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 110+ Cairo tests | Pending | `0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e` (factory) |
 
 ---
 
@@ -62,7 +62,7 @@ Each function is classified as **Parity** (aligned with Solidity reference) or *
 | Function | Solidity reference | Cairo behavior | Type |
 |----------|--------------------|----------------|------|
 | `validation_request` | Requester designates validator, emits event | Same semantic, reentrancy guard | Parity |
-| `validation_response` | Designated validator responds (0-100 score) | Same semantic, progressive updates | Parity |
+| `validation_response` | Designated validator responds (0-100 score) | Same validator/range semantic, but immutable once submitted (second submit reverts) | Parity + Extension |
 | `get_validation_status` | Query by `requestHash` | Same return shape | Parity |
 | `get_summary` | `(count, averageResponse)` | Same semantic | Parity |
 | `get_agent_validations` / `get_validator_requests` | Full list reads | Same semantic (O(n)) | Parity |
@@ -82,6 +82,7 @@ Behavioral differences from the Solidity reference that do not affect API compat
 - **`append_response` on revoked feedback**: Cairo explicitly blocks appending responses to revoked feedback (`assert(!fb.is_revoked)`). Solidity does not check revocation status before appending. This is a stricter behavior classified as Extension above.
 - **Reentrancy guards**: Cairo adds reentrancy guards to `give_feedback` and `validation_request`. The Solidity reference does not include explicit reentrancy protection for these functions.
 - **Metadata key hashing**: Cairo hashes metadata keys to `felt252` via Poseidon (`_hash_key`) before storage lookup. Solidity uses raw `string` keys in nested mappings. Functionally equivalent for normal use, but direct storage readers and cross-chain indexers must be aware that Cairo storage slots are keyed by `poseidon(key_bytes)`, not the raw key string.
+- **`validation_response` mutability**: Cairo uses finalize-once semantics (`Response already submitted` on second call). Solidity allows the designated validator to overwrite/update the latest response.
 
 ---
 
@@ -187,18 +188,26 @@ Chain-local state (reputation, validation history) remains chain-scoped. Cross-c
 
 ## Deployment
 
+### Mainnet (live)
+
+| Contract | Address |
+|----------|---------|
+| IdentityRegistry | `0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595` |
+| ReputationRegistry | `0x698849defe3997eccd3dc5e096c01ae8f4fbc2e49e8d67efcb0b0642447944` |
+| ValidationRegistry | `0x3c2aae404b64ddf09f7ef07dfb4f723c9053443d35038263acf7d5d77efcd83` |
+
 ### Sepolia (live)
 
 | Contract | Address |
 |----------|---------|
-| IdentityRegistry | `0x7856876f4c8e1880bc0a2e4c15f4de3085bc2bad5c7b0ae472740f8f558e417` |
-| ReputationRegistry | `0x14204d04aca5df7ebfe9fe07f278e5d6c9b922d797b42e63a81b60f8f2d495a` |
-| ValidationRegistry | `0x13739de746a432b9fe36925cf4dfe469221bdc82e19f43fa4f95f8593aa8e1` |
-| AgentAccountFactory | `0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e` |
+| IdentityRegistry | `0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631` |
+| ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
+| ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
 
-### Mainnet
+### Agent Account Deployment Status
 
-Not yet deployed. Planned after Sepolia validation.
+- Sepolia AgentAccountFactory: `0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e`
+- Mainnet AgentAccountFactory: pending
 
 ---
 
@@ -224,6 +233,8 @@ This implementation has **not undergone a formal third-party security audit**. T
 - [ERC-8004 specification](https://eips.ethereum.org/EIPS/eip-8004)
 - [Solidity reference implementation](https://github.com/erc-8004/erc-8004-contracts)
 - [Full technical specification](SPECIFICATION.md) (Section 3.4 for detailed matrix)
+- [Deployment truth sheet](DEPLOYMENT_TRUTH_SHEET.md)
+- [Parity sign-off checklist](ERC8004_PARITY_SIGNOFF_CHECKLIST.md)
 - [Issue #78: RFC tracking](https://github.com/keep-starknet-strange/starknet-agentic/issues/78)
 - [Agent Account contract](../contracts/agent-account/)
 - [ERC-8004 Cairo contracts](../contracts/erc8004-cairo/)

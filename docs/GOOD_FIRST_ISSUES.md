@@ -78,17 +78,17 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 
 ---
 
-## 5) Agent Account: Sepolia Deployment
+## 5) Agent Account: Mainnet Deployment + Verification
 
-**Goal:** Deploy the Agent Account contract to Sepolia testnet.
+**Goal:** Deploy AgentAccountFactory to mainnet and publish a verification report.
 
-**Context:** Contract is fully tested (110 tests) but not yet deployed.
+**Context:** Sepolia factory is already deployed (`0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e`), but mainnet deployment is still pending.
 
 **Acceptance:**
-- [ ] Deployment script created at `contracts/agent-account/scripts/`
-- [ ] Contract deployed to Sepolia
-- [ ] Deployed address documented in README
-- [ ] Basic interaction script verifying deployment works
+- [ ] Mainnet deployment executed from `contracts/agent-account/scripts/`
+- [ ] Deployed mainnet address documented in canonical docs
+- [ ] Ownership verified as multisig
+- [ ] Basic interaction script verifying deployment works on mainnet
 
 **Files:** `contracts/agent-account/scripts/`, `contracts/agent-account/README.md`
 

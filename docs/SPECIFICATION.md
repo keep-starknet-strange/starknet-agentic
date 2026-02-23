@@ -177,7 +177,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | Function | Solidity reference semantic | Cairo semantic | Status | Type | Notes |
 |----------|-----------------------------|----------------|--------|------|-------|
 | `validation_request` | Requester designates validator | Same semantic | Implemented | Parity | Includes reentrancy guard |
-| `validation_response` | Only designated validator can respond (0..100) | Same semantic | Implemented | Parity | Progressive updates allowed |
+| `validation_response` | Only designated validator can respond (0..100) | Same validator/range semantic; immutable after first response | Implemented | Parity + Extension | Second response for same `request_hash` reverts |
 | `get_validation_status` | Query by `requestHash`, return status tuple | Same semantic shape | Implemented | Parity | Returns zeroed response fields when not responded |
 | `get_summary` | `(count, avgResponse)` | Same semantic | Implemented | Parity |  |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
@@ -212,10 +212,10 @@ Recommended convention for cross-chain portability:
 
 ### 3.6 Operational Notes (Validation/Reputation)
 
-- Progressive overwrite behavior:
-  - `validation_response` is latest-state storage by design.
-  - A designated validator can update the response over time (progressive validation).
-  - Historical evolution is preserved in event logs, not in a full on-chain response history map.
+- Immutable validation response behavior:
+  - `validation_response` is finalize-once in Cairo.
+  - A designated validator can submit exactly one response per `request_hash`.
+  - Second submissions revert with `Response already submitted`.
 
 - Unbounded reads:
   - `get_agent_validations`, `get_validator_requests`, and full-list style accessors are O(n).

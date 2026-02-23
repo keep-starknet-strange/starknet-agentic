@@ -140,13 +140,13 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 
 `agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
 
-### Validation Registry: Overwrite Semantics
+### Validation Registry: Immutable Response Semantics
 
-Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. When the designated validator calls `validation_response` again for the same request, the previous response is **silently overwritten**.
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. Once the designated validator calls `validation_response`, the response is finalized and cannot be changed.
 
-- **Intentional**: the `last_update` timestamp tracks when the response was last set, enabling update workflows (e.g., validator re-evaluates after agent fix).
-- **Not accumulative**: there is no history of previous responses for a given request. If audit trails are needed, index `ValidationResponse` events off-chain.
-- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`). Only the response is mutable.
+- **Finalize-once**: a second `validation_response` for the same `request_hash` reverts with `'Response already submitted'`.
+- **Not accumulative**: there is no response history map per request. If audit trails are needed, index `ValidationResponse` events off-chain.
+- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
 
 ### Reputation Registry: Spam and Griefing Tradeoffs
