@@ -4,7 +4,8 @@
       "id": "1113371",
       "package": "minimatch",
       "reason": "Transitive dev-tooling advisory; no user-controlled glob patterns are processed in production runtime paths.",
-      "expiresOn": "2026-04-30"
+      "expiresOn": "2026-04-30",
+      "threatModelRef": "docs/security/DEPENDENCY_EXCEPTION_REGISTER.md#adv-1113371-minimatch"
     }
   ]
 }
