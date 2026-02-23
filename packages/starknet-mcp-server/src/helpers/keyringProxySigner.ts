@@ -295,6 +295,8 @@ export class KeyringProxySigner extends SignerInterface {
           "Invalid signature response from keyring proxy: missing domainHash/messageHash"
         );
       }
+      // Boundary contract is strict by design: proxy deployments must emit
+      // requestId + audit fields before this client path is enabled in production.
       if (!isNonEmptyString(parsed.requestId)) {
         throw new Error(
           "Invalid signature response from keyring proxy: requestId is required"

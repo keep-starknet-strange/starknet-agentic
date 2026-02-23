@@ -255,6 +255,7 @@ components:
             - INTERNAL_ERROR
         requestId:
           type: string
+          minLength: 1
         retryable:
           type: boolean
   examples:

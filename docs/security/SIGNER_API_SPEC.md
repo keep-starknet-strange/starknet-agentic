@@ -84,6 +84,8 @@ Required request context fields:
 - `requestId`
 - `traceId`
 
+`context.requestId` identifies the inbound signing request envelope.
+
 Recommended request context fields:
 - `sessionId`
 
@@ -92,6 +94,8 @@ Required response audit fields:
 - `decidedAt`
 - `keyId`
 - `traceId`
+
+The response also carries a top-level `requestId` for response/error correlation; implementations should propagate the same logical request id across request context, response envelope, and logs.
 
 ## Versioning and Compatibility
 

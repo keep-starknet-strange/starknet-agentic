@@ -196,7 +196,8 @@
           ]
         },
         "requestId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "retryable": {
           "type": "boolean"
