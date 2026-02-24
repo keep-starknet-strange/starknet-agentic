@@ -16,7 +16,7 @@ This document defines the production migration path for session signature verifi
 
 ## Upgrade compatibility
 
-## ⚠️ Breaking upgrade note
+### ⚠️ Breaking upgrade note
 
 Accounts upgraded from pre-mode versions have `session_signature_mode` storage value `0`.
 To avoid breaking existing signed sessions during class-hash upgrades, `0` is treated as
