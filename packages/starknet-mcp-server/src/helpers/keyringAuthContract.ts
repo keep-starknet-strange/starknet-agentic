@@ -102,6 +102,7 @@ export class InMemoryNonceStore implements KeyringAuthNonceStore {
   // Multi-instance production deployments must use an external atomic store
   // (for example Redis SET NX EX) to avoid replay races across workers.
   private readonly nonceExpirations = new Map<string, number>();
+  private readonly inFlightKeys = new Set<string>();
   private readonly cleanupEvery: number;
   private consumeCount = 0;
 
@@ -110,23 +111,31 @@ export class InMemoryNonceStore implements KeyringAuthNonceStore {
   }
 
   async consumeOnce(key: string, ttlSeconds: number, nowMs: number): Promise<boolean> {
-    const existingExpiration = this.nonceExpirations.get(key);
-    if (existingExpiration !== undefined && existingExpiration > nowMs) {
+    if (this.inFlightKeys.has(key)) {
       return false;
     }
+    this.inFlightKeys.add(key);
+    try {
+      const existingExpiration = this.nonceExpirations.get(key);
+      if (existingExpiration !== undefined && existingExpiration > nowMs) {
+        return false;
+      }
 
-    this.consumeCount += 1;
-    if (this.consumeCount % this.cleanupEvery === 0) {
-      for (const [storedKey, expiresAt] of this.nonceExpirations.entries()) {
-        if (expiresAt <= nowMs) {
-          this.nonceExpirations.delete(storedKey);
+      this.consumeCount += 1;
+      if (this.consumeCount % this.cleanupEvery === 0) {
+        for (const [storedKey, expiresAt] of this.nonceExpirations.entries()) {
+          if (expiresAt <= nowMs) {
+            this.nonceExpirations.delete(storedKey);
+          }
         }
       }
-    }
 
-    const ttlMs = Math.max(1, ttlSeconds) * 1000;
-    this.nonceExpirations.set(key, nowMs + ttlMs);
-    return true;
+      const ttlMs = Math.max(1, ttlSeconds) * 1000;
+      this.nonceExpirations.set(key, nowMs + ttlMs);
+      return true;
+    } finally {
+      this.inFlightKeys.delete(key);
+    }
   }
 }
 
