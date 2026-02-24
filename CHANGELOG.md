@@ -8,19 +8,18 @@ follows SemVer with a pre-1.0 policy (see [`VERSIONING.md`](./VERSIONING.md)).
 
 ## [Unreleased]
 
-### Security (Unreleased)
+### Security
 
 - Root `pnpm.overrides` reviewed and approved:
   - `minimatch`: `^10.2.1` — fixes ReDoS
-    ([GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26)
-    / [CVE-2026-26996](https://nvd.nist.gov/vuln/detail/CVE-2026-26996));
+    ([GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26));
     transitive via eslint (devDependency, build-time only)
   - `qs`: `6.14.2` — existing security pin (unchanged)  
   - PR: `#289`
 
 ## [0.1.0] - 2026-02-14
 
-### Security (0.1.0)
+### Security
 
 - Hardened MCP tool input and execution safety:
   - reject negative amounts
