@@ -50,6 +50,16 @@ if (!preflight.ok) throw new Error(`preflight_failed:${preflight.reason}`);
 
 const result = await wallet.execute(calls);
 if (!result.transactionHash) throw new Error("missing_tx_hash");
+
+const receiptProvider = wallet.provider ?? wallet.account?.provider;
+const receipt = typeof wallet.waitForTransaction === "function"
+  ? await wallet.waitForTransaction(result.transactionHash)
+  : await receiptProvider?.getTransactionReceipt?.(result.transactionHash);
+
+const status = receipt?.status ?? receipt?.execution_status;
+if (!receipt || !status || status === "REVERTED") {
+  throw new Error(`tx_failed:${result.transactionHash}`);
+}
 ```
 
 Treat this as a contract: validate -> preflight -> execute -> verify outcome.
