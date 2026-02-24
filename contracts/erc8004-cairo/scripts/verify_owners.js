@@ -23,11 +23,23 @@ const KNOWN_DEPLOYMENTS = {
   },
 };
 
-function normalizeAddress(address) {
+function normalizeAddress(address, context = "address") {
   if (address === undefined || address === null) {
     return "";
   }
-  return validateAndParseAddress(String(address)).toLowerCase();
+  try {
+    return validateAndParseAddress(String(address)).toLowerCase();
+  } catch {
+    throw new Error(`Invalid ${context} format: ${String(address)}`);
+  }
+}
+
+function normalizeAddressForLog(address) {
+  try {
+    return normalizeAddress(address);
+  } catch {
+    return String(address);
+  }
 }
 
 function resolveNetwork(chainId) {
@@ -104,7 +116,7 @@ async function readOwner(provider, contractAddress) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `owner() call failed for ${normalizeAddress(contractAddress)}: ${message}`
+      `owner() call failed for ${normalizeAddressForLog(contractAddress)}: ${message}`
     );
   }
 }
@@ -140,7 +152,15 @@ async function main() {
   const ownerRows = [];
   const readFailures = [];
   for (const [name, address] of Object.entries(addresses)) {
-    const normalizedAddress = normalizeAddress(address);
+    let normalizedAddress = "";
+    try {
+      normalizedAddress = normalizeAddress(address, `${name} contract address`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      readFailures.push({ name, address: String(address), message });
+      continue;
+    }
+
     try {
       const owner = await readOwner(provider, normalizedAddress);
       ownerRows.push({ name, address: normalizedAddress, owner });
