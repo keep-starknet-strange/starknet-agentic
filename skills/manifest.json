@@ -105,6 +105,14 @@
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-wallet/SKILL.md",
       "repo_path": "skills/starknet-wallet",
       "skill_md_path": "skills/starknet-wallet/SKILL.md"
+    },
+    {
+      "description": "Use when integrating or maintaining applications built with keep-starknet-strange/starkzap. Covers StarkSDK setup, onboarding (Signer/Privy/Cartridge), wallet lifecycle, sponsored transactions, ERC20 transfers, staking flows, tx builder batching, examples, tests, and generated presets.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starkzap-sdk",
+      "name": "starkzap-sdk",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starkzap-sdk/SKILL.md",
+      "repo_path": "skills/starkzap-sdk",
+      "skill_md_path": "skills/starkzap-sdk/SKILL.md"
     }
   ],
   "version": 1
