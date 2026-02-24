@@ -107,10 +107,6 @@ const SKILL_ROOT = join(__dirname, '..');
 const ATTEST_DIR = join(homedir(), '.openclaw', 'typhoon-attest');
 
 function verifyAndConsumeAttestation(token) {
-  const attestBypassRequested = process.env.TYPHOON_ATTEST_DISABLE === '1';
-  const attestBypassAllowed = process.env.NODE_ENV === 'test' && attestBypassRequested;
-  if (attestBypassAllowed) return { ok: true, disabled: true };
-  if (attestBypassRequested) return { ok: false, reason: 'attestation_bypass_forbidden' };
   if (!token || typeof token !== 'string') return { ok: false, reason: 'missing' };
   if (!/^[a-f0-9]{20,64}$/i.test(token)) return { ok: false, reason: 'format' };
 
