@@ -1,0 +1,15 @@
+{
+  "name": "@starknet-agentic/skill-starknet-js",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx scripts/account-example.ts"
+  },
+  "dependencies": {
+    "starknet": "^9.2.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0"
+  }
+}
