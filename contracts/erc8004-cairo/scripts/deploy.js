@@ -40,13 +40,19 @@ function resolveNetworkMetadata(chainId) {
     }],
   ]);
 
-  return (
-    networks.get(normalizedChainId) || {
-      slug: "custom",
-      label: `Custom network (${normalizedChainId})`,
-      voyagerContractBase: null,
-    }
+  const known = networks.get(normalizedChainId);
+  if (known) {
+    return known;
+  }
+
+  console.warn(
+    `⚠️  Unknown chain ID ${normalizedChainId} — using slug "custom-${normalizedChainId}"`,
   );
+  return {
+    slug: `custom-${normalizedChainId}`,
+    label: `Custom network (${normalizedChainId})`,
+    voyagerContractBase: null,
+  };
 }
 
 async function main() {
@@ -247,6 +253,8 @@ async function main() {
   if (network.voyagerContractBase) {
     console.log("🔍 View on Voyager:");
     console.log(`   ${network.voyagerContractBase}${identityAddress}`);
+    console.log(`   ${network.voyagerContractBase}${reputationAddress}`);
+    console.log(`   ${network.voyagerContractBase}${validationAddress}`);
     console.log("");
   }
   console.log("🧪 To run E2E tests:");
