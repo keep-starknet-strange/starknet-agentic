@@ -8,6 +8,8 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
+// Team-reviewed canonical deployments. Any address change in this table must be
+// reviewed by maintainers before merge.
 const KNOWN_DEPLOYMENTS = {
   mainnet: {
     identity: "0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595",
@@ -77,6 +79,7 @@ function resolveContractAddresses(network) {
     return {
       addresses: KNOWN_DEPLOYMENTS[network],
       source: `built-in ${network} defaults`,
+      reviewRequired: true,
     };
   }
 
@@ -115,7 +118,7 @@ async function main() {
   const provider = new RpcProvider({ nodeUrl: rpcUrl });
   const chainId = await provider.getChainId();
   const network = resolveNetwork(chainId);
-  const { addresses, source } = resolveContractAddresses(network);
+  const { addresses, source, reviewRequired = false } = resolveContractAddresses(network);
   const expectedOwner = process.env.EXPECTED_OWNER_ADDRESS
     ? normalizeAddress(process.env.EXPECTED_OWNER_ADDRESS)
     : null;
@@ -124,6 +127,11 @@ async function main() {
   console.log(`   Network: ${network}`);
   console.log(`   Chain ID: ${chainId}`);
   console.log(`   Address source: ${source}`);
+  if (reviewRequired) {
+    console.warn(
+      "⚠️  Built-in deployment addresses are in use. Confirm these addresses were team-reviewed before merge.",
+    );
+  }
   if (expectedOwner) {
     console.log(`   Expected owner: ${expectedOwner}`);
   }
