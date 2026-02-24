@@ -16,8 +16,6 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from .env file in project root
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const PUBLIC_TESTNET_SLUGS = new Set(["sepolia"]);
-
 function normalizeChainId(chainId) {
   if (typeof chainId === "bigint") {
     return `0x${chainId.toString(16)}`.toLowerCase();
@@ -25,23 +23,24 @@ function normalizeChainId(chainId) {
   return String(chainId).toLowerCase();
 }
 
+const KNOWN_NETWORKS = new Map([
+  [normalizeChainId(constants.StarknetChainId.SN_MAIN), {
+    slug: "mainnet",
+    label: "Starknet Mainnet",
+    voyagerContractBase: "https://voyager.online/contract/",
+    isPublicTestnet: false,
+  }],
+  [normalizeChainId(constants.StarknetChainId.SN_SEPOLIA), {
+    slug: "sepolia",
+    label: "Starknet Sepolia",
+    voyagerContractBase: "https://sepolia.voyager.online/contract/",
+    isPublicTestnet: true,
+  }],
+]);
+
 function resolveNetworkMetadata(chainId) {
   const normalizedChainId = normalizeChainId(chainId);
-
-  const networks = new Map([
-    [normalizeChainId(constants.StarknetChainId.SN_MAIN), {
-      slug: "mainnet",
-      label: "Starknet Mainnet",
-      voyagerContractBase: "https://voyager.online/contract/",
-    }],
-    [normalizeChainId(constants.StarknetChainId.SN_SEPOLIA), {
-      slug: "sepolia",
-      label: "Starknet Sepolia",
-      voyagerContractBase: "https://sepolia.voyager.online/contract/",
-    }],
-  ]);
-
-  const known = networks.get(normalizedChainId);
+  const known = KNOWN_NETWORKS.get(normalizedChainId);
   if (known) {
     return known;
   }
@@ -53,6 +52,7 @@ function resolveNetworkMetadata(chainId) {
     slug: `custom-${normalizedChainId}`,
     label: `Custom network (${normalizedChainId})`,
     voyagerContractBase: null,
+    isPublicTestnet: false,
   };
 }
 
@@ -85,7 +85,7 @@ function enforceDeploymentSafetyGate(network) {
     return;
   }
 
-  if (PUBLIC_TESTNET_SLUGS.has(network.slug)) {
+  if (network.isPublicTestnet) {
     const allowPublic = process.env.ALLOW_PUBLIC_DEPLOY === "true";
     if (!allowPublic) {
       console.error(`❌ ${network.label} deployment blocked.`);
