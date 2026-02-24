@@ -48,7 +48,7 @@ if (!parsed.ok) throw new Error(`amount_invalid:${parsed.reason}`);
 const preflight = await wallet.preflight({ calls });
 if (!preflight.ok) throw new Error(`preflight_failed:${preflight.reason}`);
 
-const result = await wallet.execute({ calls });
+const result = await wallet.execute(calls);
 if (!result.transactionHash) throw new Error("missing_tx_hash");
 ```
 
