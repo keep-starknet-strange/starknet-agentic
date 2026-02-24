@@ -26,7 +26,7 @@
 
 import { RpcProvider } from 'starknet';
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, resolve as resolvePath } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import crypto from 'crypto';
@@ -46,6 +46,10 @@ const SKILL_ROOT = join(__dirname, '..');
 const ATTEST_DIR = join(homedir(), '.openclaw', 'typhoon-attest');
 const ATTEST_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MIN_RECIPIENT_HEX_LEN = 10;
+const PROTOCOL_VIRTUAL_ADDRESSES = Object.freeze({
+  AVNU: '__avnu_virtual__',
+  VESU: '__vesu_virtual__'
+});
 
 function attestIssue() {
   // Use random bytes; do NOT derive from secrets.
@@ -184,7 +188,7 @@ function validatePromptSecurity(prompt) {
     { pattern: /\b(friend\s+said|prior\s+message|you\s+promised)\b.{0,80}\b(reveal|print|show|secrets?|keys?)\b/i, threat: 'instruction_override' },
     { pattern: /\b(do\s+it\s+now|just\s+do\s+it)\b/i, threat: 'auth_bypass' },
     { pattern: /\bdon[’']t\s+warn\b/i, threat: 'instruction_override' },
-    { pattern: /\b(code\s*block|```|\[send\b)\b/i, threat: 'instruction_override' },
+    { pattern: /(?:\bcode\s*block\b|```|\[send\b)/i, threat: 'instruction_override' },
     { pattern: /\b(base64|rot13|atob|btoa)\b/i, threat: 'obfuscation' },
 
     // Attempts to access local files / secrets / logs
@@ -324,10 +328,16 @@ function extractTokensAndProtocols(prompt, availableTokens, knownProtocols) {
 }
 
 function extractProtocolMentions(prompt) {
+  const stopwords = new Set([
+    'a', 'an', 'the', 'this', 'that', 'these', 'those',
+    'my', 'your', 'our', 'their', 'of', 'to', 'for', 'with', 'by', 'from', 'about', 'as'
+  ]);
   const found = [];
   const regex = /\b(?:at|on|via|in)\s+([A-Za-z][A-Za-z0-9_-]{1,63})\b/gi;
   for (const match of prompt.matchAll(regex)) {
-    if (match[1]) found.push(match[1]);
+    if (match[1] && !stopwords.has(String(match[1]).toLowerCase())) {
+      found.push(match[1]);
+    }
   }
   return found;
 }
@@ -526,8 +536,9 @@ async function main() {
     const looksHexButTooShort = !!(toCandidate && /^0x[0-9a-fA-F]+$/.test(toCandidate) && toCandidate.length < (2 + MIN_RECIPIENT_HEX_LEN));
     const hasInvalidRecipient = !!(toCandidate && (!exactRecipientRegex.test(toCandidate) || looksHexButTooShort));
 
-    // Amount: first decimal/integer number
-    const amountMatch = prompt.match(/\b\d+(?:\.\d+)?\b/);
+    // Amount: first decimal/integer number (exclude 0x... address segments)
+    const promptWithoutHex = prompt.replace(/0x[0-9a-fA-F]+/g, ' ');
+    const amountMatch = promptWithoutHex.match(/\b\d+(?:\.\d+)?\b/);
     const amount = amountMatch ? amountMatch[0] : null;
 
     // Token: from extracted tokens; fallback to uppercase word heuristic
@@ -643,7 +654,7 @@ async function main() {
   for (const protocol of protocols) {
     // AVNU gets fake ABI and address so LLM treats it like any protocol
     if (protocol.toLowerCase() === 'avnu') {
-      addresses[protocol] = '0x01';  // Special marker address
+      addresses[protocol] = PROTOCOL_VIRTUAL_ADDRESSES.AVNU;
       abis[protocol] = ['swap', 'quote', 'dca', 'stake', 'unstake', 'gasless', 'gasfree'];
       continue;
     }
@@ -651,7 +662,7 @@ async function main() {
     // VESU gets fake ABI and address so LLM treats it like any protocol
     // Actual execution is routed to scripts/vesu-pool.js which calls Pool.modify_position.
     if (protocol.toLowerCase() === 'vesu') {
-      addresses[protocol] = '0x02';
+      addresses[protocol] = PROTOCOL_VIRTUAL_ADDRESSES.VESU;
       abis[protocol] = ['supply', 'borrow', 'position'];
       continue;
     }
@@ -687,7 +698,8 @@ async function main() {
   }));
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const __entryFile = process.argv[1] ? resolvePath(process.argv[1]) : null;
+if (__entryFile && fileURLToPath(import.meta.url) === __entryFile) {
   main().catch(err => {
     console.log(JSON.stringify({
       success: false,

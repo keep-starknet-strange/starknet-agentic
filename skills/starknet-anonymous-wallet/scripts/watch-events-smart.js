@@ -29,12 +29,14 @@ import { execSync, execFileSync } from 'child_process';
 import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
+import { fileURLToPath } from 'url';
 
 import { resolveRpcUrl } from './_rpc.js';
 
 const DEFAULT_POLL_INTERVAL = 3000;
 const DEFAULT_HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 5000;
+const DEFAULT_POLL_START_RETRY_MS = 5000;
 const MAX_BLOCKS_PER_CYCLE = 200;
 const DEFAULT_WS_RECOVERY_COOLDOWN_MS = 5 * 60 * 1000;
 const MAX_PROCESSED_TXS = 10000;
@@ -98,11 +100,12 @@ function createCronJob(config) {
   
   writeFileSync(configPath, JSON.stringify(execConfig, null, 2));
 
-  const scriptPath = new URL(import.meta.url).pathname;
+  const scriptPath = fileURLToPath(import.meta.url);
   
   const shellScript = `#!/bin/bash
 cd "$(dirname "$0")"
-exec node "${scriptPath}" '@${configPath}'
+LOCKFILE="${configPath}.lock"
+exec flock -n "$LOCKFILE" node "${scriptPath}" '@${configPath}'
 `;
   const shellPath = join(cronDir, `${jobName}.sh`);
   writeFileSync(shellPath, shellScript, { mode: 0o755 });
@@ -155,6 +158,7 @@ class SmartEventWatcher {
       this.log('wsRpcUrl not set; WebSocket mode unavailable, using polling fallback', 'warn');
     }
     this.pollIntervalMs = config.pollIntervalMs || DEFAULT_POLL_INTERVAL;
+    this.pollStartRetryMs = config.pollStartRetryMs || DEFAULT_POLL_START_RETRY_MS;
     this.healthCheckIntervalMs = config.healthCheckIntervalMs || DEFAULT_HEALTH_CHECK_INTERVAL;
     this.webhookTimeoutMs = config.webhookTimeoutMs || DEFAULT_WEBHOOK_TIMEOUT_MS;
     this.webhookUrl = config.webhookUrl || null;
@@ -335,7 +339,6 @@ class SmartEventWatcher {
       return false;
     }
     
-    this.currentMode = 'websocket';
     this.log('Attempting WebSocket connection...');
 
     return new Promise((resolve) => {
@@ -355,6 +358,7 @@ class SmartEventWatcher {
       this.ws.on('open', () => {
         connected = true;
         clearTimeout(connectionTimeout);
+        this.currentMode = 'websocket';
         this.wsIsConnected = true;
         this.wsReconnectAttempts = 0;
         this.log('WebSocket connected successfully');
@@ -404,7 +408,9 @@ class SmartEventWatcher {
             this.handleEvent(msg.params.result, 'websocket');
           }
         } catch (e) {
-          // Ignore parse errors
+          const raw = Buffer.isBuffer(data) ? data.toString('utf8') : String(data);
+          const rawPreview = raw.length > 320 ? `${raw.slice(0, 320)}...` : raw;
+          this.log(`WebSocket message parse error: ${e.message}; payload=${rawPreview}`, 'debug');
         }
       });
 
@@ -446,7 +452,11 @@ class SmartEventWatcher {
       // In auto mode, fallback to polling
       this.log(`WebSocket failed (${reason}), switching to polling mode`);
       this.stopWebSocket();
-      this.startPolling();
+      if (this.isPolling) {
+        this.currentMode = 'polling';
+      } else {
+        this.startPolling();
+      }
     }
   }
 
@@ -475,7 +485,13 @@ class SmartEventWatcher {
       this.log(`Starting from block ${this.currentBlock}`);
     } catch (err) {
       this.log(`Failed to get starting block: ${err.message}`, 'error');
-      this.currentBlock = 0;
+      this.isPolling = false;
+      this.pollTimer = setTimeout(() => {
+        if (this.isShuttingDown || this.isPolling) return;
+        this.startPolling();
+      }, this.pollStartRetryMs);
+      this.log(`Retrying polling startup in ${this.pollStartRetryMs}ms`, 'warn');
+      return;
     }
 
     this.poll();
@@ -571,7 +587,7 @@ class SmartEventWatcher {
     logEvent(eventData);
     
     if (this.webhookUrl) {
-      sendWebhook(this.webhookUrl, eventData, this.webhookTimeoutMs);
+      sendWebhook(this.webhookUrl, eventData, this.webhookTimeoutMs).catch(() => {});
     }
   }
 
@@ -609,11 +625,9 @@ class SmartEventWatcher {
         }
 
         this.log('Health check: Attempting WebSocket recovery...');
-        this.stopPolling();
         this.tryWebSocket().then(success => {
-          if (!success) {
-            // Recovery failed, continue polling
-            this.startPolling();
+          if (success) {
+            this.stopPolling();
           }
         });
       }
@@ -653,7 +667,14 @@ async function main() {
     rawInput = readFileSync(configPath, 'utf8');
   }
   
-  const config = JSON.parse(rawInput);
+  let config;
+  try {
+    config = JSON.parse(rawInput);
+  } catch (err) {
+    const source = configPath ? `config file ${configPath}` : 'input argument';
+    console.error(JSON.stringify({ error: `Invalid JSON in ${source}: ${err.message}` }));
+    process.exit(1);
+  }
   // Remember config path/job name when started from cron
   if (configPath) {
     config.__configPath = configPath;

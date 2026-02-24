@@ -24,6 +24,7 @@ import { fileURLToPath } from 'url';
 
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
+import { parseAmountToBaseUnits } from './parse-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -44,37 +45,6 @@ function loadVesuPools() {
   } catch {
     return {};
   }
-}
-
-// Safe decimal parsing (same rules as resolve-smart)
-function parseAmountToBaseUnits(amount, decimals) {
-  const dec = Number(decimals ?? 18);
-  if (!Number.isInteger(dec) || dec < 0 || dec > 255) {
-    throw new Error(`Invalid decimals: ${decimals}`);
-  }
-  if (amount === null || amount === undefined) throw new Error('Missing amount');
-
-  let s;
-  if (typeof amount === 'number') {
-    if (!Number.isFinite(amount)) throw new Error('Amount must be finite');
-    s = String(amount);
-    if (/[eE]/.test(s)) throw new Error('Scientific notation not supported; pass as string');
-  } else {
-    s = String(amount).trim();
-  }
-
-  if (!/^[0-9]+(\.[0-9]+)?$/.test(s)) throw new Error(`Invalid amount format: ${s}`);
-
-  const [intPart, fracRaw = ''] = s.split('.');
-  if (fracRaw.length > dec) {
-    throw new Error(`Too many decimal places: got ${fracRaw.length}, token supports ${dec}`);
-  }
-
-  const base = 10n ** BigInt(dec);
-  const intBI = BigInt(intPart || '0');
-  const fracPadded = (fracRaw + '0'.repeat(dec)).slice(0, dec);
-  const fracBI = BigInt(fracPadded || '0');
-  return intBI * base + fracBI;
 }
 
 function u256ToBigInt(v) {
@@ -347,8 +317,12 @@ async function main() {
       console.log(JSON.stringify({ success: false, error: 'Borrow requires collateralToken' }));
       process.exit(1);
     }
-    if (!debtToken || !input.debtAmount) {
-      console.log(JSON.stringify({ success: false, error: 'Borrow requires debtToken + debtAmount' }));
+    if (!debtToken) {
+      console.log(JSON.stringify({ success: false, error: 'Borrow requires debtToken' }));
+      process.exit(1);
+    }
+    if (!input.debtAmount) {
+      console.log(JSON.stringify({ success: false, error: 'Borrow requires debtAmount' }));
       process.exit(1);
     }
 

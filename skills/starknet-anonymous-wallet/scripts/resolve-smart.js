@@ -11,12 +11,11 @@
  */
 
 import { RpcProvider, CallData } from 'starknet';
-import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, mkdirSync, renameSync, openSync, closeSync } from 'fs';
 import { join, dirname, isAbsolute } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
-import { findCanonicalAction, ALL_SYNONYMS } from './synonyms.js';
-import { calculateSimilarity } from './parse-utils.js';
+import { calculateSimilarity, parseAmountToBaseUnits } from './parse-utils.js';
 
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
@@ -26,6 +25,51 @@ import { fetchVerifiedTokens } from './_tokens.js';
 // Instead we persist the last-used adventurerId per account locally.
 const LOOT_STATE_DIR = join(homedir(), '.openclaw', 'typhoon-loot-survivor');
 const LOOT_STATE_FILE = join(LOOT_STATE_DIR, 'latest.json');
+const LOOT_STATE_TMP_FILE = join(LOOT_STATE_DIR, 'latest.json.tmp');
+const LOOT_STATE_LOCK_FILE = join(LOOT_STATE_DIR, '.latest.lock');
+const LOCK_SLEEP_CELL = new Int32Array(new SharedArrayBuffer(4));
+
+function sleepSync(ms) {
+  Atomics.wait(LOCK_SLEEP_CELL, 0, 0, ms);
+}
+
+function withLootStateLock(fn) {
+  mkdirSync(LOOT_STATE_DIR, { recursive: true });
+  const deadlineMs = Date.now() + 1000;
+  let lockFd = null;
+  while (lockFd === null) {
+    try {
+      lockFd = openSync(LOOT_STATE_LOCK_FILE, 'wx');
+    } catch (err) {
+      if (err?.code !== 'EEXIST' || Date.now() >= deadlineMs) {
+        throw err;
+      }
+      sleepSync(20);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    try { closeSync(lockFd); } catch {}
+    try { unlinkSync(LOOT_STATE_LOCK_FILE); } catch {}
+  }
+}
+
+function lootStateMutate(accountAddress, mutateEntry) {
+  if (!accountAddress) return;
+  try {
+    withLootStateLock(() => {
+      const map = lootStateLoad();
+      const entry = lootStateGetEntry(map, accountAddress);
+      mutateEntry(entry);
+      lootStateWriteEntry(map, accountAddress, entry);
+      writeFileSync(LOOT_STATE_TMP_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
+      renameSync(LOOT_STATE_TMP_FILE, LOOT_STATE_FILE);
+    });
+  } catch {
+    // best-effort only
+  }
+}
 
 function lootStateLoad() {
   try {
@@ -70,36 +114,26 @@ function lootStateGetPending(accountAddress) {
 
 function lootStateSetLatest(accountAddress, adventurerId) {
   if (accountAddress == null || adventurerId == null || adventurerId === '') return;
-  try {
-    mkdirSync(LOOT_STATE_DIR, { recursive: true });
-    const map = lootStateLoad();
-    const entry = lootStateGetEntry(map, accountAddress);
+  lootStateMutate(accountAddress, (entry) => {
     entry.latestAdventurerId = String(adventurerId);
-    lootStateWriteEntry(map, accountAddress, entry);
-    writeFileSync(LOOT_STATE_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
-  } catch {
-    // best-effort only
-  }
+  });
 }
 
 function lootStateSetPending(accountAddress, pending) {
   if (!accountAddress) return;
-  try {
-    mkdirSync(LOOT_STATE_DIR, { recursive: true });
-    const map = lootStateLoad();
-    const entry = lootStateGetEntry(map, accountAddress);
+  lootStateMutate(accountAddress, (entry) => {
     entry.pendingEncounter = Boolean(pending);
-    lootStateWriteEntry(map, accountAddress, entry);
-    writeFileSync(LOOT_STATE_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
-  } catch {
-    // best-effort only
-  }
+  });
 }
 
 // ============ DYNAMIC REGISTRY LOADING ============
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const SKILL_ROOT = join(__dirname, '..');
+const VIRTUAL_PROTOCOL_ADDRESS = Object.freeze({
+  AVNU: '__avnu_virtual__',
+  VESU: '__vesu_virtual__'
+});
 
 // ============ EXECUTION ATTESTATION (PARSE → RESOLVE) ============
 // resolve-smart should only build executable plans from structured parsed input
@@ -112,19 +146,27 @@ function verifyAndConsumeAttestation(token) {
   if (!/^[a-f0-9]{20,64}$/i.test(token)) return { ok: false, reason: 'format' };
 
   const p = join(ATTEST_DIR, `${token}.json`);
-  if (!existsSync(p)) return { ok: false, reason: 'not_found' };
+  const consumedPath = `${p}.consumed.${process.pid}.${Date.now()}`;
+  try {
+    // Atomic claim: only one process can successfully rename+consume.
+    renameSync(p, consumedPath);
+  } catch (err) {
+    if (err?.code === 'ENOENT') return { ok: false, reason: 'not_found' };
+    return { ok: false, reason: 'not_found' };
+  }
 
   try {
-    const data = JSON.parse(readFileSync(p, 'utf8'));
+    const data = JSON.parse(readFileSync(consumedPath, 'utf8'));
     const now = Date.now();
     if (data.expiresAt && now > Number(data.expiresAt)) {
-      try { unlinkSync(p); } catch {}
+      try { unlinkSync(consumedPath); } catch {}
       return { ok: false, reason: 'expired' };
     }
     // One-time consume
-    try { unlinkSync(p); } catch {}
+    try { unlinkSync(consumedPath); } catch {}
     return { ok: true };
   } catch {
+    try { unlinkSync(consumedPath); } catch {}
     return { ok: false, reason: 'corrupt' };
   }
 }
@@ -157,68 +199,6 @@ function loadProtocols() {
     }
   }
   return protocols;
-}
-
-// ============ MULTI-ADDRESS ABI SCANNING ============
-async function fetchABI(address, provider) {
-  try {
-    const response = await provider.getClassAt(address);
-    return response.abi || [];
-  } catch (e) {
-    return [];
-  }
-}
-
-async function findBestFunctionAcrossAddresses(protocolName, action, protocols, provider) {
-  const addresses = protocols[protocolName];
-  if (!addresses || addresses.length === 0) {
-    return { error: `No addresses found for protocol ${protocolName}` };
-  }
-  
-  let bestMatch = null;
-  let bestScore = 0;
-  let allFunctions = [];
-  
-  // Scan all addresses
-  for (const address of addresses) {
-    const abi = await fetchABI(address, provider);
-    const functions = extractABIItems(abi).functions;
-    
-    for (const func of functions) {
-      const score = calculateSimilarity(action, func.name);
-      allFunctions.push({
-        name: func.name,
-        address: address,
-        score: score,
-        inputs: func.inputs || [],
-        outputs: func.outputs || [],
-        state_mutability: func.state_mutability || 'external'
-      });
-      
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = {
-          name: func.name,
-          address: address,
-          score: score,
-          inputs: func.inputs || [],
-          outputs: func.outputs || [],
-          state_mutability: func.state_mutability || 'external',
-          fullABI: abi
-        };
-      }
-    }
-  }
-  
-  // Sort all functions by score for reference
-  allFunctions.sort((a, b) => b.score - a.score);
-  
-  return {
-    bestMatch: bestMatch,
-    allMatches: allFunctions.slice(0, 10), // Top 10 matches
-    scannedAddresses: addresses.length,
-    protocolName: protocolName
-  };
 }
 
 function loadFriends() {
@@ -369,88 +349,8 @@ async function resolveFromABI(provider, contractAddress, query, type = 'function
   }
 }
 
-// ============ TOKEN OPERATIONS ============
-function formatUnitsSafe(value, decimals, maxFractionDigits = 6) {
-  const d = Number(decimals ?? 18);
-  if (!Number.isInteger(d) || d < 0) return value.toString();
-
-  const base = 10n ** BigInt(d);
-  const whole = value / base;
-  const frac = value % base;
-
-  if (d === 0) return whole.toString();
-  let fracStr = frac.toString().padStart(d, '0').slice(0, maxFractionDigits);
-  fracStr = fracStr.replace(/0+$/, '');
-  return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
-}
-
-async function getTokenBalance(provider, tokenAddress, accountAddress, decimals) {
-  try {
-    const result = await provider.callContract({
-      contractAddress: tokenAddress,
-      entrypoint: 'balanceOf',
-      calldata: [accountAddress]
-    });
-    const raw = Array.isArray(result) ? result : (result?.result || []);
-    if (raw.length >= 2) {
-      const value = BigInt(raw[0]) + (BigInt(raw[1]) << 128n);
-      return {
-        raw: value.toString(),
-        human: formatUnitsSafe(value, decimals)
-      };
-    }
-  } catch {}
-  return { raw: "0", human: "0" };
-}
-
 function toUint256(n) {
   return [(n & ((1n << 128n) - 1n)).toString(), (n >> 128n).toString()];
-}
-
-// Parse decimal amount safely into base units (BigInt) given token decimals.
-// Accepts integer/decimal strings and numbers (numbers must not be in scientific notation).
-function parseAmountToBaseUnits(amount, decimals) {
-  const dec = Number(decimals ?? 18);
-  if (!Number.isInteger(dec) || dec < 0 || dec > 255) {
-    throw new Error(`Invalid decimals: ${decimals}`);
-  }
-
-  if (amount === null || amount === undefined) {
-    throw new Error('Missing amount');
-  }
-
-  // Normalize to string for exact parsing
-  let s;
-  if (typeof amount === 'number') {
-    if (!Number.isFinite(amount)) throw new Error('Amount must be finite');
-    // Reject scientific notation to avoid ambiguity/precision loss
-    s = String(amount);
-    if (/[eE]/.test(s)) {
-      throw new Error('Amount in scientific notation not supported; pass amount as a string');
-    }
-  } else if (typeof amount === 'string') {
-    s = amount.trim();
-  } else {
-    s = String(amount).trim();
-  }
-
-  if (!/^[0-9]+(\.[0-9]+)?$/.test(s)) {
-    throw new Error(`Invalid amount format: ${s}`);
-  }
-
-  const [intPart, fracPartRaw = ''] = s.split('.');
-  const fracPart = fracPartRaw;
-
-  if (fracPart.length > dec) {
-    throw new Error(`Too many decimal places: got ${fracPart.length}, token supports ${dec}`);
-  }
-
-  const base = 10n ** BigInt(dec);
-  const intBI = BigInt(intPart || '0');
-  const fracPadded = (fracPart + '0'.repeat(dec)).slice(0, dec);
-  const fracBI = BigInt(fracPadded || '0');
-
-  return intBI * base + fracBI;
 }
 
 function sanitizeExecutionPlan(plan) {
@@ -620,14 +520,18 @@ async function main() {
       for (let i = 0; i < operations.length; i++) {
         const op = operations[i];
         
-        // Check if this is an AVNU operation (protocol "AVNU" or address "0x01")
+        // Check if this is an AVNU/Vesu operation (protocol name or virtual marker address)
         const isAvnu = op.protocol?.toLowerCase() === "avnu" || 
-                      addresses[op.protocol] === "0x01" ||
-                      op.contractAddress === "0x01";
+                      addresses[op.protocol] === VIRTUAL_PROTOCOL_ADDRESS.AVNU ||
+                      op.contractAddress === VIRTUAL_PROTOCOL_ADDRESS.AVNU ||
+                      addresses[op.protocol] === "0x01" || // backward compatibility
+                      op.contractAddress === "0x01"; // backward compatibility
 
         const isVesu = op.protocol?.toLowerCase() === "vesu" ||
-                      addresses[op.protocol] === "0x02" ||
-                      op.contractAddress === "0x02";
+                      addresses[op.protocol] === VIRTUAL_PROTOCOL_ADDRESS.VESU ||
+                      op.contractAddress === VIRTUAL_PROTOCOL_ADDRESS.VESU ||
+                      addresses[op.protocol] === "0x02" || // backward compatibility
+                      op.contractAddress === "0x02"; // backward compatibility
         
         if (isAvnu) {
           // AVNU swap via SDK
@@ -993,14 +897,18 @@ async function main() {
           // Add action if it's a conditional (not pure watch)
           if (operationType === "CONDITIONAL" && w.action && w.action !== "watch") {
             // Determine action script based on protocol/action
-            // AVNU is identified by: protocol name "AVNU" OR special address "0x01"
+            // AVNU/Vesu are identified by protocol name or virtual marker address
             const isAvnu = w.protocol?.toLowerCase() === "avnu" || 
-                          addresses[w.protocol] === "0x01" ||
-                          w.contractAddress === "0x01";
+                          addresses[w.protocol] === VIRTUAL_PROTOCOL_ADDRESS.AVNU ||
+                          w.contractAddress === VIRTUAL_PROTOCOL_ADDRESS.AVNU ||
+                          addresses[w.protocol] === "0x01" || // backward compatibility
+                          w.contractAddress === "0x01"; // backward compatibility
 
             const isVesu = w.protocol?.toLowerCase() === "vesu" ||
-                          addresses[w.protocol] === "0x02" ||
-                          w.contractAddress === "0x02";
+                          addresses[w.protocol] === VIRTUAL_PROTOCOL_ADDRESS.VESU ||
+                          w.contractAddress === VIRTUAL_PROTOCOL_ADDRESS.VESU ||
+                          addresses[w.protocol] === "0x02" || // backward compatibility
+                          w.contractAddress === "0x02"; // backward compatibility
             
             if (isAvnu) {
               watcherConfig.action = {

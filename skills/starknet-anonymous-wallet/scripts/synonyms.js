@@ -1,6 +1,8 @@
 // ERC-20 and DeFi Action Synonyms
 // Maps user-friendly terms to canonical ABI function names
 
+import { escapeRegExp } from './parse-utils.js';
+
 export const ERC20_SYNONYMS = {
   // Transfer operations
   'send': ['transfer', 'move', 'pay', 'dispatch', 'forward'],
@@ -96,10 +98,6 @@ export const ALL_SYNONYMS = {
 
 // Reverse lookup for all
 export const REVERSE_SYNONYMS = buildReverseMap(ALL_SYNONYMS);
-
-function escapeRegExp(value) {
-  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 function normalizeVariant(value) {
   return String(value || '').toLowerCase().trim().replace(/\s+/g, '_');

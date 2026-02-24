@@ -38,12 +38,10 @@ const LOOT_STATE_DIR = join(homedir(), '.openclaw', 'typhoon-loot-survivor');
 const LOOT_STATE_FILE = join(LOOT_STATE_DIR, 'latest.json');
 const LOOT_STATE_TMP_FILE = join(LOOT_STATE_DIR, 'latest.json.tmp');
 const LOOT_STATE_LOCK_FILE = join(LOOT_STATE_DIR, '.latest.lock');
+const LOCK_SLEEP_CELL = new Int32Array(new SharedArrayBuffer(4));
 
-function sleepBusy(ms) {
-  const until = Date.now() + ms;
-  while (Date.now() < until) {
-    // busy wait (short lock contention windows only)
-  }
+function sleepSync(ms) {
+  Atomics.wait(LOCK_SLEEP_CELL, 0, 0, ms);
 }
 
 function withLootStateLock(fn) {
@@ -57,7 +55,7 @@ function withLootStateLock(fn) {
       if (err?.code !== 'EEXIST' || Date.now() >= deadlineMs) {
         throw err;
       }
-      sleepBusy(20);
+      sleepSync(20);
     }
   }
   try {

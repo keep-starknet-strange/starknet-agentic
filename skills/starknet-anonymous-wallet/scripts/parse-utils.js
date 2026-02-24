@@ -48,3 +48,44 @@ export function calculateSimilarity(query, target) {
 export function escapeRegExp(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+// Parse decimal amount safely into base units (BigInt) given token decimals.
+// Accepts integer/decimal strings and numbers (numbers must not be in scientific notation).
+export function parseAmountToBaseUnits(amount, decimals) {
+  const dec = Number(decimals ?? 18);
+  if (!Number.isInteger(dec) || dec < 0 || dec > 255) {
+    throw new Error(`Invalid decimals: ${decimals}`);
+  }
+
+  if (amount === null || amount === undefined) {
+    throw new Error('Missing amount');
+  }
+
+  let s;
+  if (typeof amount === 'number') {
+    if (!Number.isFinite(amount)) throw new Error('Amount must be finite');
+    s = String(amount);
+    if (/[eE]/.test(s)) {
+      throw new Error('Amount in scientific notation not supported; pass amount as a string');
+    }
+  } else if (typeof amount === 'string') {
+    s = amount.trim();
+  } else {
+    s = String(amount).trim();
+  }
+
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(s)) {
+    throw new Error(`Invalid amount format: ${s}`);
+  }
+
+  const [intPart, fracPartRaw = ''] = s.split('.');
+  if (fracPartRaw.length > dec) {
+    throw new Error(`Too many decimal places: got ${fracPartRaw.length}, token supports ${dec}`);
+  }
+
+  const base = 10n ** BigInt(dec);
+  const intBI = BigInt(intPart || '0');
+  const fracPadded = (fracPartRaw + '0'.repeat(dec)).slice(0, dec);
+  const fracBI = BigInt(fracPadded || '0');
+  return intBI * base + fracBI;
+}

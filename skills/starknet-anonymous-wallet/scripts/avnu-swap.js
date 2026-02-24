@@ -72,7 +72,7 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
     buyTokenAddress: buyToken.address,
     sellAmount: amountBigInt,
     takerAddress: accountAddress,
-    size: 3, // Get top 3 quotes for comparison
+    size: 1,
   });
   
   if (!quotes || quotes.length === 0) {
@@ -156,18 +156,22 @@ async function main() {
   });
   
   try {
+    const emitProgress = (payload) => {
+      console.error(JSON.stringify(payload));
+    };
+
     // Step 1: Get quote
-    console.log(JSON.stringify({
+    emitProgress({
       step: "quote",
       status: "fetching",
       sellToken,
       buyToken,
       sellAmount
-    }));
+    });
     
     const { quote, sellToken: sellTokenData, buyToken: buyTokenData } = await getSwapQuote(sellToken, buyToken, sellAmount, account.address);
     
-    console.log(JSON.stringify({
+    emitProgress({
       step: "quote",
       status: "success",
       buyAmount: quote.buyAmount.toString(),
@@ -177,24 +181,28 @@ async function main() {
       buyToken,
       sellTokenAddress: sellTokenData.address,
       buyTokenAddress: buyTokenData.address
-    }));
+    });
     
     // Step 2: Execute swap
-    console.log(JSON.stringify({
+    emitProgress({
       step: "execute",
       status: "executing",
       slippage: `${slippage * 100}%`
-    }));
+    });
     
     const result = await executeAvnuSwap(quote, account, slippage);
     
+    // Single machine-readable payload on stdout for downstream parsers
     console.log(JSON.stringify({
-      step: "execute",
-      status: "success",
+      success: true,
       transactionHash: result.transactionHash,
       sellToken,
       buyToken,
       sellAmount,
+      buyAmount: quote.buyAmount.toString(),
+      gasFees: quote.gasFees.toString(),
+      sellTokenAddress: sellTokenData.address,
+      buyTokenAddress: buyTokenData.address,
       explorer: `https://starkscan.co/tx/${result.transactionHash}`
     }));
     
