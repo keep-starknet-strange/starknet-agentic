@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "deploy": "node deploy.js",
-    "deploy:sepolia": "node deploy.js",
     "verify:owners": "node verify_owners.js"
   },
   "dependencies": {

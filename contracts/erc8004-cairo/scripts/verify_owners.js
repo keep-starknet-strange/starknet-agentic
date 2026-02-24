@@ -47,10 +47,7 @@ function resolveNetwork(chainId) {
   if (normalizedChainId === String(constants.StarknetChainId.SN_MAIN)) {
     return "mainnet";
   }
-  if (
-    normalizedChainId === String(constants.StarknetChainId.SN_SEPOLIA) ||
-    normalizedChainId === String(constants.StarknetChainId.SN_INTEGRATION_SEPOLIA)
-  ) {
+  if (normalizedChainId === String(constants.StarknetChainId.SN_SEPOLIA)) {
     return "sepolia";
   }
   return "custom";
@@ -149,25 +146,31 @@ async function main() {
   }
   console.log("");
 
-  const ownerRows = [];
-  const readFailures = [];
-  for (const [name, address] of Object.entries(addresses)) {
-    let normalizedAddress = "";
-    try {
-      normalizedAddress = normalizeAddress(address, `${name} contract address`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      readFailures.push({ name, address: String(address), message });
-      continue;
-    }
+  const readResults = await Promise.all(
+    Object.entries(addresses).map(async ([name, address]) => {
+      let normalizedAddress = "";
+      try {
+        normalizedAddress = normalizeAddress(address, `${name} contract address`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return { ok: false, name, address: String(address), message };
+      }
 
-    try {
-      const owner = await readOwner(provider, normalizedAddress);
-      ownerRows.push({ name, address: normalizedAddress, owner });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      readFailures.push({ name, address: normalizedAddress, message });
-    }
+      try {
+        const owner = await readOwner(provider, normalizedAddress);
+        return { ok: true, name, address: normalizedAddress, owner };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return { ok: false, name, address: normalizedAddress, message };
+      }
+    }),
+  );
+
+  const ownerRows = readResults.filter((result) => result.ok);
+  const readFailures = readResults.filter((result) => !result.ok);
+
+  for (const row of ownerRows) {
+    console.log(`${row.name.padEnd(10)} ${row.address} -> owner: ${row.owner}`);
   }
 
   if (readFailures.length > 0) {
@@ -177,10 +180,9 @@ async function main() {
     throw new Error(`Failed to read owner from one or more registries: ${failureSummary}`);
   }
 
-  for (const row of ownerRows) {
-    console.log(`${row.name.padEnd(10)} ${row.address} -> owner: ${row.owner}`);
+  if (ownerRows.length > 0) {
+    console.log("");
   }
-  console.log("");
 
   const distinctOwners = [...new Set(ownerRows.map((row) => row.owner))];
   let hasError = false;
@@ -192,11 +194,15 @@ async function main() {
     console.log("✅ All three registries share the same owner address.");
   }
 
-  if (expectedOwner && distinctOwners.length > 0 && distinctOwners[0] !== expectedOwner) {
-    hasError = true;
-    console.error(`❌ Expected owner mismatch: on-chain owner ${distinctOwners[0]} != ${expectedOwner}`);
-  } else if (expectedOwner && distinctOwners.length > 0) {
-    console.log("✅ On-chain owner matches EXPECTED_OWNER_ADDRESS.");
+  if (expectedOwner) {
+    if (distinctOwners.length === 1 && distinctOwners[0] !== expectedOwner) {
+      hasError = true;
+      console.error(`❌ Expected owner mismatch: on-chain owner ${distinctOwners[0]} != ${expectedOwner}`);
+    } else if (distinctOwners.length === 1) {
+      console.log("✅ On-chain owner matches EXPECTED_OWNER_ADDRESS.");
+    } else {
+      console.log("ℹ️  Cannot verify expected owner: registries have inconsistent owners.");
+    }
   }
 
   if (hasError) {
