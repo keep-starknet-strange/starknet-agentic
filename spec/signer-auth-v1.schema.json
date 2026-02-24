@@ -61,6 +61,7 @@
         "ok": { "type": "boolean" },
         "errorCode": {
           "type": "string",
+          "description": "Auth/replay error codes exercised by conformance vectors. Operational codes (POLICY_SELECTOR_DENIED, POLICY_CALL_NOT_ALLOWED, RATE_LIMITED, SIGNER_UNAVAILABLE) are defined in the OpenAPI spec but not tested here.",
           "enum": [
             "AUTH_INVALID_HMAC",
             "AUTH_INVALID_CLIENT",
@@ -74,9 +75,9 @@
       "oneOf": [
         {
           "properties": {
-            "ok": { "const": true }
-          },
-          "not": { "required": ["errorCode"] }
+            "ok": { "const": true },
+            "errorCode": false
+          }
         },
         {
           "required": ["errorCode"],

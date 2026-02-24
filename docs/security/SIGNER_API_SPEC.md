@@ -35,14 +35,15 @@ HMAC headers (all required):
 - `X-Keyring-Signature` (HMAC-SHA256 digest encoded as lowercase hex)
 
 HMAC payload format (HMAC-SHA256, lowercase hex; must match exactly):
-- `<timestamp>.<nonce>.POST./v1/sign/session-transaction.<sha256(raw_json_body)>`
+- `<timestamp>.<nonce>.POST./v1/sign/session-transaction.<sha256_hex(raw_json_body)>`
+- where `sha256_hex(...)` is the lowercase-hex SHA-256 digest of the exact raw JSON bytes on the wire.
 
 mTLS:
 - Required for non-loopback production deployments.
 - Client certificate, key, and CA chain must be configured together.
 
 Replay protection:
-- Nonces are one-time use per client (`client_id + nonce`) within the configured TTL window.
+- Nonces are one-time use per client (keyed by `(client_id, nonce)` tuple; use collision-safe encoding such as `JSON.stringify([clientId, nonce])`) within the configured TTL window.
 - Production deployment target is a shared replay store (Redis TTL) so all signer replicas enforce the same nonce uniqueness boundary.
 
 Timestamp policy:

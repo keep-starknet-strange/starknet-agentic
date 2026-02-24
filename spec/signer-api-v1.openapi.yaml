@@ -98,6 +98,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SignerErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
 components:
   securitySchemes:
     keyringHmac:
@@ -124,6 +130,7 @@ components:
     FeltHex:
       type: string
       pattern: '^0x[0-9a-fA-F]+$'
+      maxLength: 66
       examples: ['0x1234']
     SignCall:
       type: object
@@ -247,6 +254,12 @@ components:
           type: string
         errorCode:
           type: string
+          description: |
+            Stable machine code. Status mapping:
+            AUTH_INVALID_HMAC/AUTH_INVALID_CLIENT/AUTH_TIMESTAMP_SKEW -> 401,
+            AUTH_MTLS_REQUIRED -> 403, REPLAY_NONCE_USED -> 409,
+            POLICY_SELECTOR_DENIED/POLICY_CALL_NOT_ALLOWED -> 422,
+            RATE_LIMITED -> 429, SIGNER_UNAVAILABLE -> 503, INTERNAL_ERROR -> 500.
           enum:
             - AUTH_INVALID_HMAC
             - AUTH_INVALID_CLIENT

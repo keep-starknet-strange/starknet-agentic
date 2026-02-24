@@ -184,7 +184,7 @@ export async function validateKeyringRequestAuth(
     return fail("AUTH_TIMESTAMP_SKEW", "Timestamp outside allowed drift window");
   }
 
-  if (!nonce || nonce.length === 0 || nonce.length > 256) {
+  if (!nonce || nonce.length > 256) {
     return fail("AUTH_INVALID_HMAC", "Invalid X-Keyring-Nonce");
   }
   if (!signatureRaw || !isHex(signatureRaw)) {
@@ -200,7 +200,7 @@ export async function validateKeyringRequestAuth(
   });
   const suppliedSignature = signatureRaw.toLowerCase();
   const HMAC_COMPARE_FLOOR = 4;
-  const compareCount = Math.max(HMAC_COMPARE_FLOOR, clientSecrets.length, uniqueClientSecrets.length);
+  const compareCount = Math.max(HMAC_COMPARE_FLOOR, clientSecrets.length);
   const dummyPadSecret = randomBytes(32).toString("hex");
   let hmacMatched = false;
   for (let i = 0; i < compareCount; i += 1) {
