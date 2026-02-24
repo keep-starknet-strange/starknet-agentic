@@ -51,12 +51,19 @@ if (!preflight.ok) throw new Error(`preflight_failed:${preflight.reason}`);
 const result = await wallet.execute(calls);
 if (!result.transactionHash) throw new Error("missing_tx_hash");
 
+const hasWaitForTransaction = typeof wallet.waitForTransaction === "function";
 const receiptProvider = wallet.provider ?? wallet.account?.provider;
-const receipt = typeof wallet.waitForTransaction === "function"
+if (!hasWaitForTransaction && !receiptProvider) {
+  throw new Error(
+    `no provider configured for transaction receipt: txHash=${result.transactionHash} receiptProvider=${String(receiptProvider)} hasWaitForTransaction=${String(hasWaitForTransaction)}`
+  );
+}
+
+const receipt = hasWaitForTransaction
   ? await wallet.waitForTransaction(result.transactionHash)
   : await receiptProvider?.getTransactionReceipt?.(result.transactionHash);
 
-const status = receipt?.status ?? receipt?.execution_status;
+const status = receipt?.execution_status ?? receipt?.status;
 if (!receipt || !status || status === "REVERTED") {
   throw new Error(`tx_failed:${result.transactionHash}`);
 }
