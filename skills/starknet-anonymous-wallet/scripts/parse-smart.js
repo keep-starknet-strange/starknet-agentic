@@ -189,7 +189,6 @@ function validatePromptSecurity(prompt) {
     { pattern: /p-r-i-v-a-t-e\s*key/i, threat: 'key_exposure' },
     { pattern: /pr\\u0069vate\s*key/i, threat: 'key_exposure' },
     { pattern: /prıvate\s*key/i, threat: 'key_exposure' },
-    { pattern: /^(?=.{32,}$)(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/m, threat: 'obfuscation' },
 
     // Social-engineering patterns to bypass confirmation
     { pattern: /\b(skip|bypass|without)\b.{0,40}\b(confirmation|confirm|authorization|approval|asking)\b/i, threat: 'auth_bypass' },
@@ -227,6 +226,13 @@ function validatePromptSecurity(prompt) {
     if (pattern.test(prompt)) {
       threats.push(threat);
     }
+  }
+
+  // Context-aware base64 obfuscation detection (reduces false positives)
+  const hasBase64Context = /\b(base64|atob|btoa|decode|encoded|payload)\b/i.test(prompt);
+  const base64Candidates = prompt.match(/\b[A-Za-z0-9+/]{64,}={0,2}\b/g) || [];
+  if (hasBase64Context && base64Candidates.length > 0) {
+    threats.push('obfuscation');
   }
   
   if (threats.length > 0) {
