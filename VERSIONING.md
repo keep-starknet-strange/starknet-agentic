@@ -38,4 +38,5 @@ This repository uses SemVer with a pre-1.0 production policy.
 2. Choose next version using rules above.
 3. Move release notes from `Unreleased` to a new version heading with date.
 4. Tag release commit with `v0.y.z` (annotated tag).
-5. Publish release notes to GitHub Releases from `CHANGELOG.md`.
+5. Push the annotated tag: `git push origin v0.y.z`.
+6. Publish release notes to GitHub Releases from `CHANGELOG.md`.

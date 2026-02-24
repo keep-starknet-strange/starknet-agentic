@@ -15,7 +15,7 @@ follows SemVer with a pre-1.0 policy (see [`VERSIONING.md`](./VERSIONING.md)).
     ([GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26));
     transitive via eslint (devDependency, build-time only)
   - `qs`: `6.14.2` — existing security pin (unchanged)  
-  - PR: `#289`
+  PR: `#289`
 
 ## [0.1.0] - 2026-02-14
 
