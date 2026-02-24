@@ -319,7 +319,7 @@ Use `pub` to make them accessible outside the module.
 
 ### File Layout Convention
 
-```
+```text
 src/
   lib.cairo        # mod declarations
   math.cairo       # single-file module
