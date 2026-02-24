@@ -100,10 +100,11 @@ function createCronJob(config) {
   writeFileSync(configPath, JSON.stringify(execConfig, null, 2));
 
   const scriptPath = new URL(import.meta.url).pathname;
-  
+  const shellQuote = (value) => `'${String(value).replace(/'/g, `'"'"'`)}'`;
+
   const shellScript = `#!/bin/bash
 cd "$(dirname "$0")"
-exec node "${scriptPath}" '@${configPath}'
+exec node ${shellQuote(scriptPath)} ${shellQuote(`@${configPath}`)}
 `;
   const shellPath = join(cronDir, `${jobName}.sh`);
   writeFileSync(shellPath, shellScript, { mode: 0o755 });
