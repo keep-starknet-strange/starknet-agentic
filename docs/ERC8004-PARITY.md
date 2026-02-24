@@ -17,10 +17,10 @@ All three ERC-8004 registries are implemented, tested, and deployed on both Star
 
 | Registry | Contract | Tests | Mainnet | Sepolia |
 |----------|----------|-------|---------|---------|
-| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | See `contracts/erc8004-cairo/tests/` + `contracts/erc8004-cairo/e2e-tests/tests/` | `0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595` | `0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631` |
-| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | Included in suite above | `0x698849defe3997eccd3dc5e096c01ae8f4fbc2e49e8d67efcb0b0642447944` | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
-| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | Included in suite above | `0x3c2aae404b64ddf09f7ef07dfb4f723c9053443d35038263acf7d5d77efcd83` | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
-| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 110+ Cairo tests | Pending | `0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e` (factory) |
+| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | See `contracts/erc8004-cairo/tests/` + `contracts/erc8004-cairo/e2e-tests/tests/` | ✅ Live (see [Deployment truth sheet](DEPLOYMENT_TRUTH_SHEET.md)) | ✅ Live (see [Deployment truth sheet](DEPLOYMENT_TRUTH_SHEET.md)) |
+| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | Included in suite above | ✅ Live (see [Deployment truth sheet](DEPLOYMENT_TRUTH_SHEET.md)) | ✅ Live (see [Deployment truth sheet](DEPLOYMENT_TRUTH_SHEET.md)) |
+| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | Included in suite above | ✅ Live (see [Deployment truth sheet](DEPLOYMENT_TRUTH_SHEET.md)) | ✅ Live (see [Deployment truth sheet](DEPLOYMENT_TRUTH_SHEET.md)) |
+| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 110+ Cairo tests | Pending | ✅ Live factory (see [Deployment truth sheet](DEPLOYMENT_TRUTH_SHEET.md)) |
 
 ---
 
@@ -194,26 +194,7 @@ Chain-local state (reputation, validation history) remains chain-scoped. Cross-c
 
 ## Deployment
 
-### Mainnet (live)
-
-| Contract | Address |
-|----------|---------|
-| IdentityRegistry | `0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595` |
-| ReputationRegistry | `0x698849defe3997eccd3dc5e096c01ae8f4fbc2e49e8d67efcb0b0642447944` |
-| ValidationRegistry | `0x3c2aae404b64ddf09f7ef07dfb4f723c9053443d35038263acf7d5d77efcd83` |
-
-### Sepolia (live)
-
-| Contract | Address |
-|----------|---------|
-| IdentityRegistry | `0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631` |
-| ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
-| ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
-
-### Agent Account Deployment Status
-
-- Sepolia AgentAccountFactory: `0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e`
-- Mainnet AgentAccountFactory: pending
+Canonical deployment addresses and status live in [DEPLOYMENT_TRUTH_SHEET.md](DEPLOYMENT_TRUTH_SHEET.md).
 
 ---
 
