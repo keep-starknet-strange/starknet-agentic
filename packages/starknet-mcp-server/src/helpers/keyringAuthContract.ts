@@ -141,6 +141,11 @@ export async function validateKeyringRequestAuth(
   if (!clientId) {
     return fail("AUTH_INVALID_CLIENT", "Missing X-Keyring-Client-Id");
   }
+
+  if (input.requireMtls && !input.isMtlsAuthenticated) {
+    return fail("AUTH_MTLS_REQUIRED", "mTLS client authentication is required");
+  }
+
   const client = input.clientsById[clientId];
   const clientSecrets = (
     client
@@ -154,10 +159,6 @@ export async function validateKeyringRequestAuth(
 
   if (!client || uniqueClientSecrets.length === 0) {
     return fail("AUTH_INVALID_CLIENT", "Unknown keyring client");
-  }
-
-  if (input.requireMtls && !input.isMtlsAuthenticated) {
-    return fail("AUTH_MTLS_REQUIRED", "mTLS client authentication is required");
   }
 
   const timestampRaw = headers["x-keyring-timestamp"]?.trim() ?? "";
@@ -177,7 +178,7 @@ export async function validateKeyringRequestAuth(
     return fail("AUTH_TIMESTAMP_SKEW", "Timestamp outside allowed drift window");
   }
 
-  if (!nonce || nonce.length > 256) {
+  if (!nonce || nonce.length > 256 || nonce.includes(".")) {
     return fail("AUTH_INVALID_NONCE", "Invalid X-Keyring-Nonce");
   }
   if (!signatureRaw || !isHex(signatureRaw)) {

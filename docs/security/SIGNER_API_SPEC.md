@@ -31,7 +31,7 @@ The x402 examples document the signer API contract for interoperable clients and
 HMAC headers (all required):
 - `X-Keyring-Client-Id`
 - `X-Keyring-Timestamp`
-- `X-Keyring-Nonce` (recommended format: 16-32 random bytes encoded as lowercase hex, i.e. 32-64 hex chars)
+- `X-Keyring-Nonce` (recommended format: 16-32 random bytes encoded as lowercase hex, i.e. 32-64 hex chars; must not include `.`)
 - `X-Keyring-Signature` (HMAC-SHA256 digest encoded as lowercase hex)
 
 HMAC payload format (HMAC-SHA256, lowercase hex; must match exactly):
@@ -61,6 +61,11 @@ Clients must reject responses unless all conditions hold:
 5. `signature[3]` matches requested `validUntil`
 6. `domainHash` and `messageHash` are present and valid felt hex
 7. session pubkey does not rotate unexpectedly within one client session
+8. `requestId` is a non-empty string
+9. `audit` object is present and `audit.policyDecision == "allow"`
+10. `audit.decidedAt` is a strict RFC3339 timestamp
+11. `audit.keyId` and `audit.traceId` are non-empty strings
+12. `signerProvider` is one of `"local"` or `"dfns"`
 
 ## Error Codes
 

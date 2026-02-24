@@ -200,6 +200,45 @@ describe("keyring auth contract", () => {
     }
   });
 
+  it("fails closed on mTLS before evaluating client existence", async () => {
+    const nowMs = 1_770_984_000_000;
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonce = "nonce-mtls-before-client";
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret: "super-secret",
+    });
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "missing-client",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: { "mcp-tests": { hmacSecret: "super-secret" } },
+      requireMtls: true,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorCode).toBe("AUTH_MTLS_REQUIRED");
+    }
+  });
+
   it("rejects invalid signatures", async () => {
     const result = await validateKeyringRequestAuth({
       method: "POST",
@@ -447,7 +486,48 @@ describe("keyring auth contract", () => {
     }
   });
 
+  it("rejects nonces containing the payload delimiter", async () => {
+    const nowMs = 1_770_984_000_000;
+    const secret = "super-secret";
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonce = "nonce.with.dot";
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret,
+    });
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "mcp-tests",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: { "mcp-tests": { hmacSecret: secret } },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorCode).toBe("AUTH_INVALID_NONCE");
+    }
+  });
+
   it("fails closed with INTERNAL_ERROR when nonce store throws", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const nowMs = 1_770_984_000_000;
     const secret = "super-secret";
     const rawBody = JSON.stringify({ ok: true });
@@ -491,6 +571,11 @@ describe("keyring auth contract", () => {
     if (!result.ok) {
       expect(result.errorCode).toBe("INTERNAL_ERROR");
     }
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Replay protection store failure",
+      expect.any(Error)
+    );
+    consoleSpy.mockRestore();
   });
 
   it("does not collide replay keys for delimiter-like client/nonce pairs", async () => {
