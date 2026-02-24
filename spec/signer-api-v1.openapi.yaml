@@ -26,6 +26,8 @@ paths:
 
         HMAC signing payload is:
         `X-Keyring-Timestamp + "." + X-Keyring-Nonce + ".POST./v1/sign/session-transaction." + sha256(raw_json_body)`
+        where `sha256(raw_json_body)` is the lowercase-hex SHA-256 digest of the exact raw JSON request bytes sent on the wire.
+        The hex digest string is concatenated into the payload (not raw hash bytes).
         The `X-Keyring-Signature` value is the lowercase-hex HMAC-SHA256 digest of this payload.
       requestBody:
         required: true

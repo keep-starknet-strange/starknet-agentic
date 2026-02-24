@@ -75,7 +75,8 @@
         {
           "properties": {
             "ok": { "const": true }
-          }
+          },
+          "not": { "required": ["errorCode"] }
         },
         {
           "required": ["errorCode"],
