@@ -57,7 +57,8 @@ function attestIssue() {
     writeFileSync(p, JSON.stringify({ createdAt: now, expiresAt: now + ATTEST_TTL_MS }), 'utf8');
   } catch (err) {
     // If we can't write, still return token; resolve will fail closed.
-    console.error(`Failed to write attestation for token ${token} in ${ATTEST_DIR}: ${err.message}`);
+    // Never log token values.
+    console.error(`Failed to write attestation in ${ATTEST_DIR}: ${err.message}`);
   }
   return token;
 }
