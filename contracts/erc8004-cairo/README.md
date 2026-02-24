@@ -144,7 +144,7 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. The response is **finalize-once**:
 
 - **Single response per request hash**: once the designated validator submits `validation_response`, any second response for the same `request_hash` reverts with `'Response already submitted'`.
-- **Not accumulative**: there is no response history map for a given request hash. If audit trails are needed, index `ValidationResponse` events off-chain.
+- **Not accumulative**: there is no response history map for a given request hash. If audit trails are needed, index `ValidationResponse` events off-chain (`ValidationResponseEvent` payload type).
 - **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
 - **How to represent re-evaluation**: create a new validation request with a new `request_hash`.
@@ -462,7 +462,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Monitor `OwnershipTransferred` events for unauthorized ownership changes
 - [ ] Monitor `AgentWalletSet` and `AgentWalletUnset` events for wallet verification activity
 - [ ] Monitor `FeedbackGiven` and `FeedbackRevoked` events (ReputationRegistry) for abuse patterns
-- [ ] Monitor `ValidationRequested` and `ValidationResponse` events (ValidationRegistry) for validator activity
+- [ ] Monitor `ValidationRequested` and `ValidationResponse` events (ValidationRegistry, `ValidationResponseEvent` payload type) for validator activity
 
 **14. Metrics and Dashboards**
 - [ ] Total agents registered (IdentityRegistry: `total_agents()`)
