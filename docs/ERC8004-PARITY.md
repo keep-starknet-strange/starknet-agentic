@@ -13,7 +13,7 @@ Tracking issue: [#78](https://github.com/keep-starknet-strange/starknet-agentic/
 
 ## Registry Implementation Status
 
-All three ERC-8004 registries are implemented, tested, and deployed on both Starknet Sepolia and Starknet Mainnet. Agent Account factory is deployed on Sepolia; mainnet deployment is pending.
+All three ERC-8004 registries are implemented, tested, and deployed on both Starknet Sepolia and Starknet Mainnet (see [Deployment truth sheet](DEPLOYMENT_TRUTH_SHEET.md)). Agent Account factory is deployed on Sepolia; mainnet deployment is pending.
 
 | Registry | Contract | Tests | Mainnet | Sepolia |
 |----------|----------|-------|---------|---------|

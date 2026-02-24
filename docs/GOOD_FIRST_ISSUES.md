@@ -85,10 +85,10 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 **Context:** Sepolia factory is already deployed (`0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e`), but mainnet deployment is still pending.
 
 **Acceptance:**
-- [ ] Sepolia deployment + verification completed and results attached before mainnet push
+- [ ] Existing Sepolia deployment verified and results attached before mainnet push
 - [ ] Human review completed and maintainer approval recorded before any mainnet deployment
 - [ ] Mainnet deployment executed from `contracts/agent-account/scripts/`
-- [ ] Deployed mainnet address documented in canonical docs
+- [ ] Deployed mainnet address documented in `docs/DEPLOYMENT_TRUTH_SHEET.md` (canonical source)
 - [ ] Ownership verified as multisig
 - [ ] Basic interaction script verifying deployment works on mainnet
 
