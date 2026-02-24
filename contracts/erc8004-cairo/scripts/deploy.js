@@ -72,6 +72,26 @@ function assertChainIdNormalizationMappings() {
   }
 }
 
+function enforceHumanReviewAcknowledgement(network) {
+  const requiresReview = network.slug === "mainnet" || network.isPublicTestnet;
+  if (!requiresReview) {
+    return;
+  }
+
+  const reviewAcknowledged = process.env.REVIEW_ACKNOWLEDGED === "true";
+  const reviewerIdentity = (process.env.REVIEWER_IDENTITY ?? "").trim();
+  if (!reviewAcknowledged || reviewerIdentity.length === 0) {
+    console.error(`❌ ${network.label} deployment blocked: human review acknowledgement required.`);
+    console.error(
+      "   Set REVIEW_ACKNOWLEDGED=true and REVIEWER_IDENTITY=<name|handle|ticket> in .env.",
+    );
+    process.exit(1);
+  }
+
+  const reviewedAt = new Date().toISOString();
+  console.log(`🧾 Human review acknowledged by ${reviewerIdentity} at ${reviewedAt}`);
+}
+
 function enforceDeploymentSafetyGate(network) {
   if (network.slug === "mainnet") {
     const allowMainnet = process.env.ALLOW_MAINNET_DEPLOY === "true";
@@ -80,6 +100,7 @@ function enforceDeploymentSafetyGate(network) {
       console.error("   Set ALLOW_MAINNET_DEPLOY=true in .env to proceed intentionally.");
       process.exit(1);
     }
+    enforceHumanReviewAcknowledgement(network);
     console.warn("⚠️  MAINNET DEPLOYMENT ENABLED (ALLOW_MAINNET_DEPLOY=true)");
     console.warn("   Verify multisig owner, class hashes, and Sepolia dry run before continuing.\n");
     return;
@@ -92,6 +113,7 @@ function enforceDeploymentSafetyGate(network) {
       console.error("   Set ALLOW_PUBLIC_DEPLOY=true in .env to proceed intentionally.");
       process.exit(1);
     }
+    enforceHumanReviewAcknowledgement(network);
     console.warn(`⚠️  ${network.label} DEPLOYMENT ENABLED (ALLOW_PUBLIC_DEPLOY=true)`);
     console.warn("   Verify class hashes, owner account, and post-deploy smoke tests.\n");
   }

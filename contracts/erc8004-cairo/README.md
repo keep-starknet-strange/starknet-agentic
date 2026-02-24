@@ -310,12 +310,15 @@ DEPLOYER_ADDRESS=0x...
 DEPLOYER_PRIVATE_KEY=0x...
 ALLOW_PUBLIC_DEPLOY=false
 ALLOW_MAINNET_DEPLOY=false
+REVIEW_ACKNOWLEDGED=false
+REVIEWER_IDENTITY=
 TEST_ACCOUNT_ADDRESS=0x...
 TEST_ACCOUNT_PRIVATE_KEY=0x...
 ```
 
 `ALLOW_PUBLIC_DEPLOY` is a safety gate for public testnets (currently Sepolia).
 `ALLOW_MAINNET_DEPLOY` is a separate safety gate for mainnet.
+`REVIEW_ACKNOWLEDGED` and `REVIEWER_IDENTITY` are required for Sepolia/mainnet deploys.
 
 ## Deployment
 
@@ -332,6 +335,9 @@ Notes:
   - `deployed_addresses_<network>_<timestamp>.json` (immutable run record)
 - Sepolia deploys require explicit opt-in: `ALLOW_PUBLIC_DEPLOY=true`.
 - Mainnet deploys require explicit opt-in: `ALLOW_MAINNET_DEPLOY=true`.
+- Sepolia/mainnet deploys also require human-review acknowledgement:
+  - `REVIEW_ACKNOWLEDGED=true`
+  - `REVIEWER_IDENTITY=<name|handle|ticket>`
 
 ## E2E Tests
 
