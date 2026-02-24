@@ -26,7 +26,7 @@ This skill provides **agent-facing scripts** for:
 ## Prerequisites
 
 ```bash
-npm install starknet@^8.9.1 typhoon-sdk@^1.1.13 @andersmyrmel/vard@^1.2.0 @avnu/avnu-sdk compromise@^14.14.5 ws@^8.19.0
+npm install starknet@^9.2.1 typhoon-sdk@^1.1.13 @andersmyrmel/vard@^1.2.0 @avnu/avnu-sdk compromise@^14.14.5 ws@^8.19.0
 ```
 
 ### RPC setup (required for onchain reads/writes)
