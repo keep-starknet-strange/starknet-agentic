@@ -5,14 +5,25 @@
 
 import { ChainId, StarkSDK, StarkSigner } from "starkzap";
 
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`Missing ${name} env var`);
+  }
+  return value;
+}
+
 async function main() {
+  const rpcUrl = requireEnv("RPC_URL");
+  const privateKey = requireEnv("PRIVATE_KEY");
+
   const sdk = new StarkSDK({
-    rpcUrl: process.env.RPC_URL!,
+    rpcUrl,
     chainId: ChainId.SEPOLIA,
   });
 
   const wallet = await sdk.connectWallet({
-    account: { signer: new StarkSigner(process.env.PRIVATE_KEY!) },
+    account: { signer: new StarkSigner(privateKey) },
     feeMode: "user_pays",
   });
 
@@ -26,4 +37,3 @@ main().catch((error) => {
   console.error("wallet-execute-example failed:", error);
   process.exit(1);
 });
-

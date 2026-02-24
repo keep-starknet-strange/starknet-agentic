@@ -4,16 +4,28 @@
 
 import { OnboardStrategy, StarkSDK } from "starkzap";
 
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`Missing ${name} env var`);
+  }
+  return value;
+}
+
 async function main() {
+  const walletId = requireEnv("PRIVY_WALLET_ID");
+  const publicKey = requireEnv("PRIVY_PUBLIC_KEY");
+  const signerUrl = requireEnv("PRIVY_SIGNER_URL");
+
   const sdk = new StarkSDK({ network: "sepolia" });
 
   await sdk.onboard({
     strategy: OnboardStrategy.Privy,
     privy: {
       resolve: async () => ({
-        walletId: process.env.PRIVY_WALLET_ID!,
-        publicKey: process.env.PRIVY_PUBLIC_KEY!,
-        serverUrl: process.env.PRIVY_SIGNER_URL!,
+        walletId,
+        publicKey,
+        serverUrl: signerUrl,
       }),
     },
     feeMode: "sponsored",
@@ -26,4 +38,3 @@ main().catch((error) => {
   console.error("privy-signing-debug failed:", error);
   process.exit(1);
 });
-
