@@ -23,6 +23,7 @@
     "ci:release": "pnpm build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.2.3",
     "eslint": "^10.0.0",
