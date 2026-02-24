@@ -252,9 +252,9 @@ async function main() {
     try {
       result = await contract.call(resolvedMethod, callArgs);
     } catch (typedCallErr) {
-      const hasObjectArgs = callArgs.some((v) => v !== null && typeof v === 'object');
-      if (hasObjectArgs) {
-        throw new Error(`Typed call failed for ${resolvedMethod}; raw RPC fallback disabled for object args. Pass primitive felt-like args only.`);
+      const hasUnsafeArgs = callArgs.some((v) => v == null || typeof v === 'object' || Array.isArray(v));
+      if (hasUnsafeArgs) {
+        throw typedCallErr;
       }
 
       // Fallback to raw RPC call when typed call path fails (e.g. ABI parser quirks)

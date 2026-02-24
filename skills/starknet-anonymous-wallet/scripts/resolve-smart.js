@@ -602,6 +602,16 @@ async function main() {
     }));
     process.exit(1);
   }
+
+  if (execute === true) {
+    console.log(JSON.stringify({
+      success: false,
+      canProceed: false,
+      nextStep: 'EXECUTE_NOT_IMPLEMENTED',
+      error: 'execute flag requested but execution not implemented'
+    }));
+    process.exit(1);
+  }
   
   // ============ HANDLE PRE-PARSED DATA FROM LLM ============
   if (parsed) {
@@ -1136,21 +1146,6 @@ async function main() {
       result.executionPlan = sanitizeExecutionPlan(result.executionPlan);
     }
 
-    if (execute === true) {
-      // Execution mode is not implemented in this script yet.
-      // Keep explicit references to existing symbols for the intended flow:
-      // waitForAuthorization(...) -> executeScript(...)
-      void waitForAuthorization;
-      void executeScript;
-      console.log(JSON.stringify({
-        success: false,
-        canProceed: false,
-        nextStep: 'EXECUTION_NOT_IMPLEMENTED',
-        error: 'execute=true is not implemented in resolve-smart. Use returned executionPlan and run authorized steps externally.'
-      }, null, 2));
-      process.exit(1);
-    }
-    
     console.log(JSON.stringify(result, null, 2));
     return;
   }
