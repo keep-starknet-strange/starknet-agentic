@@ -146,7 +146,7 @@ function savePersistedAdventurerId(accountAddress, adventurerId) {
 }
 
 function fail(message, extra = {}) {
-  console.error(JSON.stringify({ success: false, error: message, ...extra }));
+  console.log(JSON.stringify({ success: false, error: message, ...extra }));
   process.exit(1);
 }
 

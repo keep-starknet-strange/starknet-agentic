@@ -364,18 +364,30 @@ class SmartEventWatcher {
         this.log('WebSocket connected successfully');
         
         // Subscribe to events
-        for (const eventName of this.eventNames) {
-          const eventSelector = hash.getSelectorFromName(eventName);
+        if (this.eventNames.length === 0) {
           const subscribeMsg = {
             jsonrpc: '2.0',
             method: 'starknet_subscribeEvents',
             params: {
-              address: this.contractAddress,
-              keys: [[eventSelector]]
+              address: this.contractAddress
             },
             id: ++this.jsonRpcId
           };
           this.ws.send(JSON.stringify(subscribeMsg));
+        } else {
+          for (const eventName of this.eventNames) {
+            const eventSelector = hash.getSelectorFromName(eventName);
+            const subscribeMsg = {
+              jsonrpc: '2.0',
+              method: 'starknet_subscribeEvents',
+              params: {
+                address: this.contractAddress,
+                keys: [[eventSelector]]
+              },
+              id: ++this.jsonRpcId
+            };
+            this.ws.send(JSON.stringify(subscribeMsg));
+          }
         }
         
         resolve(true);

@@ -76,9 +76,8 @@ export function buildReverseMap(synonymMap) {
   const reverse = {};
   for (const [canonical, variants] of Object.entries(synonymMap)) {
     const canonicalKey = canonical.toLowerCase();
-    if (reverse[canonicalKey] === undefined) {
-      reverse[canonicalKey] = canonical;
-    }
+    // Canonical names must always resolve to themselves.
+    reverse[canonicalKey] = canonical;
     for (const variant of variants) {
       const key = variant.toLowerCase();
       // Preserve first-seen canonical mapping for overlapping variants.
@@ -113,7 +112,7 @@ function hasBoundaryMatch(target, variant) {
 
 // Function to find canonical action
 export function findCanonicalAction(action, abiFunctions = []) {
-  const lowerAction = String(action || '').toLowerCase();
+  const lowerAction = String(action || '').toLowerCase().trim();
   if (!Array.isArray(abiFunctions)) abiFunctions = [];
   if (!lowerAction) return undefined;
   

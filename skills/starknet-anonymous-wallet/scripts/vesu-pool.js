@@ -50,16 +50,20 @@ function loadVesuPools() {
 function u256ToBigInt(v) {
   if (v === null || v === undefined) return 0n;
   // starknet.js may return {low, high} or [low, high] or nested under .value
-  if (typeof v === 'object') {
-    if (Array.isArray(v) && v.length >= 2) {
-      return BigInt(String(v[0])) + (BigInt(String(v[1])) << 128n);
+  let payload = v;
+  while (payload && typeof payload === 'object' && 'value' in payload) {
+    payload = payload.value;
+  }
+  if (typeof payload === 'object') {
+    if (Array.isArray(payload) && payload.length >= 2) {
+      return BigInt(String(payload[0])) + (BigInt(String(payload[1])) << 128n);
     }
-    if ('low' in v && 'high' in v) {
-      return BigInt(String(v.low)) + (BigInt(String(v.high)) << 128n);
+    if ('low' in payload && 'high' in payload) {
+      return BigInt(String(payload.low)) + (BigInt(String(payload.high)) << 128n);
     }
   }
   // fallback single felt
-  return BigInt(String(v));
+  return BigInt(String(payload));
 }
 
 function formatUnits(value, decimals) {

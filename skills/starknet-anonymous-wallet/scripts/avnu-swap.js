@@ -14,22 +14,11 @@ import { RpcProvider, Account, PaymasterRpc } from 'starknet';
 import { fileURLToPath } from 'url';
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
+import { parseAmountToBaseUnits } from './parse-utils.js';
 
 
 
 const DEFAULT_SLIPPAGE = 0.001; // 0.1%
-
-function amountToBigInt(amount, decimals) {
-  const dec = Number(decimals ?? 18);
-  if (!Number.isInteger(dec) || dec < 0) throw new Error('Invalid decimals');
-  const s = String(amount).trim();
-  if (!/^\d+(?:\.\d+)?$/.test(s)) throw new Error(`Invalid amount format: ${amount}`);
-  const [i, f = ''] = s.split('.');
-  if (f.length > dec) throw new Error(`Too many decimal places: ${f.length} > ${dec}`);
-  const frac = (f + '0'.repeat(dec)).slice(0, dec);
-  const digits = `${i}${frac}`.replace(/^0+(?=\d)/, '');
-  return BigInt(digits || '0');
-}
 
 /**
  * Fetch all verified tokens from AVNU
@@ -65,7 +54,7 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
   if (!buyToken) throw new Error(`Unknown buy token: ${buyTokenSymbol}`);
   
   // Parse amount with exact decimal conversion
-  const amountBigInt = amountToBigInt(sellAmount, sellToken.decimals);
+  const amountBigInt = parseAmountToBaseUnits(sellAmount, sellToken.decimals);
   
   const quotes = await getQuotes({
     sellTokenAddress: sellToken.address,
