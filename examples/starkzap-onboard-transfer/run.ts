@@ -35,6 +35,7 @@ import {
 
 const SEPOLIA_PAYMASTER = "https://sepolia.paymaster.avnu.fi";
 const DEFAULT_RPC = "https://starknet-sepolia-rpc.publicnode.com";
+const STARKSCAN_TX_BASE_URL = "https://sepolia.starkscan.co/tx/";
 
 function parseArgs(): {
   recipient: string;
@@ -92,6 +93,29 @@ function logEvidence(doLog: boolean, data: Record<string, unknown>) {
   fs.writeFileSync(file, JSON.stringify(existing, null, 2));
 }
 
+function getOptionalStringProperty(value: unknown, key: string): string | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const candidate = record[key];
+  if (typeof candidate !== "string" || candidate.length === 0) {
+    return undefined;
+  }
+  return candidate;
+}
+
+function assertWaitable(value: unknown): asserts value is { wait: () => Promise<unknown> } {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("transfer response is missing wait()");
+  }
+  const maybeWait = (value as { wait?: unknown }).wait;
+  if (typeof maybeWait !== "function") {
+    throw new Error("transfer response is missing wait()");
+  }
+}
+
 async function main() {
   const { recipient, amount, sponsored, addressOnly, evidence } = parseArgs();
 
@@ -132,19 +156,28 @@ async function main() {
   if (evidence) console.log("Evidence: logging to", EVIDENCE_FILE);
   console.log("");
 
-  const sdkConfig: Parameters<typeof StarkSDK>[0] = {
-    network: "sepolia",
-    rpcUrl,
-  };
+  const sdk = new StarkSDK(
+    sponsored && paymasterApiKey
+      ? {
+          network: "sepolia",
+          rpcUrl,
+          paymaster: {
+            nodeUrl: SEPOLIA_PAYMASTER,
+            headers: { "x-paymaster-api-key": paymasterApiKey },
+          },
+        }
+      : {
+          network: "sepolia",
+          rpcUrl,
+        },
+  );
 
   if (sponsored && paymasterApiKey) {
-    (sdkConfig as Record<string, unknown>).paymaster = {
+    logEvidence(evidence, {
+      step: "paymaster_configured",
       nodeUrl: SEPOLIA_PAYMASTER,
-      apiKey: paymasterApiKey,
-    };
+    });
   }
-
-  const sdk = new StarkSDK(sdkConfig);
 
   if (addressOnly) {
     const wallet = await sdk.connectWallet({
@@ -166,6 +199,10 @@ async function main() {
     amount,
     sponsored,
   });
+
+  if (!recipientAddress) {
+    throw new Error("recipient address is required for transfer mode");
+  }
 
   const { wallet } = await sdk.onboard({
     strategy: OnboardStrategy.Signer,
@@ -208,10 +245,12 @@ async function main() {
     sponsored ? { feeMode: "sponsored" } : undefined
   );
 
-  const txHash = tx.transactionHash ?? (tx as { transaction_hash?: string }).transaction_hash;
+  const txHash =
+    getOptionalStringProperty(tx, "transactionHash") ??
+    getOptionalStringProperty(tx, "transaction_hash");
   const explorerUrl =
-    (tx as { explorerUrl?: string }).explorerUrl ??
-    (txHash ? `https://sepolia.starkscan.co/tx/${txHash}` : undefined);
+    getOptionalStringProperty(tx, "explorerUrl") ??
+    (txHash ? `${STARKSCAN_TX_BASE_URL}${txHash}` : undefined);
 
   console.log("      Tx hash:", txHash ?? "pending");
   if (explorerUrl) console.log("      Explorer:", explorerUrl);
@@ -223,6 +262,7 @@ async function main() {
   });
 
   console.log("      Waiting for finality...");
+  assertWaitable(tx);
   await tx.wait();
   console.log("\n✅ Transfer complete.");
   logEvidence(evidence, {
