@@ -104,7 +104,12 @@
           "type": "string",
           "pattern": "^[0-9]+$"
         },
-        "nonce": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "nonce": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Recommended: 16-32 random bytes encoded as lowercase hex (32-64 chars) for cross-client interoperability."
+        },
         "rawBody": { "type": "string" },
         "isMtlsAuthenticated": { "type": "boolean" },
         "signWithSecret": { "type": "string", "minLength": 1 },

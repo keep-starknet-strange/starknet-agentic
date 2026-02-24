@@ -115,6 +115,9 @@ components:
       type: apiKey
       in: header
       name: X-Keyring-Nonce
+      description: |
+        One-time client nonce. Recommended format for interoperability:
+        16-32 random bytes encoded as lowercase hex (32-64 chars).
   schemas:
     FeltHex:
       type: string
