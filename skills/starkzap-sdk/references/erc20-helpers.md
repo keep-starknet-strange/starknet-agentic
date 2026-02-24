@@ -35,7 +35,7 @@ Return actionable field-level errors (`amount_invalid`, `recipient_invalid`, `to
 - `TX_REVERTED`
 Re-run preflight checks (balance, allowance, token status), then retry once with unchanged calldata.
 - `RPC_TIMEOUT`
-Retry with bounded exponential backoff (for example 500ms, 1s, 2s; max 3 attempts).
+If a tx hash or nonce was reserved before the timeout, poll transaction status first; only resubmit when you can prove no tx was accepted. Retry with bounded exponential backoff (500ms, 1s, 2s; max 3 attempts).
 - `NONCE_CONFLICT`
 Refresh account nonce from chain and rebuild transaction.
 
