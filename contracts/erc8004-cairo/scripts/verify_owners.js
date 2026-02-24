@@ -8,6 +8,8 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
+const VERIFY_TIMEOUT_MS = Number.parseInt(process.env.VERIFY_TIMEOUT_MS ?? "30000", 10);
+
 // Team-reviewed canonical deployments. Any address change in this table must be
 // reviewed by maintainers before merge.
 const KNOWN_DEPLOYMENTS = {
@@ -40,6 +42,21 @@ function normalizeAddressForLog(address) {
   } catch {
     return String(address);
   }
+}
+
+function withTimeout(promise, label) {
+  const timeoutMs = Number.isFinite(VERIFY_TIMEOUT_MS) && VERIFY_TIMEOUT_MS > 0
+    ? VERIFY_TIMEOUT_MS
+    : 30000;
+
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    }),
+  ]);
 }
 
 function resolveNetwork(chainId) {
@@ -76,9 +93,18 @@ function resolveContractAddresses(network) {
   if (providedOverrideKeys.length === 3) {
     return {
       addresses: {
-        identity: normalizeAddress(overrideAddresses.identity),
-        reputation: normalizeAddress(overrideAddresses.reputation),
-        validation: normalizeAddress(overrideAddresses.validation),
+        identity: normalizeAddress(
+          overrideAddresses.identity,
+          "ERC8004_IDENTITY_REGISTRY_ADDRESS",
+        ),
+        reputation: normalizeAddress(
+          overrideAddresses.reputation,
+          "ERC8004_REPUTATION_REGISTRY_ADDRESS",
+        ),
+        validation: normalizeAddress(
+          overrideAddresses.validation,
+          "ERC8004_VALIDATION_REGISTRY_ADDRESS",
+        ),
       },
       source: "environment overrides",
     };
@@ -99,11 +125,14 @@ function resolveContractAddresses(network) {
 
 async function readOwner(provider, contractAddress) {
   try {
-    const result = await provider.callContract({
-      contractAddress,
-      entrypoint: "owner",
-      calldata: [],
-    });
+    const result = await withTimeout(
+      provider.callContract({
+        contractAddress,
+        entrypoint: "owner",
+        calldata: [],
+      }),
+      `owner() call for ${contractAddress}`,
+    );
 
     if (!Array.isArray(result) || result.length === 0) {
       throw new Error("owner() returned no values");
@@ -125,11 +154,11 @@ async function main() {
   }
 
   const provider = new RpcProvider({ nodeUrl: rpcUrl });
-  const chainId = await provider.getChainId();
+  const chainId = await withTimeout(provider.getChainId(), "provider.getChainId");
   const network = resolveNetwork(chainId);
   const { addresses, source, reviewRequired = false } = resolveContractAddresses(network);
   const expectedOwner = process.env.EXPECTED_OWNER_ADDRESS
-    ? normalizeAddress(process.env.EXPECTED_OWNER_ADDRESS)
+    ? normalizeAddress(process.env.EXPECTED_OWNER_ADDRESS, "EXPECTED_OWNER_ADDRESS")
     : null;
 
   console.log("🔎 Verifying ERC-8004 registry owners");
