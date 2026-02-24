@@ -1,0 +1,21 @@
+{
+  "name": "@starknet-agentic/starkzap-onboard-transfer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Demo: gasless onboarding + STRK transfer on Sepolia via Starkzap SDK",
+  "type": "module",
+  "scripts": {
+    "demo": "npx tsx run.ts",
+    "demo:sponsored": "npx tsx run.ts --sponsored",
+    "demo:address": "npx tsx run.ts --address-only",
+    "demo:evidence": "npx tsx run.ts --evidence"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "starkzap": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.0"
+  }
+}

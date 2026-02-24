@@ -1,0 +1,238 @@
+#!/usr/bin/env npx tsx
+/**
+ * Starkzap Demo: Gasless Onboarding + STRK Transfer on Sepolia
+ *
+ * Flow:
+ *   1. SDK init on Sepolia (with optional AVNU paymaster for sponsored)
+ *   2. Connect wallet via Signer strategy (or Privy in full demo)
+ *   3. wallet.ensureReady({ deploy: "if_needed" }) — sponsored deploy when paymaster configured
+ *   4. wallet.transfer(STRK, [...], { feeMode: "sponsored" }) — gasless transfer
+ *   5. tx.wait() — stream finality confirmation
+ *
+ * Usage:
+ *   npx tsx run.ts [--recipient 0x...] [--amount 10] [--sponsored]
+ *
+ * Env:
+ *   PRIVATE_KEY          — test signer (generate with: openssl rand -hex 32)
+ *   AVNU_PAYMASTER_API_KEY — for sponsored mode (get from portal.avnu.fi)
+ *   STARKNET_RPC_URL     — optional, defaults to public Sepolia RPC
+ */
+
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import fs from "fs";
+import path from "path";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, ".env"), override: true, quiet: true });
+import {
+  StarkSDK,
+  StarkSigner,
+  OnboardStrategy,
+  Amount,
+  fromAddress,
+  sepoliaTokens,
+} from "starkzap";
+
+const SEPOLIA_PAYMASTER = "https://sepolia.paymaster.avnu.fi";
+const DEFAULT_RPC = "https://starknet-sepolia-rpc.publicnode.com";
+
+function parseArgs(): {
+  recipient: string;
+  amount: string;
+  sponsored: boolean;
+  addressOnly: boolean;
+  evidence: boolean;
+} {
+  const args = process.argv.slice(2);
+  let recipient = "";
+  let amount = "10";
+  let sponsored = !!process.env.AVNU_PAYMASTER_API_KEY;
+  let addressOnly = false;
+  let evidence = false;
+
+  for (let i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case "--recipient":
+        recipient = args[++i] ?? "";
+        break;
+      case "--amount":
+        amount = args[++i] ?? "10";
+        break;
+      case "--sponsored":
+        sponsored = true;
+        break;
+      case "--address-only":
+        addressOnly = true;
+        break;
+      case "--evidence":
+        evidence = true;
+        break;
+      default:
+        break;
+    }
+  }
+
+  return { recipient, amount, sponsored, addressOnly, evidence };
+}
+
+const EVIDENCE_FILE = "demo-evidence.json";
+
+function logEvidence(doLog: boolean, data: Record<string, unknown>) {
+  if (!doLog) return;
+  const file = path.join(process.cwd(), EVIDENCE_FILE);
+  const existing: unknown[] = [];
+  try {
+    const raw = fs.readFileSync(file, "utf8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) existing.push(...parsed);
+  } catch {
+    /* file missing or invalid */
+  }
+  existing.push({ ...data, timestamp: new Date().toISOString() });
+  fs.writeFileSync(file, JSON.stringify(existing, null, 2));
+}
+
+async function main() {
+  const { recipient, amount, sponsored, addressOnly, evidence } = parseArgs();
+
+  const privateKey = process.env.PRIVATE_KEY?.trim();
+  if (!privateKey) {
+    console.error(
+      "Missing PRIVATE_KEY. Generate one: openssl rand -hex 32\n" +
+        "Then fund it at https://starknet-faucet.vercel.app/ (only needed for non-sponsored deploy)"
+    );
+    process.exit(1);
+  }
+
+  const paymasterApiKey = process.env.AVNU_PAYMASTER_API_KEY?.trim();
+  if (sponsored && !paymasterApiKey) {
+    console.error(
+      "Sponsored mode requires AVNU_PAYMASTER_API_KEY. Get one at https://portal.avnu.fi/"
+    );
+    process.exit(1);
+  }
+
+  const recipientAddress = recipient || process.env.RECIPIENT_ADDRESS?.trim();
+  if (!addressOnly && !recipientAddress) {
+    console.error(
+      "Provide --recipient 0x... or set RECIPIENT_ADDRESS in .env"
+    );
+    process.exit(1);
+  }
+
+  const rpcUrl = process.env.STARKNET_RPC_URL?.trim() || DEFAULT_RPC;
+
+  console.log("=== Starkzap Onboard + STRK Transfer Demo ===\n");
+  console.log("Network: Sepolia");
+  if (!addressOnly) {
+    console.log("Recipient:", recipientAddress);
+    console.log("Amount:", amount, "STRK");
+  }
+  console.log("Sponsored:", sponsored);
+  if (evidence) console.log("Evidence: logging to", EVIDENCE_FILE);
+  console.log("");
+
+  const sdkConfig: Parameters<typeof StarkSDK>[0] = {
+    network: "sepolia",
+    rpcUrl,
+  };
+
+  if (sponsored && paymasterApiKey) {
+    (sdkConfig as Record<string, unknown>).paymaster = {
+      nodeUrl: SEPOLIA_PAYMASTER,
+      apiKey: paymasterApiKey,
+    };
+  }
+
+  const sdk = new StarkSDK(sdkConfig);
+
+  if (addressOnly) {
+    const wallet = await sdk.connectWallet({
+      account: { signer: new StarkSigner(privateKey) },
+      feeMode: "user_pays",
+    });
+    const addr = wallet.address.toString();
+    console.log("Wallet address (fund this):");
+    console.log(addr);
+    console.log("\nFaucet: https://starknet-faucet.vercel.app/");
+    logEvidence(evidence, { step: "address_only", address: addr });
+    return;
+  }
+
+  logEvidence(evidence, {
+    step: "start",
+    network: "sepolia",
+    recipient: recipientAddress,
+    amount,
+    sponsored,
+  });
+
+  const { wallet } = await sdk.onboard({
+    strategy: OnboardStrategy.Signer,
+    account: { signer: new StarkSigner(privateKey) },
+    deploy: "if_needed",
+    feeMode: sponsored ? "sponsored" : "user_pays",
+  });
+
+  const addr = wallet.address.toString();
+  console.log("[1/4] Wallet address:", addr);
+  logEvidence(evidence, { step: "wallet_ready", address: addr });
+
+  console.log("[2/4] Ensuring account is deployed...");
+  await wallet.ensureReady({ deploy: "if_needed" });
+  console.log("      Account ready.");
+  logEvidence(evidence, { step: "account_deployed" });
+
+  const STRK = sepoliaTokens.STRK;
+  const balance = await wallet.balanceOf(STRK);
+  console.log("[3/4] STRK balance:", balance.toFormatted());
+  logEvidence(evidence, {
+    step: "balance_check",
+    balance: balance.toFormatted(),
+    balanceRaw: balance.toBase().toString(),
+  });
+
+  const transferAmount = Amount.parse(amount, STRK);
+  if (balance.lt(transferAmount)) {
+    console.error(
+      `Insufficient balance. Need ${amount} STRK. Get test tokens: https://starknet-faucet.vercel.app/`
+    );
+    logEvidence(evidence, { step: "insufficient_balance", error: true });
+    process.exit(1);
+  }
+
+  console.log("[4/4] Sending", amount, "STRK to", recipientAddress, "...");
+  const tx = await wallet.transfer(
+    STRK,
+    [{ to: fromAddress(recipientAddress), amount: transferAmount }],
+    sponsored ? { feeMode: "sponsored" } : undefined
+  );
+
+  const txHash = tx.transactionHash ?? (tx as { transaction_hash?: string }).transaction_hash;
+  const explorerUrl =
+    (tx as { explorerUrl?: string }).explorerUrl ??
+    (txHash ? `https://sepolia.starkscan.co/tx/${txHash}` : undefined);
+
+  console.log("      Tx hash:", txHash ?? "pending");
+  if (explorerUrl) console.log("      Explorer:", explorerUrl);
+
+  logEvidence(evidence, {
+    step: "transfer_submitted",
+    txHash,
+    explorerUrl,
+  });
+
+  console.log("      Waiting for finality...");
+  await tx.wait();
+  console.log("\n✅ Transfer complete.");
+  logEvidence(evidence, {
+    step: "transfer_confirmed",
+    txHash,
+    explorerUrl,
+  });
+}
+
+main().catch((err) => {
+  console.error("Demo failed:", err);
+  process.exit(1);
+});
