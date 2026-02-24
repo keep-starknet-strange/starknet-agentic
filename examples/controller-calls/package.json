@@ -1,0 +1,12 @@
+{
+  "name": "controller-calls",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node run.mjs",
+    "execute": "node run.mjs --execute"
+  },
+  "dependencies": {
+    "starknet": "^9.2.1"
+  }
+}
