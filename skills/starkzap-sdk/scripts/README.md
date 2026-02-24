@@ -2,7 +2,7 @@
 
 Use this directory for runnable examples that mirror common Starkzap workflows.
 
-Suggested examples:
+Included starter examples:
 - `wallet-execute-example.ts` - `StarkSDK` init, `sdk.connectWallet(...)`, `wallet.ensureReady(...)`, `wallet.execute(...)`.
 - `staking-pool-discovery.ts` - pool enumeration, staking config checks, timeout/abort-safe queries.
 - `privy-signing-debug.ts` - `OnboardStrategy.Privy` resolve flow and signature diagnostics.

@@ -63,8 +63,12 @@ Operational and docs:
 - `docs/*` and `mintlify-docs/*`
 
 Skill resources:
-- `skills/starkzap-sdk/references/*` - deep dives (`Signer integration`, `Sponsored transactions`, `ERC20 helpers`)
-- `skills/starkzap-sdk/scripts/*` - runnable examples (`wallet-execute-example.ts`, `staking-pool-discovery.ts`)
+- `skills/starkzap-sdk/references/signer-integration.md` - signer trust boundaries and auth assumptions
+- `skills/starkzap-sdk/references/sponsored-transactions.md` - paymaster flow and fee mode behavior
+- `skills/starkzap-sdk/references/erc20-helpers.md` - `Amount` semantics and transfer patterns
+- `skills/starkzap-sdk/references/staking-reliability.md` - pool discovery and timeout/abort safety
+- `skills/starkzap-sdk/scripts/wallet-execute-example.ts` - wallet readiness and execute flow
+- `skills/starkzap-sdk/scripts/staking-pool-discovery.ts` - staking pool discovery and diagnostics
 
 ## Quick Reference
 
@@ -120,6 +124,10 @@ Common error classes and immediate recovery:
 | `RPC_OR_NETWORK` | timeout, 429, provider mismatch | Retry with backoff, confirm `rpcUrl` and `chainId`, switch to stable RPC for production. |
 | `TX_REVERTED` | `preflight.ok === false` or reverted receipt | Run `wallet.preflight({ calls })`, inspect reason, reduce batch size, verify call ordering. |
 | `AUTH_OR_PERMISSION` | Privy 401/403, invalid signature response | Verify signer server auth, headers/body resolver, and trusted `serverUrl`. |
+
+See also:
+- `skills/starkzap-sdk/references/*` for implementation-specific troubleshooting
+- `skills/starkzap-sdk/scripts/*` for runnable diagnostic examples
 
 ## Core Workflows
 
