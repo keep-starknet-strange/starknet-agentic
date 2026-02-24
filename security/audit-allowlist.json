@@ -3,7 +3,7 @@
     {
       "id": 1113371,
       "package": "minimatch",
-      "reason": "ReDoS in minimatch <10.2.1 — only reachable via eslint (devDependency, build-time only). Root override pins 10.2.2 but transitive eslint-plugin-import still resolves old range. Not exploitable at runtime.",
+      "reason": "GHSA-3ppc-4f35-3m26 / CVE-2026-26996 — ReDoS in minimatch <10.2.1 — only reachable via eslint (devDependency, build-time only). Transitive eslint-plugin-import still resolves vulnerable range. Not exploitable at runtime.",
       "expiresOn": "2026-06-01"
     }
   ]
