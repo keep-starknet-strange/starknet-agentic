@@ -2,6 +2,11 @@
 
 Use this directory for runnable examples that mirror common Starkzap workflows.
 
+## Setup Context (Required)
+
+These scripts import `starkzap` and are meant to run in the Starkzap repository/runtime context.
+Copy/adapt them there before execution, or install compatible `starkzap` dependencies in your local environment.
+
 Included starter examples:
 - `wallet-execute-example.ts` - `StarkSDK` init, `sdk.connectWallet(...)`, `wallet.ensureReady(...)` (execute flow intentionally left as a placeholder).
 - `staking-pool-discovery.ts` - startup scaffold for discovery checks; extend with pool enumeration in Starkzap repo context.

@@ -50,10 +50,7 @@ if (!preflight.sponsorship?.approved) {
   throw new Error("sponsorship_denied");
 }
 
-const executeResult = await wallet.execute({
-  feeMode: "sponsored",
-  calls,
-});
+const executeResult = await wallet.execute(calls, { feeMode: "sponsored" });
 
 if (!executeResult.transactionHash) {
   throw new Error("execute_missing_tx_hash");
