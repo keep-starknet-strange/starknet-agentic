@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  minimatch: 10.2.2
   qs: 6.14.2
   minimatch: 10.2.2
 
@@ -144,6 +145,12 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
+
+  examples/openclaw-agent-loop:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.12.1
+        version: 1.26.0(zod@4.3.6)
 
   packages/create-starknet-agent:
     dependencies:
