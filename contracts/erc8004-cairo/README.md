@@ -308,12 +308,14 @@ Copy `.env.example` to `.env` and configure:
 STARKNET_RPC_URL=https://starknet-sepolia-rpc.publicnode.com
 DEPLOYER_ADDRESS=0x...
 DEPLOYER_PRIVATE_KEY=0x...
+ALLOW_PUBLIC_DEPLOY=false
 ALLOW_MAINNET_DEPLOY=false
 TEST_ACCOUNT_ADDRESS=0x...
 TEST_ACCOUNT_PRIVATE_KEY=0x...
 ```
 
-`ALLOW_MAINNET_DEPLOY` is a safety gate. The deployment script blocks mainnet deploys unless it is explicitly set to `true`.
+`ALLOW_PUBLIC_DEPLOY` is a safety gate for public testnets (currently Sepolia).
+`ALLOW_MAINNET_DEPLOY` is a separate safety gate for mainnet.
 
 ## Deployment
 
@@ -328,6 +330,7 @@ Notes:
   - `deployed_addresses.json` (latest run)
   - `deployed_addresses_<network>.json` (latest per network)
   - `deployed_addresses_<network>_<timestamp>.json` (immutable run record)
+- Sepolia deploys require explicit opt-in: `ALLOW_PUBLIC_DEPLOY=true`.
 - Mainnet deploys require explicit opt-in: `ALLOW_MAINNET_DEPLOY=true`.
 
 ## E2E Tests
@@ -459,7 +462,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Monitor `OwnershipTransferred` events for unauthorized ownership changes
 - [ ] Monitor `AgentWalletSet` and `AgentWalletUnset` events for wallet verification activity
 - [ ] Monitor `FeedbackGiven` and `FeedbackRevoked` events (ReputationRegistry) for abuse patterns
-- [ ] Monitor `ValidationRequested` and `ValidationResponded` events (ValidationRegistry) for validator activity
+- [ ] Monitor `ValidationRequested` and `ValidationResponse` events (ValidationRegistry) for validator activity
 
 **14. Metrics and Dashboards**
 - [ ] Total agents registered (IdentityRegistry: `total_agents()`)

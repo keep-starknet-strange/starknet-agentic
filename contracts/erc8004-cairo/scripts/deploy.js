@@ -16,6 +16,8 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from .env file in project root
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
+const PUBLIC_TESTNET_SLUGS = new Set(["sepolia"]);
+
 function normalizeChainId(chainId) {
   if (typeof chainId === "bigint") {
     return `0x${chainId.toString(16)}`.toLowerCase();
@@ -54,7 +56,50 @@ function resolveNetworkMetadata(chainId) {
   };
 }
 
+function assertChainIdNormalizationMappings() {
+  const expectedMappings = [
+    { chainId: constants.StarknetChainId.SN_MAIN, slug: "mainnet" },
+    { chainId: constants.StarknetChainId.SN_SEPOLIA, slug: "sepolia" },
+  ];
+
+  for (const entry of expectedMappings) {
+    const resolved = resolveNetworkMetadata(entry.chainId);
+    if (resolved.slug !== entry.slug) {
+      throw new Error(
+        `Chain ID normalization mismatch for ${entry.slug}: got ${resolved.slug}`,
+      );
+    }
+  }
+}
+
+function enforceDeploymentSafetyGate(network) {
+  if (network.slug === "mainnet") {
+    const allowMainnet = process.env.ALLOW_MAINNET_DEPLOY === "true";
+    if (!allowMainnet) {
+      console.error("❌ Mainnet deployment blocked.");
+      console.error("   Set ALLOW_MAINNET_DEPLOY=true in .env to proceed intentionally.");
+      process.exit(1);
+    }
+    console.warn("⚠️  MAINNET DEPLOYMENT ENABLED (ALLOW_MAINNET_DEPLOY=true)");
+    console.warn("   Verify multisig owner, class hashes, and Sepolia dry run before continuing.\n");
+    return;
+  }
+
+  if (PUBLIC_TESTNET_SLUGS.has(network.slug)) {
+    const allowPublic = process.env.ALLOW_PUBLIC_DEPLOY === "true";
+    if (!allowPublic) {
+      console.error(`❌ ${network.label} deployment blocked.`);
+      console.error("   Set ALLOW_PUBLIC_DEPLOY=true in .env to proceed intentionally.");
+      process.exit(1);
+    }
+    console.warn(`⚠️  ${network.label} DEPLOYMENT ENABLED (ALLOW_PUBLIC_DEPLOY=true)`);
+    console.warn("   Verify class hashes, owner account, and post-deploy smoke tests.\n");
+  }
+}
+
 async function main() {
+  assertChainIdNormalizationMappings();
+
   // Get configuration from environment variables
   const rpcUrl = process.env.STARKNET_RPC_URL;
   const accountAddress = process.env.DEPLOYER_ADDRESS;
@@ -86,16 +131,7 @@ async function main() {
   const network = resolveNetworkMetadata(chainId);
   const chainIdHex = normalizeChainId(chainId);
 
-  if (network.slug === "mainnet") {
-    const allowMainnet = process.env.ALLOW_MAINNET_DEPLOY === "true";
-    if (!allowMainnet) {
-      console.error("❌ Mainnet deployment blocked.");
-      console.error("   Set ALLOW_MAINNET_DEPLOY=true in .env to proceed intentionally.");
-      process.exit(1);
-    }
-    console.warn("⚠️  MAINNET DEPLOYMENT ENABLED (ALLOW_MAINNET_DEPLOY=true)");
-    console.warn("   Verify multisig owner, class hashes, and Sepolia dry run before continuing.\n");
-  }
+  enforceDeploymentSafetyGate(network);
 
   console.log(`🚀 Deploying ERC-8004 Contracts to ${network.label}\n`);
   console.log("═══════════════════════════════════════════════════════════════\n");
