@@ -129,6 +129,25 @@
       ]
     },
     {
+      "id": "invalid_signature_format_rejected",
+      "description": "Rejects non-hex signature header formats before HMAC comparison.",
+      "clientsById": {
+        "mcp-tests": { "hmacSecrets": ["current-secret"] }
+      },
+      "steps": [
+        {
+          "clientId": "mcp-tests",
+          "timestamp": "1770983999900",
+          "nonce": "nonce-sigfmt-001",
+          "rawBody": "{\"accountAddress\":\"0xabc\"}",
+          "isMtlsAuthenticated": true,
+          "signWithSecret": "current-secret",
+          "overrideSignature": "not-hex-signature",
+          "expect": { "ok": false, "errorCode": "AUTH_INVALID_SIGNATURE_FORMAT" }
+        }
+      ]
+    },
+    {
       "id": "unknown_client_rejected",
       "description": "Rejects unknown client IDs before HMAC processing.",
       "clientsById": {

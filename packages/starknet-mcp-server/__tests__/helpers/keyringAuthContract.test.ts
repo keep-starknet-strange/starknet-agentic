@@ -226,6 +226,32 @@ describe("keyring auth contract", () => {
     }
   });
 
+  it("rejects malformed signature header formats", async () => {
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody: JSON.stringify({ ok: true }),
+      headers: {
+        "x-keyring-client-id": "mcp-tests",
+        "x-keyring-timestamp": "1770984000000",
+        "x-keyring-nonce": "nonce-003-format",
+        "x-keyring-signature": "not-hex-signature",
+      },
+      nowMs: 1_770_984_000_000,
+      clientsById: { "mcp-tests": { hmacSecret: "super-secret" } },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorCode).toBe("AUTH_INVALID_SIGNATURE_FORMAT");
+    }
+  });
+
   it("rejects signatures computed with the public dummy padding secret", async () => {
     const nowMs = 1_770_984_000_000;
     const rawBody = JSON.stringify({ ok: true });
@@ -377,7 +403,7 @@ describe("keyring auth contract", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errorCode).toBe("AUTH_INVALID_HMAC");
+      expect(result.errorCode).toBe("AUTH_INVALID_NONCE");
     }
   });
 
@@ -417,7 +443,7 @@ describe("keyring auth contract", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errorCode).toBe("AUTH_INVALID_HMAC");
+      expect(result.errorCode).toBe("AUTH_INVALID_NONCE");
     }
   });
 

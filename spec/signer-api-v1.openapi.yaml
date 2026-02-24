@@ -175,7 +175,7 @@ components:
     SignSessionTransactionRequest:
       type: object
       additionalProperties: false
-      required: [accountAddress, chainId, nonce, validUntil, calls, context]
+      required: [accountAddress, keyId, chainId, nonce, validUntil, calls, context]
       properties:
         accountAddress:
           $ref: '#/components/schemas/FeltHex'
@@ -201,7 +201,7 @@ components:
       type: object
       additionalProperties: false
       required:
-        [signature, signatureMode, signatureKind, domainHash, messageHash, requestId, audit]
+        [signature, signatureMode, signatureKind, signerProvider, sessionPublicKey, domainHash, messageHash, requestId, audit]
       properties:
         signature:
           type: array
@@ -256,12 +256,14 @@ components:
           type: string
           description: |
             Stable machine code. Status mapping:
-            AUTH_INVALID_HMAC/AUTH_INVALID_CLIENT/AUTH_TIMESTAMP_SKEW -> 401,
+            AUTH_INVALID_HMAC/AUTH_INVALID_NONCE/AUTH_INVALID_SIGNATURE_FORMAT/AUTH_INVALID_CLIENT/AUTH_TIMESTAMP_SKEW -> 401,
             AUTH_MTLS_REQUIRED -> 403, REPLAY_NONCE_USED -> 409,
             POLICY_SELECTOR_DENIED/POLICY_CALL_NOT_ALLOWED -> 422,
             RATE_LIMITED -> 429, SIGNER_UNAVAILABLE -> 503, INTERNAL_ERROR -> 500.
           enum:
             - AUTH_INVALID_HMAC
+            - AUTH_INVALID_NONCE
+            - AUTH_INVALID_SIGNATURE_FORMAT
             - AUTH_INVALID_CLIENT
             - AUTH_TIMESTAMP_SKEW
             - AUTH_MTLS_REQUIRED

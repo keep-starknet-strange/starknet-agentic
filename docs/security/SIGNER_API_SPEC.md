@@ -57,7 +57,7 @@ Clients must reject responses unless all conditions hold:
 1. `signatureMode == "v2_snip12"`
 2. `signatureKind == "Snip12"`
 3. `signature` has exactly 4 felts
-4. `signature[0]` matches `sessionPublicKey` (if present)
+4. `signature[0]` matches `sessionPublicKey`
 5. `signature[3]` matches requested `validUntil`
 6. `domainHash` and `messageHash` are present and valid felt hex
 7. session pubkey does not rotate unexpectedly within one client session
@@ -67,6 +67,8 @@ Clients must reject responses unless all conditions hold:
 The API standardizes the following `errorCode` values:
 
 - `AUTH_INVALID_HMAC`
+- `AUTH_INVALID_NONCE`
+- `AUTH_INVALID_SIGNATURE_FORMAT`
 - `AUTH_INVALID_CLIENT`
 - `AUTH_TIMESTAMP_SKEW`
 - `AUTH_MTLS_REQUIRED`

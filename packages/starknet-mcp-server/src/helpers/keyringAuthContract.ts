@@ -7,6 +7,8 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 
 export type KeyringAuthErrorCode =
   | "AUTH_INVALID_HMAC"
+  | "AUTH_INVALID_NONCE"
+  | "AUTH_INVALID_SIGNATURE_FORMAT"
   | "AUTH_INVALID_CLIENT"
   | "AUTH_TIMESTAMP_SKEW"
   | "AUTH_MTLS_REQUIRED"
@@ -102,7 +104,6 @@ export class InMemoryNonceStore implements KeyringAuthNonceStore {
   // Multi-instance production deployments must use an external atomic store
   // (for example Redis SET NX EX) to avoid replay races across workers.
   private readonly nonceExpirations = new Map<string, number>();
-  private readonly inFlightKeys = new Set<string>();
   private readonly cleanupEvery: number;
   private consumeCount = 0;
 
@@ -111,31 +112,23 @@ export class InMemoryNonceStore implements KeyringAuthNonceStore {
   }
 
   async consumeOnce(key: string, ttlSeconds: number, nowMs: number): Promise<boolean> {
-    if (this.inFlightKeys.has(key)) {
+    const existingExpiration = this.nonceExpirations.get(key);
+    if (existingExpiration !== undefined && existingExpiration > nowMs) {
       return false;
     }
-    this.inFlightKeys.add(key);
-    try {
-      const existingExpiration = this.nonceExpirations.get(key);
-      if (existingExpiration !== undefined && existingExpiration > nowMs) {
-        return false;
-      }
 
-      this.consumeCount += 1;
-      if (this.consumeCount % this.cleanupEvery === 0) {
-        for (const [storedKey, expiresAt] of this.nonceExpirations.entries()) {
-          if (expiresAt <= nowMs) {
-            this.nonceExpirations.delete(storedKey);
-          }
+    this.consumeCount += 1;
+    if (this.consumeCount % this.cleanupEvery === 0) {
+      for (const [storedKey, expiresAt] of this.nonceExpirations.entries()) {
+        if (expiresAt <= nowMs) {
+          this.nonceExpirations.delete(storedKey);
         }
       }
-
-      const ttlMs = Math.max(1, ttlSeconds) * 1000;
-      this.nonceExpirations.set(key, nowMs + ttlMs);
-      return true;
-    } finally {
-      this.inFlightKeys.delete(key);
     }
+
+    const ttlMs = Math.max(1, ttlSeconds) * 1000;
+    this.nonceExpirations.set(key, nowMs + ttlMs);
+    return true;
   }
 }
 
@@ -185,10 +178,10 @@ export async function validateKeyringRequestAuth(
   }
 
   if (!nonce || nonce.length > 256) {
-    return fail("AUTH_INVALID_HMAC", "Invalid X-Keyring-Nonce");
+    return fail("AUTH_INVALID_NONCE", "Invalid X-Keyring-Nonce");
   }
   if (!signatureRaw || !isHex(signatureRaw)) {
-    return fail("AUTH_INVALID_HMAC", "Invalid X-Keyring-Signature");
+    return fail("AUTH_INVALID_SIGNATURE_FORMAT", "Invalid X-Keyring-Signature");
   }
 
   const signingPayload = buildKeyringSigningPayload({
@@ -227,10 +220,8 @@ export async function validateKeyringRequestAuth(
       return fail("REPLAY_NONCE_USED", "Nonce already consumed");
     }
   } catch (error) {
-    return fail(
-      "INTERNAL_ERROR",
-      `Replay protection store failure: ${error instanceof Error ? error.message : String(error)}`
-    );
+    console.error("Replay protection store failure", error);
+    return fail("INTERNAL_ERROR", "Replay protection store failure");
   }
 
   return {

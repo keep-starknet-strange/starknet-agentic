@@ -38,8 +38,8 @@ type KeyringSignResponse = {
   signature: unknown[];
   signatureMode: "v2_snip12";
   signatureKind: "Snip12";
-  signerProvider?: "local" | "dfns";
-  sessionPublicKey?: string;
+  signerProvider: "local" | "dfns";
+  sessionPublicKey: string;
   domainHash: string;
   requestId: string;
   messageHash: string;
@@ -341,12 +341,14 @@ export class KeyringProxySigner extends SignerInterface {
         );
       }
       const allowedSignerProviders = ["local", "dfns"] as const;
-      if (
-        parsed.signerProvider !== undefined &&
-        !allowedSignerProviders.includes(parsed.signerProvider)
-      ) {
+      if (!allowedSignerProviders.includes(parsed.signerProvider)) {
         throw new Error(
           "Invalid signature response from keyring proxy: signerProvider must be local or dfns"
+        );
+      }
+      if (!isHexFelt(parsed.sessionPublicKey)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: sessionPublicKey is required"
         );
       }
       if (!Array.isArray(parsed.signature) || parsed.signature.length !== 4) {
@@ -360,11 +362,8 @@ export class KeyringProxySigner extends SignerInterface {
       const normalizedSignature = parsed.signature.map((felt) => num.toHex(BigInt(felt)));
       const signaturePubKey = normalizedSignature[0];
       const signatureValidUntil = normalizedSignature[3];
-      const resolvedSessionPublicKey = parsed.sessionPublicKey
-        ? num.toHex(BigInt(parsed.sessionPublicKey))
-        : signaturePubKey;
-
-      if (parsed.sessionPublicKey && !feltEqualsHex(parsed.sessionPublicKey, signaturePubKey)) {
+      const resolvedSessionPublicKey = num.toHex(BigInt(parsed.sessionPublicKey));
+      if (!feltEqualsHex(parsed.sessionPublicKey, signaturePubKey)) {
         throw new Error(
           "Invalid signature response from keyring proxy: sessionPublicKey does not match signature pubkey"
         );

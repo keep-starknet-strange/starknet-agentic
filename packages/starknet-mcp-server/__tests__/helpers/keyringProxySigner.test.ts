@@ -209,6 +209,7 @@ describe("KeyringProxySigner", () => {
         signatureMode: "v2_snip12",
         signatureKind: "Snip12",
         signerProvider: "dfns",
+        sessionPublicKey: "0x123",
         domainHash: "0x1",
         messageHash: "0x2",
         requestId: "sign-req-002",
@@ -237,6 +238,82 @@ describe("KeyringProxySigner", () => {
         { chainId: "0x1", nonce: "0x1" } as any
       )
     ).rejects.toThrow("expected [pubkey, r, s, valid_until]");
+  });
+
+  it("rejects proxy responses without signerProvider", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        sessionPublicKey: "0x123",
+        domainHash: "0x1",
+        messageHash: "0x2",
+        requestId: "sign-req-missing-provider",
+        audit: {
+          policyDecision: "allow",
+          decidedAt: "2026-02-13T12:00:00Z",
+          keyId: "default",
+          traceId: "trace-missing-provider",
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("signerProvider must be local or dfns");
+  });
+
+  it("rejects proxy responses without sessionPublicKey", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+        signatureMode: "v2_snip12",
+        signatureKind: "Snip12",
+        signerProvider: "dfns",
+        domainHash: "0x1",
+        messageHash: "0x2",
+        requestId: "sign-req-missing-session-key",
+        audit: {
+          policyDecision: "allow",
+          decidedAt: "2026-02-13T12:00:00Z",
+          keyId: "default",
+          traceId: "trace-missing-session-key",
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("sessionPublicKey is required");
   });
 
   it("rejects proxy signatures when signatureMode is not v2_snip12", async () => {
