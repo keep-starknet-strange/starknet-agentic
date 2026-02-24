@@ -318,6 +318,7 @@
     
     // Make functions globally available
     window.connectWallet = connectWallet;
+    window.disconnectWallet = disconnectWallet;
     window.fetchAgentInfo = fetchAgentInfo;
     window.computeHash = computeHash;
     window.signAndSubmit = signAndSubmit;
@@ -358,7 +359,7 @@
       disconnectBtn.className = 'secondary-btn';
       disconnectBtn.textContent = 'Disconnect';
       disconnectBtn.addEventListener('click', () => {
-        window.disconnectWallet();
+        disconnectWallet();
       });
 
       walletStatus.appendChild(connectedInfo);
@@ -401,6 +402,10 @@
     // Helper: Show status
     function showStatus(elementId, lines, type) {
       const el = document.getElementById(elementId);
+      if (!el) {
+        console.warn(`Missing status element: ${elementId}`);
+        return;
+      }
       clearElement(el);
 
       const status = document.createElement('div');
@@ -414,6 +419,10 @@
 
     function showSubmittedTxStatus(elementId, txHash) {
       const el = document.getElementById(elementId);
+      if (!el) {
+        console.warn(`Missing submitted-tx status element: ${elementId}`);
+        return;
+      }
       clearElement(el);
 
       const status = document.createElement('div');
@@ -476,7 +485,7 @@
       }
     }
     
-    window.disconnectWallet = async function() {
+    async function disconnectWallet() {
       try {
         await disconnect();
         wallet = null;
