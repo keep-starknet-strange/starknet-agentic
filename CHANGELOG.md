@@ -31,10 +31,10 @@ follows SemVer with a pre-1.0 policy (see [`VERSIONING.md`](./VERSIONING.md)).
   PR: `#237`  
   Merge commit: `5ccd005b0b78eb5431850579add31f823183a249`
 - Added CI audit allowlist gate for dependency vulnerabilities and fail-closed
-  behavior when audit output contains errors.  
+  behavior when audit output contains errors, and pinned `qs` override exactly
+  to `6.14.2` in security hardening flow.  
   PR: `#238`  
   Merge commit: `732635fb7f05819b09defba874526e442dd735e2`
-- Pinned `qs` override exactly to `6.14.2` in security hardening flow.
 
 ### Changed
 
