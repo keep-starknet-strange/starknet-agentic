@@ -260,7 +260,7 @@ function loadAccount(index = 0) {
   const accountPath = join(dir, files[index]);
   const data = JSON.parse(readFileSync(accountPath, 'utf8'));
   
-  // Load private key from .key file or inline
+  // Load private key from .key file only (never inline JSON)
   let privateKey = null;
   let privateKeyPath = null;
   if (typeof data.privateKeyPath === 'string' && data.privateKeyPath.trim().length > 0) {
@@ -278,13 +278,11 @@ function loadAccount(index = 0) {
       };
     }
     privateKey = readFileSync(privateKeyPath, 'utf8').trim();
-  } else if (typeof data.privateKey === 'string' && data.privateKey.trim().length > 0) {
-    privateKey = data.privateKey.trim();
   }
 
   if (!privateKey) {
     return {
-      error: "Missing private key for account",
+      error: "Missing private key for account (set privateKeyPath to a key file under ~/.openclaw/secrets/starknet)",
       accountPath,
       privateKeyPath,
       index,

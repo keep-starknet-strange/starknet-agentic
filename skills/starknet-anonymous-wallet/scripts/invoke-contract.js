@@ -7,7 +7,6 @@
  * 
  * INPUT: JSON as first argument
  * {
- *   "privateKey": "0x...",      // Optional (or use PRIVATE_KEY env)
  *   "accountAddress": "0x...",
  *   "contractAddress": "0x...",
  *   "method": "transfer",
@@ -40,9 +39,10 @@ async function main() {
   if (!input.accountAddress) fail('Missing "accountAddress".');
   if (!input.contractAddress) fail('Missing "contractAddress".');
   if (!input.method) fail('Missing "method".');
+  if (input.privateKey) fail('Do not pass privateKey in JSON input; use PRIVATE_KEY env var.');
 
-  const privateKey = input.privateKey || process.env.PRIVATE_KEY;
-  if (!privateKey) fail('Missing private key (input.privateKey or PRIVATE_KEY env).');
+  const privateKey = process.env.PRIVATE_KEY;
+  if (!privateKey) fail('Missing PRIVATE_KEY env var.');
 
   const rpcUrl = resolveRpcUrl();
   const provider = new Provider({ nodeUrl: rpcUrl });
