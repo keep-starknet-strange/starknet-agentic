@@ -49,13 +49,26 @@ function withTimeout(promise, label) {
     ? VERIFY_TIMEOUT_MS
     : 30000;
 
+  let timeoutHandle = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
   return Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`${label} timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
+    promise.then((result) => {
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+      }
+      return result;
+    }).catch((error) => {
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+      }
+      throw error;
     }),
+    timeoutPromise,
   ]);
 }
 
@@ -209,9 +222,12 @@ async function main() {
     throw new Error(`Failed to read owner from one or more registries: ${failureSummary}`);
   }
 
-  if (ownerRows.length > 0) {
-    console.log("");
+  if (ownerRows.length !== 3) {
+    throw new Error(
+      `Invariant violation: expected 3 owner rows after successful reads, got ${ownerRows.length}.`,
+    );
   }
+  console.log("");
 
   const distinctOwners = [...new Set(ownerRows.map((row) => row.owner))];
   let hasError = false;
