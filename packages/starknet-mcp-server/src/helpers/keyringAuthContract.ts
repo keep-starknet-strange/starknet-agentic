@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 // SECURITY REVIEW REQUIRED:
 // This module defines KeyringAuthErrorCode outcomes and performs
@@ -192,11 +192,16 @@ export async function validateKeyringRequestAuth(
   const suppliedSignature = signatureRaw.toLowerCase();
   const HMAC_COMPARE_FLOOR = 4;
   const compareCount = Math.max(HMAC_COMPARE_FLOOR, clientSecrets.length, uniqueClientSecrets.length);
+  const dummyPadSecret = randomBytes(32).toString("hex");
   let hmacMatched = false;
   for (let i = 0; i < compareCount; i += 1) {
-    const secret = uniqueClientSecrets[i] ?? "__keyring_dummy_secret__";
+    const isRealSecretIndex = i < uniqueClientSecrets.length;
+    const secret = isRealSecretIndex ? uniqueClientSecrets[i] : `${dummyPadSecret}:${i}`;
     const expectedSignature = createHmac("sha256", secret).update(signingPayload).digest("hex");
-    hmacMatched = hmacMatched || constantTimeHexEqual(suppliedSignature, expectedSignature);
+    const matches = constantTimeHexEqual(suppliedSignature, expectedSignature);
+    if (isRealSecretIndex) {
+      hmacMatched = hmacMatched || matches;
+    }
   }
   if (!hmacMatched) {
     return fail("AUTH_INVALID_HMAC", "HMAC verification failed");

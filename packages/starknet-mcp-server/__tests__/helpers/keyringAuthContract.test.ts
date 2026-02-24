@@ -124,6 +124,82 @@ describe("keyring auth contract", () => {
     }
   });
 
+  it("accepts future timestamps within allowed skew bounds", async () => {
+    const nowMs = 1_770_984_000_000;
+    const secret = "super-secret";
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs + 30_000);
+    const nonce = "nonce-future-valid";
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret,
+    });
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "mcp-tests",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: { "mcp-tests": { hmacSecret: secret } },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects unknown client ids", async () => {
+    const nowMs = 1_770_984_000_000;
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonce = "nonce-unknown-client";
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret: "super-secret",
+    });
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "missing-client",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: { "mcp-tests": { hmacSecret: "super-secret" } },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorCode).toBe("AUTH_INVALID_CLIENT");
+    }
+  });
+
   it("rejects invalid signatures", async () => {
     const result = await validateKeyringRequestAuth({
       method: "POST",
@@ -137,6 +213,45 @@ describe("keyring auth contract", () => {
       },
       nowMs: 1_770_984_000_000,
       clientsById: { "mcp-tests": { hmacSecret: "super-secret" } },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorCode).toBe("AUTH_INVALID_HMAC");
+    }
+  });
+
+  it("rejects signatures computed with the public dummy padding secret", async () => {
+    const nowMs = 1_770_984_000_000;
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonce = "nonce-dummy-attack";
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret: "__keyring_dummy_secret__",
+    });
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "mcp-tests",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: { "mcp-tests": { hmacSecret: "real-secret" } },
       requireMtls: false,
       isMtlsAuthenticated: false,
       timestampMaxAgeMs: 60_000,
@@ -263,6 +378,92 @@ describe("keyring auth contract", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errorCode).toBe("AUTH_INVALID_HMAC");
+    }
+  });
+
+  it("rejects nonces longer than 256 chars", async () => {
+    const nowMs = 1_770_984_000_000;
+    const secret = "super-secret";
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonce = "n".repeat(257);
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret,
+    });
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "mcp-tests",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: { "mcp-tests": { hmacSecret: secret } },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorCode).toBe("AUTH_INVALID_HMAC");
+    }
+  });
+
+  it("fails closed with INTERNAL_ERROR when nonce store throws", async () => {
+    const nowMs = 1_770_984_000_000;
+    const secret = "super-secret";
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonce = "nonce-store-throws";
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret,
+    });
+
+    const throwingNonceStore = {
+      consumeOnce: async () => {
+        throw new Error("nonce backend unavailable");
+      },
+    };
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "mcp-tests",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: { "mcp-tests": { hmacSecret: secret } },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: throwingNonceStore,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorCode).toBe("INTERNAL_ERROR");
     }
   });
 
