@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  minimatch: 10.2.2
   qs: 6.14.2
   minimatch: 10.2.2
 

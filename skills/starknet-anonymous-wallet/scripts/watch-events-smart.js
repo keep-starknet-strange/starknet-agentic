@@ -26,7 +26,7 @@
 import { RpcProvider, hash } from 'starknet';
 import { WebSocket } from 'ws';
 import { execSync, execFileSync } from 'child_process';
-import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, lstatSync, realpathSync } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
 import { fileURLToPath } from 'url';
@@ -291,10 +291,46 @@ class SmartEventWatcher {
 
       // Fallback: scan cron dir for a shell script that references our config path
       if (!removed && knownConfigPath) {
+        const cronDirReal = realpathSync(cronDir);
+        const knownConfigBase = basename(knownConfigPath);
+        let knownConfigReal = null;
+        try {
+          knownConfigReal = realpathSync(knownConfigPath);
+        } catch {}
+
         const files = readdirSync(cronDir);
         for (const file of files) {
           if (!file.endsWith('.sh')) continue;
           const shellPath = join(cronDir, file);
+          let shellStat = null;
+          try {
+            shellStat = lstatSync(shellPath);
+          } catch {
+            continue;
+          }
+          if (!shellStat.isFile() || shellStat.isSymbolicLink()) continue;
+          if (typeof process.getuid === 'function' && shellStat.uid !== process.getuid()) continue;
+
+          let shellReal = null;
+          try {
+            shellReal = realpathSync(shellPath);
+          } catch {
+            continue;
+          }
+          if (!(shellReal === cronDirReal || shellReal.startsWith(`${cronDirReal}/`))) continue;
+
+          const derivedConfigPath = shellPath.replace(/\.sh$/i, '.json');
+          let configMatch = false;
+          try {
+            const derivedConfigReal = realpathSync(derivedConfigPath);
+            configMatch = knownConfigReal
+              ? derivedConfigReal === knownConfigReal
+              : basename(derivedConfigReal) === knownConfigBase;
+          } catch {
+            configMatch = !knownConfigReal && basename(derivedConfigPath) === knownConfigBase;
+          }
+          if (!configMatch) continue;
+
           const content = readFileSync(shellPath, 'utf8');
           if (content.includes(knownConfigPath)) {
             const currentCrontab = execSync('crontab -l 2>/dev/null || echo ""').toString();
@@ -306,7 +342,6 @@ class SmartEventWatcher {
             try { unlinkSync(tmpCrontab); } catch (e) { this.log(`Failed to remove temp crontab (${tmpCrontab}): ${e}`, 'warn'); }
 
             try { unlinkSync(shellPath); } catch (e) { this.log(`Failed to remove shellPath (${shellPath}): ${e}`, 'warn'); }
-            const derivedConfigPath = shellPath.replace(/\.sh$/i, '.json');
             try { unlinkSync(derivedConfigPath); } catch (e) { this.log(`Failed to remove configPath (${derivedConfigPath}): ${e}`, 'warn'); }
 
             this.log(`Removed cron job: ${file}`, 'info');
@@ -571,7 +606,8 @@ class SmartEventWatcher {
 
   // Handle events from either source
   handleEvent(event, source) {
-    const txKey = `${event.transaction_hash || event.transactionHash}_${event.keys.join('_')}`;
+    const keys = Array.isArray(event?.keys) ? event.keys : [];
+    const txKey = `${event.transaction_hash || event.transactionHash}_${keys.join('_')}`;
     if (this.processedTxs.has(txKey)) return;
     this.processedTxs.add(txKey);
     
@@ -591,9 +627,9 @@ class SmartEventWatcher {
       blockNumber: event.block_number || event.blockNumber,
       transactionHash: event.transaction_hash || event.transactionHash,
       contractAddress: event.from_address || event.contractAddress,
-      keys: event.keys,
+      keys,
       data: event.data,
-      eventName: this.getEventName(event.keys[0])
+      eventName: this.getEventName(keys[0])
     };
     
     logEvent(eventData);

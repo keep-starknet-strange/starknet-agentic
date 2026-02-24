@@ -158,7 +158,20 @@ async function main() {
       sellAmount
     });
     
-    const { quote, sellToken: sellTokenData, buyToken: buyTokenData } = await getSwapQuote(sellToken, buyToken, sellAmount, account.address);
+    let quote;
+    let sellTokenData;
+    let buyTokenData;
+    try {
+      ({ quote, sellToken: sellTokenData, buyToken: buyTokenData } = await getSwapQuote(
+        sellToken,
+        buyToken,
+        sellAmount,
+        account.address
+      ));
+    } catch (e) {
+      e.step = "quote";
+      throw e;
+    }
     
     emitProgress({
       step: "quote",
@@ -179,7 +192,13 @@ async function main() {
       slippage: `${slippage * 100}%`
     });
     
-    const result = await executeAvnuSwap(quote, account, slippage);
+    let result;
+    try {
+      result = await executeAvnuSwap(quote, account, slippage);
+    } catch (e) {
+      e.step = "execute";
+      throw e;
+    }
     
     // Single machine-readable payload on stdout for downstream parsers
     console.log(JSON.stringify({
@@ -192,7 +211,7 @@ async function main() {
       gasFees: quote.gasFees.toString(),
       sellTokenAddress: sellTokenData.address,
       buyTokenAddress: buyTokenData.address,
-      explorer: `https://starkscan.co/tx/${result.transactionHash}`
+      explorer: `https://voyager.online/tx/${result.transactionHash}`
     }));
     
   } catch (err) {

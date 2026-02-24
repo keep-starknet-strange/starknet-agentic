@@ -71,7 +71,7 @@ export function parseAmountToBaseUnits(amount, decimals) {
   } else if (typeof amount === 'string') {
     s = amount.trim();
   } else {
-    s = String(amount).trim();
+    throw new Error(`Unsupported amount type: ${typeof amount}`);
   }
 
   if (!/^[0-9]+(\.[0-9]+)?$/.test(s)) {

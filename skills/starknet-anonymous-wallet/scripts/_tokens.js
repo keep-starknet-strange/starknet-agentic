@@ -20,9 +20,7 @@ export async function fetchVerifiedTokens() {
       const content = Array.isArray(resp?.content) ? resp.content : [];
       all.push(...content);
 
-      const totalPages = Number(
-        resp?.totalPages ?? resp?.pages ?? resp?.total_pages ?? NaN
-      );
+      const totalPages = Number(resp?.totalPages ?? NaN);
       if (content.length === 0) break;
       page += 1;
 

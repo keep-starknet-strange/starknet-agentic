@@ -21,7 +21,7 @@
  */
 
 import { RpcProvider, Account, Contract, CallData, shortString, hash } from 'starknet';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, openSync, closeSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, openSync, closeSync, unlinkSync, statSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { resolveRpcUrl } from './_rpc.js';
@@ -39,6 +39,7 @@ const LOOT_STATE_FILE = join(LOOT_STATE_DIR, 'latest.json');
 const LOOT_STATE_TMP_FILE = join(LOOT_STATE_DIR, 'latest.json.tmp');
 const LOOT_STATE_LOCK_FILE = join(LOOT_STATE_DIR, '.latest.lock');
 const LOCK_SLEEP_CELL = new Int32Array(new SharedArrayBuffer(4));
+const LOCK_STALE_MS = 5000;
 
 function sleepSync(ms) {
   Atomics.wait(LOCK_SLEEP_CELL, 0, 0, ms);
@@ -52,7 +53,19 @@ function withLootStateLock(fn) {
     try {
       lockFd = openSync(LOOT_STATE_LOCK_FILE, 'wx');
     } catch (err) {
-      if (err?.code !== 'EEXIST' || Date.now() >= deadlineMs) {
+      if (err?.code !== 'EEXIST') {
+        throw err;
+      }
+
+      try {
+        const st = statSync(LOOT_STATE_LOCK_FILE);
+        if (Date.now() - st.mtimeMs > LOCK_STALE_MS) {
+          try { unlinkSync(LOOT_STATE_LOCK_FILE); } catch {}
+          continue;
+        }
+      } catch {}
+
+      if (Date.now() >= deadlineMs) {
         throw err;
       }
       sleepSync(20);
@@ -77,8 +90,12 @@ function lootStateMutate(accountAddress, mutateEntry) {
       writeFileSync(LOOT_STATE_TMP_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
       renameSync(LOOT_STATE_TMP_FILE, LOOT_STATE_FILE);
     });
-  } catch {
-    // best-effort
+  } catch (err) {
+    console.warn(JSON.stringify({
+      warning: 'lootStateMutate_failed',
+      accountAddress,
+      error: err?.message || String(err)
+    }));
   }
 }
 
@@ -324,7 +341,14 @@ function tryExtractMintedAdventurerIdFromReceipt(receipt) {
 
   for (const ev of receipt.events) {
     const eventKey0 = Array.isArray(ev?.keys) ? String(ev.keys[0] || '') : '';
-    if (!eventKey0 || eventKey0.toLowerCase() !== transferSelector.toLowerCase()) {
+    if (!eventKey0) {
+      continue;
+    }
+    let sameSelector = false;
+    try {
+      sameSelector = BigInt(eventKey0) === BigInt(transferSelector);
+    } catch {}
+    if (!sameSelector) {
       continue;
     }
 

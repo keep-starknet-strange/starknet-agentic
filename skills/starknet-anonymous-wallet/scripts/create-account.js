@@ -94,10 +94,12 @@ function parseInput() {
   if (!Array.isArray(notes)) notes = [notes];
 
   const required = ['secret', 'nullifier', 'txHash', 'pool', 'day'];
-  return notes.map((note, i) => {
+  return notes
+    .map((note, i) => {
     for (const field of required) {
       if (note[field] === undefined || note[field] === null) {
         printCreateAccountGuide(`MISSING_FIELD_${field.toUpperCase()}`);
+        return null;
       }
     }
     return {
@@ -107,7 +109,8 @@ function parseInput() {
       pool: note.pool,
       day: note.day,
     };
-  });
+  })
+    .filter(Boolean);
 }
 
 function generateKeypair() {

@@ -287,7 +287,7 @@ async function main() {
       result = rawResult;
     }
 
-    if (!rawResult && rawCalldata) {
+    if (!rawResult && rawCalldata && isUint256LikeOutput(matchedFunction)) {
       try {
         const r = await provider.callContract({
           contractAddress,

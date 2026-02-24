@@ -53,8 +53,8 @@
   "Sithswap": {
     "addresses": [
       {
-        "address": "0x028c858a586fa12123a1ccb337a0a3b969fba71c91c7e5f4a0e5b4b6b5e3f5a2",
-        "name": "Core"
+        "address": "0x028c858a586fa12123a1ccb337a0a3b369281f91ea00544d0c086524b759f627",
+        "name": "Router"
       }
     ],
     "network": "mainnet",

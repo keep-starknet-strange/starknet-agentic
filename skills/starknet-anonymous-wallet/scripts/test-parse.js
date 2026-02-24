@@ -158,7 +158,7 @@ function parsePrompt(prompt, tokenUniverse = [], actionUniverse = []) {
 const testPrompts = [
   "swap 10 ETH to STRK",
   "swap 10 ETH to STRK then deposit in Typhoon",
-  "swp 5 USDC to ETH",
+  "swa 5 USDC to ETH",
   "trasnfer 100 STRK to alice",
   "check my ETH balance",
   "claim rewards then stake it in Ekubo",
@@ -171,7 +171,7 @@ const testPrompts = [
 const expectations = [
   (result) => result.operations.length === 1 && result.operations[0].action === 'swap' && result.operations[0].tokenIn === 'ETH' && result.operations[0].tokenOut === 'STRK',
   (result) => result.operations.length >= 2 && result.operations[0].action === 'swap' && result.operations[1].action === 'deposit',
-  (result) => result.operations.length === 1 && ['swp', 'swap'].includes(result.operations[0].action),
+  (result) => result.operations.length === 1 && result.operations[0].action === 'swap',
   (result) => result.operations.length === 1 && ['trasnfer', 'transfer'].includes(result.operations[0].action) && result.operations[0].tokenIn === 'STRK',
   (result) => result.operations.length === 1 && result.operations[0].isRead === true,
   (result) => result.operations.length >= 2 && result.operations[1].isReference === true && result.operations[1].action === 'stake',

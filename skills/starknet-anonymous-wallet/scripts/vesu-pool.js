@@ -42,7 +42,14 @@ function loadVesuPools() {
   try {
     const all = JSON.parse(readFileSync(p, 'utf8'));
     return all?.VESU?.pools || {};
-  } catch {
+  } catch (e) {
+    if (process.env.OPENCLAW_DEBUG === '1') {
+      console.error(JSON.stringify({
+        warning: 'Failed to parse protocols.json for VESU pools',
+        file: p,
+        error: e?.message || String(e)
+      }));
+    }
     return {};
   }
 }
@@ -397,8 +404,8 @@ async function main() {
           if (!pairRes) {
             try { pairRes = await pairCall('pair_configs'); } catch {}
           }
-          if (pairRes?.result?.length >= 1) {
-            const pr = pairRes.result;
+          const pr = Array.isArray(pairRes) ? pairRes : (pairRes?.result || []);
+          if (pr.length >= 1) {
             maxLtv = pr.length >= 2 ? u256ToBigInt([pr[0], pr[1]]) : BigInt(String(pr[0]));
           }
         } catch (e) {
