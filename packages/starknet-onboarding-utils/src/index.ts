@@ -12,6 +12,7 @@ import {
   type Call,
   type PaymasterDetails,
 } from "starknet";
+import { trimTrailingChar as trimTrailingCharShared } from "../../shared/src/string";
 
 export type ProviderLike = Pick<RpcProvider, "getChainId" | "callContract" | "waitForTransaction">;
 
@@ -60,13 +61,7 @@ export type StarknetNetworkConfigLike = {
   explorer?: string;
 };
 
-function trimTrailingChar(input: string, charToTrim: string): string {
-  let end = input.length;
-  while (end > 0 && input.charAt(end - 1) === charToTrim) {
-    end -= 1;
-  }
-  return input.slice(0, end);
-}
+export const trimTrailingChar = trimTrailingCharShared;
 
 export function formatBalance(raw: bigint, decimals: number): string {
   if (raw === 0n) {
