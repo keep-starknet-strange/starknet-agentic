@@ -17,7 +17,7 @@ importers:
         version: 6.16.0
     devDependencies:
       '@changesets/cli':
-        specifier: ^2.29.8
+        specifier: 2.29.8
         version: 2.29.8(@types/node@25.2.3)
       '@eslint/js':
         specifier: ^10.0.1
@@ -147,12 +147,6 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
-
-  examples/openclaw-agent-loop:
-    dependencies:
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.12.1
-        version: 1.26.0(zod@4.3.6)
 
   packages/create-starknet-agent:
     dependencies:
