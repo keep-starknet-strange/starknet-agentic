@@ -193,7 +193,7 @@ export async function validateKeyringRequestAuth(
   });
   const suppliedSignature = signatureRaw.toLowerCase();
   const HMAC_COMPARE_FLOOR = 4;
-  const compareCount = Math.max(HMAC_COMPARE_FLOOR, clientSecrets.length);
+  const compareCount = Math.max(HMAC_COMPARE_FLOOR, uniqueClientSecrets.length);
   const dummyPadSecret = randomBytes(32).toString("hex");
   let hmacMatched = false;
   for (let i = 0; i < compareCount; i += 1) {
