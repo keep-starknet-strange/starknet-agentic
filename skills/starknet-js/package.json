@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx scripts/account-example.ts"
+    "start": "tsx scripts/account-example.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "starknet": "^9.2.1"

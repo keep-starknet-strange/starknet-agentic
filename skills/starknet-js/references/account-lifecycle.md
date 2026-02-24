@@ -5,7 +5,7 @@ Use this as a runbook for account creation, usage, and rotation in starknet.js-b
 ## Lifecycle Stages
 
 1. Provision
-Create/signing key material and assign account address.
+Generate signing key material and assign account address.
 2. Bootstrap
 Fund account and verify deploy state.
 3. Active Operations
