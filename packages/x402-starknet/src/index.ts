@@ -36,11 +36,15 @@ function base64ToBuffer(input: string): Buffer {
 }
 
 function bufferToBase64Url(buf: Buffer): string {
-  return buf
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "")
+  const base64 = buf.toString("base64")
+  const base64Url = base64.replaceAll("+", "-").replaceAll("/", "_")
+
+  let end = base64Url.length
+  while (end > 0 && base64Url.charAt(end - 1) === "=") {
+    end -= 1
+  }
+
+  return base64Url.slice(0, end)
 }
 
 export function decodeBase64Json<T = unknown>(v: string): T {

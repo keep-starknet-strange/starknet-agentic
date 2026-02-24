@@ -60,17 +60,25 @@ export type StarknetNetworkConfigLike = {
   explorer?: string;
 };
 
+function trimTrailingChar(input: string, charToTrim: string): string {
+  let end = input.length;
+  while (end > 0 && input.charAt(end - 1) === charToTrim) {
+    end -= 1;
+  }
+  return input.slice(0, end);
+}
+
 export function formatBalance(raw: bigint, decimals: number): string {
   if (raw === 0n) {
     return "0";
   }
   const s = raw.toString();
   if (s.length <= decimals) {
-    const frac = s.padStart(decimals, "0").replace(/0+$/, "");
+    const frac = trimTrailingChar(s.padStart(decimals, "0"), "0");
     return frac ? `0.${frac}` : "0";
   }
   const whole = s.slice(0, s.length - decimals);
-  const frac = s.slice(s.length - decimals).replace(/0+$/, "");
+  const frac = trimTrailingChar(s.slice(s.length - decimals), "0");
   return frac ? `${whole}.${frac}` : whole;
 }
 
