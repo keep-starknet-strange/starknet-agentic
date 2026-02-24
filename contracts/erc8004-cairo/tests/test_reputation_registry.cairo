@@ -906,6 +906,30 @@ fn test_read_all_feedback_rejects_large_explicit_client_scan() {
 }
 
 #[test]
+fn test_read_all_feedback_allows_max_explicit_client_scan() {
+    let (identity_registry, reputation_registry, identity_address, _reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let mut clients_filter: Array<ContractAddress> = ArrayTrait::new();
+    let mut i: u32 = 0;
+    while i < 2048 {
+        clients_filter.append(client());
+        i += 1;
+    };
+
+    let (clients_arr, indexes_arr, values_arr, _, _, _, _) = reputation_registry
+        .read_all_feedback(agent_id, clients_filter.span(), "", "", false);
+
+    assert_eq!(clients_arr.len(), 0);
+    assert_eq!(indexes_arr.len(), 0);
+    assert_eq!(values_arr.len(), 0);
+}
+
+#[test]
 fn test_read_all_feedback_paginated_handles_large_feedback_sets() {
     let (identity_registry, reputation_registry, identity_address, reputation_address) =
         deploy_contracts();
