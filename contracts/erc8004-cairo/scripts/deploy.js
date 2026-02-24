@@ -1,10 +1,7 @@
 import {
   constants,
-  Provider,
-  Contract,
   Account,
   json,
-  shortString,
   RpcProvider,
   hash,
 } from "starknet";
@@ -19,24 +16,26 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from .env file in project root
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
+function normalizeChainId(chainId) {
+  if (typeof chainId === "bigint") {
+    return `0x${chainId.toString(16)}`.toLowerCase();
+  }
+  return String(chainId).toLowerCase();
+}
+
 function resolveNetworkMetadata(chainId) {
-  const normalizedChainId = typeof chainId === "bigint" ? `0x${chainId.toString(16)}` : String(chainId);
+  const normalizedChainId = normalizeChainId(chainId);
 
   const networks = new Map([
-    [String(constants.StarknetChainId.SN_MAIN), {
+    [normalizeChainId(constants.StarknetChainId.SN_MAIN), {
       slug: "mainnet",
       label: "Starknet Mainnet",
       voyagerContractBase: "https://voyager.online/contract/",
     }],
-    [String(constants.StarknetChainId.SN_SEPOLIA), {
+    [normalizeChainId(constants.StarknetChainId.SN_SEPOLIA), {
       slug: "sepolia",
       label: "Starknet Sepolia",
       voyagerContractBase: "https://sepolia.voyager.online/contract/",
-    }],
-    [String(constants.StarknetChainId.SN_INTEGRATION_SEPOLIA), {
-      slug: "integration-sepolia",
-      label: "Starknet Integration Sepolia",
-      voyagerContractBase: "https://integration-sepolia.voyager.online/contract/",
     }],
   ]);
 
@@ -85,10 +84,22 @@ async function main() {
   // Check that communication with provider is OK
   const chainId = await provider.getChainId();
   const network = resolveNetworkMetadata(chainId);
+  const chainIdHex = normalizeChainId(chainId);
+
+  if (network.slug === "mainnet") {
+    const allowMainnet = process.env.ALLOW_MAINNET_DEPLOY === "true";
+    if (!allowMainnet) {
+      console.error("❌ Mainnet deployment blocked.");
+      console.error("   Set ALLOW_MAINNET_DEPLOY=true in .env to proceed intentionally.");
+      process.exit(1);
+    }
+    console.warn("⚠️  MAINNET DEPLOYMENT ENABLED (ALLOW_MAINNET_DEPLOY=true)");
+    console.warn("   Verify multisig owner, class hashes, and Sepolia dry run before continuing.\n");
+  }
 
   console.log(`🚀 Deploying ERC-8004 Contracts to ${network.label}\n`);
   console.log("═══════════════════════════════════════════════════════════════\n");
-  console.log("🔗 Chain ID:", chainId);
+  console.log("🔗 Chain ID:", chainIdHex);
 
   // starknet.js v9 Account constructor uses options object
   const account = new Account({
@@ -208,7 +219,7 @@ async function main() {
   // ==================== SAVE DEPLOYMENT INFO ====================
   const deploymentInfo = {
     network: network.slug,
-    chainId: String(chainId),
+    chainId: chainIdHex,
     rpcUrl: rpcUrl,
     accountAddress: accountAddress,
     ownerAddress: accountAddress,
@@ -234,7 +245,17 @@ async function main() {
   fs.writeFileSync(outputPath, JSON.stringify(deploymentInfo, null, 2));
 
   const networkOutputPath = path.join(__dirname, "..", `deployed_addresses_${network.slug}.json`);
+  if (fs.existsSync(networkOutputPath)) {
+    console.warn(`⚠️  Overwriting existing ${path.basename(networkOutputPath)} (latest deployment pointer).`);
+  }
   fs.writeFileSync(networkOutputPath, JSON.stringify(deploymentInfo, null, 2));
+  const timestampSuffix = deploymentInfo.deployedAt.replace(/[:.]/g, "-");
+  const immutableOutputPath = path.join(
+    __dirname,
+    "..",
+    `deployed_addresses_${network.slug}_${timestampSuffix}.json`,
+  );
+  fs.writeFileSync(immutableOutputPath, JSON.stringify(deploymentInfo, null, 2));
 
   // ==================== SUMMARY ====================
   console.log("╔════════════════════════════════════════════════════════════════╗");
@@ -249,6 +270,7 @@ async function main() {
   console.log("📄 Deployment info saved to:");
   console.log("   - deployed_addresses.json");
   console.log(`   - deployed_addresses_${network.slug}.json`);
+  console.log(`   - deployed_addresses_${network.slug}_${timestampSuffix}.json`);
   console.log("");
   if (network.voyagerContractBase) {
     console.log("🔍 View on Voyager:");

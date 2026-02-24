@@ -308,9 +308,12 @@ Copy `.env.example` to `.env` and configure:
 STARKNET_RPC_URL=https://starknet-sepolia-rpc.publicnode.com
 DEPLOYER_ADDRESS=0x...
 DEPLOYER_PRIVATE_KEY=0x...
+ALLOW_MAINNET_DEPLOY=false
 TEST_ACCOUNT_ADDRESS=0x...
 TEST_ACCOUNT_PRIVATE_KEY=0x...
 ```
+
+`ALLOW_MAINNET_DEPLOY` is a safety gate. The deployment script blocks mainnet deploys unless it is explicitly set to `true`.
 
 ## Deployment
 
@@ -319,6 +322,13 @@ cd scripts
 npm install
 node deploy.js
 ```
+
+Notes:
+- Deploy artifacts are written to:
+  - `deployed_addresses.json` (latest run)
+  - `deployed_addresses_<network>.json` (latest per network)
+  - `deployed_addresses_<network>_<timestamp>.json` (immutable run record)
+- Mainnet deploys require explicit opt-in: `ALLOW_MAINNET_DEPLOY=true`.
 
 ## E2E Tests
 
@@ -374,7 +384,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Deploy ReputationRegistry with multisig owner and IdentityRegistry address
 - [ ] Deploy ValidationRegistry with multisig owner and IdentityRegistry address
 - [ ] Wait for all deployment transactions to finalize (check `ACCEPTED_ON_L2` status)
-- [ ] Record all three contract addresses in deployment log and version control (`deployed_addresses_mainnet.json`)
+- [ ] Record all three contract addresses in deployment log and version control (`deployed_addresses_mainnet.json` + immutable timestamped artifact)
 
 **6. Post-Deployment Verification**
 - [ ] Verify IdentityRegistry owner: `get_owner()` returns multisig address
