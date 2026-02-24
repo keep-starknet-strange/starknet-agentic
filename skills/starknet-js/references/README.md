@@ -1,11 +1,8 @@
 # starknet-js References
 
-Use this folder for deep-dive notes that support the `starknet-js` skill:
-- provider configuration patterns (`RpcProvider`, retries, timeout strategy)
-- account signing flows and paymaster sponsorship boundaries
-- calldata/ABI encoding pitfalls and safe defaults
+Use this folder for deep-dive notes that support the `starknet-js` skill.
 
-Suggested next docs:
-- `provider-hardening.md`
-- `account-lifecycle.md`
-- `fee-strategy.md`
+Available docs:
+- `provider-hardening.md` - RPC reliability baseline (timeouts, retries, failover, chain checks).
+- `account-lifecycle.md` - account provisioning, active-operation guardrails, rotation and incident response.
+- `fee-strategy.md` - practical fee policy for user-paid and sponsored execution paths.

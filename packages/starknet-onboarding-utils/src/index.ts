@@ -12,7 +12,7 @@ import {
   type Call,
   type PaymasterDetails,
 } from "starknet";
-import { trimTrailingChar as trimTrailingCharShared } from "../../shared/src/string";
+import { trimTrailingChar as trimTrailingCharShared } from "../../shared/src/string.js";
 
 export type ProviderLike = Pick<RpcProvider, "getChainId" | "callContract" | "waitForTransaction">;
 

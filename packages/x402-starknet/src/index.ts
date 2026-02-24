@@ -1,5 +1,5 @@
 import { Account, RpcProvider, type TypedData } from "starknet"
-import { trimTrailingChar } from "../../shared/src/string"
+import { trimTrailingChar } from "../../shared/src/string.js"
 
 export type X402PaymentRequired = {
   /** opaque scheme id, ex: exact-starknet */
