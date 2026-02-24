@@ -76,10 +76,17 @@ Tracking issue: [#78](https://github.com/keep-starknet-strange/starknet-agentic/
 |---|---|---|
 | `starknet-wallet` | Wallet management, session keys, transfers, balances | Complete |
 | `starknet-mini-pay` | P2P payments, invoices, QR flows, Telegram support | Complete |
-| `starknet-anonymous-wallet` | Privacy-focused wallet operations | Complete |
-| `starknet-defi` | DeFi actions (swaps/staking/lending/LP) | Template |
-| `starknet-identity` | ERC-8004 identity/reputation/validation workflows | Template |
+| `starknet-anonymous-wallet` | Privacy-focused wallet creation via Typhoon | Complete |
+| `starknet-defi` | DeFi swaps, DCA, staking, lending via avnu | Complete |
+| `starknet-identity` | ERC-8004 on-chain identity and reputation | Complete |
+| `starknet-js` | starknet.js v9.x SDK guide for dApps and contracts | Complete |
 | `huginn-onboard` | Cross-chain onboarding and Huginn registry integration | Complete |
+| `controller-cli` | Cartridge Controller CLI sessions and scoped execution | Complete |
+| `cairo-contracts` | Contract structure, components, OZ v3, storage, events | Complete |
+| `cairo-testing` | snforge test patterns, cheatcodes, fuzzing, fork testing | Complete |
+| `cairo-deploy` | sncast deployment, account setup, network config | Complete |
+| `cairo-optimization` | Gas optimization, BoundedInt patterns, storage packing | Complete |
+| `cairo-security` | Security audit patterns, vulnerabilities, hardening | Complete |
 
 Full definitions and usage are in `skills/*/SKILL.md`.
 
