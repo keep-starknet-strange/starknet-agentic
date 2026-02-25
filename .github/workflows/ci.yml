@@ -36,6 +36,7 @@ jobs:
             ts:
               - 'packages/**'
               - 'examples/**'
+              - 'spec/**'
               - 'scripts/security/**'
               - 'security/**'
               - 'package.json'
@@ -102,7 +103,7 @@ jobs:
           version: 10.28.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -127,7 +128,7 @@ jobs:
           version: 10.28.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -152,7 +153,7 @@ jobs:
           version: 10.28.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -189,7 +190,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
         with:
           scarb-version: "2.14.0"
 
@@ -223,12 +224,12 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
         with:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4
+        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4.0.0
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -250,12 +251,12 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
         with:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4
+        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4.0.0
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -277,12 +278,12 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
         with:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4
+        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4.0.0
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -304,12 +305,12 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
         with:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4
+        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4.0.0
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -331,7 +332,7 @@ jobs:
           version: 10.28.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -352,7 +353,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: '20'
 
@@ -426,7 +427,7 @@ jobs:
           version: 10.28.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: '20'
           cache: 'pnpm'
