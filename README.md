@@ -77,6 +77,7 @@ Tracking issue: [#78](https://github.com/keep-starknet-strange/starknet-agentic/
 | `starknet-wallet` | Wallet management, session keys, transfers, balances | Complete |
 | `starknet-mini-pay` | P2P payments, invoices, QR flows, Telegram support | Complete |
 | `starknet-anonymous-wallet` | Privacy-focused wallet creation via Typhoon | Complete |
+| `starkzap-sdk` | End-to-end Starkzap SDK workflows (onboarding, wallets, ERC20, staking, tests) | Complete |
 | `starknet-defi` | DeFi swaps, DCA, staking, lending via avnu | Complete |
 | `starknet-identity` | ERC-8004 on-chain identity and reputation | Complete |
 | `starknet-js` | starknet.js v9.x SDK guide for dApps and contracts | Complete |
