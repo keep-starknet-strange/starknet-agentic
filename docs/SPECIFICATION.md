@@ -258,17 +258,9 @@ This section clarifies v1 invariants for `contracts/huginn-registry/`:
 
 ### 4.1 Tool Definitions
 
-Current registered tool inventory in `packages/starknet-mcp-server/src/index.ts`:
-
-1. `starknet_get_balance`
-2. `starknet_get_balances`
-3. `starknet_transfer`
-4. `starknet_call_contract`
-5. `starknet_invoke_contract`
-6. `starknet_swap`
-7. `starknet_get_quote`
-8. `starknet_estimate_fee`
-9. `x402_starknet_sign_payment_required`
+Use the live tool inventory in
+`packages/starknet-mcp-server/src/index.ts` as the source of truth instead of a
+duplicated static list in this document.
 
 ### 4.2 Transport
 

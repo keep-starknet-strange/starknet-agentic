@@ -291,7 +291,7 @@ This implementation uses **Poseidon hashing** (native to Starknet) instead of ke
 
 ```bash
 # Clone and build
-git clone git@github.com:keep-starknet-strange/starknet-agentic.git
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
 cd starknet-agentic/contracts/erc8004-cairo
 
 # Build contracts

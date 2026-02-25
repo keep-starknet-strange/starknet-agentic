@@ -62,6 +62,13 @@ Factory runtime values:
 - `get_identity_registry()` -> `0x07856876f4c8e1880bc0a2e4c15f4de3085bc2bad5c7b0ae472740f8f558e417`
 - `get_account_class_hash()` -> `0x508f4f19541138c4a2089f6ae049fc30498cfc3ae861948d5ae74533ea8c4f`
 
+⚠️ **Operational warning:** `get_identity_registry()` currently points to the
+legacy Sepolia `IdentityRegistry` (`0x07856876...`), not the current Sepolia
+registry (`0x72eb37b...`). Any new `AgentAccount` deployed through this
+`AgentAccountFactory` will be bound to the legacy registry. A factory
+redeployment or upgrade is required to bind new `AgentAccount` deployments to
+the current registry.
+
 No mainnet AgentAccountFactory deployment is documented in-repo as of this snapshot.
 
 ## Drift vs `origin/main` (`6d44f6b`)
