@@ -56,6 +56,9 @@ jobs:
             website:
               - 'website/**'
               - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
             skills:
               - 'skills/**'
               - 'scripts/quick_validate_skill.py'
@@ -64,6 +67,9 @@ jobs:
             onboarding:
               - 'examples/onboard-agent/**'
               - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
             ci:
               - '.github/workflows/ci.yml'
 
