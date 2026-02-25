@@ -107,7 +107,7 @@ export AVNU_PAYMASTER_API_KEY="your_key"
 ### Dependencies
 
 ```bash
-# TypeScript skills (wallet, defi, identity)
+# TypeScript skills (wallet, defi, identity, starknet-js)
 npm install starknet@^9.2.1 @avnu/avnu-sdk@^4.0.1
 
 # Python skills (mini-pay)

@@ -26,7 +26,7 @@ Snapshot as of 2026-02-10:
 | A2A package | `packages/starknet-a2a` | Active |
 | CLI scaffolding | `packages/create-starknet-agent` | Complete (npm publish pending) |
 | Additional packages | `packages/*` | Active/MVP by package |
-| Skills | `skills/*` | 3 complete + 2 template + 1 onboarding |
+| Skills | `skills/*` | Skills marketplace (see Skills At A Glance for current inventory) |
 | Onboarding examples | `examples/onboard-agent`, `crosschain-demo` | Working (with CI smoke tests) |
 | CI/CD | `.github/workflows/` | 11 jobs + daily health check |
 
@@ -134,7 +134,7 @@ starknet-agentic/
 │   ├── starknet-agent-passport/          # Capability metadata client
 │   ├── x402-starknet/                    # X-402 payment protocol
 │   └── prediction-arb-scanner/           # Cross-venue arb detection
-├── skills/                               # 6 skills (3 complete, 2 template, 1 onboarding)
+├── skills/                               # Skills marketplace (see Skills At A Glance for current inventory)
 ├── examples/                             # 4 examples + scaffold reference
 ├── docs/                                 # Roadmap, spec, getting started, troubleshooting
 └── website/                              # Next.js documentation site
