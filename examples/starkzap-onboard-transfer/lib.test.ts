@@ -73,6 +73,10 @@ describe("validators", () => {
 
   it("validates recipient address format", () => {
     expect(() => assertRecipientAddressFormat("0x123abc")).not.toThrow();
+    expect(() => assertRecipientAddressFormat("0x" + "a".repeat(64))).not.toThrow();
+    expect(() => assertRecipientAddressFormat("0x" + "a".repeat(65))).toThrow(
+      "Invalid recipient address format",
+    );
     expect(() => assertRecipientAddressFormat("123abc")).toThrow(
       "Invalid recipient address format",
     );

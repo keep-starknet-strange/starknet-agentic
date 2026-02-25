@@ -1,5 +1,5 @@
 const PRIVATE_KEY_PATTERN = /^0x[0-9a-fA-F]{64}$/;
-const HEX_ADDRESS_PATTERN = /^0x[0-9a-fA-F]+$/;
+const HEX_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{1,64}$/;
 
 export type ParsedArgs = {
   recipient: string;
@@ -65,7 +65,7 @@ export function assertPrivateKeyFormat(privateKey: string): void {
 export function assertRecipientAddressFormat(recipientAddress: string): void {
   if (!HEX_ADDRESS_PATTERN.test(recipientAddress)) {
     throw new Error(
-      "Invalid recipient address format. Expected 0x-prefixed hex string.",
+      "Invalid recipient address format. Expected 0x-prefixed 1-64 hex chars.",
     );
   }
 }
