@@ -85,7 +85,6 @@ export function sanitizeErrorForLog(err: unknown): string {
     /\b(PRIVATE_KEY|AVNU_PAYMASTER_API_KEY)\s*[:=]\s*[^\s,;]+/gi,
     "$1=[redacted]",
   );
-  sanitized = sanitized.replace(/\b[A-Za-z0-9_\-]{24,}\b/g, "[redacted-token]");
 
   for (const secret of [
     process.env.PRIVATE_KEY,

@@ -6,7 +6,7 @@
  *   1. SDK init on Sepolia (with optional AVNU paymaster for sponsored)
  *   2. Connect wallet via Signer strategy (or Privy in full demo)
  *   3. wallet.ensureReady({ deploy: "if_needed" }) — sponsored deploy when paymaster configured
- *   4. wallet.transfer(STRK, [...], { feeMode: "sponsored" }) — gasless transfer
+ *   4. wallet.transfer(STRK, [...]) — transfer (gasless with --sponsored)
  *   5. tx.wait() — stream finality confirmation
  *
  * Usage:
@@ -58,7 +58,12 @@ function logEvidence(doLog: boolean, data: Record<string, unknown>) {
     /* file missing or invalid */
   }
   existing.push({ ...data, timestamp: new Date().toISOString() });
-  fs.writeFileSync(file, JSON.stringify(existing, null, 2));
+  try {
+    fs.writeFileSync(file, JSON.stringify(existing, null, 2));
+  } catch (writeErr) {
+    const message = writeErr instanceof Error ? writeErr.message : String(writeErr);
+    console.warn("Warning: could not write evidence file:", message);
+  }
 }
 
 function getOptionalStringProperty(value: unknown, key: string): string | undefined {
@@ -115,7 +120,14 @@ async function main() {
     process.exit(1);
   }
   if (recipientAddress) {
-    assertRecipientAddressFormat(recipientAddress);
+    try {
+      assertRecipientAddressFormat(recipientAddress);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
+      logEvidence(evidence, { step: "invalid_recipient", error: true });
+      process.exit(1);
+    }
   }
 
   const rpcUrl = process.env.STARKNET_RPC_URL?.trim() || DEFAULT_RPC;
@@ -212,11 +224,6 @@ async function main() {
     console.error(
       "Invalid transfer amount. Provide a positive numeric value (e.g. 1 or 0.5).",
     );
-    logEvidence(evidence, { step: "invalid_amount", error: true });
-    process.exit(1);
-  }
-  if (BigInt(transferAmount.toBase().toString()) <= 0n) {
-    console.error("Transfer amount must be positive.");
     logEvidence(evidence, { step: "invalid_amount", error: true });
     process.exit(1);
   }

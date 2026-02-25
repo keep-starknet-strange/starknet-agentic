@@ -7,7 +7,7 @@
 1. **SDK init** on Sepolia (with optional AVNU paymaster for sponsored mode)
 2. **Connect wallet** via Signer strategy (or Privy in full demo)
 3. **`wallet.ensureReady({ deploy: "if_needed" })`** — sponsored deploy when paymaster configured
-4. **`wallet.transfer(STRK, [...], { feeMode: "sponsored" })`** — gasless transfer
+4. **`wallet.transfer(STRK, [...])`** — transfer (gasless with `--sponsored`)
 5. **`tx.wait()`** — finality confirmation
 
 ## Why Sepolia + STRK?

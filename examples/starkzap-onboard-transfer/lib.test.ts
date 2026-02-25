@@ -19,6 +19,35 @@ describe("parseArgs", () => {
     expect(parsed.sponsored).toBe(true);
   });
 
+  it("parses --recipient and --amount values", () => {
+    const parsed = parseArgs(["--recipient", "0xabc", "--amount", "42"]);
+    expect(parsed.recipient).toBe("0xabc");
+    expect(parsed.amount).toBe("42");
+  });
+
+  it("supports --address-only and --evidence flags", () => {
+    const parsed = parseArgs(["--address-only", "--evidence"]);
+    expect(parsed.addressOnly).toBe(true);
+    expect(parsed.evidence).toBe(true);
+  });
+
+  it("merges boolean flags and value arguments", () => {
+    const parsed = parseArgs([
+      "--sponsored",
+      "--address-only",
+      "--recipient",
+      "0xabc",
+      "--amount",
+      "5",
+      "--evidence",
+    ]);
+    expect(parsed.sponsored).toBe(true);
+    expect(parsed.addressOnly).toBe(true);
+    expect(parsed.evidence).toBe(true);
+    expect(parsed.recipient).toBe("0xabc");
+    expect(parsed.amount).toBe("5");
+  });
+
   it("throws on missing --recipient value", () => {
     expect(() => parseArgs(["--recipient"])).toThrow(
       "Missing value for --recipient",
