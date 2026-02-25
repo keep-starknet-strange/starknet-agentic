@@ -26,6 +26,21 @@ type TokenInfo = {
   decimals: number;
 };
 
+type SupportedRpcSpecVersion = '0.9.0' | '0.10.0';
+
+function resolveRpcSpecVersion(value: string | undefined): SupportedRpcSpecVersion {
+  const normalized = value?.trim();
+  if (!normalized || normalized.startsWith('0.9')) {
+    return '0.9.0';
+  }
+  if (normalized.startsWith('0.10')) {
+    return '0.10.0';
+  }
+  throw new Error(
+    `Unsupported STARKNET_RPC_SPEC_VERSION: "${normalized}". Expected 0.9.x or 0.10.x`,
+  );
+}
+
 async function resolveToken(tokenSymbolOrAddress?: string): Promise<TokenInfo> {
   if (!tokenSymbolOrAddress || tokenSymbolOrAddress.toUpperCase() === 'ETH') {
     const token = await fetchVerifiedTokenBySymbol('ETH');
@@ -43,7 +58,7 @@ async function resolveToken(tokenSymbolOrAddress?: string): Promise<TokenInfo> {
 
 async function main() {
   const rpcUrl = process.env.STARKNET_RPC_URL;
-  const rpcSpecVersion = process.env.STARKNET_RPC_SPEC_VERSION?.trim() || '0.9.0';
+  const rpcSpecVersion = resolveRpcSpecVersion(process.env.STARKNET_RPC_SPEC_VERSION);
   const address = process.env.STARKNET_ACCOUNT_ADDRESS;
   const tokenInput = process.env.TOKEN || process.env.TOKEN_ADDRESS;
 

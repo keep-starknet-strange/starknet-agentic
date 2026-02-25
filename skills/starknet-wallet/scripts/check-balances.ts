@@ -69,6 +69,21 @@ type TokenBalanceResult = {
   decimals: number;
 };
 
+type SupportedRpcSpecVersion = '0.9.0' | '0.10.0';
+
+function resolveRpcSpecVersion(value: string | undefined): SupportedRpcSpecVersion {
+  const normalized = value?.trim();
+  if (!normalized || normalized.startsWith('0.9')) {
+    return '0.9.0';
+  }
+  if (normalized.startsWith('0.10')) {
+    return '0.10.0';
+  }
+  throw new Error(
+    `Unsupported STARKNET_RPC_SPEC_VERSION: "${normalized}". Expected 0.9.x or 0.10.x`,
+  );
+}
+
 function normalizeAddress(addr: string): string {
   return '0x' + BigInt(addr).toString(16).padStart(64, '0');
 }
@@ -154,7 +169,7 @@ async function fetchViaBatchRpc(
 
 async function main(): Promise<void> {
   const rpcUrl = process.env.STARKNET_RPC_URL;
-  const rpcSpecVersion = process.env.STARKNET_RPC_SPEC_VERSION?.trim() || '0.9.0';
+  const rpcSpecVersion = resolveRpcSpecVersion(process.env.STARKNET_RPC_SPEC_VERSION);
   const address = process.env.STARKNET_ACCOUNT_ADDRESS;
 
   if (!rpcUrl || !address) {
