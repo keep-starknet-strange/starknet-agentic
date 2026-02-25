@@ -11,6 +11,7 @@
 import 'dotenv/config';
 import { RpcProvider, Contract, uint256 } from 'starknet';
 import { fetchTokenByAddress, fetchVerifiedTokenBySymbol } from '@avnu/avnu-sdk';
+import { resolveRpcSpecVersion } from './rpc-spec-version.ts';
 
 const ERC20_ABI = [{
   name: 'balanceOf',
@@ -25,21 +26,6 @@ type TokenInfo = {
   symbol: string;
   decimals: number;
 };
-
-type SupportedRpcSpecVersion = '0.9.0' | '0.10.0';
-
-function resolveRpcSpecVersion(value: string | undefined): SupportedRpcSpecVersion {
-  const normalized = value?.trim();
-  if (!normalized || normalized.startsWith('0.9')) {
-    return '0.9.0';
-  }
-  if (normalized.startsWith('0.10')) {
-    return '0.10.0';
-  }
-  throw new Error(
-    `Unsupported STARKNET_RPC_SPEC_VERSION: "${normalized}". Expected 0.9.x or 0.10.x`,
-  );
-}
 
 async function resolveToken(tokenSymbolOrAddress?: string): Promise<TokenInfo> {
   if (!tokenSymbolOrAddress || tokenSymbolOrAddress.toUpperCase() === 'ETH') {
@@ -58,7 +44,6 @@ async function resolveToken(tokenSymbolOrAddress?: string): Promise<TokenInfo> {
 
 async function main() {
   const rpcUrl = process.env.STARKNET_RPC_URL;
-  const rpcSpecVersion = resolveRpcSpecVersion(process.env.STARKNET_RPC_SPEC_VERSION);
   const address = process.env.STARKNET_ACCOUNT_ADDRESS;
   const tokenInput = process.env.TOKEN || process.env.TOKEN_ADDRESS;
 
@@ -68,14 +53,12 @@ async function main() {
   }
 
   try {
+    const rpcSpecVersion = resolveRpcSpecVersion(process.env.STARKNET_RPC_SPEC_VERSION);
     console.log('Resolving token via avnu...');
     const tokenInfo = await resolveToken(tokenInput);
 
     console.log('Checking balance...');
-    const provider = new RpcProvider({
-      nodeUrl: rpcUrl,
-      specVersion: rpcSpecVersion,
-    });
+    const provider = new RpcProvider({ nodeUrl: rpcUrl, specVersion: rpcSpecVersion });
     const contract = new Contract({ abi: ERC20_ABI, address: tokenInfo.address, providerOrAccount: provider });
 
     const balanceResult = await contract.balanceOf(address);
@@ -94,4 +77,7 @@ async function main() {
   }
 }
 
-main();
+main().catch((error) => {
+  console.error('Error:', error);
+  process.exit(1);
+});

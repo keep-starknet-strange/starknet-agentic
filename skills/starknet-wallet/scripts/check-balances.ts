@@ -13,6 +13,7 @@
 import 'dotenv/config';
 import { RpcProvider, Contract, uint256 } from 'starknet';
 import { fetchVerifiedTokenBySymbol } from '@avnu/avnu-sdk';
+import { resolveRpcSpecVersion } from './rpc-spec-version.ts';
 
 const DEFAULT_TOKENS = ['ETH', 'STRK', 'USDC', 'USDT'];
 const BALANCE_CHECKER_ADDRESS = '0x031ce64a666fbf9a2b1b2ca51c2af60d9a76d3b85e5fbfb9d5a8dbd3fedc9716';
@@ -68,21 +69,6 @@ type TokenBalanceResult = {
   balance: bigint;
   decimals: number;
 };
-
-type SupportedRpcSpecVersion = '0.9.0' | '0.10.0';
-
-function resolveRpcSpecVersion(value: string | undefined): SupportedRpcSpecVersion {
-  const normalized = value?.trim();
-  if (!normalized || normalized.startsWith('0.9')) {
-    return '0.9.0';
-  }
-  if (normalized.startsWith('0.10')) {
-    return '0.10.0';
-  }
-  throw new Error(
-    `Unsupported STARKNET_RPC_SPEC_VERSION: "${normalized}". Expected 0.9.x or 0.10.x`,
-  );
-}
 
 function normalizeAddress(addr: string): string {
   return '0x' + BigInt(addr).toString(16).padStart(64, '0');

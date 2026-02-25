@@ -105,7 +105,6 @@ if (!executeMode) {
 const { RpcProvider, Account } = await import("starknet");
 
 const rpcUrl = process.env.STARKNET_RPC_URL;
-const rpcSpecVersion = resolveRpcSpecVersion(process.env.STARKNET_RPC_SPEC_VERSION);
 const address = process.env.STARKNET_ACCOUNT_ADDRESS;
 const privateKey = process.env.STARKNET_PRIVATE_KEY;
 
@@ -113,6 +112,13 @@ if (!rpcUrl || !address || !privateKey) {
   console.error(
     "Set STARKNET_RPC_URL, STARKNET_ACCOUNT_ADDRESS, STARKNET_PRIVATE_KEY"
   );
+  process.exit(1);
+}
+let rpcSpecVersion;
+try {
+  rpcSpecVersion = resolveRpcSpecVersion(process.env.STARKNET_RPC_SPEC_VERSION);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 }
 
