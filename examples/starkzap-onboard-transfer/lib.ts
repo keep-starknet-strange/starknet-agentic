@@ -1,0 +1,100 @@
+const PRIVATE_KEY_PATTERN = /^0x[0-9a-fA-F]{64}$/;
+const HEX_ADDRESS_PATTERN = /^0x[0-9a-fA-F]+$/;
+
+export type ParsedArgs = {
+  recipient: string;
+  amount: string;
+  sponsored: boolean;
+  addressOnly: boolean;
+  evidence: boolean;
+};
+
+export function parseArgs(args: string[]): ParsedArgs {
+  let recipient = "";
+  let amount = "10";
+  let sponsored = false;
+  let addressOnly = false;
+  let evidence = false;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const next = args[i + 1];
+
+    switch (arg) {
+      case "--recipient":
+        if (!next || next.startsWith("--")) {
+          throw new Error("Missing value for --recipient");
+        }
+        recipient = next;
+        i++;
+        break;
+      case "--amount":
+        if (!next || next.startsWith("--")) {
+          throw new Error("Missing value for --amount");
+        }
+        amount = next;
+        i++;
+        break;
+      case "--sponsored":
+        sponsored = true;
+        break;
+      case "--address-only":
+        addressOnly = true;
+        break;
+      case "--evidence":
+        evidence = true;
+        break;
+      default:
+        throw new Error(`Unknown argument: ${arg}`);
+    }
+  }
+
+  return { recipient, amount, sponsored, addressOnly, evidence };
+}
+
+export function assertPrivateKeyFormat(privateKey: string): void {
+  if (!PRIVATE_KEY_PATTERN.test(privateKey)) {
+    throw new Error(
+      "Invalid PRIVATE_KEY format. Expected 0x-prefixed 64-hex string (example: 0x" +
+        "a".repeat(64) +
+        ").",
+    );
+  }
+}
+
+export function assertRecipientAddressFormat(recipientAddress: string): void {
+  if (!HEX_ADDRESS_PATTERN.test(recipientAddress)) {
+    throw new Error(
+      "Invalid recipient address format. Expected 0x-prefixed hex string.",
+    );
+  }
+}
+
+export function assertPositiveAmount(amount: string): void {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    throw new Error("Amount must be a positive number.");
+  }
+}
+
+export function sanitizeErrorForLog(err: unknown): string {
+  const rawMessage = err instanceof Error ? err.message : String(err);
+  let sanitized = rawMessage.replace(/0x[0-9a-fA-F]{64}/g, "[redacted-hex-64]");
+
+  sanitized = sanitized.replace(
+    /\b(PRIVATE_KEY|AVNU_PAYMASTER_API_KEY)\s*[:=]\s*[^\s,;]+/gi,
+    "$1=[redacted]",
+  );
+  sanitized = sanitized.replace(/\b[A-Za-z0-9_\-]{24,}\b/g, "[redacted-token]");
+
+  for (const secret of [
+    process.env.PRIVATE_KEY,
+    process.env.AVNU_PAYMASTER_API_KEY,
+  ]) {
+    if (typeof secret === "string" && secret.length > 0) {
+      sanitized = sanitized.split(secret).join("[redacted-secret]");
+    }
+  }
+
+  return sanitized;
+}

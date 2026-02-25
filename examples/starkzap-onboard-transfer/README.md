@@ -1,6 +1,6 @@
 # Starkzap Demo: Gasless Onboard + STRK Transfer (Sepolia)
 
-**Showy demo**: End-to-end gasless onboarding and STRK transfer on Sepolia — no private key handling by user, no gas purchase, one command.
+**Showy demo**: End-to-end onboarding and STRK transfer on Sepolia — operator provides `PRIVATE_KEY` in `.env`, with optional gasless sponsorship, one command.
 
 ## Flow
 
@@ -19,7 +19,7 @@
 ## Prerequisites
 
 - Node.js 20+
-- A test private key (generate: `openssl rand -hex 32`)
+- A test private key (generate: `PRIVATE_KEY=0x$(openssl rand -hex 32)`)
 - For **sponsored** mode: [AVNU Paymaster API key](https://portal.avnu.fi/)
 
 ## Setup

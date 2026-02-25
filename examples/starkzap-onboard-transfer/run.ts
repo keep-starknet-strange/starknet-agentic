@@ -13,8 +13,8 @@
  *   npx tsx run.ts [--recipient 0x...] [--amount 10] [--sponsored]
  *
  * Env:
- *   PRIVATE_KEY          — test signer (generate with: openssl rand -hex 32)
- *   AVNU_PAYMASTER_API_KEY — for sponsored mode (get from portal.avnu.fi)
+ *   PRIVATE_KEY          — test signer (generate with: PRIVATE_KEY=0x$(openssl rand -hex 32))
+ *   AVNU_PAYMASTER_API_KEY — for --sponsored mode (get from portal.avnu.fi)
  *   STARKNET_RPC_URL     — optional, defaults to public Sepolia RPC
  */
 
@@ -22,6 +22,13 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
+import {
+  assertPositiveAmount,
+  assertPrivateKeyFormat,
+  assertRecipientAddressFormat,
+  parseArgs,
+  sanitizeErrorForLog,
+} from "./lib";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env"), override: true, quiet: true });
 import {
@@ -36,46 +43,6 @@ import {
 const SEPOLIA_PAYMASTER = "https://sepolia.paymaster.avnu.fi";
 const DEFAULT_RPC = "https://starknet-sepolia-rpc.publicnode.com";
 const STARKSCAN_TX_BASE_URL = "https://sepolia.starkscan.co/tx/";
-const PRIVATE_KEY_PATTERN = /^0x[0-9a-fA-F]{64}$/;
-
-function parseArgs(): {
-  recipient: string;
-  amount: string;
-  sponsored: boolean;
-  addressOnly: boolean;
-  evidence: boolean;
-} {
-  const args = process.argv.slice(2);
-  let recipient = "";
-  let amount = "10";
-  let sponsored = !!process.env.AVNU_PAYMASTER_API_KEY;
-  let addressOnly = false;
-  let evidence = false;
-
-  for (let i = 0; i < args.length; i++) {
-    switch (args[i]) {
-      case "--recipient":
-        recipient = args[++i] ?? "";
-        break;
-      case "--amount":
-        amount = args[++i] ?? "10";
-        break;
-      case "--sponsored":
-        sponsored = true;
-        break;
-      case "--address-only":
-        addressOnly = true;
-        break;
-      case "--evidence":
-        evidence = true;
-        break;
-      default:
-        break;
-    }
-  }
-
-  return { recipient, amount, sponsored, addressOnly, evidence };
-}
 
 const EVIDENCE_FILE = "demo-evidence.json";
 
@@ -117,28 +84,15 @@ function assertWaitable(value: unknown): asserts value is { wait: () => Promise<
   }
 }
 
-function assertPrivateKeyFormat(privateKey: string): void {
-  if (!PRIVATE_KEY_PATTERN.test(privateKey)) {
-    throw new Error(
-      "Invalid PRIVATE_KEY format. Expected 0x-prefixed 64-hex string (example: 0x" +
-        "a".repeat(64) +
-        ").",
-    );
-  }
-}
-
-function sanitizeErrorForLog(err: unknown): string {
-  const rawMessage = err instanceof Error ? err.message : String(err);
-  return rawMessage.replace(/0x[0-9a-fA-F]{64}/g, "[redacted-hex-64]");
-}
-
 async function main() {
-  const { recipient, amount, sponsored, addressOnly, evidence } = parseArgs();
+  const { recipient, amount, sponsored, addressOnly, evidence } = parseArgs(
+    process.argv.slice(2),
+  );
 
   const privateKey = process.env.PRIVATE_KEY?.trim();
   if (!privateKey) {
     console.error(
-      "Missing PRIVATE_KEY. Generate one: openssl rand -hex 32\n" +
+      "Missing PRIVATE_KEY. Generate one: PRIVATE_KEY=0x$(openssl rand -hex 32)\n" +
         "Then fund it at https://starknet-faucet.vercel.app/ (only needed for non-sponsored deploy)"
     );
     process.exit(1);
@@ -159,6 +113,9 @@ async function main() {
       "Provide --recipient 0x... or set RECIPIENT_ADDRESS in .env"
     );
     process.exit(1);
+  }
+  if (recipientAddress) {
+    assertRecipientAddressFormat(recipientAddress);
   }
 
   const rpcUrl = process.env.STARKNET_RPC_URL?.trim() || DEFAULT_RPC;
@@ -246,7 +203,23 @@ async function main() {
     balanceRaw: balance.toBase().toString(),
   });
 
-  const transferAmount = Amount.parse(amount, STRK);
+  assertPositiveAmount(amount);
+
+  let transferAmount;
+  try {
+    transferAmount = Amount.parse(amount, STRK);
+  } catch {
+    console.error(
+      "Invalid transfer amount. Provide a positive numeric value (e.g. 1 or 0.5).",
+    );
+    logEvidence(evidence, { step: "invalid_amount", error: true });
+    process.exit(1);
+  }
+  if (BigInt(transferAmount.toBase().toString()) <= 0n) {
+    console.error("Transfer amount must be positive.");
+    logEvidence(evidence, { step: "invalid_amount", error: true });
+    process.exit(1);
+  }
   if (balance.lt(transferAmount)) {
     console.error(
       `Insufficient balance. Need ${amount} STRK. Get test tokens: https://starknet-faucet.vercel.app/`
