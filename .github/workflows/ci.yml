@@ -449,6 +449,10 @@ jobs:
     steps:
       - name: Verify no failures
         run: |
+          if [[ "${{ needs.detect-changes.result }}" != "success" ]]; then
+            echo "Change detection failed"
+            exit 1
+          fi
           if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]] || \
              [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
             echo "One or more CI jobs failed or were cancelled"
