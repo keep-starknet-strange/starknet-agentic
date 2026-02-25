@@ -10,6 +10,7 @@
  *
  * Env vars (only for --execute):
  *   STARKNET_RPC_URL
+ *   STARKNET_RPC_SPEC_VERSION (optional, defaults to 0.9.0; supports 0.9.x/0.10.x)
  *   STARKNET_ACCOUNT_ADDRESS
  *   STARKNET_PRIVATE_KEY
  */
@@ -19,6 +20,19 @@ import { readFileSync, writeFileSync } from "node:fs";
 // --- Call builder (mirrors starknet_build_calls MCP tool logic) ---
 
 const FELT_MAX = (1n << 251n) - 1n;
+
+function resolveRpcSpecVersion(value) {
+  const normalized = value?.trim();
+  if (!normalized || normalized.startsWith("0.9")) {
+    return "0.9.0";
+  }
+  if (normalized.startsWith("0.10")) {
+    return "0.10.0";
+  }
+  throw new Error(
+    `Unsupported STARKNET_RPC_SPEC_VERSION: "${normalized}". Expected 0.9.x or 0.10.x`
+  );
+}
 
 function validateFelt(name, value) {
   const n = BigInt(value);
@@ -91,6 +105,7 @@ if (!executeMode) {
 const { RpcProvider, Account } = await import("starknet");
 
 const rpcUrl = process.env.STARKNET_RPC_URL;
+const rpcSpecVersion = resolveRpcSpecVersion(process.env.STARKNET_RPC_SPEC_VERSION);
 const address = process.env.STARKNET_ACCOUNT_ADDRESS;
 const privateKey = process.env.STARKNET_PRIVATE_KEY;
 
@@ -104,7 +119,7 @@ if (!rpcUrl || !address || !privateKey) {
 console.error("Executing calls with starknet.js...");
 console.error("Calls:", callsJson);
 
-const provider = new RpcProvider({ nodeUrl: rpcUrl });
+const provider = new RpcProvider({ nodeUrl: rpcUrl, specVersion: rpcSpecVersion });
 const account = new Account(provider, address, privateKey);
 const result = await account.execute(calls);
 
