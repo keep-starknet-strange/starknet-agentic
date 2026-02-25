@@ -7,7 +7,6 @@
  * 
  * INPUT: JSON as first argument
  * {
- *   "privateKeyPath": "/path/to/key",
  *   "accountAddress": "0x...",
  *   "contractAddress": "0x...",
  *   "method": "transfer",
@@ -18,13 +17,54 @@
  */
 
 import { Provider, Account, Contract } from 'starknet';
-import fs from 'fs';
+import { existsSync, readdirSync, readFileSync } from 'fs';
+import { join, isAbsolute } from 'path';
+import { homedir } from 'os';
 
 import { resolveRpcUrl } from './_rpc.js';
 
 function fail(message) {
   console.error(JSON.stringify({ error: message }));
   process.exit(1);
+}
+
+function getSecretsDir() {
+  return join(homedir(), '.openclaw', 'secrets', 'starknet');
+}
+
+function loadPrivateKeyByAccountAddress(accountAddress) {
+  const dir = getSecretsDir();
+  if (!existsSync(dir)) fail('Missing secrets directory: ~/.openclaw/secrets/starknet');
+
+  const files = readdirSync(dir).filter(f => f.endsWith('.json'));
+  const target = String(accountAddress).toLowerCase();
+
+  for (const file of files) {
+    const accountPath = join(dir, file);
+    let data;
+    try {
+      data = JSON.parse(readFileSync(accountPath, 'utf8'));
+    } catch {
+      continue;
+    }
+
+    if (String(data.address || '').toLowerCase() !== target) continue;
+
+    if (!(typeof data.privateKeyPath === 'string' && data.privateKeyPath.trim().length > 0)) {
+      fail('Account is missing privateKeyPath (file-based key is required).');
+    }
+
+    const keyPath = isAbsolute(data.privateKeyPath)
+      ? data.privateKeyPath
+      : join(dir, data.privateKeyPath);
+
+    if (!existsSync(keyPath)) fail(`Private key file not found: ${keyPath}`);
+    const privateKey = readFileSync(keyPath, 'utf8').trim();
+    if (!privateKey) fail('Private key file is empty.');
+    return privateKey;
+  }
+
+  fail(`Account not found in ~/.openclaw/secrets/starknet for address: ${accountAddress}`);
 }
 
 async function main() {
@@ -38,22 +78,29 @@ async function main() {
     fail(`JSON parse error: ${e.message}`);
   }
 
-  if (!input.privateKeyPath) fail('Missing "privateKeyPath".');
   if (!input.accountAddress) fail('Missing "accountAddress".');
   if (!input.contractAddress) fail('Missing "contractAddress".');
   if (!input.method) fail('Missing "method".');
+  if (input.privateKey) fail('Do not pass privateKey in JSON input.');
 
-  if (!fs.existsSync(input.privateKeyPath)) fail(`Key not found: ${input.privateKeyPath}`);
-  const privateKey = fs.readFileSync(input.privateKeyPath, 'utf-8').trim();
+  const privateKey = loadPrivateKeyByAccountAddress(input.accountAddress);
 
-  const rpcUrl = resolveRpcUrl(input);
+  const rpcUrl = resolveRpcUrl();
   const provider = new Provider({ nodeUrl: rpcUrl });
-  const account = new Account({ provider, address: input.accountAddress, signer: privateKey });
+  const account = new Account({
+    provider,
+    address: input.accountAddress,
+    signer: privateKey
+  });
 
   const classResponse = await provider.getClassAt(input.contractAddress);
   if (!classResponse.abi) fail('Contract has no ABI on chain.');
 
-  const contract = new Contract({ abi: classResponse.abi, address: input.contractAddress, providerOrAccount: account });
+  const contract = new Contract({
+    abi: classResponse.abi,
+    address: input.contractAddress,
+    providerOrAccount: account
+  });
 
   // Build args
   let args = input.args || [];
@@ -83,7 +130,7 @@ async function main() {
     success: true,
     method: input.method,
     contractAddress: input.contractAddress,
-    transactionHash: result.transaction_hash,
+    txHash: result.transaction_hash,
     explorer: `https://voyager.online/tx/${result.transaction_hash}`,
   };
 
