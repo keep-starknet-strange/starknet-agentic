@@ -70,7 +70,7 @@ jobs:
     name: Secret Scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install gitleaks
         run: |
@@ -94,15 +94,15 @@ jobs:
     if: needs.detect-changes.outputs.ts == 'true' || needs.detect-changes.outputs.website == 'true' || needs.detect-changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
         with:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -119,15 +119,15 @@ jobs:
     if: needs.detect-changes.outputs.ts == 'true' || needs.detect-changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
         with:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -144,15 +144,15 @@ jobs:
     if: needs.detect-changes.outputs.ts == 'true' || needs.detect-changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
         with:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -184,12 +184,12 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
         with:
           scarb-version: "2.14.0"
 
@@ -218,17 +218,17 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
         with:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@v4
+        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -245,17 +245,17 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
         with:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@v4
+        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -272,17 +272,17 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
         with:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@v4
+        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -299,17 +299,17 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@v1
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1
         with:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@v4
+        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -323,15 +323,15 @@ jobs:
     if: needs.detect-changes.outputs.website == 'true' || needs.detect-changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
         with:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -349,10 +349,10 @@ jobs:
     if: needs.detect-changes.outputs.skills == 'true' || needs.detect-changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: '20'
 
@@ -418,15 +418,15 @@ jobs:
     if: needs.detect-changes.outputs.onboarding == 'true' || needs.detect-changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
         with:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: '20'
           cache: 'pnpm'
