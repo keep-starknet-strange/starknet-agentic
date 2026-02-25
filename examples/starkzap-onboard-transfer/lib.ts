@@ -52,6 +52,11 @@ export function parseArgs(args: string[]): ParsedArgs {
   return { recipient, amount, sponsored, addressOnly, evidence };
 }
 
+/**
+ * Validate a Stark private key expected by this demo.
+ * @param privateKey 0x-prefixed private key string with exactly 64 hex characters.
+ * @throws Error If `privateKey` does not match the expected Stark key format.
+ */
 export function assertPrivateKeyFormat(privateKey: string): void {
   if (!PRIVATE_KEY_PATTERN.test(privateKey)) {
     throw new Error(
@@ -62,6 +67,11 @@ export function assertPrivateKeyFormat(privateKey: string): void {
   }
 }
 
+/**
+ * Validate recipient account address format for transfer calls.
+ * @param recipientAddress 0x-prefixed hex string between 1 and 64 hex characters.
+ * @throws Error If `recipientAddress` is not a valid hex-address string for this demo.
+ */
 export function assertRecipientAddressFormat(recipientAddress: string): void {
   if (!HEX_ADDRESS_PATTERN.test(recipientAddress)) {
     throw new Error(
@@ -70,6 +80,11 @@ export function assertRecipientAddressFormat(recipientAddress: string): void {
   }
 }
 
+/**
+ * Ensure transfer amount parses to a finite positive number.
+ * @param amount Transfer amount as a string from CLI/env input.
+ * @throws Error If `amount` is not numeric, not finite, or is less than or equal to zero.
+ */
 export function assertPositiveAmount(amount: string): void {
   const numericAmount = Number(amount);
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) {

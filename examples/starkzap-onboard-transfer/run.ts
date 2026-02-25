@@ -18,7 +18,6 @@
  *   STARKNET_RPC_URL     — optional, defaults to public Sepolia RPC
  */
 
-import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
@@ -30,15 +29,17 @@ import {
   sanitizeErrorForLog,
 } from "./lib";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dotenv = await import("dotenv");
 dotenv.config({ path: path.join(__dirname, ".env"), quiet: true });
-import {
+
+const {
   StarkSDK,
   StarkSigner,
   OnboardStrategy,
   Amount,
   fromAddress,
   sepoliaTokens,
-} from "starkzap";
+} = await import("starkzap");
 
 const SEPOLIA_PAYMASTER = "https://sepolia.paymaster.avnu.fi";
 const DEFAULT_RPC = "https://starknet-sepolia-rpc.publicnode.com";
@@ -241,6 +242,7 @@ async function main() {
     [{ to: fromAddress(recipientAddress), amount: transferAmount }],
     sponsored ? { feeMode: "sponsored" } : undefined
   );
+  assertWaitable(tx);
 
   const txHash =
     getOptionalStringProperty(tx, "transactionHash") ??
@@ -259,7 +261,6 @@ async function main() {
   });
 
   console.log("      Waiting for finality...");
-  assertWaitable(tx);
   await tx.wait();
   console.log("\n✅ Transfer complete.");
   logEvidence(evidence, {

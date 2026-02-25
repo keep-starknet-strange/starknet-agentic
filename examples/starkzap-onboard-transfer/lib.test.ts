@@ -105,4 +105,39 @@ describe("sanitizeErrorForLog", () => {
     expect(sanitized).toContain("PRIVATE_KEY=[redacted]");
     expect(sanitized).toContain("AVNU_PAYMASTER_API_KEY=[redacted]");
   });
+
+  it("redacts literal env-var secrets set in process.env", () => {
+    const originalPrivateKey = process.env.PRIVATE_KEY;
+    const originalPaymasterKey = process.env.AVNU_PAYMASTER_API_KEY;
+    process.env.PRIVATE_KEY = "plain-private-key-value";
+    process.env.AVNU_PAYMASTER_API_KEY = "plain-paymaster-secret";
+
+    try {
+      const sanitized = sanitizeErrorForLog(
+        new Error(
+          "Request failed with plain-private-key-value and plain-paymaster-secret",
+        ),
+      );
+      expect(sanitized).not.toContain("plain-private-key-value");
+      expect(sanitized).not.toContain("plain-paymaster-secret");
+      expect(sanitized).toContain("[redacted-secret]");
+    } finally {
+      if (originalPrivateKey === undefined) {
+        delete process.env.PRIVATE_KEY;
+      } else {
+        process.env.PRIVATE_KEY = originalPrivateKey;
+      }
+      if (originalPaymasterKey === undefined) {
+        delete process.env.AVNU_PAYMASTER_API_KEY;
+      } else {
+        process.env.AVNU_PAYMASTER_API_KEY = originalPaymasterKey;
+      }
+    }
+  });
+
+  it("handles non-Error inputs", () => {
+    expect(sanitizeErrorForLog("plain string error")).toBe("plain string error");
+    expect(sanitizeErrorForLog(42)).toBe("42");
+    expect(sanitizeErrorForLog({ code: "oops" })).toBe("[object Object]");
+  });
 });
