@@ -124,8 +124,13 @@ function resolveContractAddresses(network) {
   }
 
   if (KNOWN_DEPLOYMENTS[network]) {
+    const raw = KNOWN_DEPLOYMENTS[network];
     return {
-      addresses: KNOWN_DEPLOYMENTS[network],
+      addresses: {
+        identity: normalizeAddress(raw.identity, `built-in ${network} identity address`),
+        reputation: normalizeAddress(raw.reputation, `built-in ${network} reputation address`),
+        validation: normalizeAddress(raw.validation, `built-in ${network} validation address`),
+      },
       source: `built-in ${network} defaults`,
       reviewRequired: true,
     };
