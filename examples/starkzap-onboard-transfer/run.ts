@@ -106,7 +106,7 @@ async function main() {
   assertPrivateKeyFormat(privateKey);
 
   const paymasterApiKey = process.env.AVNU_PAYMASTER_API_KEY?.trim();
-  if (sponsored && !paymasterApiKey) {
+  if (sponsored && !addressOnly && !paymasterApiKey) {
     console.error(
       "Sponsored mode requires AVNU_PAYMASTER_API_KEY. Get one at https://portal.avnu.fi/"
     );
@@ -213,10 +213,9 @@ async function main() {
     balanceRaw: balance.toBase().toString(),
   });
 
-  assertPositiveAmount(amount);
-
   let transferAmount;
   try {
+    assertPositiveAmount(amount);
     transferAmount = Amount.parse(amount, STRK);
   } catch {
     console.error(
