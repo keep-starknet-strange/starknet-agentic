@@ -11,7 +11,7 @@ follows SemVer with a pre-1.0 policy (see [`VERSIONING.md`](./VERSIONING.md)).
 ### Security
 
 - Root `pnpm.overrides` reviewed and approved:
-  - `minimatch`: `^10.2.1` — fixes ReDoS
+  - `minimatch`: `10.2.2` — fixes ReDoS
     ([GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26));
     transitive via eslint (devDependency, build-time only)
   - `qs`: `6.14.2` — existing security pin (unchanged)  
