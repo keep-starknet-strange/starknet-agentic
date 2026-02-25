@@ -9,6 +9,6 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["run.ts"],
+  "include": ["run.ts", "lib.ts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -8,7 +8,9 @@
     "demo": "npx tsx run.ts",
     "demo:sponsored": "npx tsx run.ts --sponsored",
     "demo:address": "npx tsx run.ts --address-only",
-    "demo:evidence": "npx tsx run.ts --evidence"
+    "demo:evidence": "npx tsx run.ts --evidence",
+    "test": "vitest run lib.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "dotenv": "^17.3.1",
@@ -16,6 +18,7 @@
   },
   "devDependencies": {
     "tsx": "^4.7.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.18"
   }
 }

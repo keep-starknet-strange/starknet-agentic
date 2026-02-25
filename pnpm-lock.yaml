@@ -144,12 +144,6 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
-  examples/openclaw-agent-loop:
-    dependencies:
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.12.1
-        version: 1.26.0(zod@4.3.6)
-
   examples/starkzap-onboard-transfer:
     dependencies:
       dotenv:
@@ -157,7 +151,7 @@ importers:
         version: 17.3.1
       starkzap:
         specifier: ^1.0.0
-        version: 1.0.0(typescript@5.9.3)(zod@4.3.6)
+        version: 1.0.0(typescript@5.9.3)
     devDependencies:
       tsx:
         specifier: ^4.7.0
@@ -165,6 +159,9 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/create-starknet-agent:
     dependencies:
@@ -7972,7 +7969,7 @@ snapshots:
       - typescript
       - zod
 
-  starkzap@1.0.0(typescript@5.9.3)(zod@4.3.6):
+  starkzap@1.0.0(typescript@5.9.3):
     dependencies:
       starknet: 9.2.1(typescript@5.9.3)(zod@4.3.6)
     transitivePeerDependencies:
