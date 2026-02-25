@@ -278,6 +278,110 @@ describe("KeyringProxySigner", () => {
     ).rejects.toThrow("signatureMode must be v2_snip12");
   });
 
+  it.each([
+    {
+      label: "requestId is missing",
+      mutate: (payload: Record<string, unknown>) => {
+        delete payload.requestId;
+      },
+      expectedError: "requestId is required",
+    },
+    {
+      label: "requestId is blank",
+      mutate: (payload: Record<string, unknown>) => {
+        payload.requestId = "   ";
+      },
+      expectedError: "requestId is required",
+    },
+    {
+      label: "audit object is missing",
+      mutate: (payload: Record<string, unknown>) => {
+        delete payload.audit;
+      },
+      expectedError: "audit object is required",
+    },
+    {
+      label: "audit.policyDecision is denied",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.policyDecision = "deny";
+      },
+      expectedError: "audit.policyDecision must be allow",
+    },
+    {
+      label: "audit.decidedAt is invalid",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.decidedAt = "not-a-date";
+      },
+      expectedError: "audit.decidedAt must be an RFC3339 timestamp",
+    },
+    {
+      label: "audit.decidedAt is not RFC3339",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.decidedAt = "2026-02-13";
+      },
+      expectedError: "audit.decidedAt must be an RFC3339 timestamp",
+    },
+    {
+      label: "audit.keyId is blank",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.keyId = " ";
+      },
+      expectedError: "audit.keyId is required",
+    },
+    {
+      label: "audit.traceId is blank",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.traceId = " ";
+      },
+      expectedError: "audit.traceId is required",
+    },
+  ])("rejects proxy signatures when $label", async ({ mutate, expectedError }) => {
+    const responsePayload: Record<string, unknown> = {
+      signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+      signatureMode: "v2_snip12",
+      signatureKind: "Snip12",
+      signerProvider: "dfns",
+      sessionPublicKey: "0x123",
+      domainHash: "0x1",
+      messageHash: "0x2",
+      requestId: "sign-req-audit",
+      audit: {
+        policyDecision: "allow",
+        decidedAt: "2026-02-13T12:00:00Z",
+        keyId: "default",
+        traceId: "trace-audit",
+      },
+    };
+    mutate(responsePayload);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => responsePayload,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow(expectedError);
+  });
+
   it("rejects proxy signatures when sessionPublicKey mismatches signature pubkey", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
