@@ -25,7 +25,6 @@ import path from "path";
 import {
   assertPositiveAmount,
   assertPrivateKeyFormat,
-  assertRecipientAddressFormat,
   parseArgs,
   sanitizeErrorForLog,
 } from "./lib";
@@ -43,6 +42,7 @@ import {
 const SEPOLIA_PAYMASTER = "https://sepolia.paymaster.avnu.fi";
 const DEFAULT_RPC = "https://starknet-sepolia-rpc.publicnode.com";
 const STARKSCAN_TX_BASE_URL = "https://sepolia.starkscan.co/tx/";
+const RECIPIENT_ADDRESS_PATTERN = /^0x[0-9a-fA-F]+$/;
 
 const EVIDENCE_FILE = "demo-evidence.json";
 
@@ -119,15 +119,10 @@ async function main() {
     );
     process.exit(1);
   }
-  if (recipientAddress) {
-    try {
-      assertRecipientAddressFormat(recipientAddress);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(message);
-      logEvidence(evidence, { step: "invalid_recipient", error: true });
-      process.exit(1);
-    }
+  if (recipientAddress && !RECIPIENT_ADDRESS_PATTERN.test(recipientAddress)) {
+    console.error("Invalid recipient address format. Expected 0x-prefixed hex string.");
+    logEvidence(evidence, { step: "invalid_recipient", error: true });
+    process.exit(1);
   }
 
   const rpcUrl = process.env.STARKNET_RPC_URL?.trim() || DEFAULT_RPC;
