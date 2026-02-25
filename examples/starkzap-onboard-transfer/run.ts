@@ -36,6 +36,7 @@ import {
 const SEPOLIA_PAYMASTER = "https://sepolia.paymaster.avnu.fi";
 const DEFAULT_RPC = "https://starknet-sepolia-rpc.publicnode.com";
 const STARKSCAN_TX_BASE_URL = "https://sepolia.starkscan.co/tx/";
+const PRIVATE_KEY_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
 function parseArgs(): {
   recipient: string;
@@ -116,6 +117,21 @@ function assertWaitable(value: unknown): asserts value is { wait: () => Promise<
   }
 }
 
+function assertPrivateKeyFormat(privateKey: string): void {
+  if (!PRIVATE_KEY_PATTERN.test(privateKey)) {
+    throw new Error(
+      "Invalid PRIVATE_KEY format. Expected 0x-prefixed 64-hex string (example: 0x" +
+        "a".repeat(64) +
+        ").",
+    );
+  }
+}
+
+function sanitizeErrorForLog(err: unknown): string {
+  const rawMessage = err instanceof Error ? err.message : String(err);
+  return rawMessage.replace(/0x[0-9a-fA-F]{64}/g, "[redacted-hex-64]");
+}
+
 async function main() {
   const { recipient, amount, sponsored, addressOnly, evidence } = parseArgs();
 
@@ -127,6 +143,7 @@ async function main() {
     );
     process.exit(1);
   }
+  assertPrivateKeyFormat(privateKey);
 
   const paymasterApiKey = process.env.AVNU_PAYMASTER_API_KEY?.trim();
   if (sponsored && !paymasterApiKey) {
@@ -273,6 +290,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Demo failed:", err);
+  console.error("Demo failed:", sanitizeErrorForLog(err));
   process.exit(1);
 });
