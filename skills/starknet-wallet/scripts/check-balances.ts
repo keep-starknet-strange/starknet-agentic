@@ -7,6 +7,7 @@
  *
  * Usage: tsx check-balances.ts
  * Requires .env with STARKNET_RPC_URL and STARKNET_ACCOUNT_ADDRESS
+ * Optional: STARKNET_RPC_SPEC_VERSION=0.9.0|0.10.0
  */
 
 import 'dotenv/config';
@@ -153,6 +154,7 @@ async function fetchViaBatchRpc(
 
 async function main(): Promise<void> {
   const rpcUrl = process.env.STARKNET_RPC_URL;
+  const rpcSpecVersion = process.env.STARKNET_RPC_SPEC_VERSION?.trim() || '0.9.0';
   const address = process.env.STARKNET_ACCOUNT_ADDRESS;
 
   if (!rpcUrl || !address) {
@@ -163,7 +165,11 @@ async function main(): Promise<void> {
   console.log('Fetching token info from avnu...');
   const tokenInfos = await fetchTokenInfo(DEFAULT_TOKENS);
 
-  const provider = new RpcProvider({ nodeUrl: rpcUrl, batch: 0 });
+  const provider = new RpcProvider({
+    nodeUrl: rpcUrl,
+    specVersion: rpcSpecVersion,
+    batch: 0,
+  });
   const tokens = tokenInfos.map((t) => t.symbol);
 
   console.log(`Checking balances for ${address}\n`);

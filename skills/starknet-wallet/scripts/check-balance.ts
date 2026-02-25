@@ -4,6 +4,7 @@
  *
  * Usage: tsx check-balance.ts
  * Requires .env with STARKNET_RPC_URL and STARKNET_ACCOUNT_ADDRESS
+ * Optional: STARKNET_RPC_SPEC_VERSION=0.9.0|0.10.0
  * Optional: TOKEN=ETH|STRK|USDC|USDT or TOKEN_ADDRESS=0x...
  */
 
@@ -42,6 +43,7 @@ async function resolveToken(tokenSymbolOrAddress?: string): Promise<TokenInfo> {
 
 async function main() {
   const rpcUrl = process.env.STARKNET_RPC_URL;
+  const rpcSpecVersion = process.env.STARKNET_RPC_SPEC_VERSION?.trim() || '0.9.0';
   const address = process.env.STARKNET_ACCOUNT_ADDRESS;
   const tokenInput = process.env.TOKEN || process.env.TOKEN_ADDRESS;
 
@@ -55,7 +57,10 @@ async function main() {
     const tokenInfo = await resolveToken(tokenInput);
 
     console.log('Checking balance...');
-    const provider = new RpcProvider({ nodeUrl: rpcUrl });
+    const provider = new RpcProvider({
+      nodeUrl: rpcUrl,
+      specVersion: rpcSpecVersion,
+    });
     const contract = new Contract({ abi: ERC20_ABI, address: tokenInfo.address, providerOrAccount: provider });
 
     const balanceResult = await contract.balanceOf(address);
