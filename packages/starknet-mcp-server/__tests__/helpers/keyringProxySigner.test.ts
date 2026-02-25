@@ -12,6 +12,42 @@ function sha256Hex(input: string): string {
   return createHash("sha256").update(input).digest("hex");
 }
 
+function extractTraceId(requestInit?: RequestInit): string {
+  const rawBody = requestInit?.body;
+  if (typeof rawBody !== "string") {
+    return "";
+  }
+  const parsed = JSON.parse(rawBody) as {
+    context?: { requestId?: unknown; traceId?: unknown };
+  };
+  if (typeof parsed.context?.traceId === "string") {
+    return parsed.context.traceId;
+  }
+  if (typeof parsed.context?.requestId === "string") {
+    return parsed.context.requestId;
+  }
+  return "";
+}
+
+function buildAllowResponse(traceId: string): Record<string, unknown> {
+  return {
+    signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+    signatureMode: "v2_snip12",
+    signatureKind: "Snip12",
+    signerProvider: "dfns",
+    sessionPublicKey: "0x123",
+    domainHash: "0x1",
+    messageHash: "0x2",
+    requestId: traceId,
+    audit: {
+      policyDecision: "allow",
+      decidedAt: "2026-02-13T12:00:00Z",
+      keyId: "default",
+      traceId,
+    },
+  };
+}
+
 describe("KeyringProxySigner", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -20,6 +56,7 @@ describe("KeyringProxySigner", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -79,24 +116,12 @@ describe("KeyringProxySigner", () => {
   });
 
   it("signs transactions through keyring proxy with HMAC headers", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
-        signatureMode: "v2_snip12",
-        signatureKind: "Snip12",
-        signerProvider: "dfns",
-        sessionPublicKey: "0x123",
-        domainHash: "0x1",
-        messageHash: "0x2",
-        requestId: "sign-req-001",
-        audit: {
-          policyDecision: "allow",
-          decidedAt: "2026-02-13T12:00:00Z",
-          keyId: "default",
-          traceId: "trace-001",
-        },
-      }),
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      return {
+        ok: true,
+        json: async () => buildAllowResponse(traceId),
+      };
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -202,23 +227,14 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects proxy signatures that are not 4-felt session signatures", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        signature: ["0x123", "0xaaa", "0xbbb"],
-        signatureMode: "v2_snip12",
-        signatureKind: "Snip12",
-        signerProvider: "dfns",
-        domainHash: "0x1",
-        messageHash: "0x2",
-        requestId: "sign-req-002",
-        audit: {
-          policyDecision: "allow",
-          decidedAt: "2026-02-13T12:00:00Z",
-          keyId: "default",
-          traceId: "trace-002",
-        },
-      }),
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.signature = ["0x123", "0xaaa", "0xbbb"];
+      return {
+        ok: true,
+        json: async () => payload,
+      };
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -240,24 +256,14 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects proxy signatures when signatureMode is not v2_snip12", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
-        signatureMode: "v1",
-        signatureKind: "Snip12",
-        signerProvider: "dfns",
-        sessionPublicKey: "0x123",
-        domainHash: "0x1",
-        messageHash: "0x2",
-        requestId: "sign-req-003",
-        audit: {
-          policyDecision: "allow",
-          decidedAt: "2026-02-13T12:00:00Z",
-          keyId: "default",
-          traceId: "trace-003",
-        },
-      }),
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.signatureMode = "v1";
+      return {
+        ok: true,
+        json: async () => payload,
+      };
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -292,6 +298,13 @@ describe("KeyringProxySigner", () => {
         payload.requestId = "   ";
       },
       expectedError: "requestId is required",
+    },
+    {
+      label: "requestId does not match outbound traceId",
+      mutate: (payload: Record<string, unknown>) => {
+        payload.requestId = "different-request-id";
+      },
+      expectedError: "requestId does not match outbound request",
     },
     {
       label: "audit object is missing",
@@ -340,28 +353,23 @@ describe("KeyringProxySigner", () => {
       },
       expectedError: "audit.traceId is required",
     },
-  ])("rejects proxy signatures when $label", async ({ mutate, expectedError }) => {
-    const responsePayload: Record<string, unknown> = {
-      signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
-      signatureMode: "v2_snip12",
-      signatureKind: "Snip12",
-      signerProvider: "dfns",
-      sessionPublicKey: "0x123",
-      domainHash: "0x1",
-      messageHash: "0x2",
-      requestId: "sign-req-audit",
-      audit: {
-        policyDecision: "allow",
-        decidedAt: "2026-02-13T12:00:00Z",
-        keyId: "default",
-        traceId: "trace-audit",
+    {
+      label: "audit.traceId does not match outbound traceId",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.traceId = "different-trace-id";
       },
-    };
-    mutate(responsePayload);
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => responsePayload,
+      expectedError: "audit.traceId does not match outbound traceId",
+    },
+  ])("rejects proxy signatures when $label", async ({ mutate, expectedError }) => {
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const responsePayload = buildAllowResponse(traceId);
+      mutate(responsePayload);
+      return {
+        ok: true,
+        json: async () => responsePayload,
+      };
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -383,24 +391,15 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects proxy signatures when sessionPublicKey mismatches signature pubkey", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        signature: ["0x123", "0xaaa", "0xbbb", "0xccc"],
-        signatureMode: "v2_snip12",
-        signatureKind: "Snip12",
-        signerProvider: "dfns",
-        sessionPublicKey: "0x456",
-        domainHash: "0x1",
-        messageHash: "0x2",
-        requestId: "sign-req-004",
-        audit: {
-          policyDecision: "allow",
-          decidedAt: "2026-02-13T12:00:00Z",
-          keyId: "default",
-          traceId: "trace-004",
-        },
-      }),
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.sessionPublicKey = "0x456";
+      payload.signature = ["0x123", "0xaaa", "0xbbb", "0xccc"];
+      return {
+        ok: true,
+        json: async () => payload,
+      };
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -422,24 +421,14 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects proxy signatures when valid_until does not match requested window", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        signature: ["0x123", "0xaaa", "0xbbb", "0x99999999"],
-        signatureMode: "v2_snip12",
-        signatureKind: "Snip12",
-        signerProvider: "dfns",
-        sessionPublicKey: "0x123",
-        domainHash: "0x1",
-        messageHash: "0x2",
-        requestId: "sign-req-005",
-        audit: {
-          policyDecision: "allow",
-          decidedAt: "2026-02-13T12:00:00Z",
-          keyId: "default",
-          traceId: "trace-005",
-        },
-      }),
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.signature = ["0x123", "0xaaa", "0xbbb", "0x99999999"];
+      return {
+        ok: true,
+        json: async () => payload,
+      };
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -461,46 +450,20 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects unexpected session pubkey changes across requests", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({
+    let callCount = 0;
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      callCount += 1;
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      if (callCount === 2) {
+        payload.signature = ["0x456", "0xaaa", "0xbbb", "0x698f136c"];
+        payload.sessionPublicKey = "0x456";
+      }
+      return {
         ok: true,
-        json: async () => ({
-          signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
-          signatureMode: "v2_snip12",
-          signatureKind: "Snip12",
-          signerProvider: "dfns",
-          sessionPublicKey: "0x123",
-          domainHash: "0x1",
-          messageHash: "0x2",
-          requestId: "sign-req-006",
-          audit: {
-            policyDecision: "allow",
-            decidedAt: "2026-02-13T12:00:00Z",
-            keyId: "default",
-            traceId: "trace-006",
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          signature: ["0x456", "0xaaa", "0xbbb", "0x698f136c"],
-          signatureMode: "v2_snip12",
-          signatureKind: "Snip12",
-          signerProvider: "dfns",
-          sessionPublicKey: "0x456",
-          domainHash: "0x1",
-          messageHash: "0x2",
-          requestId: "sign-req-007",
-          audit: {
-            policyDecision: "allow",
-            decidedAt: "2026-02-13T12:00:00Z",
-            keyId: "default",
-            traceId: "trace-007",
-          },
-        }),
-      });
+        json: async () => payload,
+      };
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const signer = new KeyringProxySigner({
@@ -553,6 +516,7 @@ describe("KeyringProxySigner", () => {
       const response = new EventEmitter() as EventEmitter & { statusCode?: number };
       response.statusCode = 200;
 
+      let requestBody = "";
       const req = new EventEmitter() as EventEmitter & {
         setTimeout: (ms: number, cb: () => void) => void;
         write: (chunk: string) => void;
@@ -560,30 +524,16 @@ describe("KeyringProxySigner", () => {
         destroy: (err?: Error) => void;
       };
       req.setTimeout = vi.fn();
-      req.write = vi.fn();
+      req.write = vi.fn((chunk: string) => {
+        requestBody += chunk;
+      });
       req.end = vi.fn(() => {
         callback(response);
-        response.emit(
-          "data",
-          Buffer.from(
-            JSON.stringify({
-              signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
-              signatureMode: "v2_snip12",
-              signatureKind: "Snip12",
-              signerProvider: "dfns",
-              sessionPublicKey: "0x123",
-              domainHash: "0x1",
-              messageHash: "0x2",
-              requestId: "sign-req-008",
-              audit: {
-                policyDecision: "allow",
-                decidedAt: "2026-02-13T12:00:00Z",
-                keyId: "default",
-                traceId: "trace-008",
-              },
-            })
-          )
-        );
+        const parsedRequest = JSON.parse(requestBody) as {
+          context?: { requestId?: string; traceId?: string };
+        };
+        const traceId = parsedRequest.context?.traceId ?? parsedRequest.context?.requestId ?? "";
+        response.emit("data", Buffer.from(JSON.stringify(buildAllowResponse(traceId))));
         response.emit("end");
       });
       req.destroy = vi.fn();

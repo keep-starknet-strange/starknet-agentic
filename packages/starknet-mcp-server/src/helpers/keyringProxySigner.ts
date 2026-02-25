@@ -312,6 +312,11 @@ export class KeyringProxySigner extends SignerInterface {
           "Invalid signature response from keyring proxy: requestId is required"
         );
       }
+      if (parsed.requestId !== traceId) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: requestId does not match outbound request"
+        );
+      }
       if (!parsed.audit || typeof parsed.audit !== "object") {
         throw new Error(
           "Invalid signature response from keyring proxy: audit object is required"
@@ -335,6 +340,11 @@ export class KeyringProxySigner extends SignerInterface {
       if (!isNonEmptyString(parsed.audit.traceId)) {
         throw new Error(
           "Invalid signature response from keyring proxy: audit.traceId is required"
+        );
+      }
+      if (parsed.audit.traceId !== traceId) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.traceId does not match outbound traceId"
         );
       }
       const allowedSignerProviders = ["local", "dfns"] as const;
