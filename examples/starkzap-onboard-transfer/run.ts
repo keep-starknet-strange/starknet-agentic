@@ -186,10 +186,7 @@ async function main() {
     amount,
     sponsored,
   });
-
-  if (!recipientAddress) {
-    throw new Error("recipient address is required for transfer mode");
-  }
+  const transferRecipient = recipientAddress as string;
 
   const { wallet } = await sdk.onboard({
     strategy: OnboardStrategy.Signer,
@@ -236,10 +233,10 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("[4/4] Sending", amount, "STRK to", recipientAddress, "...");
+  console.log("[4/4] Sending", amount, "STRK to", transferRecipient, "...");
   const tx = await wallet.transfer(
     STRK,
-    [{ to: fromAddress(recipientAddress), amount: transferAmount }],
+    [{ to: fromAddress(transferRecipient), amount: transferAmount }],
     sponsored ? { feeMode: "sponsored" } : undefined
   );
   assertWaitable(tx);
