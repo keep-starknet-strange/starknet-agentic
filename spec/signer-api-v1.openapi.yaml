@@ -286,7 +286,7 @@ components:
         sessionPublicKey: '0x0123'
         domainHash: '0x01'
         messageHash: '0x02'
-        requestId: sign-req-001
+        requestId: req-transfer-001
         audit:
           policyDecision: allow
           decidedAt: '2026-02-22T10:00:00Z'
@@ -319,7 +319,7 @@ components:
         sessionPublicKey: '0x0123'
         domainHash: '0x03'
         messageHash: '0x04'
-        requestId: sign-req-002
+        requestId: req-invoke-001
         audit:
           policyDecision: allow
           decidedAt: '2026-02-22T10:00:02Z'
@@ -352,7 +352,7 @@ components:
         sessionPublicKey: '0x0123'
         domainHash: '0x05'
         messageHash: '0x06'
-        requestId: sign-req-003
+        requestId: req-x402-001
         audit:
           policyDecision: allow
           decidedAt: '2026-02-22T10:00:03Z'

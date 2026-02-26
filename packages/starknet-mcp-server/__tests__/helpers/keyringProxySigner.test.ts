@@ -48,6 +48,15 @@ function buildAllowResponse(traceId: string): Record<string, unknown> {
   };
 }
 
+function buildFetchJsonResponse(payload: Record<string, unknown>, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(payload),
+    json: async () => payload,
+  };
+}
+
 describe("KeyringProxySigner", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -118,10 +127,7 @@ describe("KeyringProxySigner", () => {
   it("signs transactions through keyring proxy with HMAC headers", async () => {
     const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
       const traceId = extractTraceId(requestInit);
-      return {
-        ok: true,
-        json: async () => buildAllowResponse(traceId),
-      };
+      return buildFetchJsonResponse(buildAllowResponse(traceId));
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -231,10 +237,7 @@ describe("KeyringProxySigner", () => {
       const traceId = extractTraceId(requestInit);
       const payload = buildAllowResponse(traceId);
       payload.signature = ["0x123", "0xaaa", "0xbbb"];
-      return {
-        ok: true,
-        json: async () => payload,
-      };
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -260,10 +263,7 @@ describe("KeyringProxySigner", () => {
       const traceId = extractTraceId(requestInit);
       const payload = buildAllowResponse(traceId);
       payload.signatureMode = "v1";
-      return {
-        ok: true,
-        json: async () => payload,
-      };
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -366,10 +366,7 @@ describe("KeyringProxySigner", () => {
       const traceId = extractTraceId(requestInit);
       const responsePayload = buildAllowResponse(traceId);
       mutate(responsePayload);
-      return {
-        ok: true,
-        json: async () => responsePayload,
-      };
+      return buildFetchJsonResponse(responsePayload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -390,16 +387,43 @@ describe("KeyringProxySigner", () => {
     ).rejects.toThrow(expectedError);
   });
 
+  it("rejects proxy signatures when audit.keyId does not match requested keyId", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.audit = {
+        ...(payload.audit as Record<string, unknown>),
+        keyId: "different-key",
+      };
+      return buildFetchJsonResponse(payload);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+      keyId: "default",
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("audit.keyId does not match requested keyId");
+  });
+
   it("rejects proxy signatures when sessionPublicKey mismatches signature pubkey", async () => {
     const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
       const traceId = extractTraceId(requestInit);
       const payload = buildAllowResponse(traceId);
       payload.sessionPublicKey = "0x456";
       payload.signature = ["0x123", "0xaaa", "0xbbb", "0xccc"];
-      return {
-        ok: true,
-        json: async () => payload,
-      };
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -425,10 +449,7 @@ describe("KeyringProxySigner", () => {
       const traceId = extractTraceId(requestInit);
       const payload = buildAllowResponse(traceId);
       payload.signature = ["0x123", "0xaaa", "0xbbb", "0x99999999"];
-      return {
-        ok: true,
-        json: async () => payload,
-      };
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -459,10 +480,7 @@ describe("KeyringProxySigner", () => {
         payload.signature = ["0x456", "0xaaa", "0xbbb", "0x698f136c"];
         payload.sessionPublicKey = "0x456";
       }
-      return {
-        ok: true,
-        json: async () => payload,
-      };
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 

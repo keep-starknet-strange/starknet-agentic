@@ -337,6 +337,11 @@ export class KeyringProxySigner extends SignerInterface {
           "Invalid signature response from keyring proxy: audit.keyId is required"
         );
       }
+      if (this.config.keyId && parsed.audit.keyId !== this.config.keyId) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.keyId does not match requested keyId"
+        );
+      }
       if (!isNonEmptyString(parsed.audit.traceId)) {
         throw new Error(
           "Invalid signature response from keyring proxy: audit.traceId is required"

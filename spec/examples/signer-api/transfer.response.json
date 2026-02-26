@@ -6,7 +6,7 @@
   "sessionPublicKey": "0x0123",
   "domainHash": "0x01",
   "messageHash": "0x02",
-  "requestId": "sign-req-001",
+  "requestId": "req-transfer-001",
   "audit": {
     "policyDecision": "allow",
     "decidedAt": "2026-02-22T10:00:00Z",
