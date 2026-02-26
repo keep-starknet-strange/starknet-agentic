@@ -45,15 +45,9 @@ function resolveNetworkMetadata(chainId) {
     return known;
   }
 
-  console.warn(
-    `⚠️  Unknown chain ID ${normalizedChainId} — using slug "custom-${normalizedChainId}"`,
+  throw new Error(
+    `Unsupported chain ID ${normalizedChainId}. Add it to KNOWN_NETWORKS and define explicit deployment safety gates before deploying.`,
   );
-  return {
-    slug: `custom-${normalizedChainId}`,
-    label: `Custom network (${normalizedChainId})`,
-    voyagerContractBase: null,
-    isPublicTestnet: false,
-  };
 }
 
 function assertChainIdNormalizationMappings() {
