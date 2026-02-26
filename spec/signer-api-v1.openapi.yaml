@@ -289,7 +289,7 @@ components:
         requestId: req-transfer-001
         audit:
           policyDecision: allow
-          decidedAt: '2026-02-22T10:00:00Z'
+          decidedAt: '2026-02-13T12:00:00Z'
           keyId: default
           traceId: req-transfer-001
     InvokeRequest:
@@ -322,7 +322,7 @@ components:
         requestId: req-invoke-001
         audit:
           policyDecision: allow
-          decidedAt: '2026-02-22T10:00:02Z'
+          decidedAt: '2026-02-13T12:00:02Z'
           keyId: default
           traceId: req-invoke-001
     X402Request:
@@ -355,6 +355,6 @@ components:
         requestId: req-x402-001
         audit:
           policyDecision: allow
-          decidedAt: '2026-02-22T10:00:03Z'
+          decidedAt: '2026-02-13T12:00:03Z'
           keyId: default
           traceId: req-x402-001
