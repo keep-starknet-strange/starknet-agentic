@@ -20,7 +20,7 @@
         {
           "clientId": "mcp-tests",
           "timestamp": "1770983999900",
-          "nonce": "nonce-valid-001",
+          "nonce": "nonce-valid-0001",
           "rawBody": "{\"accountAddress\":\"0xabc\"}",
           "isMtlsAuthenticated": true,
           "signWithSecret": "current-secret",
@@ -65,7 +65,7 @@
         {
           "clientId": "mcp-tests",
           "timestamp": "1770983899000",
-          "nonce": "nonce-stale-001",
+          "nonce": "nonce-stale-0001",
           "rawBody": "{\"accountAddress\":\"0xabc\"}",
           "isMtlsAuthenticated": true,
           "signWithSecret": "current-secret",
@@ -83,7 +83,7 @@
         {
           "clientId": "mcp-tests",
           "timestamp": "1770983999900",
-          "nonce": "nonce-mtls-001",
+          "nonce": "nonce-mtls-00001",
           "rawBody": "{\"accountAddress\":\"0xabc\"}",
           "isMtlsAuthenticated": false,
           "signWithSecret": "current-secret",
@@ -119,7 +119,7 @@
         {
           "clientId": "mcp-tests",
           "timestamp": "1770983999900",
-          "nonce": "nonce-hmac-001",
+          "nonce": "nonce-hmac-00001",
           "rawBody": "{\"accountAddress\":\"0xabc\"}",
           "isMtlsAuthenticated": true,
           "signWithSecret": "current-secret",

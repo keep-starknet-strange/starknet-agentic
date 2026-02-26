@@ -40,6 +40,8 @@ This runbook defines production-safe rotation for signer proxy authentication ma
 
 Required checks after every deployment/rotation:
 
+0. Replay key encoding is canonicalized across all signer replicas and clients:
+   - key format MUST be `JSON.stringify([clientId, nonce])` (UTF-8, byte-exact)
 1. Same `(client_id, nonce)` submitted twice within TTL:
    - first request accepted
    - second request rejected with `REPLAY_NONCE_USED`

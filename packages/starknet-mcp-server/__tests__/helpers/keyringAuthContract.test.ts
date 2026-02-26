@@ -30,7 +30,7 @@ describe("keyring auth contract", () => {
     const secret = "super-secret";
     const rawBody = JSON.stringify({ ok: true });
     const timestamp = String(nowMs - 250);
-    const nonce = "nonce-001";
+    const nonce = "nonce-000000000001";
 
     const signature = sign({
       timestamp,
@@ -88,7 +88,7 @@ describe("keyring auth contract", () => {
     const secret = "super-secret";
     const rawBody = JSON.stringify({ ok: true });
     const timestamp = String(nowMs - 90_000);
-    const nonce = "nonce-002";
+    const nonce = "nonce-000000000002";
 
     const signature = sign({
       timestamp,
@@ -247,7 +247,7 @@ describe("keyring auth contract", () => {
       headers: {
         "x-keyring-client-id": "mcp-tests",
         "x-keyring-timestamp": "1770984000000",
-        "x-keyring-nonce": "nonce-003",
+        "x-keyring-nonce": "nonce-000000000003",
         "x-keyring-signature": "deadbeef",
       },
       nowMs: 1_770_984_000_000,
@@ -334,7 +334,7 @@ describe("keyring auth contract", () => {
     const nowMs = 1_770_984_000_000;
     const rawBody = JSON.stringify({ ok: true });
     const timestamp = String(nowMs - 100);
-    const nonce = "nonce-rotated";
+    const nonce = "nonce-rotated-0001";
     const signature = sign({
       timestamp,
       nonce,
@@ -446,6 +446,46 @@ describe("keyring auth contract", () => {
     }
   });
 
+  it("rejects nonces shorter than 16 characters", async () => {
+    const nowMs = 1_770_984_000_000;
+    const secret = "super-secret";
+    const rawBody = JSON.stringify({ ok: true });
+    const timestamp = String(nowMs - 100);
+    const nonce = "nonce-short-001";
+    const signature = sign({
+      timestamp,
+      nonce,
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      secret,
+    });
+
+    const result = await validateKeyringRequestAuth({
+      method: "POST",
+      path: "/v1/sign/session-transaction",
+      rawBody,
+      headers: {
+        "x-keyring-client-id": "mcp-tests",
+        "x-keyring-timestamp": timestamp,
+        "x-keyring-nonce": nonce,
+        "x-keyring-signature": signature,
+      },
+      nowMs,
+      clientsById: { "mcp-tests": { hmacSecret: secret } },
+      requireMtls: false,
+      isMtlsAuthenticated: false,
+      timestampMaxAgeMs: 60_000,
+      nonceTtlSeconds: 120,
+      nonceStore: new InMemoryNonceStore(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errorCode).toBe("AUTH_INVALID_NONCE");
+    }
+  });
+
   it("rejects nonces longer than 256 chars", async () => {
     const nowMs = 1_770_984_000_000;
     const secret = "super-secret";
@@ -491,7 +531,7 @@ describe("keyring auth contract", () => {
     const secret = "super-secret";
     const rawBody = JSON.stringify({ ok: true });
     const timestamp = String(nowMs - 100);
-    const nonce = "nonce.with.dot";
+    const nonce = "nonce.with.dot.0001";
     const signature = sign({
       timestamp,
       nonce,
@@ -588,10 +628,10 @@ describe("keyring auth contract", () => {
     const headersA = {
       "x-keyring-client-id": "a:b",
       "x-keyring-timestamp": timestamp,
-      "x-keyring-nonce": "c:d",
+      "x-keyring-nonce": "clienta:nonce:0001",
       "x-keyring-signature": sign({
         timestamp,
-        nonce: "c:d",
+        nonce: "clienta:nonce:0001",
         method: "POST",
         path: "/v1/sign/session-transaction",
         rawBody,
@@ -602,10 +642,10 @@ describe("keyring auth contract", () => {
     const headersB = {
       "x-keyring-client-id": "a",
       "x-keyring-timestamp": timestamp,
-      "x-keyring-nonce": "b:c:d",
+      "x-keyring-nonce": "client:b:nonce:0002",
       "x-keyring-signature": sign({
         timestamp,
-        nonce: "b:c:d",
+        nonce: "client:b:nonce:0002",
         method: "POST",
         path: "/v1/sign/session-transaction",
         rawBody,
@@ -656,7 +696,7 @@ describe("keyring auth contract", () => {
     const secret = "super-secret";
     const rawBody = JSON.stringify({ ok: true });
     const timestamp = String(nowMs - 100);
-    const nonce = "nonce-004";
+    const nonce = "nonce-000000000004";
     const signature = sign({
       timestamp,
       nonce,

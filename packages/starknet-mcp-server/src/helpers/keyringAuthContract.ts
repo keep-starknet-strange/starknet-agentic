@@ -59,6 +59,9 @@ export type KeyringAuthValidationResult =
       message: string;
     };
 
+const MIN_NONCE_LENGTH = 16;
+const MAX_NONCE_LENGTH = 256;
+
 function sha256Hex(input: string): string {
   return createHash("sha256").update(input).digest("hex");
 }
@@ -178,7 +181,12 @@ export async function validateKeyringRequestAuth(
     return fail("AUTH_TIMESTAMP_SKEW", "Timestamp outside allowed drift window");
   }
 
-  if (!nonce || nonce.length > 256 || nonce.includes(".")) {
+  if (
+    !nonce ||
+    nonce.length < MIN_NONCE_LENGTH ||
+    nonce.length > MAX_NONCE_LENGTH ||
+    nonce.includes(".")
+  ) {
     return fail("AUTH_INVALID_NONCE", "Invalid X-Keyring-Nonce");
   }
   if (!signatureRaw || !isHex(signatureRaw)) {

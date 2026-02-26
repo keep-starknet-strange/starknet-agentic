@@ -110,9 +110,9 @@
         },
         "nonce": {
           "type": "string",
-          "minLength": 1,
+          "minLength": 16,
           "maxLength": 256,
-          "description": "Recommended: 16-32 random bytes encoded as lowercase hex (32-64 chars) for cross-client interoperability."
+          "description": "Minimum 16 characters. Recommended: 16-32 random bytes encoded as lowercase hex (32-64 chars) for cross-client interoperability."
         },
         "rawBody": { "type": "string" },
         "isMtlsAuthenticated": { "type": "boolean" },
