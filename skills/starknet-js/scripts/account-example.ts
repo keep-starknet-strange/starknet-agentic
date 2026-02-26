@@ -19,7 +19,7 @@ async function main() {
   const address = requireEnv("STARKNET_ACCOUNT_ADDRESS");
   const privateKey = requireEnv("STARKNET_PRIVATE_KEY");
 
-  const provider = new RpcProvider({ nodeUrl: rpcUrl });
+  const provider = await RpcProvider.create({ nodeUrl: rpcUrl });
   const account = new Account({
     provider,
     address,
