@@ -7,10 +7,13 @@
  */
 export function resolveRpcSpecVersion(value) {
   const normalized = value?.trim();
-  if (!normalized || normalized.startsWith('0.9')) {
+  if (!normalized) {
     return '0.9.0';
   }
-  if (normalized.startsWith('0.10')) {
+  if (/^0\.9(?:\.\d+)?$/.test(normalized)) {
+    return '0.9.0';
+  }
+  if (/^0\.10(?:\.\d+)?$/.test(normalized)) {
     return '0.10.0';
   }
   throw new Error(
