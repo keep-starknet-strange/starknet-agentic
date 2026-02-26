@@ -51,11 +51,10 @@ function inferNetworkFromChainId(chainId) {
     }
   }
 
-  const combined = `${raw} ${decoded}`;
-  if (combined.includes("sepolia")) {
+  if (raw === "0x534e5f5345504f4c4941" || decoded === "sn_sepolia" || decoded === "sepolia") {
     return "sepolia";
   }
-  if (combined.includes("main")) {
+  if (raw === "0x534e5f4d41494e" || decoded === "sn_main" || decoded === "mainnet") {
     return "mainnet";
   }
   return null;
