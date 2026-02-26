@@ -108,7 +108,8 @@ export AVNU_PAYMASTER_API_KEY="your_key"
 
 ```bash
 # TypeScript skills (wallet, defi, identity, starknet-js)
-npm install starknet@^9.2.1 @avnu/avnu-sdk@^4.0.1
+# Use starknet v6 to match the project standard and avoid v9 migration breaks.
+npm install starknet@^6.24.1 @avnu/avnu-sdk@^4.0.1
 
 # Python skills (mini-pay)
 pip install starknet-py qrcode[pil] python-telegram-bot
@@ -117,7 +118,7 @@ pip install starknet-py qrcode[pil] python-telegram-bot
 # python3 skills/cairo-optimization/bounded_int_calc.py --help
 
 # Anonymous wallet skill
-npm install starknet@^9.2.1 typhoon-sdk@^1.1.13
+npm install starknet@^6.24.1 typhoon-sdk@^1.1.13
 ```
 
 ## MCP Server Integration
