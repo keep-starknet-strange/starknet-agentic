@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keep-starknet-strange.github.io/starknet-agentic/spec/signer-auth-v1.schema.json",
+  "title": "Signer proxy auth/replay conformance vectors",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec", "version", "defaults", "vectors"],
+  "properties": {
+    "spec": {
+      "type": "string",
+      "const": "signer-auth-v1"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "path",
+        "nowMs",
+        "timestampMaxAgeMs",
+        "nonceTtlSeconds",
+        "requireMtls"
+      ],
+      "properties": {
+        "method": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "nowMs": { "type": "integer", "minimum": 1 },
+        "timestampMaxAgeMs": { "type": "integer", "minimum": 1 },
+        "nonceTtlSeconds": { "type": "integer", "minimum": 1 },
+        "requireMtls": { "type": "boolean" }
+      }
+    },
+    "vectors": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/vector" }
+    }
+  },
+  "$defs": {
+    "clientConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hmacSecrets"],
+      "properties": {
+        "hmacSecrets": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "errorCode": {
+          "type": "string",
+          "description": "Auth/replay error codes exercised by conformance vectors. Operational codes (POLICY_SELECTOR_DENIED, POLICY_CALL_NOT_ALLOWED, RATE_LIMITED, SIGNER_UNAVAILABLE) are defined in the OpenAPI spec but not tested here.",
+          "enum": [
+            "AUTH_INVALID_HMAC",
+            "AUTH_INVALID_NONCE",
+            "AUTH_INVALID_SIGNATURE_FORMAT",
+            "AUTH_INVALID_CLIENT",
+            "AUTH_TIMESTAMP_SKEW",
+            "AUTH_MTLS_REQUIRED",
+            "REPLAY_NONCE_USED",
+            "INTERNAL_ERROR"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "ok": { "const": true },
+            "errorCode": false
+          }
+        },
+        {
+          "required": ["errorCode"],
+          "properties": {
+            "ok": { "const": false },
+            "errorCode": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clientId",
+        "timestamp",
+        "nonce",
+        "rawBody",
+        "isMtlsAuthenticated",
+        "signWithSecret",
+        "expect"
+      ],
+      "properties": {
+        "clientId": { "type": "string", "minLength": 1 },
+        "timestamp": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "nonce": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 256,
+          "description": "Minimum 16 characters. Recommended: 16-32 random bytes encoded as lowercase hex (32-64 chars) for cross-client interoperability."
+        },
+        "rawBody": { "type": "string" },
+        "isMtlsAuthenticated": { "type": "boolean" },
+        "signWithSecret": { "type": "string", "minLength": 1 },
+        "overrideSignature": {
+          "type": "string",
+          "minLength": 1,
+          "description": "If set, use this value as X-Keyring-Signature instead of computing HMAC from signWithSecret. Used for bad-HMAC/negative conformance vectors."
+        },
+        "method": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "expect": { "$ref": "#/$defs/expected" }
+      }
+    },
+    "vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "clientsById", "steps"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$"
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "clientsById": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/clientConfig" }
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/step" }
+        }
+      }
+    }
+  }
+}
