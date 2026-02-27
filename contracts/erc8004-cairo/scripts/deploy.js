@@ -87,6 +87,37 @@ function enforceHumanReviewAcknowledgement(network) {
   return { reviewerIdentity, reviewedAt };
 }
 
+function enforceSepoliaDryRunProof() {
+  const artifactPathRaw = (process.env.SEPOLIA_DEPLOYMENT_ARTIFACT ?? "").trim();
+  if (!artifactPathRaw) {
+    console.error("❌ Mainnet deployment blocked: Sepolia deployment proof is required.");
+    console.error(
+      "   Set SEPOLIA_DEPLOYMENT_ARTIFACT to a valid deployed_addresses_sepolia*.json path.",
+    );
+    process.exit(1);
+  }
+
+  const artifactPath = path.resolve(artifactPathRaw);
+  if (!fs.existsSync(artifactPath)) {
+    console.error(`❌ Mainnet deployment blocked: proof artifact not found at ${artifactPath}.`);
+    process.exit(1);
+  }
+
+  let proof;
+  try {
+    proof = json.parse(fs.readFileSync(artifactPath).toString("utf8"));
+  } catch (error) {
+    console.error(`❌ Mainnet deployment blocked: invalid proof artifact at ${artifactPath}.`);
+    console.error(`   ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
+
+  if (proof?.network !== "sepolia") {
+    console.error("❌ Mainnet deployment blocked: provided proof artifact is not a Sepolia deployment.");
+    process.exit(1);
+  }
+}
+
 function enforceDeploymentSafetyGate(network) {
   if (network.slug === "mainnet") {
     const allowMainnet = process.env.ALLOW_MAINNET_DEPLOY === "true";
@@ -95,6 +126,7 @@ function enforceDeploymentSafetyGate(network) {
       console.error("   Set ALLOW_MAINNET_DEPLOY=true in .env to proceed intentionally.");
       process.exit(1);
     }
+    enforceSepoliaDryRunProof();
     const reviewMetadata = enforceHumanReviewAcknowledgement(network);
     console.warn("⚠️  MAINNET DEPLOYMENT ENABLED (ALLOW_MAINNET_DEPLOY=true)");
     console.warn("   Verify multisig owner, class hashes, and Sepolia dry run before continuing.\n");
