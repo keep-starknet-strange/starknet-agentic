@@ -444,6 +444,9 @@ jobs:
       - name: Install onboarding example dependencies
         run: pnpm --dir examples/onboard-agent install --frozen-lockfile
 
+      - name: Build shared workspace package
+        run: pnpm --filter @starknet-agentic/shared build
+
       - name: Run onboarding smoke checks
         run: pnpm --dir examples/onboard-agent smoke
 
