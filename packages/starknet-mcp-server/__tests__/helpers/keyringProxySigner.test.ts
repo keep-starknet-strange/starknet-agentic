@@ -57,6 +57,48 @@ function buildFetchJsonResponse(payload: Record<string, unknown>, status = 200) 
   };
 }
 
+type ProxyAudit = {
+  policyDecision?: "allow";
+  decidedAt?: string;
+  keyId?: string;
+  traceId?: string;
+};
+
+type ProxyResponseOverrides = {
+  signature?: string[];
+  signatureMode?: string;
+  signatureKind?: string;
+  signerProvider?: string;
+  sessionPublicKey?: string;
+  domainHash?: string;
+  messageHash?: string;
+  requestId?: string;
+  audit?: ProxyAudit;
+};
+
+function buildProxySuccessResponse(
+  requestInit?: RequestInit,
+  overrides: ProxyResponseOverrides = {}
+): Record<string, unknown> {
+  const traceId = extractTraceId(requestInit) || "kr-missing-trace";
+  const base = buildAllowResponse(traceId);
+  return {
+    ...base,
+    ...overrides,
+    audit: {
+      ...(base.audit as Record<string, unknown>),
+      ...(overrides.audit ?? {}),
+    },
+  };
+}
+
+function mockProxySuccessFetch(overrides: ProxyResponseOverrides = {}) {
+  return vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+    const payload = buildProxySuccessResponse(requestInit, overrides);
+    return buildFetchJsonResponse(payload);
+  });
+}
+
 describe("KeyringProxySigner", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -587,21 +629,16 @@ describe("KeyringProxySigner", () => {
         end: () => void;
         destroy: (err?: Error) => void;
       };
-      let writtenBody = "";
       req.setTimeout = vi.fn();
       req.write = vi.fn((chunk: string) => {
         requestBody += chunk;
       });
       req.end = vi.fn(() => {
         const proxyResponse = buildProxySuccessResponse({
-          body: writtenBody,
+          body: requestBody,
         } as RequestInit);
         callback(response);
-        const parsedRequest = JSON.parse(requestBody) as {
-          context?: { requestId?: string; traceId?: string };
-        };
-        const traceId = parsedRequest.context?.traceId ?? parsedRequest.context?.requestId ?? "";
-        response.emit("data", Buffer.from(JSON.stringify(buildAllowResponse(traceId))));
+        response.emit("data", Buffer.from(JSON.stringify(proxyResponse)));
         response.emit("end");
       });
       req.destroy = vi.fn();
