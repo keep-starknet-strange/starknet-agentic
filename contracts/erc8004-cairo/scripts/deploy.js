@@ -51,10 +51,10 @@ function inferNetworkFromChainId(chainId) {
     }
   }
 
-  if (raw === "0x534e5f5345504f4c4941" || decoded === "sn_sepolia" || decoded === "sepolia") {
+  if (raw === "0x534e5f5345504f4c4941" || decoded === "sn_sepolia") {
     return "sepolia";
   }
-  if (raw === "0x534e5f4d41494e" || decoded === "sn_main" || decoded === "mainnet") {
+  if (raw === "0x534e5f4d41494e" || decoded === "sn_main") {
     return "mainnet";
   }
   return null;
@@ -66,7 +66,14 @@ async function main() {
 
   // Get configuration from environment variables
   const rpcUrl = process.env.STARKNET_RPC_URL;
-  const requestedNetwork = normalizeNetwork(process.env.STARKNET_NETWORK);
+  const rawRequestedNetwork = process.env.STARKNET_NETWORK;
+  const requestedNetwork = normalizeNetwork(rawRequestedNetwork);
+  if (rawRequestedNetwork && !requestedNetwork) {
+    console.error(
+      `❌ Error: STARKNET_NETWORK must be 'sepolia' or 'mainnet' (received '${rawRequestedNetwork}').`,
+    );
+    process.exit(1);
+  }
   const accountAddress = process.env.DEPLOYER_ADDRESS;
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
@@ -104,6 +111,11 @@ async function main() {
   const network = requestedNetwork || inferredNetwork;
   if (requestedNetwork && requestedNetwork !== inferredNetwork) {
     console.error(`❌ Error: STARKNET_NETWORK=${requestedNetwork} does not match chain id (${chainId}).`);
+    process.exit(1);
+  }
+  if (network === "mainnet" && process.env.CONFIRM_MAINNET_DEPLOY !== "yes") {
+    console.error("❌ Error: Refusing mainnet deploy without CONFIRM_MAINNET_DEPLOY=yes.");
+    console.error("   Deploy and validate on Sepolia first, then rerun with explicit confirmation.");
     process.exit(1);
   }
   console.log("🌐 Network:", network);
