@@ -98,7 +98,7 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 const RFC3339_TIMESTAMP_REGEX =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 
 function isStrictRfc3339Timestamp(value: string): boolean {
   if (!RFC3339_TIMESTAMP_REGEX.test(value)) {

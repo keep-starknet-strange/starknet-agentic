@@ -181,10 +181,11 @@ export async function validateKeyringRequestAuth(
     return fail("AUTH_TIMESTAMP_SKEW", "Timestamp outside allowed drift window");
   }
 
+  const nonceByteLength = Buffer.byteLength(nonce, "utf8");
   if (
     !nonce ||
-    nonce.length < MIN_NONCE_LENGTH ||
-    nonce.length > MAX_NONCE_LENGTH ||
+    nonceByteLength < MIN_NONCE_LENGTH ||
+    nonceByteLength > MAX_NONCE_LENGTH ||
     nonce.includes(".")
   ) {
     return fail("AUTH_INVALID_NONCE", "Invalid X-Keyring-Nonce");

@@ -368,6 +368,31 @@ describe("KeyringProxySigner", () => {
     ).rejects.toThrow("audit.decidedAt must be an RFC3339 timestamp");
   });
 
+  it("rejects proxy signatures when audit.decidedAt has more than 9 fractional digits", async () => {
+    const fetchMock = mockProxySuccessFetch({
+      audit: {
+        decidedAt: "2026-02-13T12:00:00.1234567891Z",
+      },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("audit.decidedAt must be an RFC3339 timestamp");
+  });
+
   it("rejects proxy signatures when requestId does not match request traceId", async () => {
     const fetchMock = mockProxySuccessFetch({
       requestId: "mismatched-request-id",
