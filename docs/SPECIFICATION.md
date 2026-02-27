@@ -177,7 +177,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | Function | Solidity reference semantic | Cairo semantic | Status | Type | Notes |
 |----------|-----------------------------|----------------|--------|------|-------|
 | `validation_request` | Requester designates validator | Same semantic | Implemented | Parity | Includes reentrancy guard |
-| `validation_response` | Only designated validator can respond (0..100) | One response per request hash | Implemented | Parity + Extension | Extension: response is immutable after first submission |
+| `validation_response` | Only designated validator can respond (0..100) | Same semantic | Implemented | Parity | Single immutable response per `request_hash` |
 | `get_validation_status` | Query by `requestHash`, return status tuple | Same semantic shape | Implemented | Parity | Returns zeroed response fields when not responded |
 | `get_summary` | `(count, avgResponse)` | Same semantic | Implemented | Parity |  |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
@@ -212,10 +212,10 @@ Recommended convention for cross-chain portability:
 
 ### 3.6 Operational Notes (Validation/Reputation)
 
-- Validation response immutability:
-  - `validation_response` allows exactly one response per `request_hash`.
-  - A second response for the same request reverts (`Response already submitted`).
-  - Revisions require creating a new request hash.
+- Finalize-once validation behavior:
+  - `validation_response` is immutable per `request_hash`.
+  - A designated validator cannot overwrite a submitted response for the same request.
+  - Re-evaluation must use a new validation request (new `request_hash`).
 
 - Unbounded reads:
   - `get_agent_validations`, `get_validator_requests`, and full-list style accessors are O(n).

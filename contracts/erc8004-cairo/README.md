@@ -311,9 +311,17 @@ Copy `.env.example` to `.env` and configure:
 STARKNET_RPC_URL=https://starknet-sepolia-rpc.publicnode.com
 DEPLOYER_ADDRESS=0x...
 DEPLOYER_PRIVATE_KEY=0x...
+ALLOW_PUBLIC_DEPLOY=false
+ALLOW_MAINNET_DEPLOY=false
+REVIEW_ACKNOWLEDGED=false
+REVIEWER_IDENTITY=
 TEST_ACCOUNT_ADDRESS=0x...
 TEST_ACCOUNT_PRIVATE_KEY=0x...
 ```
+
+`ALLOW_PUBLIC_DEPLOY` is a safety gate for public testnets (currently Sepolia).
+`ALLOW_MAINNET_DEPLOY` is a separate safety gate for mainnet.
+`REVIEW_ACKNOWLEDGED` and `REVIEWER_IDENTITY` are required for Sepolia/mainnet deploys.
 
 ## Deployment
 
@@ -323,20 +331,18 @@ npm install
 node deploy.js
 ```
 
-### Verify registry owners (recommended)
-
-Run an automated ownership check against live deployments:
-
-```bash
-cd scripts
-npm run verify:owners
-```
-
-To enforce multisig ownership in CI/ops, set `EXPECTED_OWNER_ADDRESS` in `../.env` (or export it in shell) before running:
-
-```bash
-EXPECTED_OWNER_ADDRESS=0x... npm run verify:owners
-```
+Notes:
+- Deploy artifacts are written to:
+  - `deployed_addresses.json` (latest run)
+  - `deployed_addresses_<network>.json` (latest per network)
+  - `deployed_addresses_<network>_<timestamp>.json` (immutable run record)
+- Deployment artifacts are intentionally gitignored and must not be committed because `rpcUrl`
+  fields may contain provider secrets. Only copy contract addresses/class hashes into tracked docs.
+- Sepolia deploys require explicit opt-in: `ALLOW_PUBLIC_DEPLOY=true`.
+- Mainnet deploys require explicit opt-in: `ALLOW_MAINNET_DEPLOY=true`.
+- Sepolia/mainnet deploys also require human-review acknowledgement:
+  - `REVIEW_ACKNOWLEDGED=true`
+  - `REVIEWER_IDENTITY=<name|handle|ticket>`
 
 ## E2E Tests
 
@@ -392,7 +398,8 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Deploy ReputationRegistry with multisig owner and IdentityRegistry address
 - [ ] Deploy ValidationRegistry with multisig owner and IdentityRegistry address
 - [ ] Wait for all deployment transactions to finalize (check `ACCEPTED_ON_L2` status)
-- [ ] Record all three contract addresses in deployment log and version control (`deployed_addresses_mainnet.json`)
+- [ ] Record all three contract addresses/class hashes in deployment log and tracked docs
+      (do not commit `deployed_addresses*.json` artifacts)
 
 **6. Post-Deployment Verification**
 - [ ] Verify IdentityRegistry owner: `get_owner()` returns multisig address
@@ -468,7 +475,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Monitor `OwnershipTransferred` events for unauthorized ownership changes
 - [ ] Monitor `AgentWalletSet` and `AgentWalletUnset` events for wallet verification activity
 - [ ] Monitor `FeedbackGiven` and `FeedbackRevoked` events (ReputationRegistry) for abuse patterns
-- [ ] Monitor `ValidationRequested` and `ValidationResponded` events (ValidationRegistry) for validator activity
+- [ ] Monitor `ValidationRequested` and `ValidationResponse` events (ValidationRegistry, `ValidationResponseEvent` payload type) for validator activity
 
 **14. Metrics and Dashboards**
 - [ ] Total agents registered (IdentityRegistry: `total_agents()`)

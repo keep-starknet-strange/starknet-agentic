@@ -212,9 +212,9 @@ Chain-local state (reputation, validation history) remains chain-scoped. Cross-c
 
 | Contract | Address |
 |----------|---------|
-| IdentityRegistry | `0x7856876f4c8e1880bc0a2e4c15f4de3085bc2bad5c7b0ae472740f8f558e417` |
-| ReputationRegistry | `0x14204d04aca5df7ebfe9fe07f278e5d6c9b922d797b42e63a81b60f8f2d495a` |
-| ValidationRegistry | `0x13739de746a432b9fe36925cf4dfe469221bdc82e19f43fa4f95f8593aa8e1` |
+| IdentityRegistry | `0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631` |
+| ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
+| ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
 | AgentAccountFactory | `0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e` |
 
 See [`docs/DEPLOYMENT_TRUTH_SHEET.md`](DEPLOYMENT_TRUTH_SHEET.md) for verified class hashes, first-seen block/timestamp, and drift vs `origin/main`.
