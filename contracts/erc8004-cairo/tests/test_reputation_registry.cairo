@@ -794,10 +794,10 @@ fn test_read_all_feedback_success() {
         reputation_registry, reputation_address, agent_id, client2(), 85, 2, "tag1", "tag2",
     );
 
-    let empty_clients: Span<ContractAddress> = array![].span();
+    let clients_filter = array![client(), client2()].span();
     let (clients_arr, indexes_arr, values_arr, decimals_arr, _tag1s, _tag2s, revoked_arr) =
         reputation_registry
-        .read_all_feedback(agent_id, empty_clients, "", "", false);
+        .read_all_feedback(agent_id, clients_filter, "", "", false);
 
     assert_eq!(clients_arr.len(), 2);
     assert_eq!(indexes_arr.len(), 2);
@@ -809,6 +809,24 @@ fn test_read_all_feedback_success() {
     assert_eq!(*decimals_arr.at(1), 2);
     assert!(!*revoked_arr.at(0));
     assert!(!*revoked_arr.at(1));
+}
+
+#[test]
+#[should_panic(expected: 'explicit clients required')]
+fn test_read_all_feedback_requires_explicit_clients() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+
+    let empty_clients: Span<ContractAddress> = array![].span();
+    let _ = reputation_registry.read_all_feedback(agent_id, empty_clients, "", "", false);
 }
 
 #[test]
@@ -877,9 +895,9 @@ fn test_read_all_feedback_handles_large_scan_below_event_limit() {
         i += 1;
     };
 
-    let empty_clients: Span<ContractAddress> = array![].span();
+    let clients_filter = array![client()].span();
     let (clients_arr, indexes_arr, values_arr, _, _, _, _) = reputation_registry
-        .read_all_feedback(agent_id, empty_clients, "", "", false);
+        .read_all_feedback(agent_id, clients_filter, "", "", false);
     assert_eq!(clients_arr.len(), 450);
     assert_eq!(indexes_arr.len(), 450);
     assert_eq!(values_arr.len(), 450);
@@ -960,6 +978,36 @@ fn test_read_all_feedback_paginated_handles_large_feedback_sets() {
 }
 
 #[test]
+#[should_panic(expected: 'client_limit too large')]
+fn test_read_all_feedback_paginated_rejects_oversized_client_limit() {
+    let (identity_registry, reputation_registry, identity_address, _) = deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let empty_clients: Span<ContractAddress> = array![].span();
+    let _ = reputation_registry.read_all_feedback_paginated(
+        agent_id, empty_clients, "", "", false, 0, 257, 0, 1,
+    );
+}
+
+#[test]
+#[should_panic(expected: 'feedback_limit too large')]
+fn test_read_all_feedback_paginated_rejects_oversized_feedback_limit() {
+    let (identity_registry, reputation_registry, identity_address, _) = deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let empty_clients: Span<ContractAddress> = array![].span();
+    let _ = reputation_registry.read_all_feedback_paginated(
+        agent_id, empty_clients, "", "", false, 0, 1, 0, 1025,
+    );
+}
+
+#[test]
 fn test_read_all_feedback_excludes_revoked() {
     let (identity_registry, reputation_registry, identity_address, reputation_address) =
         deploy_contracts();
@@ -981,9 +1029,9 @@ fn test_read_all_feedback_excludes_revoked() {
     reputation_registry.revoke_feedback(agent_id, 1);
     stop_cheat_caller_address(reputation_address);
 
-    let empty_clients: Span<ContractAddress> = array![].span();
+    let clients_filter = array![client(), client2()].span();
     let (clients_arr, _, values_arr, _, _, _, _) = reputation_registry
-        .read_all_feedback(agent_id, empty_clients, "", "", false);
+        .read_all_feedback(agent_id, clients_filter, "", "", false);
 
     assert_eq!(clients_arr.len(), 1);
     assert_eq!(*values_arr.at(0), 85); // Only client2's feedback
@@ -1120,9 +1168,9 @@ fn test_read_all_feedback_with_revoked_included() {
     stop_cheat_caller_address(reputation_address);
 
     // include_revoked=true should return both
-    let empty_clients: Span<ContractAddress> = array![].span();
+    let clients_filter = array![client(), client2()].span();
     let (clients_arr, _, _, _, _, _, revoked_arr) = reputation_registry
-        .read_all_feedback(agent_id, empty_clients, "", "", true);
+        .read_all_feedback(agent_id, clients_filter, "", "", true);
 
     assert_eq!(clients_arr.len(), 2, "Should include revoked feedback");
     assert!(*revoked_arr.at(0), "First feedback should be revoked");

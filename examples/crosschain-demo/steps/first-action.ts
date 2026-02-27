@@ -1,4 +1,5 @@
-import { firstActionBalances, type ProviderLike } from "@starknet-agentic/onboarding-utils";
+import { firstActionBalances } from "@starknet-agentic/onboarding-utils";
+import type { RpcProvider } from "starknet";
 import { TOKENS } from "../config.js";
 
 export interface FirstActionResult {
@@ -7,7 +8,7 @@ export interface FirstActionResult {
 }
 
 export async function firstAction(args: {
-  provider: ProviderLike;
+  provider: RpcProvider;
   accountAddress: string;
   privateKey: string;
   network: string;
