@@ -115,6 +115,13 @@ function feltEqualsHex(a: string, b: string): boolean {
   }
 }
 
+function inferToolName(calls: Call[]): string {
+  if (calls.length === 1 && calls[0]?.entrypoint === "transfer") {
+    return "starknet_transfer";
+  }
+  return "starknet_invoke_contract";
+}
+
 export class KeyringProxySigner extends SignerInterface {
   private readonly endpointPath = "/v1/sign/session-transaction";
   private readonly config: KeyringProxySignerConfig;
@@ -230,7 +237,7 @@ export class KeyringProxySigner extends SignerInterface {
       })),
       context: {
         requester: "starknet-mcp-server",
-        tool: "account.execute",
+        tool: inferToolName(transactions),
         reason: "transaction signing request",
         actor: "starknet-mcp-server",
         requestId: traceId,

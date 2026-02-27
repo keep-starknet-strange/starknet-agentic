@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "pnpm --filter @starknet-agentic/shared build && tsup src/index.ts --format esm --dts",
     "test": "vitest run",
     "lint": "eslint ."
   },

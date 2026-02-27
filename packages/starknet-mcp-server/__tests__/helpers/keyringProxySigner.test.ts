@@ -210,6 +210,7 @@ describe("KeyringProxySigner", () => {
     expect(body.accountAddress).toBe("0xabc");
     expect(body.keyId).toBe("default");
     expect(body.validUntil).toBe(1_770_984_300);
+    expect(body.context.tool).toBe("starknet_transfer");
     expect(body.calls).toEqual([
       {
         contractAddress: "0x111",
@@ -250,6 +251,9 @@ describe("KeyringProxySigner", () => {
         { chainId: "0x1", nonce: "0x1" } as any
       )
     ).rejects.toThrow("selector denied");
+    const [, requestInit] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    const body = JSON.parse(requestInit.body as string) as { context: { tool: string } };
+    expect(body.context.tool).toBe("starknet_invoke_contract");
   });
 
   it("returns timeout error when proxy request aborts", async () => {
