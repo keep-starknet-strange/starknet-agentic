@@ -836,6 +836,25 @@ fn test_get_agent_validations_paginated_rejects_over_limit() {
 }
 
 #[test]
+fn test_get_agent_validations_paginated_limit_zero() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let request_uri: ByteArray = "ipfs://QmRequest/validation-request.json";
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(validator(), agent_id, request_uri, 0x1111);
+    stop_cheat_caller_address(validation_address);
+
+    let (page, truncated) = validation_registry.get_agent_validations_paginated(agent_id, 0, 0);
+    assert_eq!(page.len(), 0);
+    assert(truncated, 'truncated');
+}
+
+#[test]
 fn test_get_validator_requests_returns_all_requests() {
     let (identity_registry, validation_registry, identity_address, validation_address) =
         deploy_contracts();
@@ -898,6 +917,25 @@ fn test_get_validator_requests_paginated_returns_slices_and_truncation() {
 fn test_get_validator_requests_paginated_rejects_over_limit() {
     let (_, validation_registry, _, _) = deploy_contracts();
     let _ = validation_registry.get_validator_requests_paginated(validator(), 0, 257);
+}
+
+#[test]
+fn test_get_validator_requests_paginated_limit_zero() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let request_uri: ByteArray = "ipfs://QmRequest/validation-request.json";
+    start_cheat_caller_address(validation_address, agent_owner());
+    validation_registry.validation_request(validator(), agent_id, request_uri, 0x1111);
+    stop_cheat_caller_address(validation_address);
+
+    let (page, truncated) = validation_registry.get_validator_requests_paginated(validator(), 0, 0);
+    assert_eq!(page.len(), 0);
+    assert(truncated, 'truncated');
 }
 
 #[test]

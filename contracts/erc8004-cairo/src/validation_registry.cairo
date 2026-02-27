@@ -454,7 +454,9 @@ pub mod ValidationRegistry {
                 return (result, false);
             }
 
-            let end = if offset + limit < len { offset + limit } else { len };
+            let remaining = len - offset;
+            let page_size = if limit < remaining { limit } else { remaining };
+            let end = offset + page_size;
 
             let mut i = offset;
             while i < end {
@@ -493,7 +495,9 @@ pub mod ValidationRegistry {
                 return (result, false);
             }
 
-            let end = if offset + limit < len { offset + limit } else { len };
+            let remaining = len - offset;
+            let page_size = if limit < remaining { limit } else { remaining };
+            let end = offset + page_size;
 
             let mut i = offset;
             while i < end {
