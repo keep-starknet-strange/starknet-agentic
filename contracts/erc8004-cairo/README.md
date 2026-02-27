@@ -321,6 +321,21 @@ npm install
 node deploy.js
 ```
 
+### Verify registry owners (recommended)
+
+Run an automated ownership check against live deployments:
+
+```bash
+cd scripts
+npm run verify:owners
+```
+
+To enforce multisig ownership in CI/ops, set `EXPECTED_OWNER_ADDRESS` in `../.env` (or export it in shell) before running:
+
+```bash
+EXPECTED_OWNER_ADDRESS=0x... npm run verify:owners
+```
+
 ## E2E Tests
 
 ```bash
@@ -381,6 +396,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Verify IdentityRegistry owner: `get_owner()` returns multisig address
 - [ ] Verify ReputationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
 - [ ] Verify ValidationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
+- [ ] Run automated owner check: `cd scripts && EXPECTED_OWNER_ADDRESS=0x... npm run verify:owners`
 - [ ] Test agent registration: mint agent NFT via `register_with_token_uri`
 - [ ] Test metadata write: `set_metadata(agent_id, "test", "value")`
 - [ ] Test feedback write: `give_feedback(agent_id, ...)`
