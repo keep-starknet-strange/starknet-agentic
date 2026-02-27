@@ -9,8 +9,8 @@
     "run:sepolia": "npx tsx run.ts --network sepolia"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
-    "dotenv": "^16.4.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "dotenv": "^17.3.1",
     "starknet": "^9.2.1"
   },
   "devDependencies": {
