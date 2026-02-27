@@ -141,14 +141,14 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 
 `agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
 
-### Validation Registry: Overwrite Semantics
+### Validation Registry: Response Immutability
 
-Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. When the designated validator calls `validation_response` again for the same request, the previous response is **silently overwritten**.
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. A designated validator can submit exactly one response per request.
 
-- **Intentional**: the `last_update` timestamp tracks when the response was last set, enabling update workflows (e.g., validator re-evaluates after agent fix).
-- **Not accumulative**: there is no history of previous responses for a given request. If audit trails are needed, index `ValidationResponse` events off-chain.
-- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`). Only the response is mutable.
+- **Enforced immutability**: repeated `validation_response` calls for the same request revert with `'Response already submitted'`.
+- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
+- **Correction workflow**: if a validator needs to revise an assessment, create a new request hash and submit a fresh validation response.
 
 ### Reputation Registry: Spam and Griefing Tradeoffs
 
@@ -370,7 +370,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Compare class hashes against reference deployment (if upgrading existing instances)
 
 **3. Deployment Dry Run (Testnet)**
-- [ ] Deploy to Sepolia testnet using `scripts/deploy.js`
+- [ ] Deploy to target network using `scripts/deploy.js` (`STARKNET_NETWORK=sepolia|mainnet`)
 - [ ] Verify deployment: all three contracts deployed successfully
 - [ ] Verify constructor arguments: owner address matches deployer, identity registry references are correct in reputation and validation registries
 - [ ] Run E2E tests: `cd e2e-tests && npm install && npm test` (all tests must pass)
