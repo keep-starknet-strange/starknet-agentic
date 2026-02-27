@@ -57,6 +57,11 @@ fn deploy_with_execute() -> (
     (addr, session_mgr, spending_mgr, exec)
 }
 
+fn deploy_dummy_target() -> ContractAddress {
+    let (addr, _session_mgr, _spending_mgr) = deploy_account();
+    addr
+}
+
 // ---------- call builders ----------
 
 fn make_transfer_call(token: ContractAddress, amount: u256) -> Call {
@@ -218,9 +223,9 @@ fn test_spending_policy_remove_unauthorized() {
 
 /// Helper: set up a session key + spending policy, return everything needed for enforcement tests.
 ///
-/// NOTE: We use the account's own address as the "token" address. This avoids the snforge
-/// "not deployed" error when `_execute_calls` tries `call_contract_syscall` on the token.
-/// The call will fail (selector not found on account) but `_execute_calls` catches that
+/// NOTE: We use a second deployed SessionAccount as the "token" target. This avoids the snforge
+/// "not deployed" error when `_execute_calls` tries `call_contract_syscall` on the token target.
+/// The call will fail (selector not found on target) but `_execute_calls` catches that
 /// via `Result::Err` → empty span. The spending enforcement happens BEFORE _execute_calls,
 /// so all spending checks are fully exercised.
 fn setup_enforcement(
@@ -230,8 +235,7 @@ fn setup_enforcement(
     window_seconds: u64,
 ) -> (ContractAddress, ISessionSpendingPolicyDispatcher, IAccountExecuteDispatcher, ContractAddress) {
     let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
-    // Use account address as fake token (deployed, so call_contract_syscall won't error)
-    let token: ContractAddress = account;
+    let token = deploy_dummy_target();
 
     start_cheat_block_timestamp_global(current_time);
 
@@ -411,8 +415,7 @@ fn test_delayed_first_spend_does_not_allow_early_reset() {
 #[test]
 fn test_enforcement_no_policy_unrestricted() {
     let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
-    // Use account address as fake token (avoids "not deployed" error)
-    let token: ContractAddress = account;
+    let token = deploy_dummy_target();
     let current_time = 1_000_000_u64;
     start_cheat_block_timestamp_global(current_time);
 
@@ -494,8 +497,7 @@ fn test_enforcement_multicall_exceeds_window() {
 #[test]
 fn test_enforcement_non_spending_selector() {
     let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
-    // Use account address as fake token (avoids "not deployed" error)
-    let token: ContractAddress = account;
+    let token = deploy_dummy_target();
     let current_time = 1_000_000_u64;
     start_cheat_block_timestamp_global(current_time);
 
@@ -613,8 +615,7 @@ fn test_blocklist_rejects_remove_spending_policy() {
 #[should_panic(expected: "Spending: invalid amount")]
 fn test_spending_enforcement_invalid_amount_calldata() {
     let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
-    // Use account address as fake token (avoids "not deployed" error)
-    let token: ContractAddress = account;
+    let token = deploy_dummy_target();
     let current_time = 1_000_000_u64;
     start_cheat_block_timestamp_global(current_time);
 
@@ -737,7 +738,7 @@ fn test_reentrancy_protection_state_committed() {
 #[test]
 fn test_maximum_amount_handling() {
     let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
-    let token: ContractAddress = account;
+    let token = deploy_dummy_target();
     let current_time = 1_000_000_u64;
     start_cheat_block_timestamp_global(current_time);
 
@@ -782,7 +783,7 @@ fn test_maximum_amount_handling() {
 #[should_panic(expected: ('Spending: exceeds per-call',))]
 fn test_zero_max_per_call_blocks_all() {
     let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
-    let token: ContractAddress = account;
+    let token = deploy_dummy_target();
     let current_time = 1_000_000_u64;
     start_cheat_block_timestamp_global(current_time);
 
@@ -809,7 +810,7 @@ fn test_zero_max_per_call_blocks_all() {
 #[test]
 fn test_zero_max_per_window_disables_enforcement() {
     let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
-    let token: ContractAddress = account;
+    let token = deploy_dummy_target();
     let current_time = 1_000_000_u64;
     start_cheat_block_timestamp_global(current_time);
 
@@ -841,7 +842,7 @@ fn test_zero_max_per_window_disables_enforcement() {
 #[test]
 fn test_zero_policy_disables_enforcement() {
     let (account, session_mgr, spending_mgr, exec) = deploy_with_execute();
-    let token: ContractAddress = account;
+    let token = deploy_dummy_target();
     let current_time = 1_000_000_u64;
     start_cheat_block_timestamp_global(current_time);
 

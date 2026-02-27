@@ -11,6 +11,7 @@ Production-ready skills for AI agents operating on Starknet. Built for the Agent
 | [starknet-identity](./starknet-identity/) | ERC-8004 on-chain identity and reputation | Complete |
 | [starknet-mini-pay](./starknet-mini-pay/) | P2P payments, QR codes, Telegram bot | Complete |
 | [starknet-anonymous-wallet](./starknet-anonymous-wallet/) | Anonymous wallet creation via Typhoon | Complete |
+| [starkzap-sdk](./starkzap-sdk/) | End-to-end workflows for keep-starknet-strange/starkzap (SDK, onboarding, wallets, ERC20, staking, tests) | Complete |
 | [huginn-onboard](./huginn-onboard/) | Bridge to Starknet and register with Huginn | Complete |
 | [controller-cli](./controller-cli/) | Cartridge Controller CLI sessions + scoped execution (JSON-only, explicit network, paymaster, error recovery) | Complete |
 | [cairo-contracts](./cairo-contracts/) | Contract structure, components, OZ v3, storage, events, interfaces | Complete |
