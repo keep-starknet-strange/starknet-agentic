@@ -12,7 +12,7 @@ Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (
 | Contract deps | OpenZeppelin Cairo | v3.0.0 |
 | TypeScript packages | pnpm workspaces, tsup | Node 20+ |
 | MCP server | `@modelcontextprotocol/sdk` | ^1.0.0 |
-| Starknet interaction | starknet.js | ^8.9.1 |
+| Starknet interaction | starknet.js | ^9.2.1 |
 | DeFi aggregation | `@avnu/avnu-sdk` | ^4.0.1 |
 | Schema validation | zod | ^3.23.0 |
 | TS testing | Vitest | -- |
@@ -295,7 +295,7 @@ Always consult `references/` before relying on training data for Starknet-specif
 | pnpm install fails | Ensure pnpm installed globally. Node 18+ required. |
 | E2E tests fail | Check `.env` has valid Sepolia RPC URL and funded account. |
 | Git submodule empty (`references/starknet-docs/`) | Run `git submodule update --init --recursive` |
-| starknet.js type errors | All packages standardized on v8.9.1. Use object-form constructors: `new Account({ provider, address, signer })` and `new Contract({ abi, address, providerOrAccount })`. |
+| starknet.js type errors | All packages standardized on ^9.2.1. Use object-form constructors: `new Account({ provider, address, signer })` and `new Contract({ abi, address, providerOrAccount })`. |
 
 
 </troubleshooting>

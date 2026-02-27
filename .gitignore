@@ -162,5 +162,8 @@ examples/**/state.json
 # Claude Code
 .claude/settings.local.json
 
+# Stale worktrees / ad-hoc clones (local only)
+starknet-agentic-*/
+
 # macOS
 .DS_Store
