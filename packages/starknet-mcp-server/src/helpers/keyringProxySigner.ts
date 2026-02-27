@@ -97,11 +97,11 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-const RFC3339_TIMESTAMP_REGEX =
+const RFC3339_TIMESTAMP_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 
-function isStrictRfc3339Timestamp(value: string): boolean {
-  if (!RFC3339_TIMESTAMP_REGEX.test(value)) {
+function isRfc3339Timestamp(value: unknown): value is string {
+  if (!isNonEmptyString(value) || !RFC3339_TIMESTAMP_PATTERN.test(value)) {
     return false;
   }
   return !Number.isNaN(Date.parse(value));
@@ -113,6 +113,13 @@ function feltEqualsHex(a: string, b: string): boolean {
   } catch {
     return false;
   }
+}
+
+function inferToolName(calls: Call[]): string {
+  if (calls.length === 1 && calls[0]?.entrypoint === "transfer") {
+    return "starknet_transfer";
+  }
+  return "starknet_invoke_contract";
 }
 
 export class KeyringProxySigner extends SignerInterface {
@@ -230,7 +237,7 @@ export class KeyringProxySigner extends SignerInterface {
       })),
       context: {
         requester: "starknet-mcp-server",
-        tool: "account.execute",
+        tool: inferToolName(transactions),
         reason: "transaction signing request",
         actor: "starknet-mcp-server",
         requestId: traceId,
@@ -314,7 +321,7 @@ export class KeyringProxySigner extends SignerInterface {
       }
       if (parsed.requestId !== traceId) {
         throw new Error(
-          "Invalid signature response from keyring proxy: requestId does not match request traceId"
+          "Invalid signature response from keyring proxy: requestId does not match outbound request"
         );
       }
       if (!parsed.audit || typeof parsed.audit !== "object") {
@@ -327,10 +334,7 @@ export class KeyringProxySigner extends SignerInterface {
           "Invalid signature response from keyring proxy: audit.policyDecision must be allow"
         );
       }
-      if (
-        !isNonEmptyString(parsed.audit.decidedAt) ||
-        !isStrictRfc3339Timestamp(parsed.audit.decidedAt)
-      ) {
+      if (!isRfc3339Timestamp(parsed.audit.decidedAt)) {
         throw new Error(
           "Invalid signature response from keyring proxy: audit.decidedAt must be an RFC3339 timestamp"
         );
@@ -352,7 +356,7 @@ export class KeyringProxySigner extends SignerInterface {
       }
       if (parsed.audit.traceId !== traceId) {
         throw new Error(
-          "Invalid signature response from keyring proxy: audit.traceId does not match request traceId"
+          "Invalid signature response from keyring proxy: audit.traceId does not match outbound traceId"
         );
       }
       const allowedSignerProviders = ["local", "dfns"] as const;

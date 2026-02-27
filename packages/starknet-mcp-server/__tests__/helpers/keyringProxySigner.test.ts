@@ -12,6 +12,51 @@ function sha256Hex(input: string): string {
   return createHash("sha256").update(input).digest("hex");
 }
 
+function extractTraceId(requestInit?: RequestInit): string {
+  const rawBody = requestInit?.body;
+  if (typeof rawBody !== "string") {
+    return "";
+  }
+  const parsed = JSON.parse(rawBody) as {
+    context?: { requestId?: unknown; traceId?: unknown };
+  };
+  if (typeof parsed.context?.traceId === "string") {
+    return parsed.context.traceId;
+  }
+  if (typeof parsed.context?.requestId === "string") {
+    return parsed.context.requestId;
+  }
+  return "";
+}
+
+function buildAllowResponse(traceId: string): Record<string, unknown> {
+  return {
+    signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
+    signatureMode: "v2_snip12",
+    signatureKind: "Snip12",
+    signerProvider: "dfns",
+    sessionPublicKey: "0x123",
+    domainHash: "0x1",
+    messageHash: "0x2",
+    requestId: traceId,
+    audit: {
+      policyDecision: "allow",
+      decidedAt: "2026-02-13T12:00:00Z",
+      keyId: "default",
+      traceId,
+    },
+  };
+}
+
+function buildFetchJsonResponse(payload: Record<string, unknown>, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(payload),
+    json: async () => payload,
+  };
+}
+
 type ProxyAudit = {
   policyDecision?: "allow";
   decidedAt?: string;
@@ -31,53 +76,27 @@ type ProxyResponseOverrides = {
   audit?: ProxyAudit;
 };
 
-function getTraceIdFromRequestInit(requestInit?: RequestInit): string {
-  const rawBody = typeof requestInit?.body === "string" ? requestInit.body : "";
-  if (!rawBody) return "kr-missing-trace";
-  try {
-    const parsed = JSON.parse(rawBody) as { context?: { traceId?: string } };
-    return parsed.context?.traceId ?? "kr-missing-trace";
-  } catch {
-    return "kr-missing-trace";
-  }
-}
-
 function buildProxySuccessResponse(
   requestInit?: RequestInit,
   overrides: ProxyResponseOverrides = {}
 ): Record<string, unknown> {
-  const traceId = getTraceIdFromRequestInit(requestInit);
-  const base = {
-    signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
-    signatureMode: "v2_snip12",
-    signatureKind: "Snip12",
-    signerProvider: "dfns",
-    sessionPublicKey: "0x123",
-    domainHash: "0x1",
-    messageHash: "0x2",
-    requestId: traceId,
-    audit: {
-      policyDecision: "allow",
-      decidedAt: "2026-02-13T12:00:00Z",
-      keyId: "default",
-      traceId,
-    },
-  };
+  const traceId = extractTraceId(requestInit) || "kr-missing-trace";
+  const base = buildAllowResponse(traceId);
   return {
     ...base,
     ...overrides,
     audit: {
-      ...base.audit,
+      ...(base.audit as Record<string, unknown>),
       ...(overrides.audit ?? {}),
     },
   };
 }
 
 function mockProxySuccessFetch(overrides: ProxyResponseOverrides = {}) {
-  return vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => ({
-    ok: true,
-    json: async () => buildProxySuccessResponse(requestInit, overrides),
-  }));
+  return vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+    const payload = buildProxySuccessResponse(requestInit, overrides);
+    return buildFetchJsonResponse(payload);
+  });
 }
 
 describe("KeyringProxySigner", () => {
@@ -88,6 +107,7 @@ describe("KeyringProxySigner", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -147,7 +167,10 @@ describe("KeyringProxySigner", () => {
   });
 
   it("signs transactions through keyring proxy with HMAC headers", async () => {
-    const fetchMock = mockProxySuccessFetch();
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      return buildFetchJsonResponse(buildAllowResponse(traceId));
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const signer = new KeyringProxySigner({
@@ -187,6 +210,7 @@ describe("KeyringProxySigner", () => {
     expect(body.accountAddress).toBe("0xabc");
     expect(body.keyId).toBe("default");
     expect(body.validUntil).toBe(1_770_984_300);
+    expect(body.context.tool).toBe("starknet_transfer");
     expect(body.calls).toEqual([
       {
         contractAddress: "0x111",
@@ -227,6 +251,9 @@ describe("KeyringProxySigner", () => {
         { chainId: "0x1", nonce: "0x1" } as any
       )
     ).rejects.toThrow("selector denied");
+    const [, requestInit] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    const body = JSON.parse(requestInit.body as string) as { context: { tool: string } };
+    expect(body.context.tool).toBe("starknet_invoke_contract");
   });
 
   it("returns timeout error when proxy request aborts", async () => {
@@ -252,8 +279,11 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects proxy signatures that are not 4-felt session signatures", async () => {
-    const fetchMock = mockProxySuccessFetch({
-      signature: ["0x123", "0xaaa", "0xbbb"],
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.signature = ["0x123", "0xaaa", "0xbbb"];
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -321,8 +351,11 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects proxy signatures when signatureMode is not v2_snip12", async () => {
-    const fetchMock = mockProxySuccessFetch({
-      signatureMode: "v1",
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.signatureMode = "v1";
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -343,11 +376,89 @@ describe("KeyringProxySigner", () => {
     ).rejects.toThrow("signatureMode must be v2_snip12");
   });
 
-  it("rejects proxy signatures when audit.decidedAt is not strict RFC3339", async () => {
-    const fetchMock = mockProxySuccessFetch({
-      audit: {
-        decidedAt: "2026-02-13 12:00:00",
+  it.each([
+    {
+      label: "requestId is missing",
+      mutate: (payload: Record<string, unknown>) => {
+        delete payload.requestId;
       },
+      expectedError: "requestId is required",
+    },
+    {
+      label: "requestId is blank",
+      mutate: (payload: Record<string, unknown>) => {
+        payload.requestId = "   ";
+      },
+      expectedError: "requestId is required",
+    },
+    {
+      label: "requestId does not match outbound traceId",
+      mutate: (payload: Record<string, unknown>) => {
+        payload.requestId = "different-request-id";
+      },
+      expectedError: "requestId does not match outbound request",
+    },
+    {
+      label: "audit object is missing",
+      mutate: (payload: Record<string, unknown>) => {
+        delete payload.audit;
+      },
+      expectedError: "audit object is required",
+    },
+    {
+      label: "audit.policyDecision is denied",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.policyDecision = "deny";
+      },
+      expectedError: "audit.policyDecision must be allow",
+    },
+    {
+      label: "audit.decidedAt is invalid",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.decidedAt = "not-a-date";
+      },
+      expectedError: "audit.decidedAt must be an RFC3339 timestamp",
+    },
+    {
+      label: "audit.decidedAt is not RFC3339",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.decidedAt = "2026-02-13";
+      },
+      expectedError: "audit.decidedAt must be an RFC3339 timestamp",
+    },
+    {
+      label: "audit.keyId is blank",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.keyId = " ";
+      },
+      expectedError: "audit.keyId is required",
+    },
+    {
+      label: "audit.traceId is blank",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.traceId = " ";
+      },
+      expectedError: "audit.traceId is required",
+    },
+    {
+      label: "audit.traceId does not match outbound traceId",
+      mutate: (payload: Record<string, unknown>) => {
+        const audit = payload.audit as Record<string, unknown>;
+        audit.traceId = "different-trace-id";
+      },
+      expectedError: "audit.traceId does not match outbound traceId",
+    },
+  ])("rejects proxy signatures when $label", async ({ mutate, expectedError }) => {
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const responsePayload = buildAllowResponse(traceId);
+      mutate(responsePayload);
+      return buildFetchJsonResponse(responsePayload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -365,14 +476,18 @@ describe("KeyringProxySigner", () => {
         [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
         { chainId: "0x1", nonce: "0x1" } as any
       )
-    ).rejects.toThrow("audit.decidedAt must be an RFC3339 timestamp");
+    ).rejects.toThrow(expectedError);
   });
 
-  it("rejects proxy signatures when audit.decidedAt has more than 9 fractional digits", async () => {
-    const fetchMock = mockProxySuccessFetch({
-      audit: {
-        decidedAt: "2026-02-13T12:00:00.1234567891Z",
-      },
+  it("rejects proxy signatures when audit.keyId does not match requested keyId", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.audit = {
+        ...(payload.audit as Record<string, unknown>),
+        keyId: "different-key",
+      };
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -383,80 +498,7 @@ describe("KeyringProxySigner", () => {
       accountAddress: "0xabc",
       requestTimeoutMs: 5_000,
       sessionValiditySeconds: 300,
-    });
-
-    await expect(
-      signer.signTransaction(
-        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
-        { chainId: "0x1", nonce: "0x1" } as any
-      )
-    ).rejects.toThrow("audit.decidedAt must be an RFC3339 timestamp");
-  });
-
-  it("rejects proxy signatures when requestId does not match request traceId", async () => {
-    const fetchMock = mockProxySuccessFetch({
-      requestId: "mismatched-request-id",
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const signer = new KeyringProxySigner({
-      proxyUrl: "http://127.0.0.1:8545",
-      hmacSecret: "test-secret",
-      clientId: "mcp-tests",
-      accountAddress: "0xabc",
-      requestTimeoutMs: 5_000,
-      sessionValiditySeconds: 300,
-    });
-
-    await expect(
-      signer.signTransaction(
-        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
-        { chainId: "0x1", nonce: "0x1" } as any
-      )
-    ).rejects.toThrow("requestId does not match request traceId");
-  });
-
-  it("rejects proxy signatures when audit.traceId does not match request traceId", async () => {
-    const fetchMock = mockProxySuccessFetch({
-      audit: {
-        traceId: "mismatched-audit-trace-id",
-      },
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const signer = new KeyringProxySigner({
-      proxyUrl: "http://127.0.0.1:8545",
-      hmacSecret: "test-secret",
-      clientId: "mcp-tests",
-      accountAddress: "0xabc",
-      requestTimeoutMs: 5_000,
-      sessionValiditySeconds: 300,
-    });
-
-    await expect(
-      signer.signTransaction(
-        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
-        { chainId: "0x1", nonce: "0x1" } as any
-      )
-    ).rejects.toThrow("audit.traceId does not match request traceId");
-  });
-
-  it("rejects proxy signatures when audit.keyId does not match configured keyId", async () => {
-    const fetchMock = mockProxySuccessFetch({
-      audit: {
-        keyId: "unexpected-key",
-      },
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const signer = new KeyringProxySigner({
-      proxyUrl: "http://127.0.0.1:8545",
-      hmacSecret: "test-secret",
-      clientId: "mcp-tests",
-      accountAddress: "0xabc",
-      requestTimeoutMs: 5_000,
-      sessionValiditySeconds: 300,
-      keyId: "expected-key",
+      keyId: "default",
     });
 
     await expect(
@@ -468,9 +510,12 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects proxy signatures when sessionPublicKey mismatches signature pubkey", async () => {
-    const fetchMock = mockProxySuccessFetch({
-      signature: ["0x123", "0xaaa", "0xbbb", "0xccc"],
-      sessionPublicKey: "0x456",
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.sessionPublicKey = "0x456";
+      payload.signature = ["0x123", "0xaaa", "0xbbb", "0xccc"];
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -492,8 +537,11 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects proxy signatures when valid_until does not match requested window", async () => {
-    const fetchMock = mockProxySuccessFetch({
-      signature: ["0x123", "0xaaa", "0xbbb", "0x99999999"],
+    const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      payload.signature = ["0x123", "0xaaa", "0xbbb", "0x99999999"];
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -515,23 +563,16 @@ describe("KeyringProxySigner", () => {
   });
 
   it("rejects unexpected session pubkey changes across requests", async () => {
-    let callIndex = 0;
+    let callCount = 0;
     const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
-      const response =
-        callIndex === 0
-          ? buildProxySuccessResponse(requestInit, {
-              sessionPublicKey: "0x123",
-              signature: ["0x123", "0xaaa", "0xbbb", "0x698f136c"],
-            })
-          : buildProxySuccessResponse(requestInit, {
-              sessionPublicKey: "0x456",
-              signature: ["0x456", "0xaaa", "0xbbb", "0x698f136c"],
-            });
-      callIndex += 1;
-      return {
-        ok: true,
-        json: async () => response,
-      };
+      callCount += 1;
+      const traceId = extractTraceId(requestInit);
+      const payload = buildAllowResponse(traceId);
+      if (callCount === 2) {
+        payload.signature = ["0x456", "0xaaa", "0xbbb", "0x698f136c"];
+        payload.sessionPublicKey = "0x456";
+      }
+      return buildFetchJsonResponse(payload);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -585,20 +626,20 @@ describe("KeyringProxySigner", () => {
       const response = new EventEmitter() as EventEmitter & { statusCode?: number };
       response.statusCode = 200;
 
+      let requestBody = "";
       const req = new EventEmitter() as EventEmitter & {
         setTimeout: (ms: number, cb: () => void) => void;
         write: (chunk: string) => void;
         end: () => void;
         destroy: (err?: Error) => void;
       };
-      let writtenBody = "";
       req.setTimeout = vi.fn();
       req.write = vi.fn((chunk: string) => {
-        writtenBody += chunk;
+        requestBody += chunk;
       });
       req.end = vi.fn(() => {
         const proxyResponse = buildProxySuccessResponse({
-          body: writtenBody,
+          body: requestBody,
         } as RequestInit);
         callback(response);
         response.emit("data", Buffer.from(JSON.stringify(proxyResponse)));

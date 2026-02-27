@@ -92,6 +92,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SignerErrorResponse'
+        '500':
+          description: Internal signer error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
         '503':
           description: Signer temporarily unavailable
           content:
@@ -115,17 +121,17 @@ components:
       type: apiKey
       in: header
       name: X-Keyring-Client-Id
+      description: Pre-registered client identifier issued during signer onboarding
     keyringTimestamp:
       type: apiKey
       in: header
       name: X-Keyring-Timestamp
+      description: Unix epoch milliseconds at request time; must be within allowed clock skew
     keyringNonce:
       type: apiKey
       in: header
       name: X-Keyring-Nonce
-      description: |
-        One-time client nonce. Recommended format for interoperability:
-        16-32 random bytes encoded as lowercase hex (32-64 chars).
+      description: Unique per-request UTF-8 nonce (16-256 bytes, no period) rejected on replay
   schemas:
     FeltHex:
       type: string
@@ -172,6 +178,7 @@ components:
           minLength: 1
         sessionId:
           type: string
+          minLength: 1
     SignSessionTransactionRequest:
       type: object
       additionalProperties: false
@@ -306,10 +313,10 @@ components:
         sessionPublicKey: '0x0123'
         domainHash: '0x01'
         messageHash: '0x02'
-        requestId: sign-req-001
+        requestId: req-transfer-001
         audit:
           policyDecision: allow
-          decidedAt: '2026-02-22T10:00:00Z'
+          decidedAt: '2026-02-13T12:00:00Z'
           keyId: default
           traceId: req-transfer-001
     InvokeRequest:
@@ -339,10 +346,10 @@ components:
         sessionPublicKey: '0x0123'
         domainHash: '0x03'
         messageHash: '0x04'
-        requestId: sign-req-002
+        requestId: req-invoke-001
         audit:
           policyDecision: allow
-          decidedAt: '2026-02-22T10:00:02Z'
+          decidedAt: '2026-02-13T12:00:02Z'
           keyId: default
           traceId: req-invoke-001
     X402Request:
@@ -372,9 +379,9 @@ components:
         sessionPublicKey: '0x0123'
         domainHash: '0x05'
         messageHash: '0x06'
-        requestId: sign-req-003
+        requestId: req-x402-001
         audit:
           policyDecision: allow
-          decidedAt: '2026-02-22T10:00:03Z'
+          decidedAt: '2026-02-13T12:00:03Z'
           keyId: default
           traceId: req-x402-001

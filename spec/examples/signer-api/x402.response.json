@@ -6,10 +6,10 @@
   "sessionPublicKey": "0x0123",
   "domainHash": "0x05",
   "messageHash": "0x06",
-  "requestId": "sign-req-003",
+  "requestId": "req-x402-001",
   "audit": {
     "policyDecision": "allow",
-    "decidedAt": "2026-02-22T10:00:03Z",
+    "decidedAt": "2026-02-13T12:00:03Z",
     "keyId": "default",
     "traceId": "req-x402-001"
   }
