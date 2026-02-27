@@ -321,6 +321,61 @@
     window.fetchAgentInfo = fetchAgentInfo;
     window.computeHash = computeHash;
     window.signAndSubmit = signAndSubmit;
+
+    function getErrorMessage(error) {
+      return error instanceof Error ? error.message : String(error);
+    }
+
+    function clearElement(el) {
+      while (el.firstChild) {
+        el.removeChild(el.firstChild);
+      }
+    }
+
+    function appendLine(container, text) {
+      if (container.childNodes.length > 0) {
+        container.appendChild(document.createElement('br'));
+      }
+      container.appendChild(document.createTextNode(text));
+    }
+
+    function setWalletStatusConnected(address) {
+      const walletStatus = document.getElementById('wallet-status');
+      clearElement(walletStatus);
+
+      const connectedInfo = document.createElement('div');
+      connectedInfo.className = 'connected-info';
+
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      connectedInfo.appendChild(dot);
+
+      const label = document.createElement('span');
+      label.textContent = `Connected: ${address.slice(0, 10)}...${address.slice(-8)}`;
+      connectedInfo.appendChild(label);
+
+      const disconnectBtn = document.createElement('button');
+      disconnectBtn.className = 'secondary-btn';
+      disconnectBtn.textContent = 'Disconnect';
+      disconnectBtn.addEventListener('click', () => {
+        window.disconnectWallet();
+      });
+
+      walletStatus.appendChild(connectedInfo);
+      walletStatus.appendChild(disconnectBtn);
+    }
+
+    function setWalletStatusDisconnected() {
+      const walletStatus = document.getElementById('wallet-status');
+      clearElement(walletStatus);
+
+      const connectBtn = document.createElement('button');
+      connectBtn.id = 'connect-btn';
+      connectBtn.textContent = 'Connect Starknet Wallet';
+      connectBtn.addEventListener('click', connectWallet);
+
+      walletStatus.appendChild(connectBtn);
+    }
     
     // Helper: Log message
     function log(msg, type = 'info') {
@@ -328,15 +383,64 @@
       const time = new Date().toLocaleTimeString();
       const entry = document.createElement('div');
       entry.className = `log-entry ${type}`;
-      entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-msg">${msg}</span>`;
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'log-time';
+      timeSpan.textContent = `[${time}]`;
+
+      const msgSpan = document.createElement('span');
+      msgSpan.className = 'log-msg';
+      msgSpan.textContent = msg;
+
+      entry.appendChild(timeSpan);
+      entry.appendChild(msgSpan);
       container.appendChild(entry);
       container.scrollTop = container.scrollHeight;
     }
     
     // Helper: Show status
-    function showStatus(elementId, msg, type) {
+    function showStatus(elementId, lines, type) {
       const el = document.getElementById(elementId);
-      el.innerHTML = `<div class="status ${type}">${msg}</div>`;
+      clearElement(el);
+
+      const status = document.createElement('div');
+      status.className = `status ${type}`;
+
+      const normalizedLines = Array.isArray(lines) ? lines : [String(lines)];
+      normalizedLines.forEach((line) => appendLine(status, String(line)));
+
+      el.appendChild(status);
+    }
+
+    function showSubmittedTxStatus(elementId, txHash) {
+      const el = document.getElementById(elementId);
+      clearElement(el);
+
+      const status = document.createElement('div');
+      status.className = 'status success';
+
+      const strong = document.createElement('strong');
+      strong.textContent = 'Transaction submitted!';
+      status.appendChild(strong);
+      status.appendChild(document.createElement('br'));
+      status.appendChild(document.createTextNode(`Hash: ${txHash}`));
+      status.appendChild(document.createElement('br'));
+
+      const link = document.createElement('a');
+      link.href = `https://sepolia.starkscan.co/tx/${txHash}`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'View on StarkScan';
+      status.appendChild(link);
+
+      el.appendChild(status);
+    }
+
+    function showHashStatus(hashValue, inputsLabel) {
+      showStatus('hash-display', [
+        `Message Hash (Poseidon): ${hashValue}`,
+        `Inputs: ${inputsLabel}`,
+      ], 'success');
     }
     
     // Step 1: Connect Wallet
@@ -351,14 +455,7 @@
         if (result && result.wallet) {
           wallet = result.wallet;
           const address = wallet.selectedAddress;
-          
-          document.getElementById('wallet-status').innerHTML = `
-            <div class="connected-info">
-              <span class="dot"></span>
-              <span>Connected: ${address.slice(0, 10)}...${address.slice(-8)}</span>
-            </div>
-            <button class="secondary-btn" onclick="disconnectWallet()">Disconnect</button>
-          `;
+          setWalletStatusConnected(address);
           
           // Auto-fill new wallet field
           document.getElementById('new-wallet').value = address;
@@ -374,7 +471,8 @@
           log('Wallet connection cancelled', 'error');
         }
       } catch (error) {
-        log(`Connection failed: ${error.message}`, 'error');
+        const errorMessage = getErrorMessage(error);
+        log(`Connection failed: ${errorMessage}`, 'error');
       }
     }
     
@@ -382,12 +480,11 @@
       try {
         await disconnect();
         wallet = null;
-        document.getElementById('wallet-status').innerHTML = `
-          <button id="connect-btn" onclick="connectWallet()">Connect Starknet Wallet</button>
-        `;
+        setWalletStatusDisconnected();
         log('Wallet disconnected');
       } catch (error) {
-        log(`Disconnect failed: ${error.message}`, 'error');
+        const errorMessage = getErrorMessage(error);
+        log(`Disconnect failed: ${errorMessage}`, 'error');
       }
     }
     
@@ -434,9 +531,10 @@
         
         document.getElementById('owner-address').value = ownerHex;
         
-        showStatus('agent-info-status', 
-          `Owner: ${ownerHex.slice(0, 16)}...<br>Current Wallet: ${walletHex.slice(0, 16)}...`, 
-          'success');
+        showStatus('agent-info-status', [
+          `Owner: ${ownerHex.slice(0, 16)}...`,
+          `Current Wallet: ${walletHex.slice(0, 16)}...`,
+        ], 'success');
         
         log(`Agent ${agentId} owner: ${ownerHex.slice(0, 16)}...`, 'success');
         log(`Current wallet: ${walletHex.slice(0, 16)}...`);
@@ -444,8 +542,9 @@
         identityContract = new Contract(abi, contractAddress, readProvider);
         
       } catch (error) {
-        showStatus('agent-info-status', `Failed: ${error.message}`, 'error');
-        log(`Fetch failed: ${error.message}`, 'error');
+        const errorMessage = getErrorMessage(error);
+        showStatus('agent-info-status', `Failed: ${errorMessage}`, 'error');
+        log(`Fetch failed: ${errorMessage}`, 'error');
       }
     }
     
@@ -487,16 +586,10 @@
         // Use poseidonHashMany from starknet.js
         messageHash = hash.computePoseidonHashOnElements(hashInputs);
         
-        document.getElementById('hash-display').innerHTML = `
-          <div class="status success">
-            <strong>Message Hash (Poseidon):</strong>
-            <div class="hash-display">${messageHash}</div>
-            <br>
-            <small>
-              Inputs: [${low}, ${high}, ${newWallet.slice(0, 10)}..., ${ownerAddress.slice(0, 10)}..., ${deadline}]
-            </small>
-          </div>
-        `;
+        showHashStatus(
+          messageHash,
+          `[${low}, ${high}, ${newWallet.slice(0, 10)}..., ${ownerAddress.slice(0, 10)}..., ${deadline}]`,
+        );
         
         log(`Hash computed: ${messageHash.slice(0, 20)}...`, 'success');
         
@@ -504,8 +597,9 @@
         document.getElementById('sign-btn').disabled = false;
         
       } catch (error) {
-        showStatus('hash-display', `Hash computation failed: ${error.message}`, 'error');
-        log(`Hash failed: ${error.message}`, 'error');
+        const errorMessage = getErrorMessage(error);
+        showStatus('hash-display', `Hash computation failed: ${errorMessage}`, 'error');
+        log(`Hash failed: ${errorMessage}`, 'error');
       }
     }
     
@@ -576,13 +670,7 @@
         );
         
         log(`Transaction submitted: ${result.transaction_hash.slice(0, 20)}...`);
-        showStatus('submit-status', `
-          <strong>Transaction submitted!</strong><br>
-          Hash: ${result.transaction_hash}<br>
-          <a href="https://sepolia.starkscan.co/tx/${result.transaction_hash}" target="_blank">
-            View on StarkScan
-          </a>
-        `, 'success');
+        showSubmittedTxStatus('submit-status', result.transaction_hash);
         
         log('Waiting for confirmation...', 'info');
         
@@ -594,8 +682,9 @@
         log('Transaction confirmed!', 'success');
         
       } catch (error) {
-        showStatus('submit-status', `Failed: ${error.message}`, 'error');
-        log(`Error: ${error.message}`, 'error');
+        const errorMessage = getErrorMessage(error);
+        showStatus('submit-status', `Failed: ${errorMessage}`, 'error');
+        log(`Error: ${errorMessage}`, 'error');
         console.error(error);
       }
     }

@@ -584,6 +584,7 @@ pub mod ReputationRegistry {
             assert(client_addresses.len() > 0, 'explicit clients required');
 
             let mut i: u32 = 0;
+            let mut scanned_clients: u32 = 0;
             let mut scanned_feedbacks: u32 = 0;
             while i < client_addresses.len() {
                 let client = *client_addresses.at(i);

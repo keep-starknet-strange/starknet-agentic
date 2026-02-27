@@ -1,0 +1,110 @@
+name: signer-auth-conformance
+
+on:
+  pull_request:
+    paths:
+      - "spec/signer-auth-v1.json"
+      - "spec/signer-auth-v1.schema.json"
+      - "packages/starknet-mcp-server/src/helpers/keyringAuthContract.ts"
+      - "packages/starknet-mcp-server/__tests__/helpers/keyringAuthContract.test.ts"
+      - "packages/starknet-mcp-server/__tests__/helpers/keyringAuthVectors.test.ts"
+      - "docs/security/SIGNER_API_SPEC.md"
+      - "docs/security/SIGNER_PROXY_ROTATION_RUNBOOK.md"
+      - ".github/workflows/signer-auth-conformance.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "spec/signer-auth-v1.json"
+      - "spec/signer-auth-v1.schema.json"
+      - "packages/starknet-mcp-server/src/helpers/keyringAuthContract.ts"
+      - "packages/starknet-mcp-server/__tests__/helpers/keyringAuthContract.test.ts"
+      - "packages/starknet-mcp-server/__tests__/helpers/keyringAuthVectors.test.ts"
+      - "docs/security/SIGNER_API_SPEC.md"
+      - "docs/security/SIGNER_PROXY_ROTATION_RUNBOOK.md"
+      - ".github/workflows/signer-auth-conformance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+
+      - name: Install AJV CLI
+        run: npm install --global ajv-cli@5.0.0
+
+      - name: Validate signer auth vectors schema
+        run: |
+          ajv validate \
+            --spec=draft2020 \
+            --strict=true \
+            -s spec/signer-auth-v1.schema.json \
+            -d spec/signer-auth-v1.json
+
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@53751a9789c7351e4924f01fe68370252a4f1f18 # v2.4.1
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run auth conformance vectors (shows failing vector IDs)
+        run: |
+          pnpm --filter @starknet-agentic/mcp-server test -- __tests__/helpers/keyringAuthVectors.test.ts
+
+  parity_with_counterparts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.0
+
+      - name: Compare vectors with SISNA/starkclaw main (if published)
+        run: |
+          set -euo pipefail
+          for repo in "omarespejel/SISNA" "keep-starknet-strange/starkclaw"; do
+            owner="${repo%%/*}"
+            name="${repo##*/}"
+            schema_url="https://raw.githubusercontent.com/${owner}/${name}/main/spec/signer-auth-v1.schema.json"
+            vectors_url="https://raw.githubusercontent.com/${owner}/${name}/main/spec/signer-auth-v1.json"
+
+            if ! curl -fsSL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 \
+              "$schema_url" -o "/tmp/${name}-signer-auth-v1.schema.json"; then
+              echo "::warning::${repo} does not publish signer-auth-v1.schema.json on main yet; skipping parity."
+              continue
+            fi
+            if ! curl -fsSL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 \
+              "$vectors_url" -o "/tmp/${name}-signer-auth-v1.json"; then
+              echo "::warning::${repo} does not publish signer-auth-v1.json on main yet; skipping parity."
+              continue
+            fi
+
+            diff -u "spec/signer-auth-v1.schema.json" "/tmp/${name}-signer-auth-v1.schema.json"
+            diff -u "spec/signer-auth-v1.json" "/tmp/${name}-signer-auth-v1.json"
+            echo "Parity OK with ${repo}"
+          done

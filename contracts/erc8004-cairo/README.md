@@ -107,6 +107,7 @@ Typical read paths:
 
 - `read_feedback(agent_id, client_address, feedback_index)`
 - `read_all_feedback(agent_id, client_addresses, tag1, tag2, include_revoked)`
+- `read_all_feedback_paginated(agent_id, client_addresses, tag1, tag2, include_revoked, client_offset, client_limit, feedback_offset, feedback_limit)`
 - `get_summary(agent_id, client_addresses, tag1, tag2)` -> returns `(count, summary_value, summary_value_decimals)`
 
 Note: `get_summary` and `read_all_feedback` both require `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
@@ -148,6 +149,7 @@ Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`.
 - **Not accumulative**: there is no response history map per request. If audit trails are needed, index `ValidationResponse` events off-chain.
 - **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
+- **Correction workflow**: if a validator needs to revise an assessment, create a new request hash and submit a fresh validation response.
 
 ### Reputation Registry: Spam and Griefing Tradeoffs
 
@@ -321,6 +323,21 @@ npm install
 node deploy.js
 ```
 
+### Verify registry owners (recommended)
+
+Run an automated ownership check against live deployments:
+
+```bash
+cd scripts
+npm run verify:owners
+```
+
+To enforce multisig ownership in CI/ops, set `EXPECTED_OWNER_ADDRESS` in `../.env` (or export it in shell) before running:
+
+```bash
+EXPECTED_OWNER_ADDRESS=0x... npm run verify:owners
+```
+
 ## E2E Tests
 
 ```bash
@@ -355,7 +372,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Compare class hashes against reference deployment (if upgrading existing instances)
 
 **3. Deployment Dry Run (Testnet)**
-- [ ] Deploy to Sepolia testnet using `scripts/deploy.js`
+- [ ] Deploy to target network using `scripts/deploy.js` (`STARKNET_NETWORK=sepolia|mainnet`)
 - [ ] Verify deployment: all three contracts deployed successfully
 - [ ] Verify constructor arguments: owner address matches deployer, identity registry references are correct in reputation and validation registries
 - [ ] Run E2E tests: `cd e2e-tests && npm install && npm test` (all tests must pass)
@@ -381,6 +398,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Verify IdentityRegistry owner: `get_owner()` returns multisig address
 - [ ] Verify ReputationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
 - [ ] Verify ValidationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
+- [ ] Run automated owner check: `cd scripts && EXPECTED_OWNER_ADDRESS=0x... npm run verify:owners`
 - [ ] Test agent registration: mint agent NFT via `register_with_token_uri`
 - [ ] Test metadata write: `set_metadata(agent_id, "test", "value")`
 - [ ] Test feedback write: `give_feedback(agent_id, ...)`

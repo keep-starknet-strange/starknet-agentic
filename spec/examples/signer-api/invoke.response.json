@@ -1,0 +1,16 @@
+{
+  "signature": ["0x0123", "0x0ccc", "0x0ddd", "0x698f136c"],
+  "signatureMode": "v2_snip12",
+  "signatureKind": "Snip12",
+  "signerProvider": "local",
+  "sessionPublicKey": "0x0123",
+  "domainHash": "0x03",
+  "messageHash": "0x04",
+  "requestId": "sign-req-002",
+  "audit": {
+    "policyDecision": "allow",
+    "decidedAt": "2026-02-22T10:00:02Z",
+    "keyId": "default",
+    "traceId": "req-invoke-001"
+  }
+}
