@@ -113,14 +113,17 @@ components:
       type: apiKey
       in: header
       name: X-Keyring-Client-Id
+      description: Pre-registered client identifier issued during signer onboarding
     keyringTimestamp:
       type: apiKey
       in: header
       name: X-Keyring-Timestamp
+      description: Unix epoch milliseconds at request time; must be within allowed clock skew
     keyringNonce:
       type: apiKey
       in: header
       name: X-Keyring-Nonce
+      description: Unique per-request UTF-8 nonce (16-256 bytes, no period) rejected on replay
   schemas:
     FeltHex:
       type: string
