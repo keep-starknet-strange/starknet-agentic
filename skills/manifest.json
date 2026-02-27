@@ -3,7 +3,15 @@
   "repo": "keep-starknet-strange/starknet-agentic",
   "skills": [
     {
-      "description": "Use when writing Cairo smart contracts on Starknet \u2014 contract structure, storage, events, interfaces, components, OpenZeppelin v3 patterns, and common contract templates.",
+      "description": "Use when composing contracts from reusable components \u2014 the Mixin pattern, writing custom components, and OpenZeppelin v3 component library (Ownable, ERC20, ERC721, AccessControl, Upgradeable, Pausable).",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-components",
+      "name": "cairo-components",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-components/SKILL.md",
+      "repo_path": "skills/cairo-components",
+      "skill_md_path": "skills/cairo-components/SKILL.md"
+    },
+    {
+      "description": "Use when writing Cairo smart contracts on Starknet \u2014 contract structure, storage, events, interfaces, project layout, and common patterns.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-contracts",
       "name": "cairo-contracts",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-contracts/SKILL.md",
@@ -17,6 +25,14 @@
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-deploy/SKILL.md",
       "repo_path": "skills/cairo-deploy",
       "skill_md_path": "skills/cairo-deploy/SKILL.md"
+    },
+    {
+      "description": "Use when writing Cairo code \u2014 type system, ownership, traits, generics, collections, error handling, and module system. Language fundamentals before contract-specific patterns.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-language",
+      "name": "cairo-language",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-language/SKILL.md",
+      "repo_path": "skills/cairo-language",
+      "skill_md_path": "skills/cairo-language/SKILL.md"
     },
     {
       "description": "Use as an explicit post-test optimization pass \u2014 fixing slow loops, expensive arithmetic, integer splitting or limb assembly, modular reduction, storage slot packing, or BoundedInt type bounds. Invoke after implementation and tests pass.",
