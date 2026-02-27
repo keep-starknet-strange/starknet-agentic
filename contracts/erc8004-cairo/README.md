@@ -333,6 +333,8 @@ Notes:
   - `deployed_addresses.json` (latest run)
   - `deployed_addresses_<network>.json` (latest per network)
   - `deployed_addresses_<network>_<timestamp>.json` (immutable run record)
+- Deployment artifacts are intentionally gitignored and must not be committed because `rpcUrl`
+  fields may contain provider secrets. Only copy contract addresses/class hashes into tracked docs.
 - Sepolia deploys require explicit opt-in: `ALLOW_PUBLIC_DEPLOY=true`.
 - Mainnet deploys require explicit opt-in: `ALLOW_MAINNET_DEPLOY=true`.
 - Sepolia/mainnet deploys also require human-review acknowledgement:
@@ -393,7 +395,8 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Deploy ReputationRegistry with multisig owner and IdentityRegistry address
 - [ ] Deploy ValidationRegistry with multisig owner and IdentityRegistry address
 - [ ] Wait for all deployment transactions to finalize (check `ACCEPTED_ON_L2` status)
-- [ ] Record all three contract addresses in deployment log and version control (`deployed_addresses_mainnet.json` + immutable timestamped artifact)
+- [ ] Record all three contract addresses/class hashes in deployment log and tracked docs
+      (do not commit `deployed_addresses*.json` artifacts)
 
 **6. Post-Deployment Verification**
 - [ ] Verify IdentityRegistry owner: `get_owner()` returns multisig address
