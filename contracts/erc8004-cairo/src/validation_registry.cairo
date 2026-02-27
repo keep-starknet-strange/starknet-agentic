@@ -32,6 +32,11 @@ pub mod ValidationRegistry {
     use starknet::storage::*;
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
 
+    // ============ Constants ============
+    // Defensive ceilings for legacy non-paginated methods.
+    const MAX_SUMMARY_SCAN_REQUESTS: u64 = 2048;
+    const MAX_UNPAGINATED_LIST_ENTRIES: u64 = 2048;
+
     // ============ Components ============
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(
@@ -285,9 +290,12 @@ pub mod ValidationRegistry {
 
             let mut count: u64 = 0;
             let mut total_response: u64 = 0;
+            let mut scanned: u64 = 0;
 
             let mut i = 0;
             while i < len {
+                scanned += 1;
+                assert(scanned <= MAX_SUMMARY_SCAN_REQUESTS, 'Use get_summary_paginated');
                 let request_hash = request_hashes_vec.at(i).read();
                 let resp = self.responses.entry(request_hash).read();
 
@@ -421,6 +429,7 @@ pub mod ValidationRegistry {
         fn get_agent_validations(self: @ContractState, agent_id: u256) -> Array<u256> {
             let mut result = ArrayTrait::new();
             let vec = self.agent_validations.entry(agent_id);
+            assert(vec.len() <= MAX_UNPAGINATED_LIST_ENTRIES, 'Use paginated list');
 
             let mut i = 0;
             while i < vec.len() {
@@ -458,6 +467,7 @@ pub mod ValidationRegistry {
         ) -> Array<u256> {
             let mut result = ArrayTrait::new();
             let vec = self.validator_requests.entry(validator_address);
+            assert(vec.len() <= MAX_UNPAGINATED_LIST_ENTRIES, 'Use paginated list');
 
             let mut i = 0;
             while i < vec.len() {
@@ -508,6 +518,10 @@ pub mod ValidationRegistry {
 
         fn get_identity_registry(self: @ContractState) -> ContractAddress {
             self.identity_registry.read()
+        }
+
+        fn get_version(self: @ContractState) -> ByteArray {
+            "2.0.0"
         }
 
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {

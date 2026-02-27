@@ -40,6 +40,12 @@ pub mod ReputationRegistry {
     // Defensive ceiling for the legacy non-paginated reader.
     // Large reads should use `read_all_feedback_paginated`.
     const MAX_READ_ALL_FEEDBACK_ENTRIES: u32 = 2048;
+    // Defensive ceiling for the legacy non-paginated summary.
+    const MAX_SUMMARY_SCAN_FEEDBACK_ENTRIES: u32 = 2048;
+    // Defensive ceiling for unpaginated client list reads.
+    const MAX_GET_CLIENTS_ENTRIES: u64 = 2048;
+    // Defensive ceiling for response-count full scans.
+    const MAX_RESPONSE_COUNT_SCAN_ENTRIES: u64 = 4096;
 
     // ============ Component Declarations ============
     component!(
@@ -294,12 +300,15 @@ pub mod ReputationRegistry {
             let mut decimal_counts: Felt252Dict<u64> = Default::default();
 
             let mut i: u32 = 0;
+            let mut scanned_feedbacks: u32 = 0;
             while i < client_addresses.len() {
                 let client = *client_addresses.at(i);
                 let last_idx = self.last_index.entry((agent_id, client)).read();
 
                 let mut j: u64 = 1;
                 while j <= last_idx {
+                    scanned_feedbacks += 1;
+                    assert(scanned_feedbacks <= MAX_SUMMARY_SCAN_FEEDBACK_ENTRIES, 'Use get_summary_paginated');
                     let fb = self.feedback_core.entry((agent_id, client, j)).read();
 
                     // Skip revoked feedback
@@ -846,6 +855,7 @@ pub mod ReputationRegistry {
             }
 
             let mut count: u64 = 0;
+            let mut scanned_feedbacks: u64 = 0;
 
             if client_address.is_zero() {
                 // Count all responses for all clients from specified responders
@@ -857,6 +867,8 @@ pub mod ReputationRegistry {
 
                     let mut j: u64 = 1;
                     while j <= last_idx {
+                        scanned_feedbacks += 1;
+                        assert(scanned_feedbacks <= MAX_RESPONSE_COUNT_SCAN_ENTRIES, 'Specify client_address');
                         let mut k: u32 = 0;
                         while k < responders.len() {
                             count += self
@@ -874,6 +886,8 @@ pub mod ReputationRegistry {
                 let last_idx = self.last_index.entry((agent_id, client_address)).read();
                 let mut j: u64 = 1;
                 while j <= last_idx {
+                    scanned_feedbacks += 1;
+                    assert(scanned_feedbacks <= MAX_RESPONSE_COUNT_SCAN_ENTRIES, 'Use narrower query');
                     let mut k: u32 = 0;
                     while k < responders.len() {
                         count += self
@@ -902,6 +916,7 @@ pub mod ReputationRegistry {
         fn get_clients(self: @ContractState, agent_id: u256) -> Array<ContractAddress> {
             let mut result: Array<ContractAddress> = ArrayTrait::new();
             let client_vec = self.clients.entry(agent_id);
+            assert(client_vec.len() <= MAX_GET_CLIENTS_ENTRIES, 'Use get_clients_paginated');
 
             let mut i: u64 = 0;
             while i < client_vec.len() {
@@ -912,6 +927,32 @@ pub mod ReputationRegistry {
             result
         }
 
+        fn get_clients_paginated(
+            self: @ContractState, agent_id: u256, offset: u64, limit: u64,
+        ) -> (Array<ContractAddress>, bool) {
+            let mut result: Array<ContractAddress> = ArrayTrait::new();
+            let client_vec = self.clients.entry(agent_id);
+            let len = client_vec.len();
+
+            if offset >= len {
+                return (result, false);
+            }
+
+            if limit == 0 {
+                return (result, true);
+            }
+
+            let remaining = len - offset;
+            let end = if limit < remaining { offset + limit } else { len };
+            let mut i = offset;
+            while i < end {
+                result.append(client_vec.at(i).read());
+                i += 1;
+            };
+
+            (result, end < len)
+        }
+
         fn get_last_index(
             self: @ContractState, agent_id: u256, client_address: ContractAddress,
         ) -> u64 {
@@ -920,6 +961,10 @@ pub mod ReputationRegistry {
 
         fn get_identity_registry(self: @ContractState) -> ContractAddress {
             self.identity_registry.read()
+        }
+
+        fn get_version(self: @ContractState) -> ByteArray {
+            "2.0.0"
         }
     }
 

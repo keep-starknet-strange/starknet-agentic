@@ -1,6 +1,6 @@
 # ERC-8004: Trustless Agents Registry (Cairo)
 
-Cairo implementation of the [ERC-8004 Trustless Agent Registry](https://eips.ethereum.org/EIPS/eip-8004) standard for Starknet. This implementation is fully on par with the [Solidity reference implementation](https://github.com/erc-8004/erc-8004-contracts), with one key difference: **Poseidon hashing** is used instead of keccak256 and ABI encoding for all hash computations.
+Cairo implementation of the [ERC-8004 Trustless Agent Registry](https://eips.ethereum.org/EIPS/eip-8004) standard for Starknet. The implementation is close to the [Solidity reference implementation](https://github.com/erc-8004/erc-8004-contracts), with explicit Starknet-specific differences documented in [SPEC_DEVIATIONS.md](./SPEC_DEVIATIONS.md).
 
 ## Deployed Contracts
 
@@ -64,6 +64,7 @@ The registry provides optional on-chain metadata:
 The reserved key `agentWallet` is managed specially:
 
 - It can be updated only after proving control of the new wallet via `set_agent_wallet(...)` (SNIP-6 signature verification with domain-separated hash binding to chain + registry address).
+- For explicit nonce UX, use `set_agent_wallet_with_expected_nonce(...)`, which fails fast with `bad nonce` if a stale nonce is supplied.
 - Signatures are single-use: each agent has a wallet-set nonce (`get_wallet_set_nonce(agent_id)`) included in the signed hash.
 - It is cleared automatically on NFT transfer via the `before_update` hook so a new owner must re-verify.
 - Nonce is intentionally not reset on transfer; replay remains blocked because the signed hash binds both owner and nonce.
@@ -107,7 +108,10 @@ Typical read paths:
 
 - `read_feedback(agent_id, client_address, feedback_index)`
 - `read_all_feedback(agent_id, client_addresses, tag1, tag2, include_revoked)`
+- `read_all_feedback_paginated(...)` for large scans
 - `get_summary(agent_id, client_addresses, tag1, tag2)` -> returns `(count, summary_value, summary_value_decimals)`
+- `get_summary_paginated(...)` for bounded aggregation scans
+- `get_clients_paginated(agent_id, offset, limit)` for large client sets
 
 Note: `get_summary` requires `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
 
@@ -122,7 +126,7 @@ The Validation Registry supports:
 
 - `validation_request(validator_address, agent_id, request_uri, request_hash)` (must be called by owner/operator of agent_id)
 - `validation_response(request_hash, response, response_uri, response_hash, tag)` (must be called by the requested validator)
-- Read functions: `get_validation_status`, `get_summary`, `get_agent_validations`, `get_validator_requests`
+- Read functions: `get_validation_status`, `get_summary`, `get_summary_paginated`, `get_agent_validations`, `get_agent_validations_paginated`, `get_validator_requests`, `get_validator_requests_paginated`
 
 ## Runtime Semantics and Integrator Notes
 
@@ -139,13 +143,13 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 
 `agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
 
-### Validation Registry: Overwrite Semantics
+### Validation Registry: Immutable Response Semantics
 
-Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. When the designated validator calls `validation_response` again for the same request, the previous response is **silently overwritten**.
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. The designated validator can respond only once; repeat submissions revert with `'Response already submitted'`.
 
-- **Intentional**: the `last_update` timestamp tracks when the response was last set, enabling update workflows (e.g., validator re-evaluates after agent fix).
-- **Not accumulative**: there is no history of previous responses for a given request. If audit trails are needed, index `ValidationResponse` events off-chain.
-- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`). Only the response is mutable.
+- **Intentional**: this is a hardening choice to make validator outcomes immutable once finalized.
+- **Not accumulative**: there is no response history for a given request hash on-chain. If audit trails are needed, index `ValidationResponse` events off-chain.
+- **Request immutability**: requests themselves cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
 
 ### Reputation Registry: Spam and Griefing Tradeoffs
@@ -171,6 +175,7 @@ The following protections **do not exist on-chain** (accepted risk):
 **Mitigation guidance for integrators**:
 
 - `get_summary()` requires an explicit `client_addresses` list rather than iterating all clients. This is the primary Sybil defense: curate the address list off-chain.
+- Legacy non-paginated methods enforce defensive ceilings and will revert with guidance to paginated alternatives for large scans.
 - Off-chain indexers should apply reputation scoring, rate-limit detection, and Sybil filtering before presenting aggregated results.
 - The `response_count` storage tracks per-responder response counts for each feedback entry, enabling off-chain anomaly detection.
 
@@ -215,7 +220,7 @@ Operators and integrators should treat `agentWallet` as a verified-control-of-ke
 
 1. Register an agent in the Identity Registry (`register_with_token_uri(...)`) and get an `agent_id`.
 2. Publish a registration file (e.g., on IPFS/HTTPS) and set it as the token URI via `set_token_uri(agent_id, ...)`.
-3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (SNIP-6 signature proof bound to this chain and registry contract).
+3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (or `set_agent_wallet_with_expected_nonce(...)` for explicit nonce UX).
 4. Collect feedback from users/clients via `give_feedback(...)` on the Reputation Registry.
 5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback(...)` for off-chain scoring.
 
@@ -224,7 +229,7 @@ Operators and integrators should treat `agentWallet` as a verified-control-of-ke
 **Identity Registry**
 - ERC-721 compatible agent NFTs
 - Flexible key-value metadata storage
-- Agent wallet management with domain-separated SNIP-6 signature verification (`set_agent_wallet`, `get_agent_wallet`, `unset_agent_wallet`)
+- Agent wallet management with domain-separated SNIP-6 signature verification (`set_agent_wallet`, `set_agent_wallet_with_expected_nonce`, `get_agent_wallet`, `unset_agent_wallet`)
 - Automatic wallet clearing on NFT transfer via `before_update` hook
 
 **Reputation Registry**
@@ -232,12 +237,14 @@ Operators and integrators should treat `agentWallet` as a verified-control-of-ke
 - Revocable feedback entries
 - Agent response system
 - Summary statistics with tag filtering
+- Bounded paginated read APIs for high-volume agents
 
 **Validation Registry**
 - Request/response validation workflow
 - Binary (approve/reject) and spectrum (0-100) scores
 - Tag-based categorization
-- Aggregated validation summaries
+- Immutable one-shot validator responses per request hash
+- Bounded paginated read APIs for high-volume agents
 
 ## Project Structure
 
@@ -276,7 +283,7 @@ e2e-tests/
 
 ## Hashing Difference
 
-This implementation uses **Poseidon hashing** (native to Starknet) instead of keccak256 and ABI encoding used in the Solidity version. This is an internal implementation detail and does not affect the contract interface or functionality. The contracts are upgradeable via `replace_class`, allowing migration to keccak if cross-chain verification becomes a requirement.
+This implementation uses **Poseidon hashing** (native to Starknet) instead of keccak256/ABI encoding used in the Solidity version. See [SPEC_DEVIATIONS.md](./SPEC_DEVIATIONS.md) for the full divergence list and integrator impact.
 
 ## Prerequisites
 

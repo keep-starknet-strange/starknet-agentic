@@ -74,6 +74,13 @@ fn give_feedback_helper(
 // ============ Give Feedback Tests ============
 
 #[test]
+fn test_get_version() {
+    let (_, reputation_registry, _, _) = deploy_contracts();
+    let version = reputation_registry.get_version();
+    assert_eq!(version, "2.0.0");
+}
+
+#[test]
 fn test_give_feedback_success() {
     let (identity_registry, reputation_registry, identity_address, reputation_address) =
         deploy_contracts();
@@ -964,6 +971,53 @@ fn test_get_clients_returns_all_clients() {
 
     let clients_arr = reputation_registry.get_clients(agent_id);
     assert_eq!(clients_arr.len(), 2);
+}
+
+#[test]
+fn test_get_clients_paginated() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client2(), 85, 0, "tag1", "tag2",
+    );
+
+    let (page1, truncated1) = reputation_registry.get_clients_paginated(agent_id, 0, 1);
+    assert_eq!(page1.len(), 1);
+    assert(truncated1, 'truncated');
+
+    let (page2, truncated2) = reputation_registry.get_clients_paginated(agent_id, 1, 1);
+    assert_eq!(page2.len(), 1);
+    assert(!truncated2, 'not truncated');
+}
+
+#[test]
+fn test_get_clients_paginated_zero_limit_and_out_of_range_offset() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+
+    let (empty_page, truncated) = reputation_registry.get_clients_paginated(agent_id, 0, 0);
+    assert_eq!(empty_page.len(), 0);
+    assert(truncated, 'truncated');
+
+    let (empty_oob, truncated_oob) = reputation_registry.get_clients_paginated(agent_id, 10, 1);
+    assert_eq!(empty_oob.len(), 0);
+    assert(!truncated_oob, 'not truncated');
 }
 
 #[test]

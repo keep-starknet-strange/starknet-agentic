@@ -100,6 +100,13 @@ fn create_and_respond_validation_with_tag(
 // ============ Validation Request Tests ============
 
 #[test]
+fn test_get_version() {
+    let (_, validation_registry, _, _) = deploy_contracts();
+    let version = validation_registry.get_version();
+    assert_eq!(version, "2.0.0");
+}
+
+#[test]
 fn test_validation_request_success() {
     let (identity_registry, validation_registry, identity_address, validation_address) =
         deploy_contracts();
