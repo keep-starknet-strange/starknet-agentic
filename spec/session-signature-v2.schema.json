@@ -1,14 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://keep-starknet-strange.github.io/starknet-agentic/spec/session-signature-v2.schema.json",
-  "title": "Session signature v2 SNIP-12 conformance vectors",
+  "title": "Session signature v1+v2 conformance vectors",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "spec",
-    "version",
-    "vectors"
-  ],
+  "required": ["spec", "version", "vectors", "sessionVectors"],
   "properties": {
     "spec": {
       "type": "string",
@@ -22,7 +18,14 @@
       "type": "array",
       "minItems": 1,
       "items": {
-        "$ref": "#/$defs/vector"
+        "$ref": "#/$defs/outsideExecutionVector"
+      }
+    },
+    "sessionVectors": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "$ref": "#/$defs/sessionVector"
       }
     }
   },
@@ -38,11 +41,7 @@
     "call": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "to",
-        "selector",
-        "calldata"
-      ],
+      "required": ["to", "selector", "calldata"],
       "properties": {
         "to": {
           "$ref": "#/$defs/felt"
@@ -58,15 +57,10 @@
         }
       }
     },
-    "domain": {
+    "outsideExecutionDomain": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name",
-        "version",
-        "chainId",
-        "revision"
-      ],
+      "required": ["name", "version", "chainId", "revision"],
       "properties": {
         "name": {
           "type": "string",
@@ -84,16 +78,10 @@
         }
       }
     },
-    "message": {
+    "outsideExecutionMessage": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "caller",
-        "nonce",
-        "execute_after",
-        "execute_before",
-        "calls"
-      ],
+      "required": ["caller", "nonce", "execute_after", "execute_before", "calls"],
       "properties": {
         "caller": {
           "$ref": "#/$defs/bigNumberish"
@@ -116,13 +104,10 @@
         }
       }
     },
-    "expected": {
+    "outsideExecutionExpected": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "domainHash",
-        "messageHash"
-      ],
+      "required": ["domainHash", "messageHash"],
       "properties": {
         "domainHash": {
           "$ref": "#/$defs/felt"
@@ -133,10 +118,7 @@
         "signature": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "r",
-            "s"
-          ],
+          "required": ["r", "s"],
           "properties": {
             "r": {
               "$ref": "#/$defs/felt"
@@ -148,18 +130,10 @@
         }
       }
     },
-    "vector": {
+    "outsideExecutionVector": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "description",
-        "mode",
-        "accountAddress",
-        "domain",
-        "message",
-        "expected"
-      ],
+      "required": ["id", "description", "mode", "accountAddress", "domain", "message", "expected"],
       "properties": {
         "id": {
           "type": "string",
@@ -177,13 +151,105 @@
           "$ref": "#/$defs/felt"
         },
         "domain": {
-          "$ref": "#/$defs/domain"
+          "$ref": "#/$defs/outsideExecutionDomain"
         },
         "message": {
-          "$ref": "#/$defs/message"
+          "$ref": "#/$defs/outsideExecutionMessage"
         },
         "expected": {
-          "$ref": "#/$defs/expected"
+          "$ref": "#/$defs/outsideExecutionExpected"
+        }
+      }
+    },
+    "sessionPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accountAddress", "chainId", "nonce", "validUntil", "calls"],
+      "properties": {
+        "accountAddress": {
+          "$ref": "#/$defs/felt"
+        },
+        "chainId": {
+          "$ref": "#/$defs/felt"
+        },
+        "nonce": {
+          "$ref": "#/$defs/felt"
+        },
+        "validUntil": {
+          "$ref": "#/$defs/felt"
+        },
+        "calls": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/call"
+          }
+        }
+      }
+    },
+    "sessionExpected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shouldVerify", "signingMessageHash", "verificationMessageHash"],
+      "properties": {
+        "shouldVerify": {
+          "type": "boolean"
+        },
+        "signingMessageHash": {
+          "$ref": "#/$defs/felt"
+        },
+        "verificationMessageHash": {
+          "$ref": "#/$defs/felt"
+        },
+        "signingDomainHash": {
+          "$ref": "#/$defs/felt"
+        },
+        "verificationDomainHash": {
+          "$ref": "#/$defs/felt"
+        },
+        "failureCode": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_]+$"
+        }
+      }
+    },
+    "sessionVector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "description",
+        "mode",
+        "status",
+        "signingPayload",
+        "verificationPayload",
+        "expected"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["v1_legacy", "v2_snip12"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["valid", "invalid"]
+        },
+        "signingPayload": {
+          "$ref": "#/$defs/sessionPayload"
+        },
+        "verificationPayload": {
+          "$ref": "#/$defs/sessionPayload"
+        },
+        "expected": {
+          "$ref": "#/$defs/sessionExpected"
         }
       }
     }

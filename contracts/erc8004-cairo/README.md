@@ -107,9 +107,11 @@ Typical read paths:
 
 - `read_feedback(agent_id, client_address, feedback_index)`
 - `read_all_feedback(agent_id, client_addresses, tag1, tag2, include_revoked)`
+- `read_all_feedback_paginated(agent_id, client_addresses, tag1, tag2, include_revoked, client_offset, client_limit, feedback_offset, feedback_limit)`
 - `get_summary(agent_id, client_addresses, tag1, tag2)` -> returns `(count, summary_value, summary_value_decimals)`
 
 Note: `get_summary` requires `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
+Note: `read_all_feedback` is a legacy convenience reader with a defensive scan ceiling (`MAX_READ_ALL_FEEDBACK_ENTRIES`, currently `2048`) across both client and feedback traversal. Large reads should use `read_all_feedback_paginated`.
 
 **Responses and Revocation**
 
@@ -139,14 +141,14 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 
 `agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
 
-### Validation Registry: Overwrite Semantics
+### Validation Registry: Response Immutability
 
-Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. When the designated validator calls `validation_response` again for the same request, the previous response is **silently overwritten**.
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. A designated validator can submit exactly one response per request.
 
-- **Intentional**: the `last_update` timestamp tracks when the response was last set, enabling update workflows (e.g., validator re-evaluates after agent fix).
-- **Not accumulative**: there is no history of previous responses for a given request. If audit trails are needed, index `ValidationResponse` events off-chain.
-- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`). Only the response is mutable.
+- **Enforced immutability**: repeated `validation_response` calls for the same request revert with `'Response already submitted'`.
+- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
+- **Correction workflow**: if a validator needs to revise an assessment, create a new request hash and submit a fresh validation response.
 
 ### Reputation Registry: Spam and Griefing Tradeoffs
 
@@ -217,7 +219,7 @@ Operators and integrators should treat `agentWallet` as a verified-control-of-ke
 2. Publish a registration file (e.g., on IPFS/HTTPS) and set it as the token URI via `set_token_uri(agent_id, ...)`.
 3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (SNIP-6 signature proof bound to this chain and registry contract).
 4. Collect feedback from users/clients via `give_feedback(...)` on the Reputation Registry.
-5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback(...)` for off-chain scoring.
+5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback_paginated(...)` for bounded off-chain scoring.
 
 ## Features
 
@@ -319,6 +321,21 @@ npm install
 node deploy.js
 ```
 
+### Verify registry owners (recommended)
+
+Run an automated ownership check against live deployments:
+
+```bash
+cd scripts
+npm run verify:owners
+```
+
+To enforce multisig ownership in CI/ops, set `EXPECTED_OWNER_ADDRESS` in `../.env` (or export it in shell) before running:
+
+```bash
+EXPECTED_OWNER_ADDRESS=0x... npm run verify:owners
+```
+
 ## E2E Tests
 
 ```bash
@@ -353,7 +370,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Compare class hashes against reference deployment (if upgrading existing instances)
 
 **3. Deployment Dry Run (Testnet)**
-- [ ] Deploy to Sepolia testnet using `scripts/deploy.js`
+- [ ] Deploy to target network using `scripts/deploy.js` (`STARKNET_NETWORK=sepolia|mainnet`)
 - [ ] Verify deployment: all three contracts deployed successfully
 - [ ] Verify constructor arguments: owner address matches deployer, identity registry references are correct in reputation and validation registries
 - [ ] Run E2E tests: `cd e2e-tests && npm install && npm test` (all tests must pass)
@@ -379,6 +396,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Verify IdentityRegistry owner: `get_owner()` returns multisig address
 - [ ] Verify ReputationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
 - [ ] Verify ValidationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
+- [ ] Run automated owner check: `cd scripts && EXPECTED_OWNER_ADDRESS=0x... npm run verify:owners`
 - [ ] Test agent registration: mint agent NFT via `register_with_token_uri`
 - [ ] Test metadata write: `set_metadata(agent_id, "test", "value")`
 - [ ] Test feedback write: `give_feedback(agent_id, ...)`

@@ -1,0 +1,16 @@
+{
+  "signature": ["0x0123", "0x0aaa", "0x0bbb", "0x698f136c"],
+  "signatureMode": "v2_snip12",
+  "signatureKind": "Snip12",
+  "signerProvider": "dfns",
+  "sessionPublicKey": "0x0123",
+  "domainHash": "0x01",
+  "messageHash": "0x02",
+  "requestId": "sign-req-001",
+  "audit": {
+    "policyDecision": "allow",
+    "decidedAt": "2026-02-22T10:00:00Z",
+    "keyId": "default",
+    "traceId": "req-transfer-001"
+  }
+}
