@@ -1,0 +1,22 @@
+{
+  "accountAddress": "0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50",
+  "keyId": "default",
+  "chainId": "0x534e5f5345504f4c4941",
+  "nonce": "0x2b",
+  "validUntil": 1770984300,
+  "calls": [
+    {
+      "contractAddress": "0x0427028c5f06f4e9a4eb1f8b0f0cf5f8f0b9d4f7e24e8a5f23adf31f5f74387b",
+      "entrypoint": "approve",
+      "calldata": ["0x0658f8d2f3f6", "0xde0b6b3a7640000", "0x0"]
+    }
+  ],
+  "context": {
+    "requester": "starknet-mcp-server",
+    "tool": "starknet_invoke_contract",
+    "reason": "user approved contract invocation",
+    "actor": "starknet-mcp-server",
+    "requestId": "req-invoke-001",
+    "traceId": "req-invoke-001"
+  }
+}

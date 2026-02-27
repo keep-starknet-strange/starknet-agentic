@@ -583,7 +583,13 @@ pub mod ReputationRegistry {
                 let client_vec = self.clients.entry(agent_id);
                 let mut all_clients: Array<ContractAddress> = ArrayTrait::new();
                 let mut i: u64 = 0;
+                let mut build_count: u32 = 0;
                 while i < client_vec.len() {
+                    build_count += 1;
+                    assert(
+                        build_count <= MAX_READ_ALL_FEEDBACK_ENTRIES,
+                        'Use read_all_feedback_paginated',
+                    );
                     all_clients.append(client_vec.at(i).read());
                     i += 1;
                 };
@@ -591,8 +597,14 @@ pub mod ReputationRegistry {
             };
 
             let mut i: u32 = 0;
+            let mut scanned_clients: u32 = 0;
             let mut scanned_feedbacks: u32 = 0;
             while i < client_list.len() {
+                scanned_clients += 1;
+                assert(
+                    scanned_clients <= MAX_READ_ALL_FEEDBACK_ENTRIES,
+                    'Use read_all_feedback_paginated',
+                );
                 let client = *client_list.at(i);
                 let last_idx = self.last_index.entry((agent_id, client)).read();
 

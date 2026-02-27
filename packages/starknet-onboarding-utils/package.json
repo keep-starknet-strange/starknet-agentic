@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@starknet-agentic/shared": "workspace:*",
     "starknet": "^9.2.1"
   },
   "devDependencies": {
@@ -18,4 +19,3 @@
     "vitest": "^4.0.18"
   }
 }
-

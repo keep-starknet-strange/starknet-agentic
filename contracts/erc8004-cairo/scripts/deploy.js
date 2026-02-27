@@ -4,7 +4,6 @@ import {
   Contract,
   Account,
   json,
-  shortString,
   RpcProvider,
   hash,
 } from "starknet";
@@ -19,12 +18,52 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from .env file in project root
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
+const NETWORK_CONFIG = {
+  sepolia: {
+    explorerBaseUrl: "https://sepolia.voyager.online/contract/",
+  },
+  mainnet: {
+    explorerBaseUrl: "https://voyager.online/contract/",
+  },
+};
+
+function normalizeNetwork(value) {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "mainnet" || normalized === "sepolia") {
+    return normalized;
+  }
+  return null;
+}
+
+function inferNetworkFromChainId(chainId) {
+  const raw = String(chainId).toLowerCase();
+
+  if (raw === "0x534e5f5345504f4c4941") {
+    return "sepolia";
+  }
+  if (raw === "0x534e5f4d41494e") {
+    return "mainnet";
+  }
+  return null;
+}
+
 async function main() {
-  console.log("🚀 Deploying ERC-8004 Contracts to Sepolia\n");
+  console.log("🚀 Deploying ERC-8004 Contracts\n");
   console.log("═══════════════════════════════════════════════════════════════\n");
 
   // Get configuration from environment variables
   const rpcUrl = process.env.STARKNET_RPC_URL;
+  const rawRequestedNetwork = process.env.STARKNET_NETWORK;
+  const requestedNetwork = normalizeNetwork(rawRequestedNetwork);
+  if (rawRequestedNetwork && !requestedNetwork) {
+    console.error(
+      `❌ Error: STARKNET_NETWORK must be 'sepolia' or 'mainnet' (received '${rawRequestedNetwork}').`,
+    );
+    process.exit(1);
+  }
   const accountAddress = process.env.DEPLOYER_ADDRESS;
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
@@ -52,6 +91,24 @@ async function main() {
   // Check that communication with provider is OK
   const chainId = await provider.getChainId();
   console.log("🔗 Chain ID:", chainId);
+  const inferredNetwork = inferNetworkFromChainId(chainId);
+  if (!inferredNetwork) {
+    console.error(`❌ Error: Chain ID ${chainId} is not recognized.`);
+    console.error("   Supported networks: sepolia (0x534e5f5345504f4c4941) or mainnet (0x534e5f4d41494e)");
+    console.error("   Verify your STARKNET_RPC_URL points to the correct network.");
+    process.exit(1);
+  }
+  const network = requestedNetwork || inferredNetwork;
+  if (requestedNetwork && requestedNetwork !== inferredNetwork) {
+    console.error(`❌ Error: STARKNET_NETWORK=${requestedNetwork} does not match chain id (${chainId}).`);
+    process.exit(1);
+  }
+  if (network === "mainnet" && process.env.CONFIRM_MAINNET_DEPLOY !== "yes") {
+    console.error("❌ Error: Refusing mainnet deploy without CONFIRM_MAINNET_DEPLOY=yes.");
+    console.error("   Deploy and validate on Sepolia first, then rerun with explicit confirmation.");
+    process.exit(1);
+  }
+  console.log("🌐 Network:", network);
 
   // starknet.js v9 Account constructor uses options object
   const account = new Account({
@@ -170,7 +227,7 @@ async function main() {
 
   // ==================== SAVE DEPLOYMENT INFO ====================
   const deploymentInfo = {
-    network: "sepolia",
+    network,
     rpcUrl: rpcUrl,
     accountAddress: accountAddress,
     ownerAddress: accountAddress,
@@ -191,12 +248,13 @@ async function main() {
     deployedAt: new Date().toISOString(),
   };
 
-  // Save to project root
+  // Write to a stable filename used by tooling that expects a canonical path.
   const outputPath = path.join(__dirname, "..", "deployed_addresses.json");
   fs.writeFileSync(outputPath, JSON.stringify(deploymentInfo, null, 2));
 
-  const sepoliaOutputPath = path.join(__dirname, "..", "deployed_addresses_sepolia.json");
-  fs.writeFileSync(sepoliaOutputPath, JSON.stringify(deploymentInfo, null, 2));
+  // Write to a network-specific file for per-network history and auditing.
+  const networkOutputPath = path.join(__dirname, "..", `deployed_addresses_${network}.json`);
+  fs.writeFileSync(networkOutputPath, JSON.stringify(deploymentInfo, null, 2));
 
   // ==================== SUMMARY ====================
   console.log("╔════════════════════════════════════════════════════════════════╗");
@@ -210,10 +268,12 @@ async function main() {
   console.log("");
   console.log("📄 Deployment info saved to:");
   console.log("   - deployed_addresses.json");
-  console.log("   - deployed_addresses_sepolia.json");
+  console.log(`   - deployed_addresses_${network}.json`);
   console.log("");
   console.log("🔍 View on Voyager:");
-  console.log(`   https://sepolia.voyager.online/contract/${identityAddress}`);
+  console.log(`   IdentityRegistry:   ${NETWORK_CONFIG[network].explorerBaseUrl}${identityAddress}`);
+  console.log(`   ReputationRegistry: ${NETWORK_CONFIG[network].explorerBaseUrl}${reputationAddress}`);
+  console.log(`   ValidationRegistry: ${NETWORK_CONFIG[network].explorerBaseUrl}${validationAddress}`);
   console.log("");
   console.log("🧪 To run E2E tests:");
   console.log("   cd e2e-tests && npm install && npm test");

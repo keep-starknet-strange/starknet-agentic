@@ -12,6 +12,7 @@ import {
   type Call,
   type PaymasterDetails,
 } from "starknet";
+import { trimTrailingChar as trimTrailingCharShared } from "@starknet-agentic/shared/string";
 
 export type ProviderLike = Pick<RpcProvider, "getChainId" | "callContract" | "waitForTransaction">;
 
@@ -60,17 +61,19 @@ export type StarknetNetworkConfigLike = {
   explorer?: string;
 };
 
+export const trimTrailingChar = trimTrailingCharShared;
+
 export function formatBalance(raw: bigint, decimals: number): string {
   if (raw === 0n) {
     return "0";
   }
   const s = raw.toString();
   if (s.length <= decimals) {
-    const frac = s.padStart(decimals, "0").replace(/0+$/, "");
+    const frac = trimTrailingChar(s.padStart(decimals, "0"), "0");
     return frac ? `0.${frac}` : "0";
   }
   const whole = s.slice(0, s.length - decimals);
-  const frac = s.slice(s.length - decimals).replace(/0+$/, "");
+  const frac = trimTrailingChar(s.slice(s.length - decimals), "0");
   return frac ? `${whole}.${frac}` : whole;
 }
 

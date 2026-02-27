@@ -1,4 +1,8 @@
-name: Publish Packages
+# Manual / emergency publish path.
+# Primary release flow is Changesets (see release.yml).
+# This workflow fires when a GitHub Release is created manually and
+# publishes with SLSA build-provenance attestation.
+name: Publish Packages (manual)
 
 on:
   release:

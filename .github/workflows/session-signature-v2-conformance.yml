@@ -5,6 +5,7 @@ on:
     paths:
       - "spec/session-signature-v2.json"
       - "spec/session-signature-v2.schema.json"
+      - "packages/starknet-mcp-server/__tests__/helpers/sessionSignatureVectors.test.ts"
       - ".github/workflows/session-signature-v2-conformance.yml"
   push:
     branches:
@@ -12,6 +13,7 @@ on:
     paths:
       - "spec/session-signature-v2.json"
       - "spec/session-signature-v2.schema.json"
+      - "packages/starknet-mcp-server/__tests__/helpers/sessionSignatureVectors.test.ts"
       - ".github/workflows/session-signature-v2-conformance.yml"
   workflow_dispatch:
 
@@ -21,15 +23,23 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.17.1 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Install AJV CLI
         run: npm install --global ajv-cli@5
@@ -44,51 +54,116 @@ jobs:
 
       - name: Validate vector invariants
         run: |
-          node <<'EOF'
+          node <<'EOF_JS'
           const fs = require("fs");
           const data = JSON.parse(fs.readFileSync("spec/session-signature-v2.json", "utf8"));
-          const ids = new Set();
+          const outsideIds = new Set();
           for (const vector of data.vectors) {
-            if (ids.has(vector.id)) {
-              throw new Error(`Duplicate vector id: ${vector.id}`);
+            if (outsideIds.has(vector.id)) {
+              throw new Error(`Duplicate outside vector id: ${vector.id}`);
             }
-            ids.add(vector.id);
+            outsideIds.add(vector.id);
             if (vector.mode !== "v2_snip12") {
-              throw new Error(`Unexpected mode for ${vector.id}: ${vector.mode}`);
-            }
-            if (vector.domain.name !== "Account.execute_from_outside") {
-              throw new Error(`Unexpected domain.name for ${vector.id}: ${vector.domain.name}`);
-            }
-            if (vector.domain.version !== "2") {
-              throw new Error(`Unexpected domain.version for ${vector.id}: ${vector.domain.version}`);
-            }
-            if (!Array.isArray(vector.message.calls) || vector.message.calls.length === 0) {
-              throw new Error(`Vector ${vector.id} has no calls`);
+              throw new Error(`Unexpected outside mode for ${vector.id}: ${vector.mode}`);
             }
           }
-          console.log(`Validated ${data.vectors.length} vectors`);
-          EOF
 
-  parity_with_sisna:
+          const sessionIds = new Set();
+          let hasV1 = false;
+          let hasV2 = false;
+          let hasValid = false;
+          let hasInvalid = false;
+          for (const vector of data.sessionVectors) {
+            if (sessionIds.has(vector.id)) {
+              throw new Error(`Duplicate session vector id: ${vector.id}`);
+            }
+            sessionIds.add(vector.id);
+            hasV1 = hasV1 || vector.mode === "v1_legacy";
+            hasV2 = hasV2 || vector.mode === "v2_snip12";
+            hasValid = hasValid || vector.status === "valid";
+            hasInvalid = hasInvalid || vector.status === "invalid";
+          }
+
+          if (!hasV1 || !hasV2) {
+            throw new Error("sessionVectors must contain both v1_legacy and v2_snip12");
+          }
+          if (!hasValid || !hasInvalid) {
+            throw new Error("sessionVectors must contain valid and invalid vectors");
+          }
+
+          console.log(
+            `Validated ${data.vectors.length} outside vectors and ${data.sessionVectors.length} session vectors`,
+          );
+          EOF_JS
+
+      - name: Run session vector conformance tests
+        run: pnpm --filter @starknet-agentic/mcp-server test -- __tests__/helpers/sessionSignatureVectors.test.ts
+
+  parity_with_external_repos:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.0
 
       - name: Compare vectors with SISNA main
         run: |
           if ! curl -fsSL \
             https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.schema.json \
             -o /tmp/sisna-session-signature-v2.schema.json; then
-            echo "SISNA schema not published yet on main; skipping parity check."
+            echo "SISNA schema not published yet on main; skipping SISNA parity check."
             exit 0
           fi
           if ! curl -fsSL \
             https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.json \
             -o /tmp/sisna-session-signature-v2.json; then
-            echo "SISNA vector file not published yet on main; skipping parity check."
+            echo "SISNA vector file not published yet on main; skipping SISNA parity check."
             exit 0
           fi
-          diff -u /tmp/sisna-session-signature-v2.schema.json spec/session-signature-v2.schema.json
-          diff -u /tmp/sisna-session-signature-v2.json spec/session-signature-v2.json
+          if ! diff -u /tmp/sisna-session-signature-v2.schema.json spec/session-signature-v2.schema.json; then
+            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+              echo "SISNA schema drift detected on PR; allowing for coordinated rollout."
+            else
+              echo "SISNA schema drift detected on ${GITHUB_EVENT_NAME}; failing."
+              exit 1
+            fi
+          fi
+          if ! diff -u /tmp/sisna-session-signature-v2.json spec/session-signature-v2.json; then
+            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+              echo "SISNA vector drift detected on PR; allowing for coordinated rollout."
+            else
+              echo "SISNA vector drift detected on ${GITHUB_EVENT_NAME}; failing."
+              exit 1
+            fi
+          fi
+
+      - name: Compare vectors with starkclaw main
+        run: |
+          if ! curl -fsSL \
+            https://raw.githubusercontent.com/keep-starknet-strange/starkclaw/main/spec/session-signature-v2.schema.json \
+            -o /tmp/starkclaw-session-signature-v2.schema.json; then
+            echo "starkclaw schema not published yet on main; skipping starkclaw parity check."
+            exit 0
+          fi
+          if ! curl -fsSL \
+            https://raw.githubusercontent.com/keep-starknet-strange/starkclaw/main/spec/session-signature-v2.json \
+            -o /tmp/starkclaw-session-signature-v2.json; then
+            echo "starkclaw vector file not published yet on main; skipping starkclaw parity check."
+            exit 0
+          fi
+          if ! diff -u /tmp/starkclaw-session-signature-v2.schema.json spec/session-signature-v2.schema.json; then
+            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+              echo "starkclaw schema drift detected on PR; allowing for coordinated rollout."
+            else
+              echo "starkclaw schema drift detected on ${GITHUB_EVENT_NAME}; failing."
+              exit 1
+            fi
+          fi
+          if ! diff -u /tmp/starkclaw-session-signature-v2.json spec/session-signature-v2.json; then
+            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+              echo "starkclaw vector drift detected on PR; allowing for coordinated rollout."
+            else
+              echo "starkclaw vector drift detected on ${GITHUB_EVENT_NAME}; failing."
+              exit 1
+            fi
+          fi

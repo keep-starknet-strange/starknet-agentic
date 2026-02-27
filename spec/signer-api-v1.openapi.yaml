@@ -1,0 +1,380 @@
+openapi: 3.1.0
+info:
+  title: Starknet Signer Proxy API
+  version: 1.0.0
+  summary: Session transaction signing API for Starknet MCP proxy mode
+  description: |
+    Versioned signer boundary between `starknet-mcp-server` and a remote keyring signer.
+
+    Signature envelope is fixed to `[session_pubkey, r, s, valid_until]` and `signatureMode=v2_snip12`.
+    Header authentication is declared at the API level below; mTLS is enforced by deployment
+    policy and infrastructure controls (documented in `docs/security/SIGNER_API_SPEC.md`).
+servers:
+  - url: https://signer.internal:8545
+security:
+  - keyringHmac: []
+    keyringClientId: []
+    keyringTimestamp: []
+    keyringNonce: []
+paths:
+  /v1/sign/session-transaction:
+    post:
+      operationId: signSessionTransaction
+      summary: Sign a Starknet account transaction using session key policy
+      description: |
+        Signs an invoke transaction request under server-side policy checks.
+
+        HMAC signing payload is:
+        `X-Keyring-Timestamp + "." + X-Keyring-Nonce + ".POST./v1/sign/session-transaction." + sha256(raw_json_body)`
+        where `sha256(raw_json_body)` is the lowercase-hex SHA-256 digest of the exact raw JSON request bytes sent on the wire.
+        The hex digest string is concatenated into the payload (not raw hash bytes).
+        The `X-Keyring-Signature` value is the lowercase-hex HMAC-SHA256 digest of this payload.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignSessionTransactionRequest'
+            examples:
+              transfer:
+                $ref: '#/components/examples/TransferRequest'
+              invoke:
+                $ref: '#/components/examples/InvokeRequest'
+              x402:
+                $ref: '#/components/examples/X402Request'
+      responses:
+        '200':
+          description: Signature produced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignSessionTransactionResponse'
+              examples:
+                transfer:
+                  $ref: '#/components/examples/TransferResponse'
+                invoke:
+                  $ref: '#/components/examples/InvokeResponse'
+                x402:
+                  $ref: '#/components/examples/X402Response'
+        '400':
+          description: Invalid request schema or malformed felt fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
+        '401':
+          description: Authentication failed (invalid HMAC/client)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
+        '403':
+          description: mTLS/authz policy failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
+        '409':
+          description: Replay detected (nonce already used)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
+        '422':
+          description: Session/account policy denied the request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
+        '503':
+          description: Signer temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
+components:
+  securitySchemes:
+    keyringHmac:
+      type: apiKey
+      in: header
+      name: X-Keyring-Signature
+      description: Lowercase hex HMAC-SHA256 over canonical payload
+    keyringClientId:
+      type: apiKey
+      in: header
+      name: X-Keyring-Client-Id
+    keyringTimestamp:
+      type: apiKey
+      in: header
+      name: X-Keyring-Timestamp
+    keyringNonce:
+      type: apiKey
+      in: header
+      name: X-Keyring-Nonce
+      description: |
+        One-time client nonce. Recommended format for interoperability:
+        16-32 random bytes encoded as lowercase hex (32-64 chars).
+  schemas:
+    FeltHex:
+      type: string
+      pattern: '^0x[0-9a-fA-F]+$'
+      maxLength: 66
+      examples: ['0x1234']
+    SignCall:
+      type: object
+      additionalProperties: false
+      required: [contractAddress, entrypoint, calldata]
+      properties:
+        contractAddress:
+          $ref: '#/components/schemas/FeltHex'
+        entrypoint:
+          type: string
+          minLength: 1
+        calldata:
+          type: array
+          maxItems: 256
+          items:
+            $ref: '#/components/schemas/FeltHex'
+    SignContext:
+      type: object
+      additionalProperties: false
+      required: [requester, tool, reason, actor, requestId, traceId]
+      properties:
+        requester:
+          type: string
+          minLength: 1
+        tool:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        actor:
+          type: string
+          minLength: 1
+        requestId:
+          type: string
+          minLength: 1
+        traceId:
+          type: string
+          minLength: 1
+        sessionId:
+          type: string
+    SignSessionTransactionRequest:
+      type: object
+      additionalProperties: false
+      required: [accountAddress, keyId, chainId, nonce, validUntil, calls, context]
+      properties:
+        accountAddress:
+          $ref: '#/components/schemas/FeltHex'
+        keyId:
+          type: string
+          minLength: 1
+        chainId:
+          $ref: '#/components/schemas/FeltHex'
+        nonce:
+          $ref: '#/components/schemas/FeltHex'
+        validUntil:
+          type: integer
+          minimum: 1
+        calls:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/SignCall'
+        context:
+          $ref: '#/components/schemas/SignContext'
+    SignSessionTransactionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        [signature, signatureMode, signatureKind, signerProvider, sessionPublicKey, domainHash, messageHash, requestId, audit]
+      properties:
+        signature:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/FeltHex'
+          description: '[session_pubkey, r, s, valid_until]'
+        signatureMode:
+          type: string
+          enum: [v2_snip12]
+        signatureKind:
+          type: string
+          enum: [Snip12]
+        signerProvider:
+          type: string
+          enum: [local, dfns]
+        sessionPublicKey:
+          $ref: '#/components/schemas/FeltHex'
+        domainHash:
+          $ref: '#/components/schemas/FeltHex'
+        messageHash:
+          $ref: '#/components/schemas/FeltHex'
+        requestId:
+          type: string
+          minLength: 1
+        audit:
+          type: object
+          additionalProperties: false
+          required: [policyDecision, decidedAt, keyId, traceId]
+          properties:
+            policyDecision:
+              type: string
+              enum: [allow]
+            decidedAt:
+              type: string
+              format: date-time
+            keyId:
+              type: string
+              minLength: 1
+            traceId:
+              type: string
+              minLength: 1
+    SignerErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error, errorCode, requestId, retryable]
+      properties:
+        error:
+          type: string
+        errorCode:
+          type: string
+          description: |
+            Stable machine code. Status mapping:
+            AUTH_INVALID_HMAC/AUTH_INVALID_NONCE/AUTH_INVALID_SIGNATURE_FORMAT/AUTH_INVALID_CLIENT/AUTH_TIMESTAMP_SKEW -> 401,
+            AUTH_MTLS_REQUIRED -> 403, REPLAY_NONCE_USED -> 409,
+            POLICY_SELECTOR_DENIED/POLICY_CALL_NOT_ALLOWED -> 422,
+            RATE_LIMITED -> 429, SIGNER_UNAVAILABLE -> 503, INTERNAL_ERROR -> 500.
+          enum:
+            - AUTH_INVALID_HMAC
+            - AUTH_INVALID_NONCE
+            - AUTH_INVALID_SIGNATURE_FORMAT
+            - AUTH_INVALID_CLIENT
+            - AUTH_TIMESTAMP_SKEW
+            - AUTH_MTLS_REQUIRED
+            - REPLAY_NONCE_USED
+            - POLICY_SELECTOR_DENIED
+            - POLICY_CALL_NOT_ALLOWED
+            - RATE_LIMITED
+            - SIGNER_UNAVAILABLE
+            - INTERNAL_ERROR
+        requestId:
+          type: string
+          minLength: 1
+        retryable:
+          type: boolean
+  examples:
+    TransferRequest:
+      value:
+        accountAddress: '0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50'
+        keyId: default
+        chainId: '0x534e5f5345504f4c4941'
+        nonce: '0x2a'
+        validUntil: 1770984300
+        calls:
+          - contractAddress: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7'
+            entrypoint: transfer
+            calldata: ['0x0123', '0x2386f26fc10000', '0x0']
+        context:
+          requester: starknet-mcp-server
+          tool: starknet_transfer
+          reason: user approved token transfer
+          actor: starknet-mcp-server
+          requestId: req-transfer-001
+          traceId: req-transfer-001
+    TransferResponse:
+      value:
+        signature: ['0x0123', '0x0aaa', '0x0bbb', '0x698f136c']
+        signatureMode: v2_snip12
+        signatureKind: Snip12
+        signerProvider: dfns
+        sessionPublicKey: '0x0123'
+        domainHash: '0x01'
+        messageHash: '0x02'
+        requestId: sign-req-001
+        audit:
+          policyDecision: allow
+          decidedAt: '2026-02-22T10:00:00Z'
+          keyId: default
+          traceId: req-transfer-001
+    InvokeRequest:
+      value:
+        accountAddress: '0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50'
+        keyId: default
+        chainId: '0x534e5f5345504f4c4941'
+        nonce: '0x2b'
+        validUntil: 1770984300
+        calls:
+          - contractAddress: '0x0427028c5f06f4e9a4eb1f8b0f0cf5f8f0b9d4f7e24e8a5f23adf31f5f74387b'
+            entrypoint: approve
+            calldata: ['0x0658f8d2f3f6', '0xde0b6b3a7640000', '0x0']
+        context:
+          requester: starknet-mcp-server
+          tool: starknet_invoke_contract
+          reason: user approved contract invocation
+          actor: starknet-mcp-server
+          requestId: req-invoke-001
+          traceId: req-invoke-001
+    InvokeResponse:
+      value:
+        signature: ['0x0123', '0x0ccc', '0x0ddd', '0x698f136c']
+        signatureMode: v2_snip12
+        signatureKind: Snip12
+        signerProvider: local
+        sessionPublicKey: '0x0123'
+        domainHash: '0x03'
+        messageHash: '0x04'
+        requestId: sign-req-002
+        audit:
+          policyDecision: allow
+          decidedAt: '2026-02-22T10:00:02Z'
+          keyId: default
+          traceId: req-invoke-001
+    X402Request:
+      value:
+        accountAddress: '0x04a6b1f403e879b54ba3e68072fe4c3aaf8eb3617a51d8fea59b769432abbf50'
+        keyId: default
+        chainId: '0x534e5f5345504f4c4941'
+        nonce: '0x2c'
+        validUntil: 1770984300
+        calls:
+          - contractAddress: '0x053c91253bc9682c04929ca02d5d548f9c6f5f5d0f03f4e2f0f2de5ec9f6b31a'
+            entrypoint: transfer
+            calldata: ['0x07ab1c9e', '0x2710', '0x0']
+        context:
+          requester: starknet-mcp-server
+          tool: x402_starknet_sign_payment_required
+          reason: x402 payment settlement transfer
+          actor: starknet-mcp-server
+          requestId: req-x402-001
+          traceId: req-x402-001
+    X402Response:
+      value:
+        signature: ['0x0123', '0x0eee', '0x0fff', '0x698f136c']
+        signatureMode: v2_snip12
+        signatureKind: Snip12
+        signerProvider: dfns
+        sessionPublicKey: '0x0123'
+        domainHash: '0x05'
+        messageHash: '0x06'
+        requestId: sign-req-003
+        audit:
+          policyDecision: allow
+          decidedAt: '2026-02-22T10:00:03Z'
+          keyId: default
+          traceId: req-x402-001

@@ -177,7 +177,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | Function | Solidity reference semantic | Cairo semantic | Status | Type | Notes |
 |----------|-----------------------------|----------------|--------|------|-------|
 | `validation_request` | Requester designates validator | Same semantic | Implemented | Parity | Includes reentrancy guard |
-| `validation_response` | Only designated validator can respond (0..100) | Same semantic | Implemented | Parity | Progressive updates allowed |
+| `validation_response` | Only designated validator can respond (0..100) | One response per request hash | Implemented | Parity + Extension | Extension: response is immutable after first submission |
 | `get_validation_status` | Query by `requestHash`, return status tuple | Same semantic shape | Implemented | Parity | Returns zeroed response fields when not responded |
 | `get_summary` | `(count, avgResponse)` | Same semantic | Implemented | Parity |  |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
@@ -212,10 +212,10 @@ Recommended convention for cross-chain portability:
 
 ### 3.6 Operational Notes (Validation/Reputation)
 
-- Progressive overwrite behavior:
-  - `validation_response` is latest-state storage by design.
-  - A designated validator can update the response over time (progressive validation).
-  - Historical evolution is preserved in event logs, not in a full on-chain response history map.
+- Validation response immutability:
+  - `validation_response` allows exactly one response per `request_hash`.
+  - A second response for the same request reverts (`Response already submitted`).
+  - Revisions require creating a new request hash.
 
 - Unbounded reads:
   - `get_agent_validations`, `get_validator_requests`, and full-list style accessors are O(n).
@@ -409,6 +409,7 @@ Implements the Lucid Agents `Extension` interface:
 | Unauthorized transactions | Session key policies (allowed contracts, methods, time bounds) |
 | Prompt injection via skills | Skill sandboxing; input validation in MCP tools |
 | Replay attacks | Chain ID + nonce in all signatures |
+| Signer-proxy impersonation/replay | HMAC headers (`X-Keyring-Client-Id`, timestamp, nonce, signature) + mTLS for non-loopback production; versioned signer API (`spec/signer-api-v1.openapi.yaml`) and security contract (`docs/security/SIGNER_API_SPEC.md`) |
 | Agent impersonation | On-chain identity verification via ERC-8004 |
 | Rug pull by agent | Emergency kill switch for human owner |
 
