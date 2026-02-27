@@ -824,6 +824,18 @@ fn test_get_agent_validations_paginated_returns_slices_and_truncation() {
 }
 
 #[test]
+#[should_panic(expected: 'limit too large')]
+fn test_get_agent_validations_paginated_rejects_over_limit() {
+    let (identity_registry, validation_registry, identity_address, _) = deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let _ = validation_registry.get_agent_validations_paginated(agent_id, 0, 257);
+}
+
+#[test]
 fn test_get_validator_requests_returns_all_requests() {
     let (identity_registry, validation_registry, identity_address, validation_address) =
         deploy_contracts();
@@ -879,6 +891,13 @@ fn test_get_validator_requests_paginated_returns_slices_and_truncation() {
     assert_eq!(page2.len(), 1);
     assert_eq!(*page2[0], hash3);
     assert(!truncated2, 'not truncated');
+}
+
+#[test]
+#[should_panic(expected: 'limit too large')]
+fn test_get_validator_requests_paginated_rejects_over_limit() {
+    let (_, validation_registry, _, _) = deploy_contracts();
+    let _ = validation_registry.get_validator_requests_paginated(validator(), 0, 257);
 }
 
 #[test]

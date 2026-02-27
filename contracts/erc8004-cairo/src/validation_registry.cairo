@@ -37,6 +37,7 @@ pub mod ValidationRegistry {
     // Defensive ceilings for legacy non-paginated methods.
     const MAX_SUMMARY_SCAN_REQUESTS: u64 = 900;
     const MAX_UNPAGINATED_LIST_ENTRIES: u64 = 900;
+    const MAX_PAGINATED_LIST_LIMIT: u64 = 256;
 
     // ============ Components ============
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -447,6 +448,7 @@ pub mod ValidationRegistry {
             let mut result = ArrayTrait::new();
             let vec = self.agent_validations.entry(agent_id);
             let len = vec.len();
+            assert(limit <= MAX_PAGINATED_LIST_LIMIT, 'limit too large');
 
             if offset >= len {
                 return (result, false);
@@ -485,6 +487,7 @@ pub mod ValidationRegistry {
             let mut result = ArrayTrait::new();
             let vec = self.validator_requests.entry(validator_address);
             let len = vec.len();
+            assert(limit <= MAX_PAGINATED_LIST_LIMIT, 'limit too large');
 
             if offset >= len {
                 return (result, false);
