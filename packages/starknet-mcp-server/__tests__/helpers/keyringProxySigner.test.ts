@@ -258,6 +258,52 @@ describe("KeyringProxySigner", () => {
     ).rejects.toThrow("expected [pubkey, r, s, valid_until]");
   });
 
+  it("rejects proxy responses without signerProvider", async () => {
+    const fetchMock = mockProxySuccessFetch({
+      signerProvider: undefined,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("signerProvider must be local or dfns");
+  });
+
+  it("rejects proxy responses without sessionPublicKey", async () => {
+    const fetchMock = mockProxySuccessFetch({
+      sessionPublicKey: undefined,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("sessionPublicKey is required");
+  });
+
   it("rejects proxy signatures when signatureMode is not v2_snip12", async () => {
     const fetchMock = vi.fn().mockImplementation(async (_url: URL, requestInit?: RequestInit) => {
       const traceId = extractTraceId(requestInit);
@@ -541,11 +587,15 @@ describe("KeyringProxySigner", () => {
         end: () => void;
         destroy: (err?: Error) => void;
       };
+      let writtenBody = "";
       req.setTimeout = vi.fn();
       req.write = vi.fn((chunk: string) => {
         requestBody += chunk;
       });
       req.end = vi.fn(() => {
+        const proxyResponse = buildProxySuccessResponse({
+          body: writtenBody,
+        } as RequestInit);
         callback(response);
         const parsedRequest = JSON.parse(requestBody) as {
           context?: { requestId?: string; traceId?: string };

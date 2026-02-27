@@ -26,6 +26,8 @@ paths:
 
         HMAC signing payload is:
         `X-Keyring-Timestamp + "." + X-Keyring-Nonce + ".POST./v1/sign/session-transaction." + sha256(raw_json_body)`
+        where `sha256(raw_json_body)` is the lowercase-hex SHA-256 digest of the exact raw JSON request bytes sent on the wire.
+        The hex digest string is concatenated into the payload (not raw hash bytes).
         The `X-Keyring-Signature` value is the lowercase-hex HMAC-SHA256 digest of this payload.
       requestBody:
         required: true
@@ -102,6 +104,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SignerErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
 components:
   securitySchemes:
     keyringHmac:
@@ -128,6 +136,7 @@ components:
     FeltHex:
       type: string
       pattern: '^0x[0-9a-fA-F]+$'
+      maxLength: 66
       examples: ['0x1234']
     SignCall:
       type: object
@@ -173,7 +182,7 @@ components:
     SignSessionTransactionRequest:
       type: object
       additionalProperties: false
-      required: [accountAddress, chainId, nonce, validUntil, calls, context]
+      required: [accountAddress, keyId, chainId, nonce, validUntil, calls, context]
       properties:
         accountAddress:
           $ref: '#/components/schemas/FeltHex'
@@ -199,7 +208,7 @@ components:
       type: object
       additionalProperties: false
       required:
-        [signature, signatureMode, signatureKind, domainHash, messageHash, requestId, audit]
+        [signature, signatureMode, signatureKind, signerProvider, sessionPublicKey, domainHash, messageHash, requestId, audit]
       properties:
         signature:
           type: array
@@ -252,8 +261,16 @@ components:
           type: string
         errorCode:
           type: string
+          description: |
+            Stable machine code. Status mapping:
+            AUTH_INVALID_HMAC/AUTH_INVALID_NONCE/AUTH_INVALID_SIGNATURE_FORMAT/AUTH_INVALID_CLIENT/AUTH_TIMESTAMP_SKEW -> 401,
+            AUTH_MTLS_REQUIRED -> 403, REPLAY_NONCE_USED -> 409,
+            POLICY_SELECTOR_DENIED/POLICY_CALL_NOT_ALLOWED -> 422,
+            RATE_LIMITED -> 429, SIGNER_UNAVAILABLE -> 503, INTERNAL_ERROR -> 500.
           enum:
             - AUTH_INVALID_HMAC
+            - AUTH_INVALID_NONCE
+            - AUTH_INVALID_SIGNATURE_FORMAT
             - AUTH_INVALID_CLIENT
             - AUTH_TIMESTAMP_SKEW
             - AUTH_MTLS_REQUIRED

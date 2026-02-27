@@ -8,8 +8,6 @@ on:
     branches: [main]
 
 permissions:
-  security-events: write
-  id-token: write
   contents: read
   actions: read
 
@@ -17,6 +15,11 @@ jobs:
   analysis:
     name: Scorecard analysis
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
     steps:
       - name: Run analysis
         uses: ossf/scorecard-action@e4c423540e964e15ccadc56558705ba15136265c

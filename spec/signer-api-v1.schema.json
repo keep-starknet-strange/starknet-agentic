@@ -17,7 +17,8 @@
   "$defs": {
     "feltHex": {
       "type": "string",
-      "pattern": "^0x[0-9a-fA-F]+$"
+      "pattern": "^0x[0-9a-fA-F]+$",
+      "maxLength": 66
     },
     "signCall": {
       "type": "object",
@@ -78,7 +79,7 @@
     "signSessionTransactionRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["accountAddress", "chainId", "nonce", "validUntil", "calls", "context"],
+      "required": ["accountAddress", "keyId", "chainId", "nonce", "validUntil", "calls", "context"],
       "properties": {
         "accountAddress": {
           "$ref": "#/$defs/feltHex"
@@ -113,7 +114,7 @@
     "signSessionTransactionResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["signature", "signatureMode", "signatureKind", "domainHash", "messageHash", "requestId", "audit"],
+      "required": ["signature", "signatureMode", "signatureKind", "signerProvider", "sessionPublicKey", "domainHash", "messageHash", "requestId", "audit"],
       "properties": {
         "signature": {
           "type": "array",
@@ -185,6 +186,8 @@
           "type": "string",
           "enum": [
             "AUTH_INVALID_HMAC",
+            "AUTH_INVALID_NONCE",
+            "AUTH_INVALID_SIGNATURE_FORMAT",
             "AUTH_INVALID_CLIENT",
             "AUTH_TIMESTAMP_SKEW",
             "AUTH_MTLS_REQUIRED",

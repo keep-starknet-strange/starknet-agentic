@@ -1,0 +1,19 @@
+{
+  "name": "@starknet-agentic/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsup src/string.ts --format esm --dts --outDir dist"
+  },
+  "exports": {
+    "./string": {
+      "types": "./dist/string.d.ts",
+      "default": "./dist/string.js"
+    }
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0"
+  }
+}

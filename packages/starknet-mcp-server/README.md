@@ -64,7 +64,10 @@ KEYRING_CLIENT_ID=starknet-mcp-server
 Signer boundary contract:
 - OpenAPI: `spec/signer-api-v1.openapi.yaml`
 - JSON Schema: `spec/signer-api-v1.schema.json`
+- Auth vectors: `spec/signer-auth-v1.json`
+- Auth vectors schema: `spec/signer-auth-v1.schema.json`
 - Security notes: `docs/security/SIGNER_API_SPEC.md`
+- Rotation runbook: `docs/security/SIGNER_PROXY_ROTATION_RUNBOOK.md`
 
 Interop note:
 - `spec/interop-version.json` remains at `0.1.0` until cross-repo conformance updates land.

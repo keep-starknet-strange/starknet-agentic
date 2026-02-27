@@ -113,6 +113,5 @@ reviews:
       enabled: true
     trufflehog:
       enabled: true
-
 chat:
   auto_reply: true

@@ -6,6 +6,8 @@ This document defines the contract between `packages/starknet-mcp-server` (proxy
 
 - OpenAPI: `spec/signer-api-v1.openapi.yaml`
 - JSON Schema: `spec/signer-api-v1.schema.json`
+- Auth vectors schema: `spec/signer-auth-v1.schema.json`
+- Auth vectors: `spec/signer-auth-v1.json`
 - Examples:
   - `spec/examples/signer-api/transfer.request.json`
   - `spec/examples/signer-api/transfer.response.json`
@@ -29,15 +31,24 @@ The x402 examples document the signer API contract for interoperable clients and
 HMAC headers (all required):
 - `X-Keyring-Client-Id`
 - `X-Keyring-Timestamp`
-- `X-Keyring-Nonce`
+- `X-Keyring-Nonce` (minimum 16 bytes, maximum 256 bytes in UTF-8; must not include `.`. Recommended format: 16-32 random bytes encoded as lowercase hex, i.e. 32-64 hex chars.)
 - `X-Keyring-Signature` (HMAC-SHA256 digest encoded as lowercase hex)
 
 HMAC payload format (HMAC-SHA256, lowercase hex; must match exactly):
-- `<timestamp>.<nonce>.POST./v1/sign/session-transaction.<sha256(raw_json_body)>`
+- `<timestamp>.<nonce>.POST./v1/sign/session-transaction.<sha256_hex(raw_json_body)>`
+- where `sha256_hex(...)` is the lowercase-hex SHA-256 digest of the exact raw JSON bytes on the wire.
 
 mTLS:
 - Required for non-loopback production deployments.
 - Client certificate, key, and CA chain must be configured together.
+
+Replay protection:
+- Nonces are one-time use per client (keyed by `(client_id, nonce)` tuple). Implementations MUST use `JSON.stringify([clientId, nonce])` (UTF-8, byte-exact) as the replay key encoding so all replicas and implementations compute byte-identical keys.
+- Production deployments must use a shared replay store so all signer replicas enforce the same nonce uniqueness boundary.
+
+Timestamp policy:
+- `X-Keyring-Timestamp` must be an epoch-milliseconds integer string.
+- Requests outside `timestamp_max_age_ms` are rejected (`AUTH_TIMESTAMP_SKEW`).
 
 ## Required Security Validation (Client-side)
 
@@ -46,16 +57,23 @@ Clients must reject responses unless all conditions hold:
 1. `signatureMode == "v2_snip12"`
 2. `signatureKind == "Snip12"`
 3. `signature` has exactly 4 felts
-4. `signature[0]` matches `sessionPublicKey` (if present)
+4. `signature[0]` matches `sessionPublicKey`
 5. `signature[3]` matches requested `validUntil`
 6. `domainHash` and `messageHash` are present and valid felt hex
 7. session pubkey does not rotate unexpectedly within one client session
+8. `requestId` is a non-empty string
+9. `audit` object is present and `audit.policyDecision === "allow"`
+10. `audit.decidedAt` is a strict RFC3339 timestamp
+11. `audit.keyId` and `audit.traceId` are non-empty strings
+12. `signerProvider` is one of `"local"` or `"dfns"`
 
 ## Error Codes
 
 The API standardizes the following `errorCode` values:
 
 - `AUTH_INVALID_HMAC`
+- `AUTH_INVALID_NONCE`
+- `AUTH_INVALID_SIGNATURE_FORMAT`
 - `AUTH_INVALID_CLIENT`
 - `AUTH_TIMESTAMP_SKEW`
 - `AUTH_MTLS_REQUIRED`
@@ -104,3 +122,7 @@ The response also carries a top-level `requestId` for response/error correlation
   - new path version (for example `/v2/...`) or
   - a migration window with explicit dual-mode support.
 - Cross-repo conformance vectors must be updated in lockstep with this contract.
+
+## Operations
+
+- Key rotation + cert rotation procedure: `docs/security/SIGNER_PROXY_ROTATION_RUNBOOK.md`
