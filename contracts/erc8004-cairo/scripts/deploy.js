@@ -4,7 +4,6 @@ import {
   Contract,
   Account,
   json,
-  shortString,
   RpcProvider,
   hash,
 } from "starknet";
@@ -41,20 +40,11 @@ function normalizeNetwork(value) {
 
 function inferNetworkFromChainId(chainId) {
   const raw = String(chainId).toLowerCase();
-  let decoded = "";
 
-  if (typeof chainId === "string" && chainId.startsWith("0x")) {
-    try {
-      decoded = shortString.decodeShortString(chainId).toLowerCase();
-    } catch (_err) {
-      decoded = "";
-    }
-  }
-
-  if (raw === "0x534e5f5345504f4c4941" || decoded === "sn_sepolia") {
+  if (raw === "0x534e5f5345504f4c4941") {
     return "sepolia";
   }
-  if (raw === "0x534e5f4d41494e" || decoded === "sn_main") {
+  if (raw === "0x534e5f4d41494e") {
     return "mainnet";
   }
   return null;
