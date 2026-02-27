@@ -95,13 +95,14 @@ async function main() {
   const chainId = await provider.getChainId();
   console.log("🔗 Chain ID:", chainId);
   const inferredNetwork = inferNetworkFromChainId(chainId);
-  const network = requestedNetwork || inferredNetwork;
-  if (!network || !NETWORK_CONFIG[network]) {
-    console.error("❌ Error: could not determine target network from chain id.");
-    console.error("   Set STARKNET_NETWORK=sepolia or STARKNET_NETWORK=mainnet in .env");
+  if (!inferredNetwork) {
+    console.error(`❌ Error: Chain ID ${chainId} is not recognized.`);
+    console.error("   Supported networks: sepolia (0x534e5f5345504f4c4941) or mainnet (0x534e5f4d41494e)");
+    console.error("   Verify your STARKNET_RPC_URL points to the correct network.");
     process.exit(1);
   }
-  if (requestedNetwork && inferredNetwork && requestedNetwork !== inferredNetwork) {
+  const network = requestedNetwork || inferredNetwork;
+  if (requestedNetwork && requestedNetwork !== inferredNetwork) {
     console.error(`❌ Error: STARKNET_NETWORK=${requestedNetwork} does not match chain id (${chainId}).`);
     process.exit(1);
   }
@@ -245,10 +246,11 @@ async function main() {
     deployedAt: new Date().toISOString(),
   };
 
-  // Save to project root
+  // Write to a stable filename used by tooling that expects a canonical path.
   const outputPath = path.join(__dirname, "..", "deployed_addresses.json");
   fs.writeFileSync(outputPath, JSON.stringify(deploymentInfo, null, 2));
 
+  // Write to a network-specific file for per-network history and auditing.
   const networkOutputPath = path.join(__dirname, "..", `deployed_addresses_${network}.json`);
   fs.writeFileSync(networkOutputPath, JSON.stringify(deploymentInfo, null, 2));
 
@@ -267,7 +269,9 @@ async function main() {
   console.log(`   - deployed_addresses_${network}.json`);
   console.log("");
   console.log("🔍 View on Voyager:");
-  console.log(`   ${NETWORK_CONFIG[network].explorerBaseUrl}${identityAddress}`);
+  console.log(`   IdentityRegistry:   ${NETWORK_CONFIG[network].explorerBaseUrl}${identityAddress}`);
+  console.log(`   ReputationRegistry: ${NETWORK_CONFIG[network].explorerBaseUrl}${reputationAddress}`);
+  console.log(`   ValidationRegistry: ${NETWORK_CONFIG[network].explorerBaseUrl}${validationAddress}`);
   console.log("");
   console.log("🧪 To run E2E tests:");
   console.log("   cd e2e-tests && npm install && npm test");
