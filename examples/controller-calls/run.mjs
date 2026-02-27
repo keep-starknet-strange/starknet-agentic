@@ -10,11 +10,13 @@
  *
  * Env vars (only for --execute):
  *   STARKNET_RPC_URL
+ *   STARKNET_RPC_SPEC_VERSION (optional, defaults to 0.9.0; supports 0.9.x/0.10.x)
  *   STARKNET_ACCOUNT_ADDRESS
  *   STARKNET_PRIVATE_KEY
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { resolveRpcSpecVersion } from "../../scripts/rpc-spec-version.mjs";
 
 // --- Call builder (mirrors starknet_build_calls MCP tool logic) ---
 
@@ -100,11 +102,18 @@ if (!rpcUrl || !address || !privateKey) {
   );
   process.exit(1);
 }
+let rpcSpecVersion;
+try {
+  rpcSpecVersion = resolveRpcSpecVersion(process.env.STARKNET_RPC_SPEC_VERSION);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}
 
 console.error("Executing calls with starknet.js...");
 console.error("Calls:", callsJson);
 
-const provider = new RpcProvider({ nodeUrl: rpcUrl });
+const provider = new RpcProvider({ nodeUrl: rpcUrl, specVersion: rpcSpecVersion });
 const account = new Account(provider, address, privateKey);
 const result = await account.execute(calls);
 
