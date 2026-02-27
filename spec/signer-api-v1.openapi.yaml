@@ -90,6 +90,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SignerErrorResponse'
+        '500':
+          description: Internal signer error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignerErrorResponse'
         '503':
           description: Signer temporarily unavailable
           content:
