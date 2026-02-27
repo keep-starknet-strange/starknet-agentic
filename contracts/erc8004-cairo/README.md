@@ -141,14 +141,15 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 
 `agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
 
-### Validation Registry: Response Immutability
+### Validation Registry: Response Immutability Semantics
 
-Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. A designated validator can submit exactly one response per request.
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. The response is **finalize-once**:
 
-- **Enforced immutability**: repeated `validation_response` calls for the same request revert with `'Response already submitted'`.
+- **Single response per request hash**: once the designated validator submits `validation_response`, any second response for the same `request_hash` reverts with `'Response already submitted'`.
+- **Not accumulative**: there is no response history map for a given request hash. If audit trails are needed, index `ValidationResponse` events off-chain (`ValidationResponseEvent` payload type).
 - **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
-- **Correction workflow**: if a validator needs to revise an assessment, create a new request hash and submit a fresh validation response.
+- **How to represent re-evaluation**: create a new validation request with a new `request_hash`.
 
 ### Reputation Registry: Spam and Griefing Tradeoffs
 
@@ -309,9 +310,17 @@ Copy `.env.example` to `.env` and configure:
 STARKNET_RPC_URL=https://starknet-sepolia-rpc.publicnode.com
 DEPLOYER_ADDRESS=0x...
 DEPLOYER_PRIVATE_KEY=0x...
+ALLOW_PUBLIC_DEPLOY=false
+ALLOW_MAINNET_DEPLOY=false
+REVIEW_ACKNOWLEDGED=false
+REVIEWER_IDENTITY=
 TEST_ACCOUNT_ADDRESS=0x...
 TEST_ACCOUNT_PRIVATE_KEY=0x...
 ```
+
+`ALLOW_PUBLIC_DEPLOY` is a safety gate for public testnets (currently Sepolia).
+`ALLOW_MAINNET_DEPLOY` is a separate safety gate for mainnet.
+`REVIEW_ACKNOWLEDGED` and `REVIEWER_IDENTITY` are required for Sepolia/mainnet deploys.
 
 ## Deployment
 
@@ -321,20 +330,18 @@ npm install
 node deploy.js
 ```
 
-### Verify registry owners (recommended)
-
-Run an automated ownership check against live deployments:
-
-```bash
-cd scripts
-npm run verify:owners
-```
-
-To enforce multisig ownership in CI/ops, set `EXPECTED_OWNER_ADDRESS` in `../.env` (or export it in shell) before running:
-
-```bash
-EXPECTED_OWNER_ADDRESS=0x... npm run verify:owners
-```
+Notes:
+- Deploy artifacts are written to:
+  - `deployed_addresses.json` (latest run)
+  - `deployed_addresses_<network>.json` (latest per network)
+  - `deployed_addresses_<network>_<timestamp>.json` (immutable run record)
+- Deployment artifacts are intentionally gitignored and must not be committed because `rpcUrl`
+  fields may contain provider secrets. Only copy contract addresses/class hashes into tracked docs.
+- Sepolia deploys require explicit opt-in: `ALLOW_PUBLIC_DEPLOY=true`.
+- Mainnet deploys require explicit opt-in: `ALLOW_MAINNET_DEPLOY=true`.
+- Sepolia/mainnet deploys also require human-review acknowledgement:
+  - `REVIEW_ACKNOWLEDGED=true`
+  - `REVIEWER_IDENTITY=<name|handle|ticket>`
 
 ## E2E Tests
 
@@ -390,7 +397,8 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Deploy ReputationRegistry with multisig owner and IdentityRegistry address
 - [ ] Deploy ValidationRegistry with multisig owner and IdentityRegistry address
 - [ ] Wait for all deployment transactions to finalize (check `ACCEPTED_ON_L2` status)
-- [ ] Record all three contract addresses in deployment log and version control (`deployed_addresses_mainnet.json`)
+- [ ] Record all three contract addresses/class hashes in deployment log and tracked docs
+      (do not commit `deployed_addresses*.json` artifacts)
 
 **6. Post-Deployment Verification**
 - [ ] Verify IdentityRegistry owner: `get_owner()` returns multisig address
@@ -466,7 +474,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Monitor `OwnershipTransferred` events for unauthorized ownership changes
 - [ ] Monitor `AgentWalletSet` and `AgentWalletUnset` events for wallet verification activity
 - [ ] Monitor `FeedbackGiven` and `FeedbackRevoked` events (ReputationRegistry) for abuse patterns
-- [ ] Monitor `ValidationRequested` and `ValidationResponded` events (ValidationRegistry) for validator activity
+- [ ] Monitor `ValidationRequested` and `ValidationResponse` events (ValidationRegistry, `ValidationResponseEvent` payload type) for validator activity
 
 **14. Metrics and Dashboards**
 - [ ] Total agents registered (IdentityRegistry: `total_agents()`)
