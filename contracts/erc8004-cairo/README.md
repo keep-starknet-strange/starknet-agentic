@@ -20,6 +20,8 @@ Cairo implementation of the [ERC-8004 Trustless Agent Registry](https://eips.eth
 | ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
 | ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
 
+Historical Sepolia addresses (including legacy registry set and AgentAccountFactory) and deployment reconciliation data are documented in [`docs/DEPLOYMENT_TRUTH_SHEET.md`](../../docs/DEPLOYMENT_TRUTH_SHEET.md).
+
 ## About
 
 This repository implements ERC-8004 (Trustless Agents): a lightweight set of on-chain registries that make agents discoverable and enable trust signals across organizational boundaries.
@@ -110,8 +112,8 @@ Typical read paths:
 - `read_all_feedback_paginated(agent_id, client_addresses, tag1, tag2, include_revoked, client_offset, client_limit, feedback_offset, feedback_limit)`
 - `get_summary(agent_id, client_addresses, tag1, tag2)` -> returns `(count, summary_value, summary_value_decimals)`
 
-Note: `get_summary` and `read_all_feedback` both require `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
-For broad scans, use `read_all_feedback_paginated(...)` with bounded windows.
+Note: `get_summary` requires `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
+Note: `read_all_feedback` is a legacy convenience reader with a defensive scan ceiling (`MAX_READ_ALL_FEEDBACK_ENTRIES`, currently `2048`) across both client and feedback traversal. Large reads should use `read_all_feedback_paginated`.
 
 **Responses and Revocation**
 
@@ -141,15 +143,14 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 
 `agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
 
-### Validation Registry: Immutable Response Semantics
+### Validation Registry: Response Finalization Semantics
 
-Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. Once the designated validator calls `validation_response`, the response is finalized and cannot be changed.
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. A response is **finalized once**.
 
-- **Finalize-once**: a second `validation_response` for the same `request_hash` reverts with `'Response already submitted'`.
-- **Not accumulative**: there is no response history map per request. If audit trails are needed, index `ValidationResponse` events off-chain.
+- **Immutable after first submit**: `validation_response` reverts if a response already exists (`'Response already submitted'`).
 - **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
-- **How to represent re-evaluation**: create a new validation request with a new `request_hash`.
+- **Audit trail guidance**: index `ValidationRequest` and `ValidationResponse` events off-chain for full chronology.
 
 ### Reputation Registry: Spam and Griefing Tradeoffs
 
@@ -173,8 +174,7 @@ The following protections **do not exist on-chain** (accepted risk):
 
 **Mitigation guidance for integrators**:
 
-- `get_summary()` and `read_all_feedback()` require an explicit `client_addresses` list rather than iterating all clients. This is the primary Sybil defense: curate the address list off-chain.
-- For whole-registry reads, use `read_all_feedback_paginated()` with bounded `client_limit` / `feedback_limit` windows.
+- `get_summary()` requires an explicit `client_addresses` list rather than iterating all clients. This is the primary Sybil defense: curate the address list off-chain.
 - Off-chain indexers should apply reputation scoring, rate-limit detection, and Sybil filtering before presenting aggregated results.
 - The `response_count` storage tracks per-responder response counts for each feedback entry, enabling off-chain anomaly detection.
 
@@ -221,7 +221,7 @@ Operators and integrators should treat `agentWallet` as a verified-control-of-ke
 2. Publish a registration file (e.g., on IPFS/HTTPS) and set it as the token URI via `set_token_uri(agent_id, ...)`.
 3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (SNIP-6 signature proof bound to this chain and registry contract).
 4. Collect feedback from users/clients via `give_feedback(...)` on the Reputation Registry.
-5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback(...)` with explicit clients. Use `read_all_feedback_paginated(...)` for broad scans.
+5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback_paginated(...)` for bounded off-chain scoring.
 
 ## Features
 
@@ -284,17 +284,17 @@ This implementation uses **Poseidon hashing** (native to Starknet) instead of ke
 
 ## Prerequisites
 
-- Scarb 2.12.1
-- Cairo 2.12.1
-- Snforge 0.43.1
+- Scarb 2.14.x
+- Cairo 2.14.x
+- Snforge 0.54.x
 - Node.js >= 18.0.0
 
 ## Setup
 
 ```bash
 # Clone and build
-git clone git@github.com:Akashneelesh/erc8004-cairo.git
-cd erc8004-cairo
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+cd starknet-agentic/contracts/erc8004-cairo
 
 # Build contracts
 scarb build
@@ -511,7 +511,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 
 **18. Spam or Abuse Detected**
 - [ ] Identify abusive agent_id or client address
-- [ ] Review feedback entries: `read_all_feedback(agent_id, client_addresses, ...)`
+- [ ] Review feedback entries: `read_all_feedback(agent_id, ...)`
 - [ ] Review validation requests: `get_agent_validations(agent_id, ...)`
 - [ ] Document abuse pattern (evidence: transaction hashes, addresses, timestamps)
 - [ ] Publish abuse report (if applicable)

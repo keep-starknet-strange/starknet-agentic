@@ -78,21 +78,19 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 
 ---
 
-## 5) Agent Account: Mainnet Deployment + Verification
+## 5) Agent Account: Deployment Docs Refresh
 
-**Goal:** Deploy AgentAccountFactory to mainnet and publish a verification report.
+**Goal:** Refresh docs to match deployed AgentAccountFactory reality and current deployment truth sources.
 
-**Context:** Sepolia factory is already deployed (`0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e`), but mainnet deployment is still pending.
+**Context:** Sepolia deployment exists; remaining work is documentation/ops alignment and mainnet planning.
 
 **Acceptance:**
-- [ ] Existing Sepolia deployment verified and results attached before mainnet push
-- [ ] Human review completed and maintainer approval recorded before any mainnet deployment
-- [ ] Mainnet deployment executed from `contracts/agent-account/scripts/`
-- [ ] Deployed mainnet address documented in `docs/DEPLOYMENT_TRUTH_SHEET.md` (canonical source)
-- [ ] Ownership verified as multisig
-- [ ] Basic interaction script verifying deployment works on mainnet
+- [ ] Update docs to reference `docs/DEPLOYMENT_TRUTH_SHEET.md`
+- [ ] Document current Sepolia factory address + linked IdentityRegistry
+- [ ] Add mainnet deployment checklist item for AgentAccountFactory
+- [ ] Add owner/multisig verification checklist for post-deploy validation
 
-**Files:** `contracts/agent-account/scripts/`, `contracts/agent-account/README.md`
+**Files:** `contracts/agent-account/README.md`, `docs/DEPLOYMENT_TRUTH_SHEET.md`, `docs/ROADMAP.md`
 
 **Difficulty:** Medium
 

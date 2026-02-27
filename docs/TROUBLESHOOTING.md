@@ -79,7 +79,7 @@ cd skills/starknet-wallet
 npm run check-balance
 
 # Get testnet tokens from faucet
-# Sepolia: https://faucet.goerli.starknet.io/
+# Sepolia: https://starknet-faucet.vercel.app/
 # Or use Starknet Discord #faucet channel
 ```
 

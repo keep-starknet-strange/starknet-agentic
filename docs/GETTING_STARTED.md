@@ -5,7 +5,7 @@ Get your AI agent running on Starknet in **less than 10 minutes**. This guide wa
 ## Prerequisites
 
 - Node.js 18+ installed
-- A Starknet wallet with some testnet ETH/STRK ([get testnet tokens](https://faucet.goerli.starknet.io/))
+- A Starknet wallet with some testnet ETH/STRK ([get testnet tokens](https://starknet-faucet.vercel.app/))
 - Basic familiarity with TypeScript
 
 ## Quick Start (5 Minutes)

@@ -21,9 +21,9 @@ This specification describes both implemented features and planned designs:
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Agent Account Contract | **Tested** | 110 tests across 4 test suites |
-| Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on Sepolia + Mainnet |
+| Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on mainnet + Sepolia (see `docs/DEPLOYMENT_TRUTH_SHEET.md`) |
 | Huginn Registry Contract | **Functional** | Starknet-native reasoning registry at `contracts/huginn-registry/` |
-| MCP Server | **Production** | 9 tools implemented |
+| MCP Server | **Production** | Active tool catalog maintained in `packages/starknet-mcp-server/src/index.ts` |
 | A2A Adapter | **Functional** | Basic implementation complete |
 | Skills | **Mixed** | 6 skills in repo (complete + template + onboarding) |
 | Framework Extensions | **Planned** | Deferred to v2.0 |
@@ -137,7 +137,7 @@ struct SessionPolicy {
 
 Based on ERC-8004, with Starknet-specific enhancements:
 
-- Uses the existing [erc8004-cairo](https://github.com/Akashneelesh/erc8004-cairo) as the foundation
+- Uses the existing [`contracts/erc8004-cairo/`](../contracts/erc8004-cairo/) implementation as the foundation
 - Adds A2A Agent Card URI to agent metadata
 - Integrates with Agent Account contract for automated identity binding
 - Leverages Starknet's native signature verification (SNIP-6)
@@ -254,21 +254,13 @@ This section clarifies v1 invariants for `contracts/huginn-registry/`:
 
 ## 4. MCP Server
 
-**Status:** Production-ready at `packages/starknet-mcp-server/` (1,600+ lines, 9 tools implemented).
+**Status:** Production-ready at `packages/starknet-mcp-server/` (tool inventory maintained in `src/index.ts`).
 
 ### 4.1 Tool Definitions
 
-Current registered tool inventory in `packages/starknet-mcp-server/src/index.ts`:
-
-1. `starknet_get_balance`
-2. `starknet_get_balances`
-3. `starknet_transfer`
-4. `starknet_call_contract`
-5. `starknet_invoke_contract`
-6. `starknet_swap`
-7. `starknet_get_quote`
-8. `starknet_estimate_fee`
-9. `x402_starknet_sign_payment_required`
+Use the live tool inventory in
+`packages/starknet-mcp-server/src/index.ts` as the source of truth instead of a
+duplicated static list in this document.
 
 ### 4.2 Transport
 
