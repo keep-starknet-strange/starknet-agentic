@@ -158,6 +158,8 @@ examples/**/crosschain_receipt.json
 examples/**/onboarding_receipt.json
 examples/**/validation_receipt.json
 examples/**/state.json
+examples/**/demo-evidence.json
+examples/**/TWEET_EVIDENCE.md
 
 # Claude Code
 .claude/settings.local.json
