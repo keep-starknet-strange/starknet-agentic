@@ -148,6 +148,9 @@ pub trait IValidationRegistry<TState> {
     /// @notice Get the identity registry address
     fn get_identity_registry(self: @TState) -> ContractAddress;
 
+    /// @notice Get implementation version
+    fn get_version(self: @TState) -> ByteArray;
+
     /// @notice Upgrade the contract implementation (owner only)
     /// @param new_class_hash The new implementation class hash
     fn upgrade(ref self: TState, new_class_hash: starknet::ClassHash);

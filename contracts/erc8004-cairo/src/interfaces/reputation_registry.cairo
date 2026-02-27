@@ -185,9 +185,19 @@ pub trait IReputationRegistry<TState> {
     /// Get all clients who have given feedback for an agent
     fn get_clients(self: @TState, agent_id: u256) -> Array<ContractAddress>;
 
+    /// Get clients who have given feedback for an agent (paginated)
+    /// @return (clients, truncated)
+    /// - truncated=true means additional items exist after this page
+    fn get_clients_paginated(
+        self: @TState, agent_id: u256, offset: u64, limit: u64,
+    ) -> (Array<ContractAddress>, bool);
+
     /// Get last feedback index for a client-agent pair
     fn get_last_index(self: @TState, agent_id: u256, client_address: ContractAddress) -> u64;
 
     /// Get the identity registry address
     fn get_identity_registry(self: @TState) -> ContractAddress;
+
+    /// Get implementation version
+    fn get_version(self: @TState) -> ByteArray;
 }

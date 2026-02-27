@@ -64,6 +64,15 @@ pub trait IIdentityRegistry<TState> {
         signature: Array<felt252>,
     );
 
+    fn set_agent_wallet_with_expected_nonce(
+        ref self: TState,
+        agent_id: u256,
+        new_wallet: ContractAddress,
+        deadline: u64,
+        expected_nonce: u64,
+        signature: Array<felt252>,
+    );
+
     fn unset_agent_wallet(ref self: TState, agent_id: u256);
 
     // Query functions
@@ -72,4 +81,6 @@ pub trait IIdentityRegistry<TState> {
     fn agent_exists(self: @TState, agent_id: u256) -> bool;
 
     fn is_authorized_or_owner(self: @TState, spender: ContractAddress, agent_id: u256) -> bool;
+
+    fn get_version(self: @TState) -> ByteArray;
 }

@@ -6,3 +6,4 @@ pub mod interfaces;
 pub mod mock; // Mock contracts for testing
 pub mod reputation_registry;
 pub mod validation_registry;
+pub mod version;

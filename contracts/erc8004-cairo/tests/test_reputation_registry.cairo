@@ -4,6 +4,7 @@ use erc8004::interfaces::identity_registry::{
 use erc8004::interfaces::reputation_registry::{
     IReputationRegistryDispatcher, IReputationRegistryDispatcherTrait,
 };
+use erc8004::version::contract_version;
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
     stop_cheat_caller_address,
@@ -21,6 +22,11 @@ fn client() -> ContractAddress {
 
 fn client2() -> ContractAddress {
     0x3.try_into().unwrap()
+}
+
+fn unique_client(seed: u32) -> ContractAddress {
+    let raw: felt252 = (0x100000_u32 + seed).into();
+    raw.try_into().unwrap()
 }
 
 fn responder() -> ContractAddress {
@@ -72,6 +78,13 @@ fn give_feedback_helper(
 }
 
 // ============ Give Feedback Tests ============
+
+#[test]
+fn test_get_version() {
+    let (_, reputation_registry, _, _) = deploy_contracts();
+    let version = reputation_registry.get_version();
+    assert_eq!(version, contract_version());
+}
 
 #[test]
 fn test_give_feedback_success() {
@@ -1056,6 +1069,210 @@ fn test_get_clients_returns_all_clients() {
 
     let clients_arr = reputation_registry.get_clients(agent_id);
     assert_eq!(clients_arr.len(), 2);
+}
+
+#[test]
+fn test_get_clients_paginated() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client2(), 85, 0, "tag1", "tag2",
+    );
+
+    let (page1, truncated1) = reputation_registry.get_clients_paginated(agent_id, 0, 1);
+    assert_eq!(page1.len(), 1);
+    assert_eq!(*page1.at(0), client());
+    assert(truncated1, 'truncated');
+
+    let (page2, truncated2) = reputation_registry.get_clients_paginated(agent_id, 1, 1);
+    assert_eq!(page2.len(), 1);
+    assert_eq!(*page2.at(0), client2());
+    assert(!truncated2, 'not truncated');
+}
+
+#[test]
+fn test_get_clients_paginated_zero_limit_and_out_of_range_offset() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    give_feedback_helper(
+        reputation_registry, reputation_address, agent_id, client(), 90, 0, "tag1", "tag2",
+    );
+
+    let (empty_page, truncated) = reputation_registry.get_clients_paginated(agent_id, 0, 0);
+    assert_eq!(empty_page.len(), 0);
+    assert(truncated, 'truncated');
+
+    let (empty_oob, truncated_oob) = reputation_registry.get_clients_paginated(agent_id, 10, 1);
+    assert_eq!(empty_oob.len(), 0);
+    assert(!truncated_oob, 'not truncated');
+}
+
+#[test]
+#[should_panic(expected: 'client_limit too large')]
+fn test_get_clients_paginated_rejects_over_limit() {
+    let (identity_registry, reputation_registry, identity_address, _) = deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let _ = reputation_registry.get_clients_paginated(agent_id, 0, 257);
+}
+
+#[test]
+fn test_get_summary_allows_max_zero_feedback_client_scan() {
+    let (identity_registry, reputation_registry, identity_address, _) = deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let mut clients_filter: Array<ContractAddress> = ArrayTrait::new();
+    let mut i: u32 = 0;
+    while i < 2048 {
+        clients_filter.append(client());
+        i += 1;
+    };
+
+    let (count, avg_value, avg_decimals) = reputation_registry
+        .get_summary(agent_id, clients_filter.span(), "", "");
+    assert_eq!(count, 0);
+    assert_eq!(avg_value, 0);
+    assert_eq!(avg_decimals, 0);
+}
+
+#[test]
+#[should_panic(expected: 'Use get_summary_paginated')]
+fn test_get_summary_rejects_large_zero_feedback_client_scan() {
+    let (identity_registry, reputation_registry, identity_address, _) = deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let mut clients_filter: Array<ContractAddress> = ArrayTrait::new();
+    let mut i: u32 = 0;
+    while i < 2049 {
+        clients_filter.append(client());
+        i += 1;
+    };
+
+    let _ = reputation_registry.get_summary(agent_id, clients_filter.span(), "", "");
+}
+
+#[test]
+#[should_panic(expected: 'Use get_clients_paginated')]
+fn test_get_clients_rejects_over_limit() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let mut i: u32 = 0;
+    while i < 901 {
+        give_feedback_helper(
+            reputation_registry,
+            reputation_address,
+            agent_id,
+            unique_client(i),
+            1,
+            0,
+            "tag1",
+            "tag2",
+        );
+        i += 1;
+    };
+
+    let _ = reputation_registry.get_clients(agent_id);
+}
+
+#[test]
+fn test_get_clients_allows_limit() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let mut i: u32 = 0;
+    while i < 900 {
+        give_feedback_helper(
+            reputation_registry,
+            reputation_address,
+            agent_id,
+            unique_client(i),
+            1,
+            0,
+            "tag1",
+            "tag2",
+        );
+        i += 1;
+    };
+
+    let clients = reputation_registry.get_clients(agent_id);
+    assert_eq!(clients.len(), 900);
+}
+
+#[test]
+#[should_panic(expected: 'Specify client_address')]
+fn test_get_response_count_rejects_wide_scan_over_limit() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    start_cheat_caller_address(reputation_address, client());
+    let mut i: u64 = 0;
+    while i < 901 {
+        reputation_registry.give_feedback(agent_id, 1, 0, "tag1", "tag2", "", "", 0);
+        i += 1;
+    };
+    stop_cheat_caller_address(reputation_address);
+
+    let responders = array![responder()].span();
+    let zero_client: ContractAddress = 0.try_into().unwrap();
+    let _ = reputation_registry.get_response_count(agent_id, zero_client, 0, responders);
+}
+
+#[test]
+fn test_get_response_count_allows_wide_scan_at_limit() {
+    let (identity_registry, reputation_registry, identity_address, reputation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    start_cheat_caller_address(reputation_address, client());
+    let mut i: u64 = 0;
+    while i < 900 {
+        reputation_registry.give_feedback(agent_id, 1, 0, "tag1", "tag2", "", "", 0);
+        i += 1;
+    };
+    stop_cheat_caller_address(reputation_address);
+
+    let responders = array![responder()].span();
+    let zero_client: ContractAddress = 0.try_into().unwrap();
+    let count = reputation_registry.get_response_count(agent_id, zero_client, 0, responders);
+    assert_eq!(count, 0);
 }
 
 #[test]

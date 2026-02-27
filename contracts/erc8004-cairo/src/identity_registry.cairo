@@ -26,6 +26,7 @@ pub mod IdentityRegistry {
     use erc8004::interfaces::identity_registry::{
         IIdentityRegistry, MetadataEntry, MetadataSet, Registered, URIUpdated,
     };
+    use erc8004::version::contract_version;
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::introspection::src5::SRC5Component;
     use openzeppelin::security::reentrancyguard::ReentrancyGuardComponent;
@@ -297,35 +298,34 @@ pub mod IdentityRegistry {
             assert(current_time <= deadline, 'expired');
             assert(deadline <= current_time + MAX_DEADLINE_DELAY, 'deadline too far');
 
-            // Create message hash for signature verification
-            let owner = self.erc721.owner_of(agent_id);
             let nonce = self.wallet_set_nonces.entry(agent_id).read();
-            let message_hash = self
-                ._compute_wallet_set_hash(agent_id, new_wallet, owner, deadline, nonce);
+            self._set_agent_wallet_with_nonce(agent_id, new_wallet, deadline, nonce, signature);
+        }
 
-            // Verify signature using SNIP-6 is_valid_signature
-            let is_valid = self._verify_wallet_signature(new_wallet, message_hash, signature.span());
-            assert(is_valid, 'invalid wallet sig');
+        fn set_agent_wallet_with_expected_nonce(
+            ref self: ContractState,
+            agent_id: u256,
+            new_wallet: ContractAddress,
+            deadline: u64,
+            expected_nonce: u64,
+            signature: Array<felt252>,
+        ) {
+            // Authorization check
+            assert(self._is_approved_or_owner(agent_id), 'Not authorized');
 
-            // Burn nonce after successful verification to make signatures one-time use.
-            self.wallet_set_nonces.entry(agent_id).write(nonce + 1);
+            // Validate new_wallet is not zero
+            let zero_address: ContractAddress = 0.try_into().unwrap();
+            assert(new_wallet != zero_address, 'bad wallet');
 
-            // Store wallet
-            self.agent_wallets.entry(agent_id).write(new_wallet);
+            // Validate deadline
+            let current_time = get_block_timestamp();
+            assert(current_time <= deadline, 'expired');
+            assert(deadline <= current_time + MAX_DEADLINE_DELAY, 'deadline too far');
 
-            // Emit MetadataSet event for agentWallet with actual address
-            let wallet_value = self._address_to_byte_array(new_wallet);
-            self
-                .emit(
-                    Event::MetadataSet(
-                        MetadataSet {
-                            agent_id,
-                            indexed_key: "agentWallet",
-                            key: "agentWallet",
-                            value: wallet_value,
-                        },
-                    ),
-                );
+            let nonce = self.wallet_set_nonces.entry(agent_id).read();
+            assert(expected_nonce == nonce, 'bad nonce');
+
+            self._set_agent_wallet_with_nonce(agent_id, new_wallet, deadline, nonce, signature);
         }
 
         fn unset_agent_wallet(ref self: ContractState, agent_id: u256) {
@@ -362,6 +362,10 @@ pub mod IdentityRegistry {
         ) -> bool {
             let owner = self.erc721.owner_of(agent_id);
             self.erc721._is_authorized(owner, spender, agent_id)
+        }
+
+        fn get_version(self: @ContractState) -> ByteArray {
+            contract_version()
         }
     }
 
@@ -532,6 +536,41 @@ pub mod IdentityRegistry {
             // SNIP-6 requires `is_valid_signature` to return 'VALID' on success.
             // We intentionally do not accept alternative return markers here.
             result == 'VALID'
+        }
+
+        fn _set_agent_wallet_with_nonce(
+            ref self: ContractState,
+            agent_id: u256,
+            new_wallet: ContractAddress,
+            deadline: u64,
+            nonce: u64,
+            signature: Array<felt252>,
+        ) {
+            let owner = self.erc721.owner_of(agent_id);
+            let message_hash = self
+                ._compute_wallet_set_hash(agent_id, new_wallet, owner, deadline, nonce);
+
+            // Verify signature using SNIP-6 is_valid_signature.
+            let is_valid = self._verify_wallet_signature(new_wallet, message_hash, signature.span());
+            assert(is_valid, 'invalid wallet sig');
+
+            // Burn nonce after successful verification to make signatures one-time use.
+            self.wallet_set_nonces.entry(agent_id).write(nonce + 1);
+
+            self.agent_wallets.entry(agent_id).write(new_wallet);
+
+            let wallet_value = self._address_to_byte_array(new_wallet);
+            self
+                .emit(
+                    Event::MetadataSet(
+                        MetadataSet {
+                            agent_id,
+                            indexed_key: "agentWallet",
+                            key: "agentWallet",
+                            value: wallet_value,
+                        },
+                    ),
+                );
         }
     }
 
