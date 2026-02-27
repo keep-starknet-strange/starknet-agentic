@@ -69,7 +69,7 @@ function assertChainIdNormalizationMappings() {
 function enforceHumanReviewAcknowledgement(network) {
   const requiresReview = network.slug === "mainnet" || network.isPublicTestnet;
   if (!requiresReview) {
-    return;
+    return null;
   }
 
   const reviewAcknowledged = process.env.REVIEW_ACKNOWLEDGED === "true";
@@ -84,6 +84,7 @@ function enforceHumanReviewAcknowledgement(network) {
 
   const reviewedAt = new Date().toISOString();
   console.log(`🧾 Human review acknowledged by ${reviewerIdentity} at ${reviewedAt}`);
+  return { reviewerIdentity, reviewedAt };
 }
 
 function enforceDeploymentSafetyGate(network) {
@@ -94,10 +95,10 @@ function enforceDeploymentSafetyGate(network) {
       console.error("   Set ALLOW_MAINNET_DEPLOY=true in .env to proceed intentionally.");
       process.exit(1);
     }
-    enforceHumanReviewAcknowledgement(network);
+    const reviewMetadata = enforceHumanReviewAcknowledgement(network);
     console.warn("⚠️  MAINNET DEPLOYMENT ENABLED (ALLOW_MAINNET_DEPLOY=true)");
     console.warn("   Verify multisig owner, class hashes, and Sepolia dry run before continuing.\n");
-    return;
+    return reviewMetadata;
   }
 
   if (network.isPublicTestnet) {
@@ -107,10 +108,13 @@ function enforceDeploymentSafetyGate(network) {
       console.error("   Set ALLOW_PUBLIC_DEPLOY=true in .env to proceed intentionally.");
       process.exit(1);
     }
-    enforceHumanReviewAcknowledgement(network);
+    const reviewMetadata = enforceHumanReviewAcknowledgement(network);
     console.warn(`⚠️  ${network.label} DEPLOYMENT ENABLED (ALLOW_PUBLIC_DEPLOY=true)`);
     console.warn("   Verify class hashes, owner account, and post-deploy smoke tests.\n");
+    return reviewMetadata;
   }
+
+  return null;
 }
 
 async function main() {
@@ -147,7 +151,7 @@ async function main() {
   const network = resolveNetworkMetadata(chainId);
   const chainIdHex = normalizeChainId(chainId);
 
-  enforceDeploymentSafetyGate(network);
+  const reviewMetadata = enforceDeploymentSafetyGate(network);
 
   console.log(`🚀 Deploying ERC-8004 Contracts to ${network.label}\n`);
   console.log("═══════════════════════════════════════════════════════════════\n");
@@ -273,6 +277,8 @@ async function main() {
     network: network.slug,
     chainId: chainIdHex,
     rpcUrl: rpcUrl,
+    reviewerIdentity: reviewMetadata?.reviewerIdentity ?? null,
+    reviewedAt: reviewMetadata?.reviewedAt ?? null,
     accountAddress: accountAddress,
     ownerAddress: accountAddress,
     contracts: {
