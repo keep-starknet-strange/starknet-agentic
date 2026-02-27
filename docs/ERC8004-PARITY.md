@@ -19,12 +19,15 @@ For deployment status, use these canonical sources:
 - [`docs/DEPLOYMENT_TRUTH_SHEET.md`](DEPLOYMENT_TRUTH_SHEET.md) (on-chain verified snapshot)
 - [`contracts/erc8004-cairo/README.md`](../contracts/erc8004-cairo/README.md) (contract-local quick reference)
 
+Current vs legacy Sepolia address sets are maintained in the deployment truth sheet to avoid cross-doc drift.
+
 | Registry | Contract | Tests | Deployment status |
 |----------|----------|-------|-------------------|
-| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | 131+ unit + 47 E2E | Mainnet + Sepolia live |
-| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | Included in suite above | Mainnet + Sepolia live |
-| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | Included in suite above | Mainnet + Sepolia live |
-| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 110+ Cairo tests | Factory live on Sepolia; no documented mainnet factory |
+| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | 46 unit + 4 E2E | Mainnet + Sepolia live |
+| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | 48 unit + 3 E2E | Mainnet + Sepolia live |
+| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | 42 unit + 3 E2E | Mainnet + Sepolia live |
+| Total ERC-8004 | `contracts/erc8004-cairo/src/*` | 136 unit + 14 E2E | Mainnet + Sepolia live |
+| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 122 Cairo tests | Factory live on Sepolia; no documented mainnet factory |
 
 ---
 

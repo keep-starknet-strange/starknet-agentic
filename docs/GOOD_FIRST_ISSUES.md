@@ -90,7 +90,7 @@ See [ROADMAP.md](ROADMAP.md) for the full feature roadmap.
 - [ ] Add mainnet deployment checklist item for AgentAccountFactory
 - [ ] Add owner/multisig verification checklist for post-deploy validation
 
-**Files:** `contracts/agent-account/scripts/`, `contracts/agent-account/README.md`
+**Files:** `contracts/agent-account/README.md`, `docs/DEPLOYMENT_TRUTH_SHEET.md`, `docs/ROADMAP.md`
 
 **Difficulty:** Medium
 
