@@ -812,8 +812,41 @@ mod SessionAccount {
             self.session_entrypoints.read((session_key, index))
         }
 
+        /// Returns true if no call in the batch targets this account itself.
+        fn _calls_avoid_self(self: @ContractState, calls: Span<Call>) -> bool {
+            let account_address = get_contract_address();
+            let mut i = 0;
+            loop {
+                if i >= calls.len() {
+                    break;
+                }
+                let call = calls.at(i);
+                if *call.to == account_address {
+                    return false;
+                }
+                i += 1;
+            };
+            true
+        }
+
         /// Returns true if the session key is allowed to execute the given calls.
-        /// Two layers: (1) admin selector blocklist, (2) self-call block for empty whitelist.
+        ///
+        /// Three-layer enforcement (order matters — refs #216, #217):
+        ///   1. Session validity: key exists, not expired, call budget not exhausted.
+        ///   2. Admin selector blocklist: rejects privileged selectors on ANY target
+        ///      contract to prevent privilege escalation even on external contracts
+        ///      that share selector names.
+        ///   3. Self-call guard: rejects any call targeting this account itself,
+        ///      unconditionally, even when an explicit whitelist is configured.
+        ///
+        /// Invariants preserved:
+        ///   - Spending monotonicity: spending counters only increase within a window.
+        ///   - Authorization boundary: session keys cannot modify their own policies,
+        ///     register new session keys, revoke keys, or change the owner key.
+        ///   - Enforcement completeness: guard applies to both __execute__ and
+        ///     execute_from_outside_v2 session paths.
+        ///
+        /// See also: docs/security/SPENDING_POLICY_AUDIT.md
         fn _is_session_allowed_for_calls(
             self: @ContractState, session_key: felt252, calls: Span<Call>,
         ) -> bool {
@@ -828,13 +861,24 @@ mod SessionAccount {
                 return false;
             }
 
-            // Admin selector blocklist
+            // --- Layer 2: Admin selector blocklist ---
+            // Each category prevents a specific privilege escalation vector:
+            //   - upgrade/*: session key could replace account logic with a backdoor
+            //   - *session_key/emergency_revoke*: session key could grant itself
+            //     new permissions or revoke the owner's ability to revoke it
+            //   - set_public_key: session key could replace the owner key
+            //   - __execute__/__validate__/*: re-entrant execution or validation bypass
+            //   - set_agent_id/register_interfaces: identity takeover
+            //   - *spending_policy: session key could raise its own spending limits
             let UPGRADE_SELECTOR: felt252 = selector!("upgrade");
+            let SCHEDULE_UPGRADE_SELECTOR: felt252 = selector!("schedule_upgrade");
             let EXECUTE_UPGRADE_SELECTOR: felt252 = selector!("execute_upgrade");
             let CANCEL_UPGRADE_SELECTOR: felt252 = selector!("cancel_upgrade");
             let SET_UPGRADE_DELAY_SELECTOR: felt252 = selector!("set_upgrade_delay");
+            let REGISTER_SESSION_SELECTOR: felt252 = selector!("register_session_key");
             let ADD_SESSION_SELECTOR: felt252 = selector!("add_or_update_session_key");
             let REVOKE_SESSION_SELECTOR: felt252 = selector!("revoke_session_key");
+            let EMERGENCY_REVOKE_ALL_SELECTOR: felt252 = selector!("emergency_revoke_all");
             let EXECUTE_SELECTOR: felt252 = selector!("__execute__");
             let SET_PUBLIC_KEY_SELECTOR: felt252 = selector!("set_public_key");
             let SET_PUBLIC_KEY_CAMEL_SELECTOR: felt252 = selector!("setPublicKey");
@@ -862,11 +906,14 @@ mod SessionAccount {
                 let sel = *call.selector;
 
                 if sel == UPGRADE_SELECTOR
+                    || sel == SCHEDULE_UPGRADE_SELECTOR
                     || sel == EXECUTE_UPGRADE_SELECTOR
                     || sel == CANCEL_UPGRADE_SELECTOR
                     || sel == SET_UPGRADE_DELAY_SELECTOR
+                    || sel == REGISTER_SESSION_SELECTOR
                     || sel == ADD_SESSION_SELECTOR
                     || sel == REVOKE_SESSION_SELECTOR
+                    || sel == EMERGENCY_REVOKE_ALL_SELECTOR
                     || sel == EXECUTE_SELECTOR
                     || sel == SET_PUBLIC_KEY_SELECTOR
                     || sel == SET_PUBLIC_KEY_CAMEL_SELECTOR
@@ -887,20 +934,15 @@ mod SessionAccount {
                 i += 1;
             };
 
-            // Empty whitelist: block calls targeting this account
+            // Canonical self-call escalation guard used by session validation paths,
+            // including SRC-9 execute_from_outside_v2 via _is_session_allowed_for_calls.
+            // Session path must never target this account, even with a non-empty whitelist.
+            if !self._calls_avoid_self(calls) {
+                return false;
+            }
+
+            // Empty whitelist: any non-self selector is allowed.
             if session.allowed_entrypoints_len == 0 {
-                let account_address = get_contract_address();
-                let mut i = 0;
-                loop {
-                    if i >= calls.len() {
-                        break;
-                    }
-                    let call = calls.at(i);
-                    if *call.to == account_address {
-                        return false;
-                    }
-                    i += 1;
-                };
                 return true;
             }
 

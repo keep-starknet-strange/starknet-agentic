@@ -1,0 +1,19 @@
+# Default owner for everything
+* @omarespejel
+
+# Contracts (Cairo)
+/contracts/ @omarespejel
+
+# TypeScript packages
+/packages/ @omarespejel
+
+# Skills
+/skills/ @omarespejel
+
+# CI/CD and scripts
+/.github/ @omarespejel
+/scripts/ @omarespejel
+
+# Security-sensitive files
+/security/ @omarespejel
+SECURITY.md @omarespejel
