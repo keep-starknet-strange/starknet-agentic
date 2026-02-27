@@ -34,12 +34,17 @@ Maintainer note: for PRs touching `docs/**`, include an explicit `Spec impact:` 
 
 ## 4. Security Launch Gates
 
-- [ ] #216 (block session self-calls) resolved and merged.
-- [ ] #217 (session-path selector denylist) resolved and merged.
-- [ ] #219 (HMAC + mTLS + nonce replay protection) resolved and merged.
-- [ ] #255 (SNIP-12 v2 domain separation) resolved and merged.
-- [ ] #256 (session-signing conformance vectors) resolved and merged.
-- [ ] Formal third-party audit scope and timeline documented.
+- [ ] Issue [#216](https://github.com/keep-starknet-strange/starknet-agentic/issues/216)
+      (session self-call block in `__execute__`) is closed with merged implementation evidence.
+- [ ] Issue [#217](https://github.com/keep-starknet-strange/starknet-agentic/issues/217)
+      (session-path selector denylist for owner/admin entrypoints) is closed with tests.
+- [ ] Issue [#219](https://github.com/keep-starknet-strange/starknet-agentic/issues/219)
+      (HMAC + mTLS + nonce replay protection) has merged rollout evidence and operational runbook.
+- [ ] Issue [#255](https://github.com/keep-starknet-strange/starknet-agentic/issues/255)
+      (SNIP-12 v2 domain separation) is closed with conformance results.
+- [ ] Issue [#256](https://github.com/keep-starknet-strange/starknet-agentic/issues/256)
+      (shared session-signing conformance vectors) is closed across all required repositories.
+- [ ] Formal third-party audit scope, owner, and target delivery window are documented in a tracked issue/PR.
 
 ## 5. Evidence Bundle
 
