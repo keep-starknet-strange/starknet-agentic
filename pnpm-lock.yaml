@@ -146,6 +146,25 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  examples/starkzap-onboard-transfer:
+    dependencies:
+      dotenv:
+        specifier: ^17.3.1
+        version: 17.3.1
+      starkzap:
+        specifier: ^1.0.0
+        version: 1.0.0(typescript@5.9.3)
+    devDependencies:
+      tsx:
+        specifier: ^4.7.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
+
   packages/create-starknet-agent:
     dependencies:
       picocolors:
@@ -3644,6 +3663,23 @@ packages:
   starknet@9.2.1:
     resolution: {integrity: sha512-bFJY2sMZ9tsLBhPCm719MWjoz+doabXIwPX/xtW56EHwAJMRAS6mICF6H2dCwOQHJmCMKpOSFBwW0SaiHzcioQ==}
     engines: {node: '>=22'}
+
+  starkzap@1.0.0:
+    resolution: {integrity: sha512-6SrwECz82I9PHJz2X59MMoySikmiq9vlV2iG4xWhtu71iEoJb46TPkfZ4IsGdAi3ab1JVUHC3sCRLRmYJSIRpQ==}
+    peerDependencies:
+      '@cartridge/controller': ^0.13.9
+      '@ethersproject/shims': '*'
+      fast-text-encoding: '*'
+      react-native-get-random-values: '*'
+    peerDependenciesMeta:
+      '@cartridge/controller':
+        optional: true
+      '@ethersproject/shims':
+        optional: true
+      fast-text-encoding:
+        optional: true
+      react-native-get-random-values:
+        optional: true
 
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
@@ -7898,6 +7934,13 @@ snapshots:
       lossless-json: 4.3.0
       pako: 2.1.0
       ts-mixer: 6.0.4
+    transitivePeerDependencies:
+      - typescript
+      - zod
+
+  starkzap@1.0.0(typescript@5.9.3):
+    dependencies:
+      starknet: 9.2.1(typescript@5.9.3)(zod@4.3.6)
     transitivePeerDependencies:
       - typescript
       - zod
