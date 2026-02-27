@@ -27,6 +27,7 @@ pub mod ReputationRegistry {
     use erc8004::interfaces::reputation_registry::{
         FeedbackCore, FeedbackRevoked, IReputationRegistry, NewFeedback, ResponseAppended,
     };
+    use erc8004::version::contract_version;
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::security::reentrancyguard::ReentrancyGuardComponent;
     use openzeppelin::upgrades::UpgradeableComponent;
@@ -43,9 +44,9 @@ pub mod ReputationRegistry {
     // Defensive ceiling for the legacy non-paginated summary.
     const MAX_SUMMARY_SCAN_FEEDBACK_ENTRIES: u32 = 2048;
     // Defensive ceiling for unpaginated client list reads.
-    const MAX_GET_CLIENTS_ENTRIES: u64 = 2048;
+    const MAX_GET_CLIENTS_ENTRIES: u64 = 900;
     // Defensive ceiling for response-count full scans.
-    const MAX_RESPONSE_COUNT_SCAN_ENTRIES: u64 = 4096;
+    const MAX_RESPONSE_COUNT_SCAN_ENTRIES: u64 = 900;
     // Defensive ceilings for paginated scans to avoid unbounded O(n) reads
     // from user-provided limits.
     const MAX_PAGINATED_CLIENT_LIMIT: u32 = 256;
@@ -308,6 +309,10 @@ pub mod ReputationRegistry {
             while i < client_addresses.len() {
                 let client = *client_addresses.at(i);
                 let last_idx = self.last_index.entry((agent_id, client)).read();
+                if last_idx == 0 {
+                    scanned_feedbacks += 1;
+                    assert(scanned_feedbacks <= MAX_SUMMARY_SCAN_FEEDBACK_ENTRIES, 'Use get_summary_paginated');
+                }
 
                 let mut j: u64 = 1;
                 while j <= last_idx {
@@ -967,7 +972,7 @@ pub mod ReputationRegistry {
         }
 
         fn get_version(self: @ContractState) -> ByteArray {
-            "2.0.0"
+            contract_version()
         }
     }
 

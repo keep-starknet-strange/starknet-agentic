@@ -26,6 +26,7 @@ pub mod IdentityRegistry {
     use erc8004::interfaces::identity_registry::{
         IIdentityRegistry, MetadataEntry, MetadataSet, Registered, URIUpdated,
     };
+    use erc8004::version::contract_version;
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::introspection::src5::SRC5Component;
     use openzeppelin::security::reentrancyguard::ReentrancyGuardComponent;
@@ -364,7 +365,7 @@ pub mod IdentityRegistry {
         }
 
         fn get_version(self: @ContractState) -> ByteArray {
-            "2.0.0"
+            contract_version()
         }
     }
 

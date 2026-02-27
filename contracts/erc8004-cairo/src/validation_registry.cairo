@@ -25,6 +25,7 @@ pub mod ValidationRegistry {
         IValidationRegistry, Request, Response, ValidationRequest as ValidationRequestEvent,
         ValidationResponse as ValidationResponseEvent,
     };
+    use erc8004::version::contract_version;
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use openzeppelin::security::reentrancyguard::ReentrancyGuardComponent;
@@ -34,8 +35,8 @@ pub mod ValidationRegistry {
 
     // ============ Constants ============
     // Defensive ceilings for legacy non-paginated methods.
-    const MAX_SUMMARY_SCAN_REQUESTS: u64 = 2048;
-    const MAX_UNPAGINATED_LIST_ENTRIES: u64 = 2048;
+    const MAX_SUMMARY_SCAN_REQUESTS: u64 = 900;
+    const MAX_UNPAGINATED_LIST_ENTRIES: u64 = 900;
 
     // ============ Components ============
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -521,7 +522,7 @@ pub mod ValidationRegistry {
         }
 
         fn get_version(self: @ContractState) -> ByteArray {
-            "2.0.0"
+            contract_version()
         }
 
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {

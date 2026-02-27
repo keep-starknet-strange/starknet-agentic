@@ -1,6 +1,7 @@
 use erc8004::interfaces::identity_registry::{
     IIdentityRegistryDispatcher, IIdentityRegistryDispatcherTrait, MetadataEntry,
 };
+use erc8004::version::contract_version;
 use core::poseidon::poseidon_hash_span;
 use openzeppelin::interfaces::erc721::{
     IERC721Dispatcher, IERC721DispatcherTrait, IERC721MetadataDispatcher,
@@ -877,7 +878,7 @@ fn test_unset_agent_wallet_unauthorized_reverts() {
 fn test_get_version() {
     let (registry, _, _) = deploy_registry();
     let version = registry.get_version();
-    assert_eq!(version, "2.0.0");
+    assert_eq!(version, contract_version());
 }
 
 #[test]

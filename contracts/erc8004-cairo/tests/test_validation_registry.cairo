@@ -4,6 +4,7 @@ use erc8004::interfaces::identity_registry::{
 use erc8004::interfaces::validation_registry::{
     IValidationRegistryDispatcher, IValidationRegistryDispatcherTrait,
 };
+use erc8004::version::contract_version;
 use openzeppelin::interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
@@ -97,13 +98,156 @@ fn create_and_respond_validation_with_tag(
     stop_cheat_caller_address(validation_address);
 }
 
+fn create_validation_requests_only(
+    validation_registry: IValidationRegistryDispatcher,
+    validation_address: ContractAddress,
+    agent_id: u256,
+    validator_addr: ContractAddress,
+    count: u64,
+) {
+    let request_uri: ByteArray = "ipfs://QmRequest/validation-request.json";
+    start_cheat_caller_address(validation_address, agent_owner());
+    let mut i: u64 = 0;
+    while i < count {
+        let request_hash: u256 = (i + 1).into();
+        validation_registry
+            .validation_request(validator_addr, agent_id, request_uri.clone(), request_hash);
+        i += 1;
+    };
+    stop_cheat_caller_address(validation_address);
+}
+
 // ============ Validation Request Tests ============
 
 #[test]
 fn test_get_version() {
     let (_, validation_registry, _, _) = deploy_contracts();
     let version = validation_registry.get_version();
-    assert_eq!(version, "2.0.0");
+    assert_eq!(version, contract_version());
+}
+
+#[test]
+fn test_get_summary_allows_ceiling_boundary() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_validation_requests_only(
+        validation_registry, validation_address, agent_id, validator(), 900,
+    );
+
+    let empty_validators = array![].span();
+    let (count, avg_response) = validation_registry.get_summary(agent_id, empty_validators, "");
+    assert_eq!(count, 0);
+    assert_eq!(avg_response, 0);
+}
+
+#[test]
+fn test_get_summary_allows_one_below_ceiling() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_validation_requests_only(
+        validation_registry, validation_address, agent_id, validator(), 899,
+    );
+
+    let empty_validators = array![].span();
+    let (count, avg_response) = validation_registry.get_summary(agent_id, empty_validators, "");
+    assert_eq!(count, 0);
+    assert_eq!(avg_response, 0);
+}
+
+#[test]
+#[should_panic(expected: 'Use get_summary_paginated')]
+fn test_get_summary_rejects_over_ceiling() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_validation_requests_only(
+        validation_registry, validation_address, agent_id, validator(), 901,
+    );
+
+    let empty_validators = array![].span();
+    let _ = validation_registry.get_summary(agent_id, empty_validators, "");
+}
+
+#[test]
+#[should_panic(expected: 'Use paginated list')]
+fn test_get_agent_validations_rejects_over_ceiling() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_validation_requests_only(
+        validation_registry, validation_address, agent_id, validator(), 901,
+    );
+
+    let _ = validation_registry.get_agent_validations(agent_id);
+}
+
+#[test]
+fn test_get_agent_validations_allows_ceiling_boundary() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_validation_requests_only(
+        validation_registry, validation_address, agent_id, validator(), 900,
+    );
+
+    let validations = validation_registry.get_agent_validations(agent_id);
+    assert_eq!(validations.len(), 900);
+}
+
+#[test]
+#[should_panic(expected: 'Use paginated list')]
+fn test_get_validator_requests_rejects_over_ceiling() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_validation_requests_only(
+        validation_registry, validation_address, agent_id, validator(), 901,
+    );
+
+    let _ = validation_registry.get_validator_requests(validator());
+}
+
+#[test]
+fn test_get_validator_requests_allows_ceiling_boundary() {
+    let (identity_registry, validation_registry, identity_address, validation_address) =
+        deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    create_validation_requests_only(
+        validation_registry, validation_address, agent_id, validator(), 900,
+    );
+
+    let requests = validation_registry.get_validator_requests(validator());
+    assert_eq!(requests.len(), 900);
 }
 
 #[test]
