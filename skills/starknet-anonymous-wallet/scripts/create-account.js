@@ -8,20 +8,53 @@
  * ERRORS: JSON to stderr
  */
 
-import { stark, hash, ec, Provider } from 'starknet';
+import { stark, hash, ec, RpcProvider } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { randomBytes } from 'crypto';
 import { TyphoonSDK } from 'typhoon-sdk';
+import { resolveRpcUrl } from './_rpc.js';
 
 const ARGENTX_CLASS_HASH = '0x036078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f';
 const SECRETS_DIR = path.join(os.homedir(), '.openclaw', 'secrets', 'starknet');
-import { resolveRpcUrl } from './_rpc.js';
 
 function fail(message, stack) {
   console.error(JSON.stringify({ error: message, stack }));
   process.exit(1);
+}
+
+function printCreateAccountGuide(reason = 'CREATE_ACCOUNT_REQUIRED') {
+  console.log(JSON.stringify({
+    success: true,
+    canProceed: false,
+    nextStep: 'CREATE_ACCOUNT_REQUIRED',
+    reason,
+    message: 'No account note provided yet. Follow the steps below to create your Starknet account.',
+    instructions: [
+      'Step 1: Go to https://www.typhoon-finance.com/app',
+      'Step 2: Make a deposit and download your note file (recommended: STRK for deploy + gas)',
+      'Step 3: Paste the full note JSON here with secret, nullifier, txHash, pool, day'
+    ],
+    noAccountGuide: {
+      title: 'Create Starknet Account via Typhoon',
+      explanation: 'To create an anonymous Starknet account, provide your Typhoon deposit note JSON.',
+      requiredFields: ['secret', 'nullifier', 'txHash', 'pool', 'day'],
+      steps: [
+        { step: 1, title: 'Go to the Typhoon website', url: 'https://www.typhoon-finance.com/app' },
+        { step: 2, title: 'Make a deposit and download your deposit note', description: 'Recommended: deposit STRK so the account has funds for deploy + fees' },
+        { step: 3, title: 'Paste your note JSON', description: 'Paste the full note JSON (secret, nullifier, txHash, pool, day)' }
+      ]
+    },
+    exampleInput: {
+      secret: '...',
+      nullifier: '...',
+      txHash: '0x...',
+      pool: '0x...',
+      day: 0
+    }
+  }));
+  process.exit(0);
 }
 
 function parseInput() {
@@ -33,12 +66,14 @@ function parseInput() {
     try {
       raw = fs.readFileSync(0, 'utf-8');
     } catch {
-      fail('No input. Pass JSON as argument or via stdin.');
+      printCreateAccountGuide('NO_INPUT');
+      return;
     }
   }
   
   if (!raw || !raw.trim()) {
-    fail('Empty input.');
+    printCreateAccountGuide('EMPTY_INPUT');
+    return;
   }
 
   let notes;
@@ -59,10 +94,12 @@ function parseInput() {
   if (!Array.isArray(notes)) notes = [notes];
 
   const required = ['secret', 'nullifier', 'txHash', 'pool', 'day'];
-  return notes.map((note, i) => {
+  return notes
+    .map((note, i) => {
     for (const field of required) {
       if (note[field] === undefined || note[field] === null) {
-        fail(`Note ${i}: missing field "${field}"`);
+        printCreateAccountGuide(`MISSING_FIELD_${field.toUpperCase()}`);
+        return null;
       }
     }
     return {
@@ -72,7 +109,8 @@ function parseInput() {
       pool: note.pool,
       day: note.day,
     };
-  });
+  })
+    .filter(Boolean);
 }
 
 function generateKeypair() {
@@ -139,8 +177,8 @@ async function main() {
   // Capture latest block AFTER deployment (best-effort provenance)
   let latestBlock = null;
   try {
-    const rpcUrl = resolveRpcUrl({});
-  const provider = new Provider({ nodeUrl: rpcUrl });
+    const rpcUrl = resolveRpcUrl();
+    const provider = new RpcProvider({ nodeUrl: rpcUrl });
     const b = await provider.getBlock('latest');
     latestBlock = {
       blockNumber: b.block_number,
