@@ -154,6 +154,14 @@ async function main() {
 
   // Get configuration from environment variables
   const rpcUrl = process.env.STARKNET_RPC_URL;
+  const rawRequestedNetwork = process.env.STARKNET_NETWORK;
+  const requestedNetwork = normalizeNetwork(rawRequestedNetwork);
+  if (rawRequestedNetwork && !requestedNetwork) {
+    console.error(
+      `❌ Error: STARKNET_NETWORK must be 'sepolia' or 'mainnet' (received '${rawRequestedNetwork}').`,
+    );
+    process.exit(1);
+  }
   const accountAddress = process.env.DEPLOYER_ADDRESS;
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
@@ -330,7 +338,7 @@ async function main() {
     deployedAt: new Date().toISOString(),
   };
 
-  // Save to project root
+  // Write to a stable filename used by tooling that expects a canonical path.
   const outputPath = path.join(__dirname, "..", "deployed_addresses.json");
   fs.writeFileSync(outputPath, JSON.stringify(deploymentInfo, null, 2));
 

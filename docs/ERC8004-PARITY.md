@@ -78,6 +78,7 @@ Behavioral differences from the Solidity reference that do not affect API compat
 - **Agent ID offset**: Cairo agent IDs start at 1 (0 is reserved for non-existent agents). Solidity starts at 0. Cross-chain indexers must account for this offset when mapping agent identities across registries.
 - **`get_response_count` with empty responders**: In Cairo, passing an empty `responders` array returns 0 immediately. In Solidity, an empty array iterates all tracked responders. Practical consequence: Cairo clients calling with an empty array get 0 instead of the global response count. Cairo does not enumerate all responders for a given feedback entry -- callers must supply explicit responder addresses.
 - **`append_response` on revoked feedback**: Cairo explicitly blocks appending responses to revoked feedback (`assert(!fb.is_revoked)`). Solidity does not check revocation status before appending. This is a stricter behavior classified as Extension above.
+- **Validation response immutability**: Cairo rejects a second `validation_response` for the same `request_hash` (`assert(!existing.has_response)`). Solidity reference behavior allows replacing the previous response. Cairo is stricter and requires a new request hash for revisions.
 - **Reentrancy guards**: Cairo adds reentrancy guards to `give_feedback` and `validation_request`. The Solidity reference does not include explicit reentrancy protection for these functions.
 - **Metadata key hashing**: Cairo hashes metadata keys to `felt252` via Poseidon (`_hash_key`) before storage lookup. Solidity uses raw `string` keys in nested mappings. Functionally equivalent for normal use, but direct storage readers and cross-chain indexers must be aware that Cairo storage slots are keyed by `poseidon(key_bytes)`, not the raw key string.
 
@@ -133,9 +134,11 @@ This prevents:
 - **Cross-registry replay**: A signature for one registry cannot be reused on another.
 - **Signature reuse**: Nonce increments after each successful `set_agent_wallet`, making signatures one-time use.
 
-### Bounded Summary Reads
+### Bounded Read Paths
 
 Both Reputation and Validation registries add `get_summary_paginated` for bounded reads. The standard `get_summary` functions are O(n) over all entries -- the paginated variants allow production systems to cap gas and latency.
+
+Reputation registry also exposes `read_all_feedback_paginated` for bounded raw-feedback traversal. The legacy `read_all_feedback` path includes a defensive scan ceiling (`MAX_READ_ALL_FEEDBACK_ENTRIES`) across client and feedback iteration and now reverts with `Use read_all_feedback_paginated` when that ceiling is exceeded.
 
 ### Timelocked Upgrades
 
