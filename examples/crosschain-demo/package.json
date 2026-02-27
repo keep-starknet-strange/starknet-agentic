@@ -9,7 +9,8 @@
     "demo:gasfree": "npx tsx run.ts --gasfree",
     "demo:verify": "npx tsx run.ts --gasfree --verify-tx",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "pretest": "pnpm --filter @starknet-agentic/onboarding-utils build"
   },
   "dependencies": {
     "@starknet-agentic/onboarding-utils": "workspace:*",

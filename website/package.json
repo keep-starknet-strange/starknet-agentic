@@ -23,16 +23,16 @@
     "react-dom": "^19.0.0",
     "rehype-pretty-code": "^0.14.1",
     "remark-gfm": "^4.0.1",
-    "shiki": "^3.22.0"
+    "shiki": "^4.0.0"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
     "@types/mdx": "^2.0.13",
-    "@types/node": "^25.2.3",
+    "@types/node": "^25.3.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^10.0.0",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^10.0.2",
     "eslint-config-next": "^16.1.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
