@@ -177,7 +177,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | Function | Solidity reference semantic | Cairo semantic | Status | Type | Notes |
 |----------|-----------------------------|----------------|--------|------|-------|
 | `validation_request` | Requester designates validator | Same semantic | Implemented | Parity | Includes reentrancy guard |
-| `validation_response` | Only designated validator can respond (0..100) | Same semantic | Implemented | Parity | Single immutable response per `request_hash` |
+| `validation_response` | Only designated validator can respond (0..100) | Same validator/range semantic; immutable after first response | Implemented | Parity + Extension | Second response for same `request_hash` reverts |
 | `get_validation_status` | Query by `requestHash`, return status tuple | Same semantic shape | Implemented | Parity | Returns zeroed response fields when not responded |
 | `get_summary` | `(count, avgResponse)` | Same semantic | Implemented | Parity |  |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
@@ -193,7 +193,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | `append_response` | Append response to feedback | Same semantic + revoked guard | Implemented | Parity + Extension | Extension: explicit revoked-feedback block |
 | `get_summary` | `(count, summaryValue, summaryValueDecimals)` | Same semantic | Implemented | Parity | Weighted/normalized average behavior aligned |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
-| `read_all_feedback` | Full dataset read by filters | Full dataset read by filters | Implemented | Parity | O(n) read; use bounded summary for large sets |
+| `read_all_feedback` | Full dataset read by filters | Requires explicit non-empty `client_addresses` (no implicit global scan) | Implemented | Parity + Extension | For broad scans use `read_all_feedback_paginated` |
 
 ### 3.5 Workstream D Note: Cross-Chain Hash Interoperability
 
@@ -212,10 +212,10 @@ Recommended convention for cross-chain portability:
 
 ### 3.6 Operational Notes (Validation/Reputation)
 
-- Finalize-once validation behavior:
-  - `validation_response` is immutable per `request_hash`.
-  - A designated validator cannot overwrite a submitted response for the same request.
-  - Re-evaluation must use a new validation request (new `request_hash`).
+- Immutable validation response behavior:
+  - `validation_response` is finalize-once in Cairo.
+  - A designated validator can submit exactly one response per `request_hash`.
+  - Second submissions revert with `Response already submitted`.
 
 - Unbounded reads:
   - `get_agent_validations`, `get_validator_requests`, and full-list style accessors are O(n).

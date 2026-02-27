@@ -61,7 +61,16 @@ export type StarknetNetworkConfigLike = {
   explorer?: string;
 };
 
-export const trimTrailingChar = trimTrailingCharShared;
+function trimTrailingChar(input: string, charToTrim: string): string {
+  if (charToTrim.length !== 1) {
+    throw new TypeError("trimTrailingChar expects a single character");
+  }
+  let end = input.length;
+  while (end > 0 && input.charAt(end - 1) === charToTrim) {
+    end -= 1;
+  }
+  return input.slice(0, end);
+}
 
 export function formatBalance(raw: bigint, decimals: number): string {
   if (raw === 0n) {

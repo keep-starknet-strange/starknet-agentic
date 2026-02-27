@@ -341,6 +341,10 @@
 
     function setWalletStatusConnected(address) {
       const walletStatus = document.getElementById('wallet-status');
+      if (!walletStatus) {
+        console.warn('Missing element: wallet-status');
+        return;
+      }
       clearElement(walletStatus);
 
       const connectedInfo = document.createElement('div');
@@ -358,7 +362,7 @@
       disconnectBtn.className = 'secondary-btn';
       disconnectBtn.textContent = 'Disconnect';
       disconnectBtn.addEventListener('click', () => {
-        window.disconnectWallet();
+        disconnectWallet();
       });
 
       walletStatus.appendChild(connectedInfo);
@@ -367,6 +371,10 @@
 
     function setWalletStatusDisconnected() {
       const walletStatus = document.getElementById('wallet-status');
+      if (!walletStatus) {
+        console.warn('Missing element: wallet-status');
+        return;
+      }
       clearElement(walletStatus);
 
       const connectBtn = document.createElement('button');
@@ -380,6 +388,9 @@
     // Helper: Log message
     function log(msg, type = 'info') {
       const container = document.getElementById('log-container');
+      if (!container) {
+        return;
+      }
       const time = new Date().toLocaleTimeString();
       const entry = document.createElement('div');
       entry.className = `log-entry ${type}`;
@@ -401,6 +412,10 @@
     // Helper: Show status
     function showStatus(elementId, lines, type) {
       const el = document.getElementById(elementId);
+      if (!el) {
+        console.warn(`Missing status element: ${elementId}`);
+        return;
+      }
       clearElement(el);
 
       const status = document.createElement('div');
@@ -414,6 +429,10 @@
 
     function showSubmittedTxStatus(elementId, txHash) {
       const el = document.getElementById(elementId);
+      if (!el) {
+        console.warn(`Missing submitted-tx status element: ${elementId}`);
+        return;
+      }
       clearElement(el);
 
       const status = document.createElement('div');
@@ -427,7 +446,7 @@
       status.appendChild(document.createElement('br'));
 
       const link = document.createElement('a');
-      link.href = `https://sepolia.starkscan.co/tx/${txHash}`;
+      link.href = `https://sepolia.starkscan.co/tx/${encodeURIComponent(txHash)}`;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       link.textContent = 'View on StarkScan';
@@ -476,7 +495,7 @@
       }
     }
     
-    window.disconnectWallet = async function() {
+    async function disconnectWallet() {
       try {
         await disconnect();
         wallet = null;
