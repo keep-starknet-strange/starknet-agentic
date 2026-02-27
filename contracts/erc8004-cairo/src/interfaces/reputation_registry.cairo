@@ -126,6 +126,8 @@ pub trait IReputationRegistry<TState> {
     ) -> (i128, u8, ByteArray, ByteArray, bool);
 
     /// Read all feedback matching filters
+    /// Requires non-empty `client_addresses`; use `read_all_feedback_paginated`
+    /// for broad scans.
     /// Returns arrays: (clients, feedbackIndexes, values, valueDecimals, tag1s, tag2s, revokedStatuses)
     fn read_all_feedback(
         self: @TState,

@@ -21,9 +21,9 @@ This specification describes both implemented features and planned designs:
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Agent Account Contract | **Tested** | 110 tests across 4 test suites |
-| Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on Sepolia |
+| Agent Registry (ERC-8004) | **Production** | 131+ unit + 47 E2E tests, deployed on mainnet + Sepolia (see `docs/DEPLOYMENT_TRUTH_SHEET.md`) |
 | Huginn Registry Contract | **Functional** | Starknet-native reasoning registry at `contracts/huginn-registry/` |
-| MCP Server | **Production** | 9 tools implemented |
+| MCP Server | **Production** | Active tool catalog maintained in `packages/starknet-mcp-server/src/index.ts` |
 | A2A Adapter | **Functional** | Basic implementation complete |
 | Skills | **Mixed** | 6 skills in repo (complete + template + onboarding) |
 | Framework Extensions | **Planned** | Deferred to v2.0 |
@@ -137,7 +137,7 @@ struct SessionPolicy {
 
 Based on ERC-8004, with Starknet-specific enhancements:
 
-- Uses the existing [erc8004-cairo](https://github.com/Akashneelesh/erc8004-cairo) as the foundation
+- Uses the existing [`contracts/erc8004-cairo/`](../contracts/erc8004-cairo/) implementation as the foundation
 - Adds A2A Agent Card URI to agent metadata
 - Integrates with Agent Account contract for automated identity binding
 - Leverages Starknet's native signature verification (SNIP-6)
@@ -177,7 +177,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | Function | Solidity reference semantic | Cairo semantic | Status | Type | Notes |
 |----------|-----------------------------|----------------|--------|------|-------|
 | `validation_request` | Requester designates validator | Same semantic | Implemented | Parity | Includes reentrancy guard |
-| `validation_response` | Only designated validator can respond (0..100) | Same semantic | Implemented | Parity | Progressive updates allowed |
+| `validation_response` | Only designated validator can respond (0..100) | Same validator/range semantic; immutable after first response | Implemented | Parity + Extension | Second response for same `request_hash` reverts |
 | `get_validation_status` | Query by `requestHash`, return status tuple | Same semantic shape | Implemented | Parity | Returns zeroed response fields when not responded |
 | `get_summary` | `(count, avgResponse)` | Same semantic | Implemented | Parity |  |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
@@ -193,7 +193,7 @@ This section is the in-repo source of truth for ERC-8004 compatibility decisions
 | `append_response` | Append response to feedback | Same semantic + revoked guard | Implemented | Parity + Extension | Extension: explicit revoked-feedback block |
 | `get_summary` | `(count, summaryValue, summaryValueDecimals)` | Same semantic | Implemented | Parity | Weighted/normalized average behavior aligned |
 | `get_summary_paginated` | Not in Solidity reference | Bounded summary window | Implemented | Extension | Added for bounded reads |
-| `read_all_feedback` | Full dataset read by filters | Full dataset read by filters | Implemented | Parity | O(n) read; use bounded summary for large sets |
+| `read_all_feedback` | Full dataset read by filters | Requires explicit non-empty `client_addresses` (no implicit global scan) | Implemented | Parity + Extension | For broad scans use `read_all_feedback_paginated` |
 
 ### 3.5 Workstream D Note: Cross-Chain Hash Interoperability
 
@@ -212,10 +212,10 @@ Recommended convention for cross-chain portability:
 
 ### 3.6 Operational Notes (Validation/Reputation)
 
-- Progressive overwrite behavior:
-  - `validation_response` is latest-state storage by design.
-  - A designated validator can update the response over time (progressive validation).
-  - Historical evolution is preserved in event logs, not in a full on-chain response history map.
+- Immutable validation response behavior:
+  - `validation_response` is finalize-once in Cairo.
+  - A designated validator can submit exactly one response per `request_hash`.
+  - Second submissions revert with `Response already submitted`.
 
 - Unbounded reads:
   - `get_agent_validations`, `get_validator_requests`, and full-list style accessors are O(n).
@@ -254,21 +254,13 @@ This section clarifies v1 invariants for `contracts/huginn-registry/`:
 
 ## 4. MCP Server
 
-**Status:** Production-ready at `packages/starknet-mcp-server/` (1,600+ lines, 9 tools implemented).
+**Status:** Production-ready at `packages/starknet-mcp-server/` (tool inventory maintained in `src/index.ts`).
 
 ### 4.1 Tool Definitions
 
-Current registered tool inventory in `packages/starknet-mcp-server/src/index.ts`:
-
-1. `starknet_get_balance`
-2. `starknet_get_balances`
-3. `starknet_transfer`
-4. `starknet_call_contract`
-5. `starknet_invoke_contract`
-6. `starknet_swap`
-7. `starknet_get_quote`
-8. `starknet_estimate_fee`
-9. `x402_starknet_sign_payment_required`
+Use the live tool inventory in
+`packages/starknet-mcp-server/src/index.ts` as the source of truth instead of a
+duplicated static list in this document.
 
 ### 4.2 Transport
 
@@ -417,6 +409,7 @@ Implements the Lucid Agents `Extension` interface:
 | Unauthorized transactions | Session key policies (allowed contracts, methods, time bounds) |
 | Prompt injection via skills | Skill sandboxing; input validation in MCP tools |
 | Replay attacks | Chain ID + nonce in all signatures |
+| Signer-proxy impersonation/replay | HMAC headers (`X-Keyring-Client-Id`, timestamp, nonce, signature) + mTLS for non-loopback production; versioned signer API (`spec/signer-api-v1.openapi.yaml`) and security contract (`docs/security/SIGNER_API_SPEC.md`) |
 | Agent impersonation | On-chain identity verification via ERC-8004 |
 | Rug pull by agent | Emergency kill switch for human owner |
 

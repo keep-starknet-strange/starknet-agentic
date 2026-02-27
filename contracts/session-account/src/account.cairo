@@ -72,6 +72,8 @@ mod SessionAccount {
     const STARKNET_DOMAIN_TYPE_HASH_REV1: felt252 =
         0x1ff2f602e42168014d405a94f75e8a93d640751d71d16311266e140d8b0a210;
     const STARKNET_MESSAGE_PREFIX: felt252 = 'StarkNet Message';
+    const SESSION_SIGNATURE_MODE_V1: u8 = 1;
+    const SESSION_SIGNATURE_MODE_V2: u8 = 2;
     const DEFAULT_UPGRADE_DELAY: u64 = 3600;
     // Session accounts intentionally allow a lower minimum delay than agent accounts
     // to support short-lived session workflows while preserving a non-zero safety window.
@@ -153,6 +155,7 @@ mod SessionAccount {
         pending_upgrade: ClassHash,
         upgrade_scheduled_at: u64,
         upgrade_delay: u64,
+        session_signature_mode: u8,
     }
 
     // ── Events ────────────────────────────────────────────────────────────
@@ -177,6 +180,7 @@ mod SessionAccount {
         UpgradeExecuted: UpgradeExecuted,
         UpgradeCancelled: UpgradeCancelled,
         UpgradeDelayUpdated: UpgradeDelayUpdated,
+        SessionSignatureModeUpdated: SessionSignatureModeUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -232,6 +236,12 @@ mod SessionAccount {
         new_delay: u64,
     }
 
+    #[derive(Drop, starknet::Event)]
+    struct SessionSignatureModeUpdated {
+        old_mode: u8,
+        new_mode: u8,
+    }
+
     // ── Constructor ───────────────────────────────────────────────────────
     #[constructor]
     fn constructor(ref self: ContractState, public_key: felt252) {
@@ -242,6 +252,7 @@ mod SessionAccount {
         self.upgrade_delay.write(DEFAULT_UPGRADE_DELAY);
         self.upgrade_scheduled_at.write(0);
         self.pending_upgrade.write(0.try_into().unwrap());
+        self.session_signature_mode.write(SESSION_SIGNATURE_MODE_V1);
     }
 
     // ── SRC-6 ──────────────────────────────────────────────────────────────
@@ -287,7 +298,12 @@ mod SessionAccount {
                     return 0;
                 }
 
-                let msg_hash = self._session_message_hash(calls.span(), valid_until);
+                let signature_mode = self._effective_session_signature_mode();
+                let msg_hash = if signature_mode == SESSION_SIGNATURE_MODE_V1 {
+                    self._session_message_hash_v1(calls.span(), valid_until)
+                } else {
+                    self._session_message_hash_v2(calls.span(), valid_until)
+                };
                 if check_ecdsa_signature(msg_hash, session_pubkey, r, s) {
                     self._consume_session_call(session_pubkey);
                     return starknet::VALIDATED;
@@ -712,7 +728,55 @@ mod SessionAccount {
         ref self: ContractState, calls: Array<Call>, valid_until: u64,
     ) -> felt252 {
         self.account.assert_only_self();
-        self._session_message_hash(calls.span(), valid_until)
+        let signature_mode = self._effective_session_signature_mode();
+        if signature_mode == SESSION_SIGNATURE_MODE_V1 {
+            self._session_message_hash_v1(calls.span(), valid_until)
+        } else {
+            self._session_message_hash_v2(calls.span(), valid_until)
+        }
+    }
+
+    #[external(v0)]
+    fn compute_session_message_hash_v1(
+        ref self: ContractState, calls: Array<Call>, valid_until: u64,
+    ) -> felt252 {
+        self.account.assert_only_self();
+        self._session_message_hash_v1(calls.span(), valid_until)
+    }
+
+    #[external(v0)]
+    fn compute_session_message_hash_v2(
+        ref self: ContractState, calls: Array<Call>, valid_until: u64,
+    ) -> felt252 {
+        self.account.assert_only_self();
+        self._session_message_hash_v2(calls.span(), valid_until)
+    }
+
+    #[external(v0)]
+    fn get_session_signature_mode(self: @ContractState) -> u8 {
+        self._effective_session_signature_mode()
+    }
+
+    #[external(v0)]
+    fn set_session_signature_mode(ref self: ContractState, new_mode: u8) {
+        self.account.assert_only_self();
+        assert(
+            new_mode == SESSION_SIGNATURE_MODE_V1 || new_mode == SESSION_SIGNATURE_MODE_V2,
+            'Session: invalid sig mode',
+        );
+
+        let current_mode = self._effective_session_signature_mode();
+        if current_mode == new_mode {
+            return;
+        }
+
+        if current_mode == SESSION_SIGNATURE_MODE_V2
+            && new_mode == SESSION_SIGNATURE_MODE_V1 {
+            assert(false, 'Session: mode downgrade');
+        }
+
+        self.session_signature_mode.write(new_mode);
+        self.emit(SessionSignatureModeUpdated { old_mode: current_mode, new_mode });
     }
 
     #[external(v0)]
@@ -748,8 +812,41 @@ mod SessionAccount {
             self.session_entrypoints.read((session_key, index))
         }
 
+        /// Returns true if no call in the batch targets this account itself.
+        fn _calls_avoid_self(self: @ContractState, calls: Span<Call>) -> bool {
+            let account_address = get_contract_address();
+            let mut i = 0;
+            loop {
+                if i >= calls.len() {
+                    break;
+                }
+                let call = calls.at(i);
+                if *call.to == account_address {
+                    return false;
+                }
+                i += 1;
+            };
+            true
+        }
+
         /// Returns true if the session key is allowed to execute the given calls.
-        /// Two layers: (1) admin selector blocklist, (2) self-call block for empty whitelist.
+        ///
+        /// Three-layer enforcement (order matters — refs #216, #217):
+        ///   1. Session validity: key exists, not expired, call budget not exhausted.
+        ///   2. Admin selector blocklist: rejects privileged selectors on ANY target
+        ///      contract to prevent privilege escalation even on external contracts
+        ///      that share selector names.
+        ///   3. Self-call guard: rejects any call targeting this account itself,
+        ///      unconditionally, even when an explicit whitelist is configured.
+        ///
+        /// Invariants preserved:
+        ///   - Spending monotonicity: spending counters only increase within a window.
+        ///   - Authorization boundary: session keys cannot modify their own policies,
+        ///     register new session keys, revoke keys, or change the owner key.
+        ///   - Enforcement completeness: guard applies to both __execute__ and
+        ///     execute_from_outside_v2 session paths.
+        ///
+        /// See also: docs/security/SPENDING_POLICY_AUDIT.md
         fn _is_session_allowed_for_calls(
             self: @ContractState, session_key: felt252, calls: Span<Call>,
         ) -> bool {
@@ -764,13 +861,24 @@ mod SessionAccount {
                 return false;
             }
 
-            // Admin selector blocklist
+            // --- Layer 2: Admin selector blocklist ---
+            // Each category prevents a specific privilege escalation vector:
+            //   - upgrade/*: session key could replace account logic with a backdoor
+            //   - *session_key/emergency_revoke*: session key could grant itself
+            //     new permissions or revoke the owner's ability to revoke it
+            //   - set_public_key: session key could replace the owner key
+            //   - __execute__/__validate__/*: re-entrant execution or validation bypass
+            //   - set_agent_id/register_interfaces: identity takeover
+            //   - *spending_policy: session key could raise its own spending limits
             let UPGRADE_SELECTOR: felt252 = selector!("upgrade");
+            let SCHEDULE_UPGRADE_SELECTOR: felt252 = selector!("schedule_upgrade");
             let EXECUTE_UPGRADE_SELECTOR: felt252 = selector!("execute_upgrade");
             let CANCEL_UPGRADE_SELECTOR: felt252 = selector!("cancel_upgrade");
             let SET_UPGRADE_DELAY_SELECTOR: felt252 = selector!("set_upgrade_delay");
+            let REGISTER_SESSION_SELECTOR: felt252 = selector!("register_session_key");
             let ADD_SESSION_SELECTOR: felt252 = selector!("add_or_update_session_key");
             let REVOKE_SESSION_SELECTOR: felt252 = selector!("revoke_session_key");
+            let EMERGENCY_REVOKE_ALL_SELECTOR: felt252 = selector!("emergency_revoke_all");
             let EXECUTE_SELECTOR: felt252 = selector!("__execute__");
             let SET_PUBLIC_KEY_SELECTOR: felt252 = selector!("set_public_key");
             let SET_PUBLIC_KEY_CAMEL_SELECTOR: felt252 = selector!("setPublicKey");
@@ -780,6 +888,9 @@ mod SessionAccount {
             let SET_AGENT_ID_SELECTOR: felt252 = selector!("set_agent_id");
             let REGISTER_INTERFACES_SELECTOR: felt252 = selector!("register_interfaces");
             let COMPUTE_HASH_SELECTOR: felt252 = selector!("compute_session_message_hash");
+            let COMPUTE_HASH_V1_SELECTOR: felt252 = selector!("compute_session_message_hash_v1");
+            let COMPUTE_HASH_V2_SELECTOR: felt252 = selector!("compute_session_message_hash_v2");
+            let SET_SIGNATURE_MODE_SELECTOR: felt252 = selector!("set_session_signature_mode");
             let VALIDATE_SELECTOR: felt252 = selector!("__validate__");
             let VALIDATE_DECLARE_SELECTOR: felt252 = selector!("__validate_declare__");
             let VALIDATE_DEPLOY_SELECTOR: felt252 = selector!("__validate_deploy__");
@@ -795,11 +906,14 @@ mod SessionAccount {
                 let sel = *call.selector;
 
                 if sel == UPGRADE_SELECTOR
+                    || sel == SCHEDULE_UPGRADE_SELECTOR
                     || sel == EXECUTE_UPGRADE_SELECTOR
                     || sel == CANCEL_UPGRADE_SELECTOR
                     || sel == SET_UPGRADE_DELAY_SELECTOR
+                    || sel == REGISTER_SESSION_SELECTOR
                     || sel == ADD_SESSION_SELECTOR
                     || sel == REVOKE_SESSION_SELECTOR
+                    || sel == EMERGENCY_REVOKE_ALL_SELECTOR
                     || sel == EXECUTE_SELECTOR
                     || sel == SET_PUBLIC_KEY_SELECTOR
                     || sel == SET_PUBLIC_KEY_CAMEL_SELECTOR
@@ -807,6 +921,9 @@ mod SessionAccount {
                     || sel == SET_AGENT_ID_SELECTOR
                     || sel == REGISTER_INTERFACES_SELECTOR
                     || sel == COMPUTE_HASH_SELECTOR
+                    || sel == COMPUTE_HASH_V1_SELECTOR
+                    || sel == COMPUTE_HASH_V2_SELECTOR
+                    || sel == SET_SIGNATURE_MODE_SELECTOR
                     || sel == VALIDATE_SELECTOR
                     || sel == VALIDATE_DECLARE_SELECTOR
                     || sel == VALIDATE_DEPLOY_SELECTOR
@@ -817,20 +934,15 @@ mod SessionAccount {
                 i += 1;
             };
 
-            // Empty whitelist: block calls targeting this account
+            // Canonical self-call escalation guard used by session validation paths,
+            // including SRC-9 execute_from_outside_v2 via _is_session_allowed_for_calls.
+            // Session path must never target this account, even with a non-empty whitelist.
+            if !self._calls_avoid_self(calls) {
+                return false;
+            }
+
+            // Empty whitelist: any non-self selector is allowed.
             if session.allowed_entrypoints_len == 0 {
-                let account_address = get_contract_address();
-                let mut i = 0;
-                loop {
-                    if i >= calls.len() {
-                        break;
-                    }
-                    let call = calls.at(i);
-                    if *call.to == account_address {
-                        return false;
-                    }
-                    i += 1;
-                };
                 return true;
             }
 
@@ -870,8 +982,55 @@ mod SessionAccount {
             self.session_keys.write(session_key, session);
         }
 
-        /// Poseidon message hash binding account address, chain_id, nonce, valid_until, and call data.
-        fn _session_message_hash(
+        fn _effective_session_signature_mode(self: @ContractState) -> u8 {
+            let raw_mode = self.session_signature_mode.read();
+            // Backward compatibility for contracts upgraded from versions that did not
+            // persist this field. A zero value maps to legacy v1 semantics.
+            if raw_mode == 0 {
+                SESSION_SIGNATURE_MODE_V1
+            } else {
+                raw_mode
+            }
+        }
+
+        /// Legacy v1 hash used before SNIP-12 domain-separated mode.
+        fn _session_message_hash_v1(
+            self: @ContractState, calls: Span<Call>, valid_until: u64,
+        ) -> felt252 {
+            let tx_info = get_tx_info().unbox();
+            let mut hash_data = array![];
+
+            hash_data.append(get_contract_address().into());
+            hash_data.append(tx_info.chain_id.into());
+            hash_data.append(tx_info.nonce.into());
+            hash_data.append(valid_until.into());
+
+            let mut i = 0;
+            loop {
+                if i >= calls.len() {
+                    break;
+                }
+                let call = calls.at(i);
+                hash_data.append((*call.to).into());
+                hash_data.append((*call.selector).into());
+                hash_data.append(call.calldata.len().into());
+
+                let mut j = 0;
+                loop {
+                    if j >= call.calldata.len() {
+                        break;
+                    }
+                    hash_data.append((*call.calldata.at(j)).into());
+                    j += 1;
+                };
+                i += 1;
+            };
+
+            poseidon_hash_span(hash_data.span())
+        }
+
+        /// SNIP-12 domain-separated v2 hash for session signatures.
+        fn _session_message_hash_v2(
             self: @ContractState, calls: Span<Call>, valid_until: u64,
         ) -> felt252 {
             let tx_info = get_tx_info().unbox();

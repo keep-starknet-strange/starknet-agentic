@@ -1,13 +1,13 @@
 # Starkzap Demo: Gasless Onboard + STRK Transfer (Sepolia)
 
-**Showy demo**: End-to-end gasless onboarding and STRK transfer on Sepolia — no private key handling by user, no gas purchase, one command.
+**Showy demo**: End-to-end onboarding and STRK transfer on Sepolia — operator provides `PRIVATE_KEY` in `.env`, with optional gasless sponsorship, one command.
 
 ## Flow
 
 1. **SDK init** on Sepolia (with optional AVNU paymaster for sponsored mode)
 2. **Connect wallet** via Signer strategy (or Privy in full demo)
 3. **`wallet.ensureReady({ deploy: "if_needed" })`** — sponsored deploy when paymaster configured
-4. **`wallet.transfer(STRK, [...], { feeMode: "sponsored" })`** — gasless transfer
+4. **`wallet.transfer(STRK, [...])`** — transfer (gasless with `--sponsored`)
 5. **`tx.wait()`** — finality confirmation
 
 ## Why Sepolia + STRK?
@@ -19,7 +19,7 @@
 ## Prerequisites
 
 - Node.js 20+
-- A test private key (generate: `openssl rand -hex 32`)
+- A test private key (generate: `PRIVATE_KEY=0x$(openssl rand -hex 32)`)
 - For **sponsored** mode: [AVNU Paymaster API key](https://portal.avnu.fi/)
 
 ## Setup

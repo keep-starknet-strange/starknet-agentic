@@ -18,9 +18,12 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "demo:hello-agent": "node examples/hello-agent/index.mjs"
+    "demo:hello-agent": "node examples/hello-agent/index.mjs",
+    "ci:version": "changeset version",
+    "ci:release": "pnpm build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "2.29.8",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.2.3",
     "eslint": "^10.0.0",
@@ -28,15 +31,17 @@
     "typescript": "^5.9.0",
     "vitest": "^4.0.18"
   },
-  "dependencies": {
-    "ethers": "^6.16.0"
-  },
   "engines": {
     "node": ">=20.9.0"
   },
   "pnpm": {
     "overrides": {
-      "qs": "6.14.2"
+      "ajv@^6.0.0": "6.14.0",
+      "ajv@^8.0.0": "8.18.0",
+      "hono": "4.12.2",
+      "qs": "6.14.2",
+      "minimatch": "10.2.3",
+      "rollup": "4.59.0"
     }
   }
 }

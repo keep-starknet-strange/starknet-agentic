@@ -47,6 +47,21 @@ trait IUpgradeTimelock<TState> {
     fn get_upgrade_info(self: @TState) -> (starknet::ClassHash, u64, u64, u64);
 }
 
+#[starknet::interface]
+trait ISessionSignatureMode<TState> {
+    fn get_session_signature_mode(self: @TState) -> u8;
+    fn set_session_signature_mode(ref self: TState, new_mode: u8);
+    fn compute_session_message_hash(
+        ref self: TState, calls: Array<Call>, valid_until: u64,
+    ) -> felt252;
+    fn compute_session_message_hash_v1(
+        ref self: TState, calls: Array<Call>, valid_until: u64,
+    ) -> felt252;
+    fn compute_session_message_hash_v2(
+        ref self: TState, calls: Array<Call>, valid_until: u64,
+    ) -> felt252;
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────
 const OWNER_PUBKEY: felt252 = 0x1234;
 const TEST_CHAIN_ID: felt252 = 0x534e5f5345504f4c4941; // 'SN_SEPOLIA'
@@ -54,6 +69,8 @@ const TEST_NONCE: felt252 = 42;
 const STARKNET_DOMAIN_TYPE_HASH_REV1: felt252 =
     0x1ff2f602e42168014d405a94f75e8a93d640751d71d16311266e140d8b0a210;
 const STARKNET_MESSAGE_PREFIX: felt252 = 'StarkNet Message';
+const SESSION_SIGNATURE_MODE_V1: u8 = 1;
+const SESSION_SIGNATURE_MODE_V2: u8 = 2;
 
 const AGENT_IDENTITY_ID: felt252 =
     0x02d7c1413db950e74e13e7b1e5b64a7a69a35e081c15f9a09d7cd3a2a4e739f8;
@@ -66,12 +83,24 @@ const ISRC6_ID: felt252 = 0x2ceccef7f994940b3962a6c67e0ba4fcd37df7d131417c604f91
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 fn deploy_session_account() -> ContractAddress {
+    let address = deploy_session_account_default_mode();
+    set_session_signature_mode(address, SESSION_SIGNATURE_MODE_V2);
+    address
+}
+
+fn deploy_session_account_default_mode() -> ContractAddress {
     let contract = declare("SessionAccount").unwrap().contract_class();
     let (address, _) = contract.deploy(@array![OWNER_PUBKEY]).unwrap();
     address
 }
 
 fn deploy_with_key(pubkey: felt252) -> ContractAddress {
+    let address = deploy_with_key_default_mode(pubkey);
+    set_session_signature_mode(address, SESSION_SIGNATURE_MODE_V2);
+    address
+}
+
+fn deploy_with_key_default_mode(pubkey: felt252) -> ContractAddress {
     let contract = declare("SessionAccount").unwrap().contract_class();
     let (address, _) = contract.deploy(@array![pubkey]).unwrap();
     address
@@ -101,6 +130,10 @@ fn timelock_dispatcher(addr: ContractAddress) -> IUpgradeTimelockDispatcher {
     IUpgradeTimelockDispatcher { contract_address: addr }
 }
 
+fn signature_mode_dispatcher(addr: ContractAddress) -> ISessionSignatureModeDispatcher {
+    ISessionSignatureModeDispatcher { contract_address: addr }
+}
+
 fn zero_addr() -> ContractAddress {
     0.try_into().unwrap()
 }
@@ -118,7 +151,61 @@ fn register_session_key(
     stop_cheat_caller_address(addr);
 }
 
+fn set_session_signature_mode(addr: ContractAddress, mode: u8) {
+    let dispatcher = signature_mode_dispatcher(addr);
+    start_cheat_caller_address(addr, addr);
+    dispatcher.set_session_signature_mode(mode);
+    stop_cheat_caller_address(addr);
+}
+
 fn compute_session_hash(
+    account_address: ContractAddress,
+    chain_id: felt252,
+    nonce: felt252,
+    valid_until: u64,
+    calls: Span<Call>,
+) -> felt252 {
+    compute_session_hash_v2(account_address, chain_id, nonce, valid_until, calls)
+}
+
+fn compute_session_hash_v1(
+    account_address: ContractAddress,
+    chain_id: felt252,
+    nonce: felt252,
+    valid_until: u64,
+    calls: Span<Call>,
+) -> felt252 {
+    let mut hash_data = array![];
+    hash_data.append(account_address.into());
+    hash_data.append(chain_id);
+    hash_data.append(nonce);
+    hash_data.append(valid_until.into());
+
+    let mut i = 0;
+    loop {
+        if i >= calls.len() {
+            break;
+        }
+        let call = calls.at(i);
+        hash_data.append((*call.to).into());
+        hash_data.append((*call.selector).into());
+        hash_data.append(call.calldata.len().into());
+
+        let mut j = 0;
+        loop {
+            if j >= call.calldata.len() {
+                break;
+            }
+            hash_data.append(*call.calldata.at(j));
+            j += 1;
+        };
+        i += 1;
+    };
+
+    poseidon_hash_span(hash_data.span())
+}
+
+fn compute_session_hash_v2(
     account_address: ContractAddress,
     chain_id: felt252,
     nonce: felt252,
@@ -856,6 +943,21 @@ fn test_blocklist_compute_session_message_hash() {
 }
 
 #[test]
+fn test_blocklist_compute_session_message_hash_v1() {
+    assert_selector_blocked(selector!("compute_session_message_hash_v1"));
+}
+
+#[test]
+fn test_blocklist_compute_session_message_hash_v2() {
+    assert_selector_blocked(selector!("compute_session_message_hash_v2"));
+}
+
+#[test]
+fn test_blocklist_set_session_signature_mode() {
+    assert_selector_blocked(selector!("set_session_signature_mode"));
+}
+
+#[test]
 fn test_blocklist_validate() {
     assert_selector_blocked(selector!("__validate__"));
 }
@@ -1001,6 +1103,32 @@ fn test_session_empty_whitelist_blocks_self_calls() {
 
     let result = account.__validate__(calls);
     assert(result == 0, 'self-call blocked empty wl');
+    cleanup_session_cheats(account_addr);
+}
+
+#[test]
+fn test_session_explicit_whitelist_still_blocks_self_calls() {
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let account_addr = deploy_with_key(owner_kp.public_key);
+    let account = src6_dispatcher(account_addr);
+
+    let valid_until: u64 = 9999;
+    // Explicitly whitelist a non-admin selector.
+    register_session_key(
+        account_addr, session_kp.public_key, valid_until, 100, array![selector!("get_contract_info")],
+    );
+
+    // Even with an explicit whitelist, session key cannot target account itself.
+    let calls = array![external_call(account_addr, selector!("get_contract_info"))];
+    let msg_hash = compute_session_hash(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls.span(),
+    );
+    let (r, s) = session_kp.sign(msg_hash).unwrap();
+    setup_session_tx_context(account_addr, session_kp.public_key, r, s, valid_until, 100);
+
+    let result = account.__validate__(calls);
+    assert(result == 0, 'self blocked wl');
     cleanup_session_cheats(account_addr);
 }
 
@@ -1290,6 +1418,39 @@ fn test_session_multicall_self_call_mixed_with_external() {
     cleanup_session_cheats(account_addr);
 }
 
+#[test]
+fn test_session_multicall_self_call_blocked_even_with_whitelist() {
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let account_addr = deploy_with_key(owner_kp.public_key);
+    let account = src6_dispatcher(account_addr);
+
+    let valid_until: u64 = 9999;
+    // Explicit whitelist includes both selectors used below.
+    register_session_key(
+        account_addr,
+        session_kp.public_key,
+        valid_until,
+        100,
+        array![selector!("transfer"), selector!("get_contract_info")],
+    );
+
+    let external_target: ContractAddress = 0xAAA.try_into().unwrap();
+    let calls = array![
+        external_call(external_target, selector!("transfer")),
+        external_call(account_addr, selector!("get_contract_info")),
+    ];
+    let msg_hash = compute_session_hash(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls.span(),
+    );
+    let (r, s) = session_kp.sign(msg_hash).unwrap();
+    setup_session_tx_context(account_addr, session_kp.public_key, r, s, valid_until, 100);
+
+    let result = account.__validate__(calls);
+    assert(result == 0, 'self blocked multicall');
+    cleanup_session_cheats(account_addr);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SECTION 10: SIGNATURE LENGTH EDGE CASES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1503,6 +1664,147 @@ fn test_is_valid_signature_unregistered_session_fails() {
     stop_cheat_block_timestamp(account_addr);
 
     assert(result == 0, 'unregistered session fails');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECTION 11B: SESSION SIGNATURE MODE V1/V2
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_signature_mode_defaults_to_v1_for_fresh_deploy() {
+    let account_addr = deploy_session_account_default_mode();
+    let mode = signature_mode_dispatcher(account_addr).get_session_signature_mode();
+    assert(mode == SESSION_SIGNATURE_MODE_V1, 'default mode should be v1');
+}
+
+#[test]
+fn test_signature_mode_can_upgrade_to_v2() {
+    let account_addr = deploy_session_account_default_mode();
+    set_session_signature_mode(account_addr, SESSION_SIGNATURE_MODE_V2);
+
+    let mode = signature_mode_dispatcher(account_addr).get_session_signature_mode();
+    assert(mode == SESSION_SIGNATURE_MODE_V2, 'mode should be v2');
+}
+
+#[test]
+#[should_panic(expected: 'Session: invalid sig mode')]
+fn test_signature_mode_rejects_invalid_value() {
+    let account_addr = deploy_session_account_default_mode();
+    set_session_signature_mode(account_addr, 3);
+}
+
+#[test]
+#[should_panic(expected: 'Session: mode downgrade')]
+fn test_signature_mode_rejects_v2_to_v1_downgrade() {
+    let account_addr = deploy_session_account_default_mode();
+    set_session_signature_mode(account_addr, SESSION_SIGNATURE_MODE_V2);
+    set_session_signature_mode(account_addr, SESSION_SIGNATURE_MODE_V1);
+}
+
+#[test]
+fn test_validate_accepts_v1_hash_when_mode_v1() {
+    let session_kp = KeyPairTrait::from_secret_key(0xA111_felt252);
+    let owner_kp = KeyPairTrait::from_secret_key(0xB222_felt252);
+    let account_addr = deploy_with_key_default_mode(owner_kp.public_key);
+    let account = src6_dispatcher(account_addr);
+
+    let valid_until: u64 = 9999;
+    register_session_key(account_addr, session_kp.public_key, valid_until, 100, array![]);
+
+    let target: ContractAddress = 0xAAA.try_into().unwrap();
+    let calls = array![external_call(target, selector!("transfer"))];
+    let msg_hash = compute_session_hash_v1(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls.span(),
+    );
+    let (r, s) = session_kp.sign(msg_hash).unwrap();
+
+    setup_session_tx_context(account_addr, session_kp.public_key, r, s, valid_until, 100);
+    let result = account.__validate__(calls);
+    cleanup_session_cheats(account_addr);
+    assert(result == starknet::VALIDATED, 'v1 sig in v1');
+}
+
+#[test]
+fn test_validate_rejects_v1_hash_when_mode_v2() {
+    let session_kp = KeyPairTrait::from_secret_key(0xC333_felt252);
+    let owner_kp = KeyPairTrait::from_secret_key(0xD444_felt252);
+    let account_addr = deploy_with_key(owner_kp.public_key);
+    let account = src6_dispatcher(account_addr);
+
+    let valid_until: u64 = 9999;
+    register_session_key(account_addr, session_kp.public_key, valid_until, 100, array![]);
+
+    let target: ContractAddress = 0xAAA.try_into().unwrap();
+    let calls = array![external_call(target, selector!("transfer"))];
+    let msg_hash = compute_session_hash_v1(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls.span(),
+    );
+    let (r, s) = session_kp.sign(msg_hash).unwrap();
+
+    setup_session_tx_context(account_addr, session_kp.public_key, r, s, valid_until, 100);
+    let result = account.__validate__(calls);
+    cleanup_session_cheats(account_addr);
+    assert(result == 0, 'v1 sig in v2');
+}
+
+#[test]
+fn test_validate_rejects_v2_hash_when_mode_v1() {
+    let session_kp = KeyPairTrait::from_secret_key(0xE555_felt252);
+    let owner_kp = KeyPairTrait::from_secret_key(0xF666_felt252);
+    let account_addr = deploy_with_key_default_mode(owner_kp.public_key);
+    let account = src6_dispatcher(account_addr);
+
+    let valid_until: u64 = 9999;
+    register_session_key(account_addr, session_kp.public_key, valid_until, 100, array![]);
+
+    let target: ContractAddress = 0xAAA.try_into().unwrap();
+    let calls = array![external_call(target, selector!("transfer"))];
+    let msg_hash = compute_session_hash_v2(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls.span(),
+    );
+    let (r, s) = session_kp.sign(msg_hash).unwrap();
+
+    setup_session_tx_context(account_addr, session_kp.public_key, r, s, valid_until, 100);
+    let result = account.__validate__(calls);
+    cleanup_session_cheats(account_addr);
+    assert(result == 0, 'v2 sig in v1');
+}
+
+#[test]
+fn test_compute_session_message_hash_tracks_active_mode() {
+    let owner_kp = KeyPairTrait::from_secret_key(0xABCD_felt252);
+    let account_addr = deploy_with_key_default_mode(owner_kp.public_key);
+    let mode = signature_mode_dispatcher(account_addr);
+
+    let target: ContractAddress = 0xAAA.try_into().unwrap();
+    let calls_v1 = array![external_call(target, selector!("transfer"))];
+    let calls_v2 = array![external_call(target, selector!("transfer"))];
+    let valid_until: u64 = 9999;
+
+    let expected_v1 = compute_session_hash_v1(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls_v1.span(),
+    );
+    start_cheat_chain_id_global(TEST_CHAIN_ID);
+    start_cheat_nonce(account_addr, TEST_NONCE);
+    start_cheat_caller_address(account_addr, account_addr);
+    let actual_v1 = mode.compute_session_message_hash(calls_v1, valid_until);
+    stop_cheat_caller_address(account_addr);
+    stop_cheat_nonce(account_addr);
+    stop_cheat_chain_id_global();
+    assert(actual_v1 == expected_v1, 'active v1 hash mismatch');
+
+    set_session_signature_mode(account_addr, SESSION_SIGNATURE_MODE_V2);
+    let expected_v2 = compute_session_hash_v2(
+        account_addr, TEST_CHAIN_ID, TEST_NONCE, valid_until, calls_v2.span(),
+    );
+    start_cheat_chain_id_global(TEST_CHAIN_ID);
+    start_cheat_nonce(account_addr, TEST_NONCE);
+    start_cheat_caller_address(account_addr, account_addr);
+    let actual_v2 = mode.compute_session_message_hash(calls_v2, valid_until);
+    stop_cheat_caller_address(account_addr);
+    stop_cheat_nonce(account_addr);
+    stop_cheat_chain_id_global();
+    assert(actual_v2 == expected_v2, 'active v2 hash mismatch');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -4,12 +4,14 @@
  *
  * Usage: tsx check-balance.ts
  * Requires .env with STARKNET_RPC_URL and STARKNET_ACCOUNT_ADDRESS
+ * Optional: STARKNET_RPC_SPEC_VERSION=0.9.0|0.10.0
  * Optional: TOKEN=ETH|STRK|USDC|USDT or TOKEN_ADDRESS=0x...
  */
 
 import 'dotenv/config';
 import { RpcProvider, Contract, uint256 } from 'starknet';
 import { fetchTokenByAddress, fetchVerifiedTokenBySymbol } from '@avnu/avnu-sdk';
+import { resolveRpcSpecVersion } from './rpc-spec-version.ts';
 
 const ERC20_ABI = [{
   name: 'balanceOf',
@@ -51,11 +53,12 @@ async function main() {
   }
 
   try {
+    const rpcSpecVersion = resolveRpcSpecVersion(process.env.STARKNET_RPC_SPEC_VERSION);
     console.log('Resolving token via avnu...');
     const tokenInfo = await resolveToken(tokenInput);
 
     console.log('Checking balance...');
-    const provider = new RpcProvider({ nodeUrl: rpcUrl });
+    const provider = new RpcProvider({ nodeUrl: rpcUrl, specVersion: rpcSpecVersion });
     const contract = new Contract({ abi: ERC20_ABI, address: tokenInfo.address, providerOrAccount: provider });
 
     const balanceResult = await contract.balanceOf(address);
@@ -74,4 +77,7 @@ async function main() {
   }
 }
 
-main();
+main().catch((error) => {
+  console.error('Error:', error);
+  process.exit(1);
+});

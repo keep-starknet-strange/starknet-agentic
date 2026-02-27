@@ -13,14 +13,21 @@ Tracking issue: [#78](https://github.com/keep-starknet-strange/starknet-agentic/
 
 ## Registry Implementation Status
 
-All three ERC-8004 registries are implemented, tested, and deployed on Sepolia.
+All three ERC-8004 registries are implemented and tested in Cairo.
 
-| Registry | Contract | Tests | Sepolia |
-|----------|----------|-------|---------|
-| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | 131+ unit + 47 E2E | `0x7856...e417` |
-| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | Included in suite above | `0x1420...495a` |
-| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | Included in suite above | `0x1373...8e1` |
-| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 110+ Cairo tests | `0x3583...720e` (factory) |
+For deployment status, use these canonical sources:
+- [`docs/DEPLOYMENT_TRUTH_SHEET.md`](DEPLOYMENT_TRUTH_SHEET.md) (on-chain verified snapshot)
+- [`contracts/erc8004-cairo/README.md`](../contracts/erc8004-cairo/README.md) (contract-local quick reference)
+
+Current vs legacy Sepolia address sets are maintained in the deployment truth sheet to avoid cross-doc drift.
+
+| Registry | Contract | Tests | Deployment status |
+|----------|----------|-------|-------------------|
+| Identity | `contracts/erc8004-cairo/src/identity_registry.cairo` | 46 unit + 4 E2E | Mainnet + Sepolia live |
+| Reputation | `contracts/erc8004-cairo/src/reputation_registry.cairo` | 48 unit + 3 E2E | Mainnet + Sepolia live |
+| Validation | `contracts/erc8004-cairo/src/validation_registry.cairo` | 42 unit + 3 E2E | Mainnet + Sepolia live |
+| Total ERC-8004 | `contracts/erc8004-cairo/src/*` | 136 unit + 14 E2E | Mainnet + Sepolia live |
+| Agent Account | `contracts/agent-account/src/agent_account.cairo` | 122 Cairo tests | Factory live on Sepolia; no documented mainnet factory |
 
 ---
 
@@ -61,7 +68,7 @@ Each function is classified as **Parity** (aligned with Solidity reference) or *
 | Function | Solidity reference | Cairo behavior | Type |
 |----------|--------------------|----------------|------|
 | `validation_request` | Requester designates validator, emits event | Same semantic, reentrancy guard | Parity |
-| `validation_response` | Designated validator responds (0-100 score) | Same semantic, progressive updates | Parity |
+| `validation_response` | Designated validator responds (0-100 score) | Same semantic with finalize-once response immutability | Parity + Extension |
 | `get_validation_status` | Query by `requestHash` | Same return shape | Parity |
 | `get_summary` | `(count, averageResponse)` | Same semantic | Parity |
 | `get_agent_validations` / `get_validator_requests` | Full list reads | Same semantic (O(n)) | Parity |
@@ -78,6 +85,7 @@ Behavioral differences from the Solidity reference that do not affect API compat
 - **Agent ID offset**: Cairo agent IDs start at 1 (0 is reserved for non-existent agents). Solidity starts at 0. Cross-chain indexers must account for this offset when mapping agent identities across registries.
 - **`get_response_count` with empty responders**: In Cairo, passing an empty `responders` array returns 0 immediately. In Solidity, an empty array iterates all tracked responders. Practical consequence: Cairo clients calling with an empty array get 0 instead of the global response count. Cairo does not enumerate all responders for a given feedback entry -- callers must supply explicit responder addresses.
 - **`append_response` on revoked feedback**: Cairo explicitly blocks appending responses to revoked feedback (`assert(!fb.is_revoked)`). Solidity does not check revocation status before appending. This is a stricter behavior classified as Extension above.
+- **Validation response immutability**: Cairo rejects a second `validation_response` for the same `request_hash` (`assert(!existing.has_response)`). Solidity reference behavior allows replacing the previous response. Cairo is stricter and requires a new request hash for revisions.
 - **Reentrancy guards**: Cairo adds reentrancy guards to `give_feedback` and `validation_request`. The Solidity reference does not include explicit reentrancy protection for these functions.
 - **Metadata key hashing**: Cairo hashes metadata keys to `felt252` via Poseidon (`_hash_key`) before storage lookup. Solidity uses raw `string` keys in nested mappings. Functionally equivalent for normal use, but direct storage readers and cross-chain indexers must be aware that Cairo storage slots are keyed by `poseidon(key_bytes)`, not the raw key string.
 
@@ -133,9 +141,11 @@ This prevents:
 - **Cross-registry replay**: A signature for one registry cannot be reused on another.
 - **Signature reuse**: Nonce increments after each successful `set_agent_wallet`, making signatures one-time use.
 
-### Bounded Summary Reads
+### Bounded Read Paths
 
 Both Reputation and Validation registries add `get_summary_paginated` for bounded reads. The standard `get_summary` functions are O(n) over all entries -- the paginated variants allow production systems to cap gas and latency.
+
+Reputation registry also exposes `read_all_feedback_paginated` for bounded raw-feedback traversal. The legacy `read_all_feedback` path includes a defensive scan ceiling (`MAX_READ_ALL_FEEDBACK_ENTRIES`) across client and feedback iteration and now reverts with `Use read_all_feedback_paginated` when that ceiling is exceeded.
 
 ### Timelocked Upgrades
 
@@ -185,18 +195,32 @@ Chain-local state (reputation, validation history) remains chain-scoped. Cross-c
 
 ## Deployment
 
-### Sepolia (live)
+### Mainnet (live registries)
 
 | Contract | Address |
 |----------|---------|
-| IdentityRegistry | `0x7856876f4c8e1880bc0a2e4c15f4de3085bc2bad5c7b0ae472740f8f558e417` |
-| ReputationRegistry | `0x14204d04aca5df7ebfe9fe07f278e5d6c9b922d797b42e63a81b60f8f2d495a` |
-| ValidationRegistry | `0x13739de746a432b9fe36925cf4dfe469221bdc82e19f43fa4f95f8593aa8e1` |
+| IdentityRegistry | `0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595` |
+| ReputationRegistry | `0x698849defe3997eccd3dc5e096c01ae8f4fbc2e49e8d67efcb0b0642447944` |
+| ValidationRegistry | `0x3c2aae404b64ddf09f7ef07dfb4f723c9053443d35038263acf7d5d77efcd83` |
+
+### Sepolia (current registry set)
+
+| Contract | Address |
+|----------|---------|
+| IdentityRegistry | `0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631` |
+| ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
+| ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
+
+### Sepolia (legacy set still live)
+
+| Contract | Address |
+|----------|---------|
+| IdentityRegistry | `0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631` |
+| ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
+| ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
 | AgentAccountFactory | `0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e` |
 
-### Mainnet
-
-Not yet deployed. Planned after Sepolia validation.
+See [`docs/DEPLOYMENT_TRUTH_SHEET.md`](DEPLOYMENT_TRUTH_SHEET.md) for verified class hashes, first-seen block/timestamp, and drift vs `origin/main`.
 
 ---
 

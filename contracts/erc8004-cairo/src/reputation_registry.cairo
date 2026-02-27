@@ -46,6 +46,10 @@ pub mod ReputationRegistry {
     const MAX_GET_CLIENTS_ENTRIES: u64 = 2048;
     // Defensive ceiling for response-count full scans.
     const MAX_RESPONSE_COUNT_SCAN_ENTRIES: u64 = 4096;
+    // Defensive ceilings for paginated scans to avoid unbounded O(n) reads
+    // from user-provided limits.
+    const MAX_PAGINATED_CLIENT_LIMIT: u32 = 256;
+    const MAX_PAGINATED_FEEDBACK_LIMIT: u64 = 1024;
 
     // ============ Component Declarations ============
     component!(
@@ -584,25 +588,20 @@ pub mod ReputationRegistry {
             let mut tag2s_arr: Array<ByteArray> = ArrayTrait::new();
             let mut revoked_arr: Array<bool> = ArrayTrait::new();
 
-            // Get client list
-            let client_list = if client_addresses.len() > 0 {
-                client_addresses
-            } else {
-                // Get all clients from Vec
-                let client_vec = self.clients.entry(agent_id);
-                let mut all_clients: Array<ContractAddress> = ArrayTrait::new();
-                let mut i: u64 = 0;
-                while i < client_vec.len() {
-                    all_clients.append(client_vec.at(i).read());
-                    i += 1;
-                };
-                all_clients.span()
-            };
+            // Hardening: non-paginated reads require explicit client scoping.
+            // For broad scans over all clients, use read_all_feedback_paginated.
+            assert(client_addresses.len() > 0, 'explicit clients required');
 
             let mut i: u32 = 0;
+            let mut scanned_clients: u32 = 0;
             let mut scanned_feedbacks: u32 = 0;
-            while i < client_list.len() {
-                let client = *client_list.at(i);
+            while i < client_addresses.len() {
+                scanned_clients += 1;
+                assert(
+                    scanned_clients <= MAX_READ_ALL_FEEDBACK_ENTRIES,
+                    'Use read_all_feedback_paginated',
+                );
+                let client = *client_addresses.at(i);
                 let last_idx = self.last_index.entry((agent_id, client)).read();
 
                 let mut j: u64 = 1;
@@ -681,6 +680,10 @@ pub mod ReputationRegistry {
             let mut tag1s_arr: Array<ByteArray> = ArrayTrait::new();
             let mut tag2s_arr: Array<ByteArray> = ArrayTrait::new();
             let mut revoked_arr: Array<bool> = ArrayTrait::new();
+
+            // Harden against pathological scans from oversized caller-provided limits.
+            assert(client_limit <= MAX_PAGINATED_CLIENT_LIMIT, 'client_limit too large');
+            assert(feedback_limit <= MAX_PAGINATED_FEEDBACK_LIMIT, 'feedback_limit too large');
 
             // Degenerate window: no scan, caller can advance pagination window.
             if client_limit == 0 || feedback_limit == 0 {

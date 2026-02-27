@@ -18,6 +18,11 @@
     "declaration": true,
     "sourceMap": true
   },
-  "include": ["*.ts"],
+  "include": [
+    "**/*.ts"
+  ],
+  "references": [
+    { "path": "../../packages/starknet-onboarding-utils" }
+  ],
   "exclude": ["node_modules", "dist"]
 }

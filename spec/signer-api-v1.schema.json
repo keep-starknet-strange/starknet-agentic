@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keep-starknet-strange.github.io/starknet-agentic/spec/signer-api-v1.schema.json",
+  "title": "Starknet signer proxy API v1 payload schemas",
+  "$comment": "Use $defs.signSessionTransactionRequest, $defs.signSessionTransactionResponse, and $defs.signerErrorResponse for strict validation.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/signSessionTransactionRequest"
+    },
+    {
+      "$ref": "#/$defs/signSessionTransactionResponse"
+    },
+    {
+      "$ref": "#/$defs/signerErrorResponse"
+    }
+  ],
+  "$defs": {
+    "feltHex": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]+$",
+      "maxLength": 66
+    },
+    "signCall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractAddress", "entrypoint", "calldata"],
+      "properties": {
+        "contractAddress": {
+          "$ref": "#/$defs/feltHex"
+        },
+        "entrypoint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "calldata": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/feltHex"
+          }
+        }
+      }
+    },
+    "signContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requester", "tool", "reason", "actor", "requestId", "traceId"],
+      "properties": {
+        "requester": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "traceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sessionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "signSessionTransactionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accountAddress", "keyId", "chainId", "nonce", "validUntil", "calls", "context"],
+      "properties": {
+        "accountAddress": {
+          "$ref": "#/$defs/feltHex"
+        },
+        "keyId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chainId": {
+          "$ref": "#/$defs/feltHex"
+        },
+        "nonce": {
+          "$ref": "#/$defs/feltHex"
+        },
+        "validUntil": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "calls": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/signCall"
+          }
+        },
+        "context": {
+          "$ref": "#/$defs/signContext"
+        }
+      }
+    },
+    "signSessionTransactionResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signature", "signatureMode", "signatureKind", "signerProvider", "sessionPublicKey", "domainHash", "messageHash", "requestId", "audit"],
+      "properties": {
+        "signature": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/feltHex"
+          }
+        },
+        "signatureMode": {
+          "type": "string",
+          "const": "v2_snip12"
+        },
+        "signatureKind": {
+          "type": "string",
+          "const": "Snip12"
+        },
+        "signerProvider": {
+          "type": "string",
+          "enum": ["local", "dfns"]
+        },
+        "sessionPublicKey": {
+          "$ref": "#/$defs/feltHex"
+        },
+        "domainHash": {
+          "$ref": "#/$defs/feltHex"
+        },
+        "messageHash": {
+          "$ref": "#/$defs/feltHex"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["policyDecision", "decidedAt", "keyId", "traceId"],
+          "properties": {
+            "policyDecision": {
+              "type": "string",
+              "enum": ["allow"]
+            },
+            "decidedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "keyId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "traceId": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "signerErrorResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error", "errorCode", "requestId", "retryable"],
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "errorCode": {
+          "type": "string",
+          "enum": [
+            "AUTH_INVALID_HMAC",
+            "AUTH_INVALID_NONCE",
+            "AUTH_INVALID_SIGNATURE_FORMAT",
+            "AUTH_INVALID_CLIENT",
+            "AUTH_TIMESTAMP_SKEW",
+            "AUTH_MTLS_REQUIRED",
+            "REPLAY_NONCE_USED",
+            "POLICY_SELECTOR_DENIED",
+            "POLICY_CALL_NOT_ALLOWED",
+            "RATE_LIMITED",
+            "SIGNER_UNAVAILABLE",
+            "INTERNAL_ERROR"
+          ]
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

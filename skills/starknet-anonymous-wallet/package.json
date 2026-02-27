@@ -1,13 +1,17 @@
 {
-  "name": "starknet-anonymous-wallet",
-  "version": "1.0.0",
-  "description": "packages for starknet-anonymous-wallet skill",
+  "name": "typhoon-starknet-account-scripts",
+  "version": "0.3.2",
+  "description": "Scripts for typhoon-starknet-account skill",
   "type": "module",
   "scripts": {
     "create": "node scripts/create-account.js"
   },
   "dependencies": {
+    "@andersmyrmel/vard": "^1.2.0",
+    "@avnu/avnu-sdk": "^4.0.1",
+    "compromise": "^14.14.5",
     "starknet": "^8.9.1",
-    "typhoon-sdk": "^1.1.13"
+    "typhoon-sdk": "^1.1.13",
+    "ws": "^8.19.0"
   }
 }

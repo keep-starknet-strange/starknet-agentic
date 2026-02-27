@@ -15,7 +15,7 @@ starkliup
 starkli account oz init ~/.starknet_accounts/deployer-account.json
 
 # 3. Get testnet ETH from faucet
-# Visit: https://faucet.goerli.starknet.io/ (for Sepolia testnet)
+# Visit: https://starknet-faucet.vercel.app/ (for Sepolia testnet)
 
 # 4. Set environment variables
 export STARKNET_ACCOUNT=~/.starknet_accounts/deployer-account.json
@@ -293,7 +293,7 @@ starkli call \
 - **Security Audit:** `docs/security/SPENDING_POLICY_AUDIT.md`
 - **Deployment Info:** `docs/DEPLOYED_CONTRACTS.md`
 - **Starkli Docs:** https://book.starkli.rs/
-- **Starknet Sepolia Faucet:** https://faucet.goerli.starknet.io/
+- **Starknet Sepolia Faucet:** https://starknet-faucet.vercel.app/
 
 ---
 

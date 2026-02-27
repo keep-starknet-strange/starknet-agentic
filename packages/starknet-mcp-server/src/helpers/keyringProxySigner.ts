@@ -27,15 +27,23 @@ type KeyringProxySignerConfig = {
   tlsCaPath?: string;
 };
 
+type KeyringSignAudit = {
+  policyDecision: "allow";
+  decidedAt: string;
+  keyId: string;
+  traceId: string;
+};
+
 type KeyringSignResponse = {
   signature: unknown[];
   signatureMode: "v2_snip12";
   signatureKind: "Snip12";
-  signerProvider?: "local" | "dfns";
-  sessionPublicKey?: string;
+  signerProvider: "local" | "dfns";
+  sessionPublicKey: string;
   domainHash: string;
-  requestId?: string;
+  requestId: string;
   messageHash: string;
+  audit: KeyringSignAudit;
 };
 
 type MtlsClientMaterial = {
@@ -85,12 +93,33 @@ function isHexFelt(value: unknown): value is string {
   return typeof value === "string" && /^0x[0-9a-fA-F]+$/.test(value);
 }
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+const RFC3339_TIMESTAMP_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function isRfc3339Timestamp(value: unknown): value is string {
+  if (!isNonEmptyString(value) || !RFC3339_TIMESTAMP_PATTERN.test(value)) {
+    return false;
+  }
+  return !Number.isNaN(Date.parse(value));
+}
+
 function feltEqualsHex(a: string, b: string): boolean {
   try {
     return BigInt(a) === BigInt(b);
   } catch {
     return false;
   }
+}
+
+function inferToolName(calls: Call[]): string {
+  if (calls.length === 1 && calls[0]?.entrypoint === "transfer") {
+    return "starknet_transfer";
+  }
+  return "starknet_invoke_contract";
 }
 
 export class KeyringProxySigner extends SignerInterface {
@@ -190,6 +219,9 @@ export class KeyringProxySigner extends SignerInterface {
   ): Promise<Signature> {
     const validUntil = Math.floor(Date.now() / 1000) + this.config.sessionValiditySeconds;
     const requestedValidUntilHex = num.toHex(validUntil);
+    const timestamp = Date.now().toString();
+    const nonce = randomBytes(16).toString("hex");
+    const traceId = `kr-${timestamp}-${nonce}`;
     const requestPayload = {
       accountAddress: this.config.accountAddress,
       keyId: this.config.keyId,
@@ -205,14 +237,15 @@ export class KeyringProxySigner extends SignerInterface {
       })),
       context: {
         requester: "starknet-mcp-server",
-        tool: "account.execute",
+        tool: inferToolName(transactions),
         reason: "transaction signing request",
+        actor: "starknet-mcp-server",
+        requestId: traceId,
+        traceId,
       },
     };
 
     const rawBody = JSON.stringify(requestPayload);
-    const timestamp = Date.now().toString();
-    const nonce = randomBytes(16).toString("hex");
     const url = new URL(this.endpointPath, this.config.proxyUrl);
     const signingPayload = buildHmacPayload({
       timestamp,
@@ -279,13 +312,62 @@ export class KeyringProxySigner extends SignerInterface {
           "Invalid signature response from keyring proxy: missing domainHash/messageHash"
         );
       }
+      // Boundary contract is strict by design: proxy deployments must emit
+      // requestId + audit fields before this client path is enabled in production.
+      if (!isNonEmptyString(parsed.requestId)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: requestId is required"
+        );
+      }
+      if (parsed.requestId !== traceId) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: requestId does not match outbound request"
+        );
+      }
+      if (!parsed.audit || typeof parsed.audit !== "object") {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit object is required"
+        );
+      }
+      if (parsed.audit.policyDecision !== "allow") {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.policyDecision must be allow"
+        );
+      }
+      if (!isRfc3339Timestamp(parsed.audit.decidedAt)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.decidedAt must be an RFC3339 timestamp"
+        );
+      }
+      if (!isNonEmptyString(parsed.audit.keyId)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.keyId is required"
+        );
+      }
+      if (this.config.keyId && parsed.audit.keyId !== this.config.keyId) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.keyId does not match requested keyId"
+        );
+      }
+      if (!isNonEmptyString(parsed.audit.traceId)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.traceId is required"
+        );
+      }
+      if (parsed.audit.traceId !== traceId) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: audit.traceId does not match outbound traceId"
+        );
+      }
       const allowedSignerProviders = ["local", "dfns"] as const;
-      if (
-        parsed.signerProvider !== undefined &&
-        !allowedSignerProviders.includes(parsed.signerProvider)
-      ) {
+      if (!allowedSignerProviders.includes(parsed.signerProvider)) {
         throw new Error(
           "Invalid signature response from keyring proxy: signerProvider must be local or dfns"
+        );
+      }
+      if (!isHexFelt(parsed.sessionPublicKey)) {
+        throw new Error(
+          "Invalid signature response from keyring proxy: sessionPublicKey is required"
         );
       }
       if (!Array.isArray(parsed.signature) || parsed.signature.length !== 4) {
@@ -299,11 +381,8 @@ export class KeyringProxySigner extends SignerInterface {
       const normalizedSignature = parsed.signature.map((felt) => num.toHex(BigInt(felt)));
       const signaturePubKey = normalizedSignature[0];
       const signatureValidUntil = normalizedSignature[3];
-      const resolvedSessionPublicKey = parsed.sessionPublicKey
-        ? num.toHex(BigInt(parsed.sessionPublicKey))
-        : signaturePubKey;
-
-      if (parsed.sessionPublicKey && !feltEqualsHex(parsed.sessionPublicKey, signaturePubKey)) {
+      const resolvedSessionPublicKey = num.toHex(BigInt(parsed.sessionPublicKey));
+      if (!feltEqualsHex(parsed.sessionPublicKey, signaturePubKey)) {
         throw new Error(
           "Invalid signature response from keyring proxy: sessionPublicKey does not match signature pubkey"
         );

@@ -6,74 +6,44 @@
  *   1. SDK init on Sepolia (with optional AVNU paymaster for sponsored)
  *   2. Connect wallet via Signer strategy (or Privy in full demo)
  *   3. wallet.ensureReady({ deploy: "if_needed" }) — sponsored deploy when paymaster configured
- *   4. wallet.transfer(STRK, [...], { feeMode: "sponsored" }) — gasless transfer
+ *   4. wallet.transfer(STRK, [...]) — transfer (gasless with --sponsored)
  *   5. tx.wait() — stream finality confirmation
  *
  * Usage:
  *   npx tsx run.ts [--recipient 0x...] [--amount 10] [--sponsored]
  *
  * Env:
- *   PRIVATE_KEY          — test signer (generate with: openssl rand -hex 32)
- *   AVNU_PAYMASTER_API_KEY — for sponsored mode (get from portal.avnu.fi)
+ *   PRIVATE_KEY          — test signer (generate with: PRIVATE_KEY=0x$(openssl rand -hex 32))
+ *   AVNU_PAYMASTER_API_KEY — for --sponsored mode (get from portal.avnu.fi)
  *   STARKNET_RPC_URL     — optional, defaults to public Sepolia RPC
  */
 
-import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, ".env"), override: true, quiet: true });
 import {
+  assertPositiveAmount,
+  assertPrivateKeyFormat,
+  assertRecipientAddressFormat,
+  parseArgs,
+  sanitizeErrorForLog,
+} from "./lib";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dotenv = await import("dotenv");
+dotenv.config({ path: path.join(__dirname, ".env"), quiet: true });
+
+const {
   StarkSDK,
   StarkSigner,
   OnboardStrategy,
   Amount,
   fromAddress,
   sepoliaTokens,
-} from "starkzap";
+} = await import("starkzap");
 
 const SEPOLIA_PAYMASTER = "https://sepolia.paymaster.avnu.fi";
 const DEFAULT_RPC = "https://starknet-sepolia-rpc.publicnode.com";
-
-function parseArgs(): {
-  recipient: string;
-  amount: string;
-  sponsored: boolean;
-  addressOnly: boolean;
-  evidence: boolean;
-} {
-  const args = process.argv.slice(2);
-  let recipient = "";
-  let amount = "10";
-  let sponsored = !!process.env.AVNU_PAYMASTER_API_KEY;
-  let addressOnly = false;
-  let evidence = false;
-
-  for (let i = 0; i < args.length; i++) {
-    switch (args[i]) {
-      case "--recipient":
-        recipient = args[++i] ?? "";
-        break;
-      case "--amount":
-        amount = args[++i] ?? "10";
-        break;
-      case "--sponsored":
-        sponsored = true;
-        break;
-      case "--address-only":
-        addressOnly = true;
-        break;
-      case "--evidence":
-        evidence = true;
-        break;
-      default:
-        break;
-    }
-  }
-
-  return { recipient, amount, sponsored, addressOnly, evidence };
-}
+const STARKSCAN_TX_BASE_URL = "https://sepolia.starkscan.co/tx/";
 
 const EVIDENCE_FILE = "demo-evidence.json";
 
@@ -89,23 +59,54 @@ function logEvidence(doLog: boolean, data: Record<string, unknown>) {
     /* file missing or invalid */
   }
   existing.push({ ...data, timestamp: new Date().toISOString() });
-  fs.writeFileSync(file, JSON.stringify(existing, null, 2));
+  try {
+    fs.writeFileSync(file, JSON.stringify(existing, null, 2));
+  } catch (writeErr) {
+    const message = writeErr instanceof Error ? writeErr.message : String(writeErr);
+    console.warn("Warning: could not write evidence file:", message);
+  }
+}
+
+function getOptionalStringProperty(value: unknown, key: string): string | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const candidate = record[key];
+  if (typeof candidate !== "string" || candidate.length === 0) {
+    return undefined;
+  }
+  return candidate;
+}
+
+function assertWaitable(value: unknown): asserts value is { wait: () => Promise<unknown> } {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("transfer response is missing wait()");
+  }
+  const maybeWait = (value as { wait?: unknown }).wait;
+  if (typeof maybeWait !== "function") {
+    throw new Error("transfer response is missing wait()");
+  }
 }
 
 async function main() {
-  const { recipient, amount, sponsored, addressOnly, evidence } = parseArgs();
+  const { recipient, amount, sponsored, addressOnly, evidence } = parseArgs(
+    process.argv.slice(2),
+  );
 
   const privateKey = process.env.PRIVATE_KEY?.trim();
   if (!privateKey) {
     console.error(
-      "Missing PRIVATE_KEY. Generate one: openssl rand -hex 32\n" +
+      "Missing PRIVATE_KEY. Generate one: PRIVATE_KEY=0x$(openssl rand -hex 32)\n" +
         "Then fund it at https://starknet-faucet.vercel.app/ (only needed for non-sponsored deploy)"
     );
     process.exit(1);
   }
+  assertPrivateKeyFormat(privateKey);
 
   const paymasterApiKey = process.env.AVNU_PAYMASTER_API_KEY?.trim();
-  if (sponsored && !paymasterApiKey) {
+  if (sponsored && !addressOnly && !paymasterApiKey) {
     console.error(
       "Sponsored mode requires AVNU_PAYMASTER_API_KEY. Get one at https://portal.avnu.fi/"
     );
@@ -118,6 +119,16 @@ async function main() {
       "Provide --recipient 0x... or set RECIPIENT_ADDRESS in .env"
     );
     process.exit(1);
+  }
+  if (!addressOnly && recipientAddress) {
+    try {
+      assertRecipientAddressFormat(recipientAddress);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
+      logEvidence(evidence, { step: "invalid_recipient", error: true });
+      process.exit(1);
+    }
   }
 
   const rpcUrl = process.env.STARKNET_RPC_URL?.trim() || DEFAULT_RPC;
@@ -132,19 +143,28 @@ async function main() {
   if (evidence) console.log("Evidence: logging to", EVIDENCE_FILE);
   console.log("");
 
-  const sdkConfig: Parameters<typeof StarkSDK>[0] = {
-    network: "sepolia",
-    rpcUrl,
-  };
+  const sdk = new StarkSDK(
+    sponsored && paymasterApiKey
+      ? {
+          network: "sepolia",
+          rpcUrl,
+          paymaster: {
+            nodeUrl: SEPOLIA_PAYMASTER,
+            headers: { "x-paymaster-api-key": paymasterApiKey },
+          },
+        }
+      : {
+          network: "sepolia",
+          rpcUrl,
+        },
+  );
 
   if (sponsored && paymasterApiKey) {
-    (sdkConfig as Record<string, unknown>).paymaster = {
+    logEvidence(evidence, {
+      step: "paymaster_configured",
       nodeUrl: SEPOLIA_PAYMASTER,
-      apiKey: paymasterApiKey,
-    };
+    });
   }
-
-  const sdk = new StarkSDK(sdkConfig);
 
   if (addressOnly) {
     const wallet = await sdk.connectWallet({
@@ -166,6 +186,7 @@ async function main() {
     amount,
     sponsored,
   });
+  const transferRecipient = recipientAddress as string;
 
   const { wallet } = await sdk.onboard({
     strategy: OnboardStrategy.Signer,
@@ -192,7 +213,17 @@ async function main() {
     balanceRaw: balance.toBase().toString(),
   });
 
-  const transferAmount = Amount.parse(amount, STRK);
+  let transferAmount;
+  try {
+    assertPositiveAmount(amount);
+    transferAmount = Amount.parse(amount, STRK);
+  } catch {
+    console.error(
+      "Invalid transfer amount. Provide a positive numeric value (e.g. 1 or 0.5).",
+    );
+    logEvidence(evidence, { step: "invalid_amount", error: true });
+    process.exit(1);
+  }
   if (balance.lt(transferAmount)) {
     console.error(
       `Insufficient balance. Need ${amount} STRK. Get test tokens: https://starknet-faucet.vercel.app/`
@@ -201,17 +232,20 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("[4/4] Sending", amount, "STRK to", recipientAddress, "...");
+  console.log("[4/4] Sending", amount, "STRK to", transferRecipient, "...");
   const tx = await wallet.transfer(
     STRK,
-    [{ to: fromAddress(recipientAddress), amount: transferAmount }],
+    [{ to: fromAddress(transferRecipient), amount: transferAmount }],
     sponsored ? { feeMode: "sponsored" } : undefined
   );
+  assertWaitable(tx);
 
-  const txHash = tx.transactionHash ?? (tx as { transaction_hash?: string }).transaction_hash;
+  const txHash =
+    getOptionalStringProperty(tx, "transactionHash") ??
+    getOptionalStringProperty(tx, "transaction_hash");
   const explorerUrl =
-    (tx as { explorerUrl?: string }).explorerUrl ??
-    (txHash ? `https://sepolia.starkscan.co/tx/${txHash}` : undefined);
+    getOptionalStringProperty(tx, "explorerUrl") ??
+    (txHash ? `${STARKSCAN_TX_BASE_URL}${txHash}` : undefined);
 
   console.log("      Tx hash:", txHash ?? "pending");
   if (explorerUrl) console.log("      Explorer:", explorerUrl);
@@ -233,6 +267,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Demo failed:", err);
+  console.error("Demo failed:", sanitizeErrorForLog(err));
   process.exit(1);
 });

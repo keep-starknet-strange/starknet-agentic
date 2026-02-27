@@ -20,6 +20,8 @@ Cairo implementation of the [ERC-8004 Trustless Agent Registry](https://eips.eth
 | ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` |
 | ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` |
 
+Historical Sepolia addresses (including legacy registry set and AgentAccountFactory) and deployment reconciliation data are documented in [`docs/DEPLOYMENT_TRUTH_SHEET.md`](../../docs/DEPLOYMENT_TRUTH_SHEET.md).
+
 ## About
 
 This repository implements ERC-8004 (Trustless Agents): a lightweight set of on-chain registries that make agents discoverable and enable trust signals across organizational boundaries.
@@ -108,12 +110,13 @@ Typical read paths:
 
 - `read_feedback(agent_id, client_address, feedback_index)`
 - `read_all_feedback(agent_id, client_addresses, tag1, tag2, include_revoked)`
-- `read_all_feedback_paginated(...)` for large scans
+- `read_all_feedback_paginated(agent_id, client_addresses, tag1, tag2, include_revoked, client_offset, client_limit, feedback_offset, feedback_limit)`
 - `get_summary(agent_id, client_addresses, tag1, tag2)` -> returns `(count, summary_value, summary_value_decimals)`
 - `get_summary_paginated(...)` for bounded aggregation scans
 - `get_clients_paginated(agent_id, offset, limit)` for large client sets
 
 Note: `get_summary` requires `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
+Note: `read_all_feedback` is a legacy convenience reader with a defensive scan ceiling (`MAX_READ_ALL_FEEDBACK_ENTRIES`, currently `2048`) across both client and feedback traversal. Large reads should use `read_all_feedback_paginated`.
 
 **Responses and Revocation**
 
@@ -143,14 +146,15 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 
 `agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
 
-### Validation Registry: Immutable Response Semantics
+### Validation Registry: Response Finalization Semantics
 
-Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. The designated validator can respond only once; repeat submissions revert with `'Response already submitted'`.
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. A response is **finalized once**.
 
-- **Intentional**: this is a hardening choice to make validator outcomes immutable once finalized.
-- **Not accumulative**: there is no response history for a given request hash on-chain. If audit trails are needed, index `ValidationResponse` events off-chain.
-- **Request immutability**: requests themselves cannot be overwritten (assertion: `'Request hash exists'`).
+- **Immutable after first submit**: `validation_response` reverts if a response already exists (`'Response already submitted'`).
+- **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
+- **Audit trail guidance**: index `ValidationRequest` and `ValidationResponse` events off-chain for full chronology.
+- **Spec deviation note**: immutable responses intentionally diverge from EIP-8004 overwrite semantics. See `SPEC_DEVIATIONS.md`.
 
 ### Reputation Registry: Spam and Griefing Tradeoffs
 
@@ -222,7 +226,7 @@ Operators and integrators should treat `agentWallet` as a verified-control-of-ke
 2. Publish a registration file (e.g., on IPFS/HTTPS) and set it as the token URI via `set_token_uri(agent_id, ...)`.
 3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (or `set_agent_wallet_with_expected_nonce(...)` for explicit nonce UX).
 4. Collect feedback from users/clients via `give_feedback(...)` on the Reputation Registry.
-5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback(...)` for off-chain scoring.
+5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback_paginated(...)` for bounded off-chain scoring.
 
 ## Features
 
@@ -287,17 +291,17 @@ This implementation uses **Poseidon hashing** (native to Starknet) instead of ke
 
 ## Prerequisites
 
-- Scarb 2.12.1
-- Cairo 2.12.1
-- Snforge 0.43.1
+- Scarb 2.14.x
+- Cairo 2.14.x
+- Snforge 0.54.x
 - Node.js >= 18.0.0
 
 ## Setup
 
 ```bash
 # Clone and build
-git clone git@github.com:Akashneelesh/erc8004-cairo.git
-cd erc8004-cairo
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+cd starknet-agentic/contracts/erc8004-cairo
 
 # Build contracts
 scarb build
@@ -314,9 +318,17 @@ Copy `.env.example` to `.env` and configure:
 STARKNET_RPC_URL=https://starknet-sepolia-rpc.publicnode.com
 DEPLOYER_ADDRESS=0x...
 DEPLOYER_PRIVATE_KEY=0x...
+ALLOW_PUBLIC_DEPLOY=false
+ALLOW_MAINNET_DEPLOY=false
+REVIEW_ACKNOWLEDGED=false
+REVIEWER_IDENTITY=
 TEST_ACCOUNT_ADDRESS=0x...
 TEST_ACCOUNT_PRIVATE_KEY=0x...
 ```
+
+`ALLOW_PUBLIC_DEPLOY` is a safety gate for public testnets (currently Sepolia).
+`ALLOW_MAINNET_DEPLOY` is a separate safety gate for mainnet.
+`REVIEW_ACKNOWLEDGED` and `REVIEWER_IDENTITY` are required for Sepolia/mainnet deploys.
 
 ## Deployment
 
@@ -325,6 +337,19 @@ cd scripts
 npm install
 node deploy.js
 ```
+
+Notes:
+- Deploy artifacts are written to:
+  - `deployed_addresses.json` (latest run)
+  - `deployed_addresses_<network>.json` (latest per network)
+  - `deployed_addresses_<network>_<timestamp>.json` (immutable run record)
+- Deployment artifacts are intentionally gitignored and must not be committed because `rpcUrl`
+  fields may contain provider secrets. Only copy contract addresses/class hashes into tracked docs.
+- Sepolia deploys require explicit opt-in: `ALLOW_PUBLIC_DEPLOY=true`.
+- Mainnet deploys require explicit opt-in: `ALLOW_MAINNET_DEPLOY=true`.
+- Sepolia/mainnet deploys also require human-review acknowledgement:
+  - `REVIEW_ACKNOWLEDGED=true`
+  - `REVIEWER_IDENTITY=<name|handle|ticket>`
 
 ## E2E Tests
 
@@ -360,7 +385,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Compare class hashes against reference deployment (if upgrading existing instances)
 
 **3. Deployment Dry Run (Testnet)**
-- [ ] Deploy to Sepolia testnet using `scripts/deploy.js`
+- [ ] Deploy to target network using `scripts/deploy.js` (`STARKNET_NETWORK=sepolia|mainnet`)
 - [ ] Verify deployment: all three contracts deployed successfully
 - [ ] Verify constructor arguments: owner address matches deployer, identity registry references are correct in reputation and validation registries
 - [ ] Run E2E tests: `cd e2e-tests && npm install && npm test` (all tests must pass)
@@ -380,12 +405,14 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Deploy ReputationRegistry with multisig owner and IdentityRegistry address
 - [ ] Deploy ValidationRegistry with multisig owner and IdentityRegistry address
 - [ ] Wait for all deployment transactions to finalize (check `ACCEPTED_ON_L2` status)
-- [ ] Record all three contract addresses in deployment log and version control (`deployed_addresses_mainnet.json`)
+- [ ] Record all three contract addresses/class hashes in deployment log and tracked docs
+      (do not commit `deployed_addresses*.json` artifacts)
 
 **6. Post-Deployment Verification**
 - [ ] Verify IdentityRegistry owner: `get_owner()` returns multisig address
 - [ ] Verify ReputationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
 - [ ] Verify ValidationRegistry owner and identity registry reference: `get_owner()`, `get_identity_registry()`
+- [ ] Run automated owner check: `cd scripts && EXPECTED_OWNER_ADDRESS=0x... npm run verify:owners`
 - [ ] Test agent registration: mint agent NFT via `register_with_token_uri`
 - [ ] Test metadata write: `set_metadata(agent_id, "test", "value")`
 - [ ] Test feedback write: `give_feedback(agent_id, ...)`
@@ -455,7 +482,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 - [ ] Monitor `OwnershipTransferred` events for unauthorized ownership changes
 - [ ] Monitor `AgentWalletSet` and `AgentWalletUnset` events for wallet verification activity
 - [ ] Monitor `FeedbackGiven` and `FeedbackRevoked` events (ReputationRegistry) for abuse patterns
-- [ ] Monitor `ValidationRequested` and `ValidationResponded` events (ValidationRegistry) for validator activity
+- [ ] Monitor `ValidationRequested` and `ValidationResponse` events (ValidationRegistry, `ValidationResponseEvent` payload type) for validator activity
 
 **14. Metrics and Dashboards**
 - [ ] Total agents registered (IdentityRegistry: `total_agents()`)
