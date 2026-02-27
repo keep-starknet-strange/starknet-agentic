@@ -231,37 +231,50 @@ pnpm test
 
 ### Official Deployments
 
-<Callout type="info" title="Testnet Contracts">
-These are the official Starknet Agentic ERC-8004 deployments. For your own deployment, follow the steps above.
+<Callout type="info" title="Live Contracts">
+These addresses are official, team-verified ERC-8004 deployments. Canonical source-of-truth and verification metadata are tracked in [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md). For your own deployment, follow the steps above.
 </Callout>
 
 **Sepolia Testnet:**
 
-| Contract | Address |
-|----------|---------|
-| IdentityRegistry | `0x...` (TBD) |
-| ReputationRegistry | `0x...` (TBD) |
-| ValidationRegistry | `0x...` (TBD) |
+| Contract | Address | Verification |
+|----------|---------|--------------|
+| IdentityRegistry | `0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631` | Team-verified; see [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| ReputationRegistry | `0x5a68b5e121a014b9fc39455d4d3e0eb79fe2327329eb734ab637cee4c55c78e` | Team-verified; see [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| ValidationRegistry | `0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f` | Team-verified; see [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| AgentAccountFactory | `0x358301e1c530a6100ae2391e43b2dd4dd0593156e59adab7501ff6f4fe8720e` | Team-verified; see [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
 
 **Mainnet:**
 
-| Contract | Address |
-|----------|---------|
-| IdentityRegistry | Not yet deployed |
-| ReputationRegistry | Not yet deployed |
-| ValidationRegistry | Not yet deployed |
+| Contract | Address | Verification |
+|----------|---------|--------------|
+| IdentityRegistry | `0x33653298d42aca87f9c004c834c6830a08e8f1c0bd694faaa1412ec8fe77595` | Team-verified; see [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| ReputationRegistry | `0x698849defe3997eccd3dc5e096c01ae8f4fbc2e49e8d67efcb0b0642447944` | Team-verified; see [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| ValidationRegistry | `0x3c2aae404b64ddf09f7ef07dfb4f723c9053443d35038263acf7d5d77efcd83` | Team-verified; see [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| AgentAccountFactory | Not yet deployed / under review | Pending verification and team sign-off |
 
 ## Upgradeability
 
-<Callout type="warning" title="Non-Upgradeable">
-The current ERC-8004 contracts are **not upgradeable**. Once deployed, the contract logic cannot be changed. This is intentional for trust minimization.
+<Callout type="warning" title="Upgradeable Contracts">
+The ERC-8004 Cairo contracts support owner-controlled upgrades via Starknet `replace_class`. Use multisig ownership and an audited upgrade process.
 </Callout>
 
-If you need upgradeability, consider:
+Recommended upgrade controls:
 
-1. **Proxy pattern** - Deploy behind an OpenZeppelin proxy
-2. **Registry migration** - Deploy new versions and migrate data
-3. **Versioned registries** - Run multiple registry versions in parallel
+1. **Multisig owner** - Never use a single EOA as owner
+2. **Staged rollout** - Test on Sepolia before mainnet `upgrade()`
+3. **Rollback plan** - Keep previous class hash and emergency procedure documented
+
+Current ownership disclosure (public docs state):
+
+| Network | Contract | Owner Type Disclosure | Verification Source |
+|---------|----------|------------------------|---------------------|
+| Sepolia | IdentityRegistry | Not yet publicly documented in this page (treat as unverified until ownership proof is published) | [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| Sepolia | ReputationRegistry | Not yet publicly documented in this page (treat as unverified until ownership proof is published) | [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| Sepolia | ValidationRegistry | Not yet publicly documented in this page (treat as unverified until ownership proof is published) | [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| Mainnet | IdentityRegistry | Not yet publicly documented in this page (treat as unverified until ownership proof is published) | [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| Mainnet | ReputationRegistry | Not yet publicly documented in this page (treat as unverified until ownership proof is published) | [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
+| Mainnet | ValidationRegistry | Not yet publicly documented in this page (treat as unverified until ownership proof is published) | [DEPLOYMENT_TRUTH_SHEET](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/docs/DEPLOYMENT_TRUTH_SHEET.md) |
 
 ## Troubleshooting
 

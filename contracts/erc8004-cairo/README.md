@@ -110,8 +110,8 @@ Typical read paths:
 - `read_all_feedback_paginated(agent_id, client_addresses, tag1, tag2, include_revoked, client_offset, client_limit, feedback_offset, feedback_limit)`
 - `get_summary(agent_id, client_addresses, tag1, tag2)` -> returns `(count, summary_value, summary_value_decimals)`
 
-Note: `get_summary` requires `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
-Note: `read_all_feedback` is a legacy convenience reader with a defensive scan ceiling (`MAX_READ_ALL_FEEDBACK_ENTRIES`, currently `2048`) across both client and feedback traversal. Large reads should use `read_all_feedback_paginated`.
+Note: `get_summary` and `read_all_feedback` both require `client_addresses` to be provided (non-empty) to reduce Sybil/spam risk.
+For broad scans, use `read_all_feedback_paginated(...)` with bounded windows.
 
 **Responses and Revocation**
 
@@ -141,12 +141,12 @@ The only reserved metadata key is `"agentWallet"`. Calling `set_metadata` with t
 
 `agentWallet` can only be set via `set_agent_wallet()` which requires an SNIP-6 signature proof, or is auto-populated at registration time.
 
-### Validation Registry: Response Immutability Semantics
+### Validation Registry: Immutable Response Semantics
 
-Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. The response is **finalize-once**:
+Each `(request_hash)` maps to exactly one `Response` in a `Map<u256, Response>`. Once the designated validator calls `validation_response`, the response is finalized and cannot be changed.
 
-- **Single response per request hash**: once the designated validator submits `validation_response`, any second response for the same `request_hash` reverts with `'Response already submitted'`.
-- **Not accumulative**: there is no response history map for a given request hash. If audit trails are needed, index `ValidationResponse` events off-chain (`ValidationResponseEvent` payload type).
+- **Finalize-once**: a second `validation_response` for the same `request_hash` reverts with `'Response already submitted'`.
+- **Not accumulative**: there is no response history map per request. If audit trails are needed, index `ValidationResponse` events off-chain.
 - **Request immutability**: the request itself cannot be overwritten (assertion: `'Request hash exists'`).
 - **One validator per request**: only the address specified in `validator_address` at request creation time can respond.
 - **How to represent re-evaluation**: create a new validation request with a new `request_hash`.
@@ -173,7 +173,8 @@ The following protections **do not exist on-chain** (accepted risk):
 
 **Mitigation guidance for integrators**:
 
-- `get_summary()` requires an explicit `client_addresses` list rather than iterating all clients. This is the primary Sybil defense: curate the address list off-chain.
+- `get_summary()` and `read_all_feedback()` require an explicit `client_addresses` list rather than iterating all clients. This is the primary Sybil defense: curate the address list off-chain.
+- For whole-registry reads, use `read_all_feedback_paginated()` with bounded `client_limit` / `feedback_limit` windows.
 - Off-chain indexers should apply reputation scoring, rate-limit detection, and Sybil filtering before presenting aggregated results.
 - The `response_count` storage tracks per-responder response counts for each feedback entry, enabling off-chain anomaly detection.
 
@@ -220,7 +221,7 @@ Operators and integrators should treat `agentWallet` as a verified-control-of-ke
 2. Publish a registration file (e.g., on IPFS/HTTPS) and set it as the token URI via `set_token_uri(agent_id, ...)`.
 3. (Optional) Set a verified receiving wallet via `set_agent_wallet(...)` (SNIP-6 signature proof bound to this chain and registry contract).
 4. Collect feedback from users/clients via `give_feedback(...)` on the Reputation Registry.
-5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback_paginated(...)` for bounded off-chain scoring.
+5. Aggregate trust in-app using `get_summary(...)` and/or pull raw feedback via `read_all_feedback(...)` with explicit clients. Use `read_all_feedback_paginated(...)` for broad scans.
 
 ## Features
 
@@ -510,7 +511,7 @@ This checklist guides production deployment, key management, monitoring, and inc
 
 **18. Spam or Abuse Detected**
 - [ ] Identify abusive agent_id or client address
-- [ ] Review feedback entries: `read_all_feedback(agent_id, ...)`
+- [ ] Review feedback entries: `read_all_feedback(agent_id, client_addresses, ...)`
 - [ ] Review validation requests: `get_agent_validations(agent_id, ...)`
 - [ ] Document abuse pattern (evidence: transaction hashes, addresses, timestamps)
 - [ ] Publish abuse report (if applicable)
