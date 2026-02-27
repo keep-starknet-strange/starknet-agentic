@@ -1121,6 +1121,18 @@ fn test_get_clients_paginated_zero_limit_and_out_of_range_offset() {
 }
 
 #[test]
+#[should_panic(expected: 'client_limit too large')]
+fn test_get_clients_paginated_rejects_over_limit() {
+    let (identity_registry, reputation_registry, identity_address, _) = deploy_contracts();
+
+    start_cheat_caller_address(identity_address, agent_owner());
+    let agent_id = identity_registry.register();
+    stop_cheat_caller_address(identity_address);
+
+    let _ = reputation_registry.get_clients_paginated(agent_id, 0, 257);
+}
+
+#[test]
 fn test_get_summary_allows_max_zero_feedback_client_scan() {
     let (identity_registry, reputation_registry, identity_address, _) = deploy_contracts();
 

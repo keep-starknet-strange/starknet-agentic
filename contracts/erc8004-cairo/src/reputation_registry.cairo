@@ -941,6 +941,7 @@ pub mod ReputationRegistry {
             let mut result: Array<ContractAddress> = ArrayTrait::new();
             let client_vec = self.clients.entry(agent_id);
             let len = client_vec.len();
+            assert(limit <= MAX_PAGINATED_CLIENT_LIMIT.into(), 'client_limit too large');
 
             if offset >= len {
                 return (result, false);
