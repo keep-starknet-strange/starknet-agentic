@@ -108,11 +108,11 @@ reviews:
           For changes in .github/workflows/**, flag any new or expanded permissions,
           unpinned action versions, or secrets referenced without need-to-know scope.
 
-tools:
-  opengrep:
-    enabled: true
-  trufflehog:
-    enabled: true
+  tools:
+    opengrep:
+      enabled: true
+    trufflehog:
+      enabled: true
 
 chat:
   auto_reply: true
