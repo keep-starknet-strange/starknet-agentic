@@ -441,6 +441,32 @@ describe("KeyringProxySigner", () => {
     ).rejects.toThrow("audit.traceId does not match request traceId");
   });
 
+  it("rejects proxy signatures when audit.keyId does not match configured keyId", async () => {
+    const fetchMock = mockProxySuccessFetch({
+      audit: {
+        keyId: "unexpected-key",
+      },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const signer = new KeyringProxySigner({
+      proxyUrl: "http://127.0.0.1:8545",
+      hmacSecret: "test-secret",
+      clientId: "mcp-tests",
+      accountAddress: "0xabc",
+      requestTimeoutMs: 5_000,
+      sessionValiditySeconds: 300,
+      keyId: "expected-key",
+    });
+
+    await expect(
+      signer.signTransaction(
+        [{ contractAddress: "0x111", entrypoint: "transfer", calldata: ["0x1"] }],
+        { chainId: "0x1", nonce: "0x1" } as any
+      )
+    ).rejects.toThrow("audit.keyId does not match requested keyId");
+  });
+
   it("rejects proxy signatures when sessionPublicKey mismatches signature pubkey", async () => {
     const fetchMock = mockProxySuccessFetch({
       signature: ["0x123", "0xaaa", "0xbbb", "0xccc"],
