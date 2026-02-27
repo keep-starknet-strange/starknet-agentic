@@ -160,6 +160,7 @@ components:
           minLength: 1
         sessionId:
           type: string
+          minLength: 1
     SignSessionTransactionRequest:
       type: object
       additionalProperties: false
