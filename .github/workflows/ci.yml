@@ -235,7 +235,7 @@ jobs:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4.0.0
+        uses: foundry-rs/setup-snfoundry@84390a1602c157576ceefa6f9cfcb8b0504c94c7 # v5.0.0
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -262,7 +262,7 @@ jobs:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4.0.0
+        uses: foundry-rs/setup-snfoundry@84390a1602c157576ceefa6f9cfcb8b0504c94c7 # v5.0.0
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -289,7 +289,7 @@ jobs:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4.0.0
+        uses: foundry-rs/setup-snfoundry@84390a1602c157576ceefa6f9cfcb8b0504c94c7 # v5.0.0
         with:
           starknet-foundry-version: "0.54.1"
 
@@ -316,7 +316,7 @@ jobs:
           scarb-version: "2.14.0"
 
       - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@ee00ea3f026379008ca40a54448d4059233d06cc # v4.0.0
+        uses: foundry-rs/setup-snfoundry@84390a1602c157576ceefa6f9cfcb8b0504c94c7 # v5.0.0
         with:
           starknet-foundry-version: "0.54.1"
 
