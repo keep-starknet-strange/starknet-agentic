@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "run": "npx tsx run.ts",
-    "run:sepolia": "npx tsx run.ts --network sepolia"
+    "run:sepolia": "npx tsx run.ts --network sepolia",
+    "dfns:keys-json": "node scripts/build-dfns-keys-json.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",

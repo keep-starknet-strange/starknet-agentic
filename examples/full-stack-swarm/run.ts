@@ -81,27 +81,64 @@ function envBigInt(name: string): bigint {
 
 type SisnaSignerProvider = "local" | "dfns";
 
-function parseHexMapEnv(name: string): Record<string, string> {
-  const raw = envString(name, "{}")!;
+type DfnsKeyConfig = {
+  keyId: string;
+  dfnsKeyId: string;
+  sessionPublicKey: string;
+  verificationPublicKey?: string;
+};
+
+function parseDfnsKeysEnv(name: string): DfnsKeyConfig[] {
+  const raw = envString(name, "[]")!;
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error(`${name} must be valid JSON object`);
+    throw new Error(`${name} must be valid JSON array`);
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`${name} must be a JSON object`);
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${name} must be a JSON array`);
   }
-  const normalized: Record<string, string> = {};
-  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-    if (typeof v !== "string" || v.trim() === "") {
-      throw new Error(`${name}.${k} must be a non-empty string`);
+  const normalized: DfnsKeyConfig[] = [];
+  for (let i = 0; i < parsed.length; i += 1) {
+    const item = parsed[i];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`${name}[${i}] must be an object`);
     }
+    const keyId = (item as Record<string, unknown>).keyId;
+    const dfnsKeyId = (item as Record<string, unknown>).dfnsKeyId;
+    const sessionPublicKey = (item as Record<string, unknown>).sessionPublicKey;
+    const verificationPublicKey = (item as Record<string, unknown>).verificationPublicKey;
+    if (typeof keyId !== "string" || keyId.trim() === "") {
+      throw new Error(`${name}[${i}].keyId must be a non-empty string`);
+    }
+    if (typeof dfnsKeyId !== "string" || dfnsKeyId.trim() === "") {
+      throw new Error(`${name}[${i}].dfnsKeyId must be a non-empty string`);
+    }
+    if (typeof sessionPublicKey !== "string" || sessionPublicKey.trim() === "") {
+      throw new Error(`${name}[${i}].sessionPublicKey must be a non-empty string`);
+    }
+    let normalizedSessionPublicKey: string;
     try {
-      normalized[k] = num.toHex(BigInt(v));
+      normalizedSessionPublicKey = num.toHex(BigInt(sessionPublicKey));
     } catch {
-      throw new Error(`${name}.${k} must be a felt-compatible integer string`);
+      throw new Error(`${name}[${i}].sessionPublicKey must be a felt-compatible integer string`);
     }
+    let normalizedVerificationPublicKey: string | undefined;
+    if (typeof verificationPublicKey === "string" && verificationPublicKey.trim() !== "") {
+      const trimmed = verificationPublicKey.trim().toLowerCase();
+      const prefixed = trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`;
+      if (!/^0x[0-9a-f]+$/.test(prefixed)) {
+        throw new Error(`${name}[${i}].verificationPublicKey must be hex`);
+      }
+      normalizedVerificationPublicKey = prefixed;
+    }
+    normalized.push({
+      keyId: keyId.trim(),
+      dfnsKeyId: dfnsKeyId.trim(),
+      sessionPublicKey: normalizedSessionPublicKey,
+      ...(normalizedVerificationPublicKey ? { verificationPublicKey: normalizedVerificationPublicKey } : {}),
+    });
   }
   return normalized;
 }
@@ -171,17 +208,21 @@ class McpSidecar {
   private client: Client | null = null;
   constructor(
     private readonly label: string,
-    private readonly env: Record<string, string>,
+    private readonly env: NodeJS.ProcessEnv,
   ) {}
 
   async connect(): Promise<void> {
     // Use the local built MCP server for correctness: it depends on other workspace packages
     // that are expected to be built (e.g. x402-starknet).
     const mcpEntry = path.resolve(SCRIPT_DIR, "../../packages/starknet-mcp-server/dist/index.js");
+    const mergedEnv: Record<string, string> = {};
+    for (const [k, v] of Object.entries({ ...process.env, ...this.env })) {
+      if (typeof v === "string") mergedEnv[k] = v;
+    }
     const transport = new StdioClientTransport({
       command: "node",
       args: [mcpEntry],
-      env: { ...process.env, ...this.env },
+      env: mergedEnv,
     });
 
     const client = new Client(
@@ -201,7 +242,8 @@ class McpSidecar {
     if (!this.client) throw new Error("MCP client not connected");
     const res = await this.client.callTool({ name, arguments: args });
     if (res?.isError) {
-      const msg = res?.content?.[0]?.text || `Tool error: ${name}`;
+      const firstContent = Array.isArray((res as any)?.content) ? (res as any).content[0] : undefined;
+      const msg = typeof firstContent?.text === "string" ? firstContent.text : `Tool error: ${name}`;
       throw new Error(msg);
     }
     return res;
@@ -215,15 +257,23 @@ function startSisna(args: {
   signerProvider: SisnaSignerProvider;
   signingKeysById: Record<string, string>;
   allowedKeyIdsByClientId: Record<string, string[]>;
-  dfnsSignerUrl?: string;
-  dfnsAuthToken?: string;
-  dfnsUserActionSignature?: string;
-  dfnsPinnedPubkeysByKeyId?: Record<string, string>;
+  dfns?: {
+    authToken: string;
+    credentialId: string;
+    credentialPrivateKeyPem: string;
+    baseUrl?: string;
+    network: "Starknet" | "StarknetSepolia";
+    timeoutMs: number;
+    pollIntervalMs: number;
+    requireSignatureVerification: boolean;
+    keys: DfnsKeyConfig[];
+  };
 }) {
+  const allAllowedKeyIds = Object.values(args.allowedKeyIdsByClientId).flat();
   const defaultKeyId =
     args.signerProvider === "local"
       ? Object.keys(args.signingKeysById)[0]
-      : Object.values(args.allowedKeyIdsByClientId)[0]?.[0];
+      : allAllowedKeyIds[0];
   if (!defaultKeyId) {
     throw new Error("Internal error: no default key id available for SISNA");
   }
@@ -235,15 +285,18 @@ function startSisna(args: {
     throw new Error("Internal error: no local signing keys provided to SISNA");
   }
   if (args.signerProvider === "dfns") {
-    if (!args.dfnsSignerUrl || !args.dfnsAuthToken || !args.dfnsUserActionSignature) {
-      throw new Error("DFNS mode requires signer URL + auth token + user action signature");
+    if (!args.dfns) {
+      throw new Error("DFNS mode requires backend configuration");
     }
-    if (!args.dfnsPinnedPubkeysByKeyId || Object.keys(args.dfnsPinnedPubkeysByKeyId).length === 0) {
-      throw new Error("DFNS mode requires pinned pubkeys by keyId");
+    if (!args.dfns.authToken || !args.dfns.credentialId || !args.dfns.credentialPrivateKeyPem) {
+      throw new Error("DFNS mode requires auth token + credential ID + credential private key");
+    }
+    if (args.dfns.keys.length === 0) {
+      throw new Error("DFNS mode requires KEYRING_DFNS_KEYS_JSON entries");
     }
   }
   const keyringAllowedChainIds = "0x534e5f5345504f4c4941"; // "SN_SEPOLIA" as felt
-  const env: Record<string, string> = {
+  const env: NodeJS.ProcessEnv = {
     ...process.env,
     NODE_ENV: "development",
     PORT: String(args.port),
@@ -252,6 +305,7 @@ function startSisna(args: {
     KEYRING_ALLOWED_CHAIN_IDS: keyringAllowedChainIds,
     KEYRING_HMAC_SECRET: args.hmacSecret,
     KEYRING_SIGNER_PROVIDER: args.signerProvider,
+    KEYRING_SIGNER_BACKEND: args.signerProvider === "dfns" ? "dfns" : "local",
     KEYRING_SIGNER_FALLBACK_PROVIDER: "none",
     KEYRING_DEFAULT_AUTH_CLIENT_ID: defaultClientId,
     // SISNA requires KEYRING_DEFAULT_KEY_ID to map to an authorized keyId.
@@ -269,10 +323,17 @@ function startSisna(args: {
       Object.entries(args.signingKeysById).map(([keyId, privateKey]) => ({ keyId, privateKey })),
     );
   } else {
-    env.KEYRING_DFNS_SIGNER_URL = args.dfnsSignerUrl!;
-    env.KEYRING_DFNS_AUTH_TOKEN = args.dfnsAuthToken!;
-    env.KEYRING_DFNS_USER_ACTION_SIGNATURE = args.dfnsUserActionSignature!;
-    env.KEYRING_DFNS_PINNED_PUBKEYS_JSON = JSON.stringify(args.dfnsPinnedPubkeysByKeyId);
+    env.DFNS_AUTH_TOKEN = args.dfns!.authToken;
+    env.DFNS_CREDENTIAL_ID = args.dfns!.credentialId;
+    env.DFNS_CREDENTIAL_PRIVATE_KEY_PEM = args.dfns!.credentialPrivateKeyPem;
+    env.DFNS_NETWORK = args.dfns!.network;
+    env.DFNS_TIMEOUT_MS = String(args.dfns!.timeoutMs);
+    env.DFNS_POLL_INTERVAL_MS = String(args.dfns!.pollIntervalMs);
+    env.DFNS_REQUIRE_SIGNATURE_VERIFICATION = args.dfns!.requireSignatureVerification ? "true" : "false";
+    env.KEYRING_DFNS_KEYS_JSON = JSON.stringify(args.dfns!.keys);
+    if (args.dfns!.baseUrl) {
+      env.DFNS_BASE_URL = args.dfns!.baseUrl;
+    }
   }
 
   const child = spawn("npm", ["run", "dev"], { cwd: args.sisnaDir, env, stdio: "inherit" });
@@ -393,10 +454,26 @@ async function main() {
     throw new Error("SISNA_SIGNER_PROVIDER must be one of: local, dfns");
   }
   const sisnaSignerProvider = sisnaSignerProviderRaw as SisnaSignerProvider;
-  const dfnsSignerUrl = envString("KEYRING_DFNS_SIGNER_URL", "");
-  const dfnsAuthToken = envString("KEYRING_DFNS_AUTH_TOKEN", "");
-  const dfnsUserActionSignature = envString("KEYRING_DFNS_USER_ACTION_SIGNATURE", "");
-  const dfnsPinnedPubkeysByKeyId = parseHexMapEnv("KEYRING_DFNS_PINNED_PUBKEYS_JSON");
+  const dfnsAuthToken = envString("DFNS_AUTH_TOKEN", "");
+  const dfnsCredentialId = envString("DFNS_CREDENTIAL_ID", "");
+  const dfnsCredentialPrivateKeyPem = envString("DFNS_CREDENTIAL_PRIVATE_KEY_PEM", "");
+  const dfnsBaseUrl = envString("DFNS_BASE_URL", "");
+  const dfnsNetworkRaw = envString("DFNS_NETWORK", "StarknetSepolia") || "StarknetSepolia";
+  if (dfnsNetworkRaw !== "Starknet" && dfnsNetworkRaw !== "StarknetSepolia") {
+    throw new Error("DFNS_NETWORK must be one of: Starknet, StarknetSepolia");
+  }
+  const dfnsNetwork = dfnsNetworkRaw as "Starknet" | "StarknetSepolia";
+  const dfnsTimeoutMs = envInt("DFNS_TIMEOUT_MS", 15_000);
+  const dfnsPollIntervalMs = envInt("DFNS_POLL_INTERVAL_MS", 500);
+  const dfnsRequireSignatureVerification = envBool("DFNS_REQUIRE_SIGNATURE_VERIFICATION", true);
+  const dfnsKeys = parseDfnsKeysEnv("KEYRING_DFNS_KEYS_JSON");
+  const dfnsKeyById = new Map<string, DfnsKeyConfig>();
+  for (const key of dfnsKeys) {
+    if (dfnsKeyById.has(key.keyId)) {
+      throw new Error(`Duplicate KEYRING_DFNS_KEYS_JSON keyId: ${key.keyId}`);
+    }
+    dfnsKeyById.set(key.keyId, key);
+  }
   const keyringHmacSecret = required("KEYRING_HMAC_SECRET");
   const externalProxyUrl = envString("KEYRING_PROXY_URL", "");
 
@@ -544,15 +621,18 @@ async function main() {
 
           // Register session key (empty whitelist => allow all non-admin selectors)
           if (sisnaSignerProvider === "dfns") {
-            const pinned = dfnsPinnedPubkeysByKeyId[agent.sessionKeyId];
-            if (!pinned) {
-              throw new Error(`Missing KEYRING_DFNS_PINNED_PUBKEYS_JSON entry for keyId=${agent.sessionKeyId}`);
+            const keyConfig = dfnsKeyById.get(agent.sessionKeyId);
+            if (!keyConfig) {
+              throw new Error(`Missing KEYRING_DFNS_KEYS_JSON entry for keyId=${agent.sessionKeyId}`);
             }
-            if (agent.sessionPublicKey && num.toHex(BigInt(agent.sessionPublicKey)) !== pinned) {
+            if (
+              agent.sessionPublicKey &&
+              num.toHex(BigInt(agent.sessionPublicKey)) !== num.toHex(BigInt(keyConfig.sessionPublicKey))
+            ) {
               throw new Error(`Existing session public key mismatch for keyId=${agent.sessionKeyId}`);
             }
             agent.sessionPrivateKey = null;
-            agent.sessionPublicKey = pinned;
+            agent.sessionPublicKey = num.toHex(BigInt(keyConfig.sessionPublicKey));
           } else if (!agent.sessionPrivateKey || !agent.sessionPublicKey) {
             agent.sessionPrivateKey = randomPrivateKeyHex();
             agent.sessionPublicKey = pubKeyFromPriv(agent.sessionPrivateKey);
@@ -620,14 +700,14 @@ async function main() {
     }
 
     if (sisnaSignerProvider === "dfns") {
-      if (!dfnsSignerUrl || !dfnsAuthToken || !dfnsUserActionSignature) {
+      if (!dfnsAuthToken || !dfnsCredentialId || !dfnsCredentialPrivateKeyPem) {
         throw new Error(
-          "DFNS mode requires KEYRING_DFNS_SIGNER_URL, KEYRING_DFNS_AUTH_TOKEN, KEYRING_DFNS_USER_ACTION_SIGNATURE",
+          "DFNS mode requires DFNS_AUTH_TOKEN, DFNS_CREDENTIAL_ID, DFNS_CREDENTIAL_PRIVATE_KEY_PEM",
         );
       }
       for (const agent of state.agents as any[]) {
-        if (!dfnsPinnedPubkeysByKeyId[agent.sessionKeyId]) {
-          throw new Error(`Missing pinned DFNS pubkey for keyId=${agent.sessionKeyId}`);
+        if (!dfnsKeyById.has(agent.sessionKeyId)) {
+          throw new Error(`Missing DFNS key mapping for keyId=${agent.sessionKeyId}`);
         }
       }
     }
@@ -647,10 +727,17 @@ async function main() {
         allowedKeyIdsByClientId,
         ...(sisnaSignerProvider === "dfns"
           ? {
-              dfnsSignerUrl: dfnsSignerUrl!,
-              dfnsAuthToken: dfnsAuthToken!,
-              dfnsUserActionSignature: dfnsUserActionSignature!,
-              dfnsPinnedPubkeysByKeyId: dfnsPinnedPubkeysByKeyId,
+              dfns: {
+                authToken: dfnsAuthToken!,
+                credentialId: dfnsCredentialId!,
+                credentialPrivateKeyPem: dfnsCredentialPrivateKeyPem!,
+                ...(dfnsBaseUrl ? { baseUrl: dfnsBaseUrl } : {}),
+                network: dfnsNetwork,
+                timeoutMs: dfnsTimeoutMs,
+                pollIntervalMs: dfnsPollIntervalMs,
+                requireSignatureVerification: dfnsRequireSignatureVerification,
+                keys: dfnsKeys,
+              },
             }
           : {}),
       });

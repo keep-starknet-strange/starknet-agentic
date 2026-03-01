@@ -51,10 +51,36 @@ Signer provider options:
   - `SISNA_SIGNER_PROVIDER=local`
 - DFNS signer mode:
   - `SISNA_SIGNER_PROVIDER=dfns`
-  - `KEYRING_DFNS_SIGNER_URL`
-  - `KEYRING_DFNS_AUTH_TOKEN`
-  - `KEYRING_DFNS_USER_ACTION_SIGNATURE`
-  - `KEYRING_DFNS_PINNED_PUBKEYS_JSON` (must include one entry per `sessionKeyId`, e.g. `agent-1`)
+  - `DFNS_AUTH_TOKEN`
+  - `DFNS_CREDENTIAL_ID`
+  - `DFNS_CREDENTIAL_PRIVATE_KEY_PEM`
+  - `DFNS_NETWORK=StarknetSepolia`
+  - `KEYRING_DFNS_KEYS_JSON` (must include one entry per `sessionKeyId`, e.g. `agent-1`)
+
+`KEYRING_DFNS_KEYS_JSON` format:
+
+```json
+[
+  {
+    "keyId": "agent-1",
+    "dfnsKeyId": "key_xxx",
+    "sessionPublicKey": "0xabc...",
+    "verificationPublicKey": "0x03..."
+  }
+]
+```
+
+Tip: SISNA includes `build-dfns-keys-json.mjs` to transform DFNS `/keys` API output into `KEYRING_DFNS_KEYS_JSON`.
+For this demo, create entries for all `agent-1..agent-N`.
+
+Example:
+
+```bash
+curl -sS -H "Authorization: Bearer $DFNS_AUTH_TOKEN" https://api.dfns.io/keys \
+  | pnpm --filter @starknet-agentic/full-stack-swarm-example run dfns:keys-json > /tmp/dfns-keys.json
+```
+
+Then copy the JSON into `.env` as `KEYRING_DFNS_KEYS_JSON=...` (single-line JSON).
 
 ## Run
 
