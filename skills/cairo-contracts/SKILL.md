@@ -168,7 +168,7 @@ self.emit(Transfer { from, to, amount });
 
 ## Project Structure
 
-```
+```text
 my-project/
   Scarb.toml
   src/
@@ -219,5 +219,30 @@ fn constructor(ref self: ContractState, owner: ContractAddress) {
     self.ownable.initializer(owner);
 }
 ```
+
+## Cross-Contract Calls (Dispatchers)
+
+To call another contract, generate a dispatcher from its interface trait:
+
+```cairo
+// Given an interface:
+#[starknet::interface]
+trait ITokenContract<TContractState> {
+    fn balance_of(self: @TContractState, account: ContractAddress) -> u256;
+    fn transfer(ref self: TContractState, to: ContractAddress, amount: u256);
+}
+
+// The compiler auto-generates ITokenContractDispatcher and ITokenContractDispatcherTrait.
+// Use them to call the remote contract:
+use super::{ITokenContractDispatcher, ITokenContractDispatcherTrait};
+
+fn check_balance(token_address: ContractAddress, account: ContractAddress) -> u256 {
+    let token = ITokenContractDispatcher { contract_address: token_address };
+    token.balance_of(account)
+}
+```
+
+- `IFooDispatcher` — for external calls that can modify state (`ref self`)
+- `IFooLibraryDispatcher` — for library/delegate calls (runs callee code in caller's context)
 
 > **Components:** For Ownable, Pausable, AccessControl, ERC20, Upgradeable, and the Mixin pattern, see [cairo-components](../cairo-components/).

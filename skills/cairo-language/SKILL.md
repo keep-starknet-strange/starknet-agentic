@@ -247,7 +247,7 @@ arr.append(4);
 let len = arr.len();
 let first: Option<u32> = arr.pop_front();  // removes from front
 let val: u32 = *arr.at(0);                 // panics if out of bounds
-let maybe: Option<@u32> = arr.get(0);      // returns Option
+let maybe: Option<Box<@u32>> = arr.get(0);  // returns Option<Box<@T>>
 
 // Span — immutable view of an Array
 let span: Span<u32> = arr.span();

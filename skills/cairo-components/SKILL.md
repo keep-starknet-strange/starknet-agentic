@@ -95,6 +95,10 @@ mod MyToken {
 6. Add `#[flat]` variant in `Event` enum
 7. Call `.initializer(...)` in constructor
 
+> **Important:** Component functions are **not exposed** in your contract's ABI unless you wire them in with `#[abi(embed_v0)]`.
+> If you add an ERC721 component but skip the `ERC721MixinImpl` embed, functions like `symbol()`, `token_uri()`, and `balance_of()` will not be callable.
+> The `MixinImpl` bundles all standard interface methods — always prefer it over embedding individual sub-impls.
+
 ## Writing a Custom Component
 
 ```cairo
