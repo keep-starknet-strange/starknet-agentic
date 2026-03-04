@@ -23,9 +23,9 @@
     "ci:release": "pnpm build && changeset publish"
   },
   "devDependencies": {
-    "@changesets/cli": "2.29.8",
+    "@changesets/cli": "2.30.0",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.3.2",
+    "@types/node": "^25.3.3",
     "eslint": "^10.0.2",
     "tsup": "^8.5.0",
     "typescript": "^5.9.0",
