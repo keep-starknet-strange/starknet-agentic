@@ -24,6 +24,7 @@ export const RunConfigSchema = z.object({
   transferAmount: z.string().min(1),
   rejectionProbeAmount: z.string().min(1),
   vesuToken: z.string().min(1),
+  vesuPool: z.string().startsWith("0x").optional(),
   vesuDepositAmount: z.string().min(1),
   vesuWithdrawAmount: z.string().optional(),
   agentId: z.string().optional(),

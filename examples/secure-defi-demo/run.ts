@@ -98,6 +98,9 @@ async function main(): Promise<void> {
   const config = loadRunConfig(args);
   const sidecar = new McpSidecar(config.mcpEntry, buildSidecarEnv(config));
   const steps: StepResult[] = [];
+  const vesuArgs = config.vesuPool
+    ? { address: config.accountAddress, tokens: [config.vesuToken], pool: config.vesuPool }
+    : { address: config.accountAddress, tokens: [config.vesuToken] };
 
   steps.push(
     await runStep("startup", "Connect MCP sidecar", async () => {
@@ -258,10 +261,7 @@ async function main(): Promise<void> {
   );
 
   const vesuBefore = await runStep("vesu_positions_before", "Read Vesu position before write", async () => {
-    const positions = await sidecar.callTool("starknet_vesu_positions", {
-      address: config.accountAddress,
-      tokens: [config.vesuToken],
-    });
+    const positions = await sidecar.callTool("starknet_vesu_positions", vesuArgs);
     return { token: config.vesuToken, positions };
   });
   if (vesuBefore.status === "failed" && isVesuUnavailableError(vesuBefore.error)) {
@@ -301,6 +301,7 @@ async function main(): Promise<void> {
         const tx = await sidecar.callTool("starknet_vesu_deposit", {
           token: config.vesuToken,
           amount: config.vesuDepositAmount,
+          ...(config.vesuPool ? { pool: config.vesuPool } : {}),
         });
         return { token: config.vesuToken, amount: config.vesuDepositAmount, tx };
       });
@@ -318,10 +319,7 @@ async function main(): Promise<void> {
     }
 
     const vesuAfter = await runStep("vesu_positions_after", "Read Vesu position after write", async () => {
-      const positions = await sidecar.callTool("starknet_vesu_positions", {
-        address: config.accountAddress,
-        tokens: [config.vesuToken],
-      });
+      const positions = await sidecar.callTool("starknet_vesu_positions", vesuArgs);
       return { token: config.vesuToken, positions };
     });
     if (vesuAfter.status === "failed" && isVesuUnavailableError(vesuAfter.error)) {
@@ -350,6 +348,7 @@ async function main(): Promise<void> {
           const tx = await sidecar.callTool("starknet_vesu_withdraw", {
             token: config.vesuToken,
             amount: config.vesuWithdrawAmount,
+            ...(config.vesuPool ? { pool: config.vesuPool } : {}),
           });
           return { token: config.vesuToken, amount: config.vesuWithdrawAmount, tx };
         });

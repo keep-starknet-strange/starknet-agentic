@@ -62,6 +62,7 @@ Before execute mode:
 3. Set safe amounts:
    - `DEMO_TRANSFER_AMOUNT`
    - `DEMO_VESU_DEPOSIT_AMOUNT`
+   - optional `DEMO_VESU_POOL` for non-default deployment
 4. Optional sponsored mode:
    - `AVNU_PAYMASTER_API_KEY`
 5. Optional session evidence:

@@ -95,6 +95,7 @@ export function loadRunConfig(args: CliArgs): RunConfig {
     transferAmount: optionalEnv("DEMO_TRANSFER_AMOUNT") ?? "0.001",
     rejectionProbeAmount: optionalEnv("DEMO_REJECTION_PROBE_AMOUNT") ?? "999999",
     vesuToken: optionalEnv("DEMO_VESU_TOKEN") ?? "STRK",
+    vesuPool: optionalEnv("DEMO_VESU_POOL"),
     vesuDepositAmount: optionalEnv("DEMO_VESU_DEPOSIT_AMOUNT") ?? "0.01",
     vesuWithdrawAmount: args.withWithdraw
       ? optionalEnv("DEMO_VESU_WITHDRAW_AMOUNT") ?? optionalEnv("DEMO_VESU_DEPOSIT_AMOUNT") ?? "0.005"

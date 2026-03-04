@@ -80,6 +80,7 @@ Minimum for reliable Sepolia writes:
 For meaningful Vesu scenarios:
 
 - enough `DEMO_VESU_TOKEN` balance for `DEMO_VESU_DEPOSIT_AMOUNT`
+- optional `DEMO_VESU_POOL` if you need a non-default pool address
 
 ## Security Notes
 
