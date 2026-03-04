@@ -2,7 +2,7 @@
 
 Deterministic single-agent demo for the narrative:
 
-1. Base reputation context (signed envelope hash)
+1. Base reputation context (signed envelope verification)
 2. Starknet identity/session-key evidence
 3. Preflight policy rejection proof (no gas burned)
 4. Vesu position + optional deposit/withdraw
@@ -13,12 +13,13 @@ This demo writes an artifact JSON you can keep as audit evidence.
 
 - The MCP tool surface is available and wired.
 - Preflight policy enforcement blocks unsafe calls before on-chain execution.
+- Default blocked selector policy rejects privileged entrypoints (`upgrade`, ownership/admin ops).
 - Vesu operations are callable from the same secure runtime.
 - Optional ERC-8004 and session-key state can be attached to the artifact.
+- Base attestation envelope can be schema-validated and signature-verified.
 
 ## What This Demo Does Not Prove
 
-- It does not independently prove Base attestation cryptographic validity (only hashes and records it).
 - It does not register a new session key by default.
 - It does not bridge Base -> Starknet trust on-chain in v1.
 
@@ -37,6 +38,10 @@ Setup env:
 cd examples/secure-defi-demo
 cp .env.example .env
 ```
+
+Note: the MCP sidecar initializes signing at startup, so even `dry-run` needs signer credentials:
+- direct mode: `STARKNET_PRIVATE_KEY`
+- proxy mode: `KEYRING_PROXY_URL` + `KEYRING_HMAC_SECRET`
 
 ## Run Modes
 
@@ -64,6 +69,7 @@ Artifacts are written to `DEMO_OUTPUT_DIR` (default `./artifacts`).
 
 Each run returns:
 
+- JSON artifact path + markdown summary path
 - run id
 - per-step status (`ok`, `failed`, `skipped`)
 - rejection probe evidence
@@ -89,3 +95,30 @@ For meaningful Vesu scenarios:
 - Never commit `.env` or artifacts containing sensitive data.
 - The demo intentionally injects `STARKNET_MCP_POLICY` (if absent) to force a deterministic rejection probe.
 - Policy rejection probe should fail with a policy-limit error; if it succeeds, tighten `DEMO_POLICY_MAX_TRANSFER`.
+- Forbidden selector probe should fail with a blocked-entrypoint policy error.
+- Expired session probe runs only in `--mode execute` + `STARKNET_SIGNER_MODE=proxy` when provided session data is inactive.
+
+## Signed Base Attestation Format
+
+`DEMO_BASE_ATTESTATION_PATH` should point to JSON with this shape:
+
+```json
+{
+  "version": "1",
+  "issuer": "base-agent-registry",
+  "issuedAt": "2026-03-04T12:00:00.000Z",
+  "subject": "0xagent-or-identity-id",
+  "payload": {
+    "reputationScore": 91,
+    "attestedBy": "base-prover"
+  },
+  "signing": {
+    "algorithm": "ed25519",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----",
+    "signatureBase64": "..."
+  }
+}
+```
+
+The demo verifies the signature against canonical JSON of:
+`{ version, issuer, issuedAt, subject, payload }`.

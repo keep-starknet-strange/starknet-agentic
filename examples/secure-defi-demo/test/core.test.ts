@@ -83,9 +83,9 @@ test("parseCliArgs validates mode", () => {
   assert.throws(() => parseCliArgs(), /--mode must be one of/);
 });
 
-test("loadRunConfig requires private key in execute/direct mode", () => {
+test("loadRunConfig requires private key in direct mode", () => {
   restoreProcessState();
-  process.argv = ["node", "run.ts", "--mode", "execute"];
+  process.argv = ["node", "run.ts", "--mode", "dry-run"];
   process.env.STARKNET_SIGNER_MODE = "direct";
   process.env.STARKNET_RPC_URL = "https://starknet-sepolia-rpc.publicnode.com";
   process.env.STARKNET_ACCOUNT_ADDRESS = "0x123";
@@ -94,6 +94,20 @@ test("loadRunConfig requires private key in execute/direct mode", () => {
 
   const args = parseCliArgs();
   assert.throws(() => loadRunConfig(args), /Missing required env var: STARKNET_PRIVATE_KEY/);
+});
+
+test("loadRunConfig requires proxy credentials in proxy mode", () => {
+  restoreProcessState();
+  process.argv = ["node", "run.ts", "--mode", "dry-run"];
+  process.env.STARKNET_SIGNER_MODE = "proxy";
+  process.env.STARKNET_RPC_URL = "https://starknet-sepolia-rpc.publicnode.com";
+  process.env.STARKNET_ACCOUNT_ADDRESS = "0x123";
+  process.env.DEMO_MCP_ENTRY = path.resolve("README.md");
+  delete process.env.KEYRING_PROXY_URL;
+  delete process.env.KEYRING_HMAC_SECRET;
+
+  const args = parseCliArgs();
+  assert.throws(() => loadRunConfig(args), /Missing required env var: KEYRING_PROXY_URL/);
 });
 
 test.after(() => {

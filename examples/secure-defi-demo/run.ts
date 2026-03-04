@@ -1,16 +1,19 @@
 #!/usr/bin/env npx tsx
 import dotenv from "dotenv";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
+import { loadAndVerifyBaseAttestation } from "./src/attestation.js";
 import { loadRunConfig, parseCliArgs, buildSidecarEnv } from "./src/config.js";
 import { McpSidecar } from "./src/mcp.js";
 import {
   DemoArtifactSchema,
+  SessionStateSchema,
   buildSummary,
   type DemoArtifact,
+  type SessionState,
   type StepResult,
 } from "./src/types.js";
 
@@ -60,18 +63,6 @@ function skippedStep(id: string, title: string, reason: string): StepResult {
   };
 }
 
-function readBaseAttestation(): DemoArtifact["baseAttestation"] {
-  const filePath = process.env.DEMO_BASE_ATTESTATION_PATH?.trim();
-  if (!filePath) return undefined;
-
-  const raw = fs.readFileSync(filePath);
-  const hash = createHash("sha256").update(raw).digest("hex");
-  return {
-    path: path.resolve(filePath),
-    sha256: hash,
-  };
-}
-
 function writeArtifact(artifact: DemoArtifact, outputDir: string): string {
   fs.mkdirSync(outputDir, { recursive: true });
   const fileName = `secure-defi-demo-${artifact.runId}.json`;
@@ -92,6 +83,68 @@ function isVesuUnavailableError(error: unknown): boolean {
 function isTimeoutError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /request timed out|timeout/i.test(message);
+}
+
+function isPolicyRejectionError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /policy violation|blocked|not covered by policy|exceeds policy|is not in the allowed/i.test(message);
+}
+
+function isSessionRejectionError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /session|expired|revoke|max calls|not active|invalid signature|unauthorized/i.test(message);
+}
+
+function parseSessionData(result: unknown): SessionState {
+  return SessionStateSchema.parse(result);
+}
+
+function renderMarkdownSummary(artifact: DemoArtifact): string {
+  const lines: string[] = [
+    "# Secure DeFi Demo Result",
+    "",
+    `- Run ID: \`${artifact.runId}\``,
+    `- Mode: \`${artifact.mode}\``,
+    `- Network: \`${artifact.networkLabel}\``,
+    `- Account: \`${artifact.accountAddress}\``,
+    `- Signer mode: \`${artifact.signerMode}\``,
+    `- Started: ${artifact.startedAt}`,
+    `- Ended: ${artifact.endedAt}`,
+    "",
+    "## Summary",
+    "",
+    `- Total: ${artifact.summary.totalSteps}`,
+    `- OK: ${artifact.summary.ok}`,
+    `- Failed: ${artifact.summary.failed}`,
+    `- Skipped: ${artifact.summary.skipped}`,
+    "",
+    "## Steps",
+    "",
+    "| Step | Status | Notes |",
+    "| --- | --- | --- |",
+  ];
+
+  for (const step of artifact.steps) {
+    const notes = step.error ?? (step.details ? JSON.stringify(step.details) : "");
+    lines.push(`| ${step.id} | ${step.status} | ${notes.replaceAll("|", "\\|")} |`);
+  }
+
+  if (artifact.recommendations.length > 0) {
+    lines.push("", "## Recommendations", "");
+    for (const recommendation of artifact.recommendations) {
+      lines.push(`- ${recommendation}`);
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
+}
+
+function writeMarkdownSummary(artifact: DemoArtifact, outputDir: string): string {
+  fs.mkdirSync(outputDir, { recursive: true });
+  const fileName = `secure-defi-demo-${artifact.runId}.md`;
+  const outputPath = path.join(outputDir, fileName);
+  fs.writeFileSync(outputPath, renderMarkdownSummary(artifact), "utf8");
+  return outputPath;
 }
 
 async function main(): Promise<void> {
@@ -145,19 +198,25 @@ async function main(): Promise<void> {
     );
   }
 
-  const baseAttestation = readBaseAttestation();
-  if (baseAttestation) {
+  const baseAttestationPath = process.env.DEMO_BASE_ATTESTATION_PATH?.trim();
+  let baseAttestation: DemoArtifact["baseAttestation"];
+  if (baseAttestationPath) {
     steps.push(
-      await runStep("base_attestation", "Load Base reputation attestation", async () => ({
-        path: baseAttestation.path,
-        sha256: baseAttestation.sha256,
-      })),
+      await runStep(
+        "base_attestation",
+        "Load and verify Base reputation attestation",
+        async () => {
+          const verified = loadAndVerifyBaseAttestation(baseAttestationPath);
+          baseAttestation = verified;
+          return verified;
+        },
+      ),
     );
   } else {
     steps.push(
       skippedStep(
         "base_attestation",
-        "Load Base reputation attestation",
+        "Load and verify Base reputation attestation",
         "Set DEMO_BASE_ATTESTATION_PATH to include signed Base reputation context",
       ),
     );
@@ -203,14 +262,17 @@ async function main(): Promise<void> {
     );
   }
 
+  let sessionState: SessionState | undefined;
   if (config.sessionAccountAddress && config.sessionKeyPublicKey && hasTool(tools, "starknet_get_session_data")) {
     steps.push(
       await runStep("session_key_status", "Read session key state", async () => {
         const result = await sidecar.callTool("starknet_get_session_data", {
-          account: config.sessionAccountAddress,
-          public_key: config.sessionKeyPublicKey,
+          accountAddress: config.sessionAccountAddress,
+          sessionPublicKey: config.sessionKeyPublicKey,
         });
-        return { account: config.sessionAccountAddress, publicKey: config.sessionKeyPublicKey, result };
+        const parsed = parseSessionData(result);
+        sessionState = parsed;
+        return parsed;
       }),
     );
   } else {
@@ -239,6 +301,43 @@ async function main(): Promise<void> {
     }),
   );
 
+  if (hasTool(tools, "starknet_build_calls")) {
+    steps.push(
+      await runStep("forbidden_selector_probe", "Trigger forbidden selector rejection", async () => {
+        try {
+          await sidecar.callTool("starknet_build_calls", {
+            calls: [
+              {
+                contractAddress: config.accountAddress,
+                entrypoint: "upgrade",
+                calldata: [],
+              },
+            ],
+          });
+        } catch (error) {
+          if (isPolicyRejectionError(error)) {
+            return {
+              expectedRejection: true,
+              entrypoint: "upgrade",
+              reason: error instanceof Error ? error.message : String(error),
+            };
+          }
+          throw error;
+        }
+
+        throw new Error('Forbidden selector probe unexpectedly succeeded for entrypoint "upgrade".');
+      }),
+    );
+  } else {
+    steps.push(
+      skippedStep(
+        "forbidden_selector_probe",
+        "Trigger forbidden selector rejection",
+        "Tool starknet_build_calls not exposed by MCP server",
+      ),
+    );
+  }
+
   steps.push(
     await runStep("policy_rejection_probe", "Trigger policy rejection preflight", async () => {
       try {
@@ -264,6 +363,60 @@ async function main(): Promise<void> {
       );
     }),
   );
+
+  if (config.mode === "execute" && config.signerMode === "proxy") {
+    if (!sessionState) {
+      steps.push(
+        skippedStep(
+          "expired_session_probe",
+          "Attempt transfer with inactive session",
+          "No session state evidence available. Set DEMO_SESSION_ACCOUNT_ADDRESS and DEMO_SESSION_KEY_PUBLIC_KEY.",
+        ),
+      );
+    } else if (sessionState.isActive) {
+      steps.push(
+        skippedStep(
+          "expired_session_probe",
+          "Attempt transfer with inactive session",
+          "Session key is still active; skipping inactive-session negative probe.",
+        ),
+      );
+    } else {
+      steps.push(
+        await runStep("expired_session_probe", "Attempt transfer with inactive session", async () => {
+          try {
+            await sidecar.callTool("starknet_transfer", {
+              recipient: config.accountAddress,
+              token: config.transferToken,
+              amount: config.expiredSessionProbeAmount,
+            });
+          } catch (error) {
+            if (isSessionRejectionError(error)) {
+              return {
+                expectedRejection: true,
+                amount: config.expiredSessionProbeAmount,
+                sessionState,
+                reason: error instanceof Error ? error.message : String(error),
+              };
+            }
+            throw error;
+          }
+
+          throw new Error(
+            "Inactive session probe unexpectedly succeeded. Ensure proxy signer is using the intended session key.",
+          );
+        }),
+      );
+    }
+  } else {
+    steps.push(
+      skippedStep(
+        "expired_session_probe",
+        "Attempt transfer with inactive session",
+        "Only applicable in execute mode with STARKNET_SIGNER_MODE=proxy.",
+      ),
+    );
+  }
 
   const vesuBefore = await runStep("vesu_positions_before", "Read Vesu position before write", async () => {
     const positions = await sidecar.callTool("starknet_vesu_positions", vesuArgs);
@@ -465,8 +618,11 @@ async function main(): Promise<void> {
   });
 
   const artifactPath = writeArtifact(artifact, config.outputDir);
+  const markdownSummaryPath = writeMarkdownSummary(artifact, config.outputDir);
 
-  process.stdout.write(`${JSON.stringify({ artifactPath, summary, recommendations }, null, 2)}\n`);
+  process.stdout.write(
+    `${JSON.stringify({ artifactPath, markdownSummaryPath, summary, recommendations }, null, 2)}\n`,
+  );
 
   if (summary.failed > 0) {
     process.exitCode = 1;

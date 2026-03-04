@@ -77,12 +77,13 @@ export function loadRunConfig(args: CliArgs): RunConfig {
     throw new Error("STARKNET_SIGNER_MODE must be direct or proxy");
   }
 
-  if (args.mode === "execute") {
-    if (signerModeRaw === "direct") requiredEnv("STARKNET_PRIVATE_KEY");
-    if (signerModeRaw === "proxy") {
-      requiredEnv("KEYRING_PROXY_URL");
-      requiredEnv("KEYRING_HMAC_SECRET");
-    }
+  // Sidecar startup always needs signer credentials, even in dry-run mode.
+  if (signerModeRaw === "direct") {
+    requiredEnv("STARKNET_PRIVATE_KEY");
+  }
+  if (signerModeRaw === "proxy") {
+    requiredEnv("KEYRING_PROXY_URL");
+    requiredEnv("KEYRING_HMAC_SECRET");
   }
 
   const config = RunConfigSchema.parse({
@@ -106,6 +107,7 @@ export function loadRunConfig(args: CliArgs): RunConfig {
     agentId: optionalEnv("DEMO_AGENT_ID"),
     sessionAccountAddress: optionalEnv("DEMO_SESSION_ACCOUNT_ADDRESS"),
     sessionKeyPublicKey: optionalEnv("DEMO_SESSION_KEY_PUBLIC_KEY"),
+    expiredSessionProbeAmount: optionalEnv("DEMO_EXPIRED_SESSION_PROBE_AMOUNT") ?? "0.000001",
     outputDir: args.outputDir ?? optionalEnv("DEMO_OUTPUT_DIR") ?? path.resolve(getDemoRootDir(), "artifacts"),
   });
 

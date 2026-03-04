@@ -31,22 +31,25 @@ The runner emits per-step evidence:
 5. `erc8004_identity` (optional)
 6. `session_key_status` (optional)
 7. `build_allowed_call`
-8. `policy_rejection_probe`
-9. `vesu_positions_before`
-10. `allowed_transfer_execute` (execute mode)
-11. `vesu_deposit` (execute mode)
-12. `vesu_positions_after` (execute mode)
-13. `vesu_withdraw` (optional execute mode)
+8. `forbidden_selector_probe`
+9. `policy_rejection_probe`
+10. `expired_session_probe` (conditional; execute + proxy + inactive session)
+11. `vesu_positions_before`
+12. `allowed_transfer_execute` (execute mode)
+13. `vesu_deposit` (execute mode)
+14. `vesu_positions_after` (execute mode)
+15. `vesu_withdraw` (optional execute mode)
 
 ## Artifact Contract
 
 The output artifact is validated by zod schema:
 
 - run metadata (`runId`, timestamps, mode, account)
-- optional base attestation hash
+- optional signed base attestation verification record
 - step-by-step status + details
 - summary counts
 - recommendations
+- markdown companion summary file (`secure-defi-demo-<runId>.md`)
 
 Schema source:
 [`examples/secure-defi-demo/src/types.ts`](../../examples/secure-defi-demo/src/types.ts)
@@ -75,11 +78,12 @@ Before execute mode:
 
 - Dry-run succeeds with no failed steps in startup/discovery/probe path.
 - Rejection probe returns policy-limit denial.
+- Forbidden selector probe returns blocked-entrypoint denial.
 - Execute mode produces transaction evidence for transfer + Vesu deposit.
 - Artifacts are generated and stored for audit trail.
 
 ## Next v2 Extensions
 
-1. On-chain Base->Starknet attestation verification.
+1. On-chain Base->Starknet attestation settlement/verification.
 2. Native session-key registration step in this runner.
 3. Provenance chain export integration (CBOM/EAR style envelope).

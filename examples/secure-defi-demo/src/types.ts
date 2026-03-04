@@ -33,10 +33,25 @@ export const RunConfigSchema = z.object({
   agentId: z.string().optional(),
   sessionAccountAddress: z.string().startsWith("0x").optional(),
   sessionKeyPublicKey: z.string().startsWith("0x").optional(),
+  expiredSessionProbeAmount: z.string().min(1),
   outputDir: z.string().min(1),
 });
 
 export type RunConfig = z.infer<typeof RunConfigSchema>;
+
+export const SessionStateSchema = z.object({
+  accountAddress: z.string().startsWith("0x"),
+  sessionPublicKey: z.string().startsWith("0x"),
+  validUntil: z.number().int().nonnegative(),
+  validUntilISO: z.string().datetime().nullable(),
+  maxCalls: z.number().int().nonnegative(),
+  callsUsed: z.number().int().nonnegative(),
+  callsRemaining: z.number().int().nonnegative(),
+  allowedEntrypointsLen: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+});
+
+export type SessionState = z.infer<typeof SessionStateSchema>;
 
 export const DemoArtifactSchema = z.object({
   runId: z.string().min(1),
@@ -51,6 +66,14 @@ export const DemoArtifactSchema = z.object({
     .object({
       path: z.string().min(1),
       sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      schemaVersion: z.literal("1"),
+      issuer: z.string().min(1),
+      subject: z.string().min(1),
+      issuedAt: z.string().datetime(),
+      algorithm: z.literal("ed25519"),
+      payloadSha256: z.string().regex(/^[a-f0-9]{64}$/),
+      publicKeyFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+      verified: z.literal(true),
     })
     .optional(),
   steps: z.array(StepResultSchema).min(1),
