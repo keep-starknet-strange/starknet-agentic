@@ -1,0 +1,168 @@
+{
+  "runId": "8e3065b0-2af1-4c19-bd81-2575b1745e2d",
+  "issue": "https://github.com/keep-starknet-strange/starknet-agentic/issues/311",
+  "mode": "dry-run",
+  "networkLabel": "starknet-sepolia-publicnode",
+  "startedAt": "2026-03-04T11:12:51.864Z",
+  "endedAt": "2026-03-04T11:12:53.200Z",
+  "accountAddress": "0x07ee2bbb36ddac2f783c7d595f7bc0d6639869ade055db5e8884eeeaae361e14",
+  "signerMode": "direct",
+  "steps": [
+    {
+      "id": "startup",
+      "title": "Connect MCP sidecar",
+      "status": "ok",
+      "startedAt": "2026-03-04T11:12:51.867Z",
+      "endedAt": "2026-03-04T11:12:52.463Z",
+      "details": {
+        "mode": "dry-run",
+        "signerMode": "direct",
+        "networkLabel": "starknet-sepolia-publicnode"
+      }
+    },
+    {
+      "id": "tool_discovery",
+      "title": "Discover required MCP tools",
+      "status": "ok",
+      "startedAt": "2026-03-04T11:12:52.463Z",
+      "endedAt": "2026-03-04T11:12:52.469Z",
+      "details": {
+        "required": [
+          "starknet_get_balance",
+          "starknet_build_transfer_calls",
+          "starknet_vesu_positions",
+          "starknet_transfer"
+        ],
+        "missing": [],
+        "discoveredCount": 18
+      }
+    },
+    {
+      "id": "base_attestation",
+      "title": "Load Base reputation attestation",
+      "status": "skipped",
+      "startedAt": "2026-03-04T11:12:52.469Z",
+      "endedAt": "2026-03-04T11:12:52.469Z",
+      "details": {
+        "reason": "Set DEMO_BASE_ATTESTATION_PATH to include signed Base reputation context"
+      }
+    },
+    {
+      "id": "balance_check",
+      "title": "Read account balance",
+      "status": "ok",
+      "startedAt": "2026-03-04T11:12:52.469Z",
+      "endedAt": "2026-03-04T11:12:53.025Z",
+      "details": {
+        "token": "STRK",
+        "balance": {
+          "address": "0x07ee2bbb36ddac2f783c7d595f7bc0d6639869ade055db5e8884eeeaae361e14",
+          "token": "STRK",
+          "tokenAddress": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+          "balance": "99.387492848531084128",
+          "raw": "99387492848531084128",
+          "decimals": 18
+        }
+      }
+    },
+    {
+      "id": "erc8004_identity",
+      "title": "Read ERC-8004 agent metadata",
+      "status": "skipped",
+      "startedAt": "2026-03-04T11:12:53.025Z",
+      "endedAt": "2026-03-04T11:12:53.025Z",
+      "details": {
+        "reason": "Set DEMO_AGENT_ID to include identity evidence in artifact"
+      }
+    },
+    {
+      "id": "session_key_status",
+      "title": "Read session key state",
+      "status": "skipped",
+      "startedAt": "2026-03-04T11:12:53.025Z",
+      "endedAt": "2026-03-04T11:12:53.025Z",
+      "details": {
+        "reason": "Set DEMO_SESSION_ACCOUNT_ADDRESS and DEMO_SESSION_KEY_PUBLIC_KEY to include session evidence"
+      }
+    },
+    {
+      "id": "build_allowed_call",
+      "title": "Build allowed transfer call (unsigned)",
+      "status": "failed",
+      "startedAt": "2026-03-04T11:12:53.025Z",
+      "endedAt": "2026-03-04T11:12:53.029Z",
+      "error": "{\n  \"error\": true,\n  \"message\": \"Cannot read properties of undefined (reading 'startsWith')\",\n  \"tool\": \"starknet_build_transfer_calls\"\n}"
+    },
+    {
+      "id": "policy_rejection_probe",
+      "title": "Trigger policy rejection preflight",
+      "status": "ok",
+      "startedAt": "2026-03-04T11:12:53.029Z",
+      "endedAt": "2026-03-04T11:12:53.031Z",
+      "details": {
+        "expectedRejection": true,
+        "amount": "999999",
+        "reason": "{\n  \"error\": true,\n  \"message\": \"Policy violation: Transfer amount 999999 exceeds policy limit of 0.01\",\n  \"tool\": \"starknet_transfer\"\n}"
+      }
+    },
+    {
+      "id": "vesu_positions_before",
+      "title": "Read Vesu position before write",
+      "status": "failed",
+      "startedAt": "2026-03-04T11:12:53.031Z",
+      "endedAt": "2026-03-04T11:12:53.190Z",
+      "error": "{\n  \"error\": true,\n  \"message\": \"RPC: starknet_call with params {\\n  \\\"request\\\": {\\n    \\\"contract_address\\\": \\\"0x03760f903a37948f97302736f89ce30290e45f441559325026842b7a6fb388c0\\\",\\n    \\\"entry_point_selector\\\": \\\"0x1af1863f84c6038664ebb45064ad3e4a459b237acc8df4acfbf8fcd52010b92\\\",\\n    \\\"calldata\\\": [\\n      \\\"0x451fe483d5921a2919ddd81d0de6696669bccdacd859f72a4fba7656b97c3b5\\\",\\n      \\\"0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d\\\"\\n    ]\\n  },\\n  \\\"block_id\\\": \\\"latest\\\"\\n}\\n\\n      20: Contract not found: undefined\",\n  \"tool\": \"starknet_vesu_positions\"\n}"
+    },
+    {
+      "id": "allowed_transfer_execute",
+      "title": "Execute allowed transfer",
+      "status": "skipped",
+      "startedAt": "2026-03-04T11:12:53.190Z",
+      "endedAt": "2026-03-04T11:12:53.190Z",
+      "details": {
+        "reason": "Run with --mode execute"
+      }
+    },
+    {
+      "id": "vesu_deposit",
+      "title": "Execute Vesu deposit",
+      "status": "skipped",
+      "startedAt": "2026-03-04T11:12:53.190Z",
+      "endedAt": "2026-03-04T11:12:53.190Z",
+      "details": {
+        "reason": "Run with --mode execute"
+      }
+    },
+    {
+      "id": "vesu_positions_after",
+      "title": "Read Vesu position after write",
+      "status": "skipped",
+      "startedAt": "2026-03-04T11:12:53.190Z",
+      "endedAt": "2026-03-04T11:12:53.190Z",
+      "details": {
+        "reason": "Run with --mode execute"
+      }
+    },
+    {
+      "id": "vesu_withdraw",
+      "title": "Execute Vesu withdraw",
+      "status": "skipped",
+      "startedAt": "2026-03-04T11:12:53.190Z",
+      "endedAt": "2026-03-04T11:12:53.190Z",
+      "details": {
+        "reason": "Run with --mode execute --with-withdraw"
+      }
+    }
+  ],
+  "summary": {
+    "totalSteps": 13,
+    "ok": 4,
+    "failed": 2,
+    "skipped": 7
+  },
+  "recommendations": [
+    "Dry-run completed. Next step: run --mode execute with funded test account.",
+    "Inspect failed steps in artifact and resolve env/tooling prerequisites before rerunning.",
+    "Provide DEMO_BASE_ATTESTATION_PATH to include Base reputation evidence in artifact."
+  ]
+}
