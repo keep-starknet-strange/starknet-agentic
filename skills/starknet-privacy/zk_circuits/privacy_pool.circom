@@ -36,39 +36,41 @@ template PrivacyPool() {
     nullifier === nullifierPublic;
     
     // === STEP 4: Merkle proof using REAL POSEIDON HASHING ===
-    // Use Mux1 selector to avoid branching on signals (soundness fix)
-    signal cur;
-    cur <== commitment;
+    // Use signal array to avoid signal reassignment (not allowed in Circom 2.0+)
+    signal cur[5];  // cur[0] = initial, cur[1-4] = after each level
+    cur[0] <== commitment;
     
     component merkleHashers[4];
-    component muxSelectors[4];
+    component muxLeft[4];
+    component muxRight[4];
     
     for (var i = 0; i < 4; i++) {
         merkleHashers[i] = Poseidon(2);
-        muxSelectors[i] = Mux1();
         
-        // Mux1 selects: out = c[s] (c[0] if s=0, c[1] if s=1)
-        muxSelectors[i].c[0] <== cur;           // left option
-        muxSelectors[i].c[1] <== merklePath[i];  // right option
-        muxSelectors[i].s <== merkleIndices[i];   // selector (0=left, 1=right)
+        // Two Mux1 per level: left selects first hash input, right selects second
+        muxLeft[i] = Mux1();
+        muxRight[i] = Mux1();
         
-        // First input: selected value (cur or merklePath[i])
-        merkleHashers[i].inputs[0] <== muxSelectors[i].out;
+        // muxLeft: when index=0 use cur[i], when index=1 use merklePath[i]
+        muxLeft[i].c[0] <== cur[i];
+        muxLeft[i].c[1] <== merklePath[i];
+        muxLeft[i].s <== merkleIndices[i];
         
-        // Second input: the OTHER value (NOT the selected one)
-        // Use another Mux1 to select: if s=0 use merklePath[i], if s=1 use cur
-        // This avoids branching on signals - both branches are constrained
-        component secondMux = Mux1();
-        secondMux.c[0] <== merklePath[i];
-        secondMux.c[1] <== cur;
-        secondMux.s <== merkleIndices[i];
-        merkleHashers[i].inputs[1] <== secondMux.out;
+        // muxRight: when index=0 use merklePath[i], when index=1 use cur[i]
+        muxRight[i].c[0] <== merklePath[i];
+        muxRight[i].c[1] <== cur[i];
+        muxRight[i].s <== merkleIndices[i];
         
-        cur <== merkleHashers[i].out;
+        // Hash inputs: (left_mux_out, right_mux_out)
+        merkleHashers[i].inputs[0] <== muxLeft[i].out;
+        merkleHashers[i].inputs[1] <== muxRight[i].out;
+        
+        // Store result for next iteration
+        cur[i + 1] <== merkleHashers[i].out;
     }
     
     // === STEP 5: Verify Merkle root matches public ===
-    cur === merkleRootPublic;
+    cur[4] === merkleRootPublic;
 }
 
 component main = PrivacyPool();

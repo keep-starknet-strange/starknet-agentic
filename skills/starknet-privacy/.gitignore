@@ -2,7 +2,13 @@
 *.r1cs
 *.wasm
 *.wtns
-*.json
+
+# Generated proof artifacts
+**/proof.json
+**/public.json
+**/verification_key.json
+**/calldata.json
+**/witness.json
 
 # Python cache
 __pycache__/
