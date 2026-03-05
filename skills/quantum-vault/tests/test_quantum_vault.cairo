@@ -66,3 +66,27 @@ fn test_block_timestamp_cheatcode() {
     // This test verifies cheatcode infrastructure works
     assert(true, 'CHEATCODES_WORK');
 }
+
+#[test]
+fn test_release_after_timelock() {
+    // Deploy vault with owner
+    let owner = starknet::contract_address_const::<0x123>();
+    let vault = IQuantumVaultDispatcher { contract_address: deploy() };
+    
+    // Lock funds with 1000 second duration
+    vault.lock_funds(1000);
+    
+    // Verify status is Locked
+    assert(vault.get_status() == QuantumVaultStatus::Locked, 'SHOULD_BE_LOCKED');
+    
+    // Advance timestamp past the block lock duration (1000 + 1 second)
+    start_cheat_block_timestamp(vault.contract_address, 1001);
+    
+    // Release funds
+    vault.release();
+    
+    // Verify status is Released
+    assert(vault.get_status() == QuantumVaultStatus::Released, 'SHOULD_BE_RELEASED');
+    
+    stop_cheat_block_timestamp(vault.contract_address);
+}
