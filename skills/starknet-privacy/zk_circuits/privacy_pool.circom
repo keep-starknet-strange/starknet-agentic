@@ -47,16 +47,23 @@ template PrivacyPool() {
         merkleHashers[i] = Poseidon(2);
         muxSelectors[i] = Mux1();
         
-        // muxSelector chooses between (cur, sibling) and (sibling, cur)
-        muxSelectors[i].c[0] <== cur;      // left option
+        // Mux1 selects: out = c[s] (c[0] if s=0, c[1] if s=1)
+        muxSelectors[i].c[0] <== cur;           // left option
         muxSelectors[i].c[1] <== merklePath[i];  // right option
         muxSelectors[i].s <== merkleIndices[i];   // selector (0=left, 1=right)
         
+        // First input: selected value (cur or merklePath[i])
         merkleHashers[i].inputs[0] <== muxSelectors[i].out;
-        // FIX: Use muxSelectors to select between cur and merklePath based on merkleIndices
-        // When index=0 (left): inputs = (cur, merklePath) -> Poseidon(cur, merklePath[i])
-        // When index=1 (right): inputs = (merklePath, cur) -> Poseidon(merklePath[i], cur)
-        merkleHashers[i].inputs[1] <== muxSelectors[i].out === cur ? merklePath[i] : cur;
+        
+        // Second input: the OTHER value (NOT the selected one)
+        // Use another Mux1 to select: if s=0 use merklePath[i], if s=1 use cur
+        // This avoids branching on signals - both branches are constrained
+        component secondMux = Mux1();
+        secondMux.c[0] <== merklePath[i];
+        secondMux.c[1] <== cur;
+        secondMux.s <== merkleIndices[i];
+        merkleHashers[i].inputs[1] <== secondMux.out;
+        
         cur <== merkleHashers[i].out;
     }
     
