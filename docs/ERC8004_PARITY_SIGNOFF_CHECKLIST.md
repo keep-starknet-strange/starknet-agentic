@@ -1,8 +1,10 @@
 # ERC-8004 Parity Sign-off Checklist
 
-Last updated: 2026-02-23
+Last updated: 2026-03-05
 
 Use this checklist before claiming launch parity or production readiness.
+
+Reference tracker: `docs/security/LAUNCH_READINESS_TRACKER.md`.
 
 Maintainer note: for PRs touching `docs/**`, include an explicit `Spec impact:` field in the PR description.
 

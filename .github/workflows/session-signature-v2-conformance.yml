@@ -16,6 +16,12 @@ on:
       - "packages/starknet-mcp-server/__tests__/helpers/sessionSignatureVectors.test.ts"
       - ".github/workflows/session-signature-v2-conformance.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "25 5 * * *"
+
+concurrency:
+  group: session-signature-v2-conformance-${{ github.event.pull_request.number || github.ref_name || github.sha }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -43,6 +49,9 @@ jobs:
 
       - name: Install AJV CLI
         run: npm install --global ajv-cli@5
+
+      - name: Run parity checker unit tests
+        run: node --test scripts/security/check-session-signature-parity.test.mjs
 
       - name: Validate vector file against schema
         run: |
@@ -106,64 +115,62 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Compare vectors with SISNA main
+      - name: Fetch SISNA vectors
+        id: fetch_sisna
         run: |
+          set -euo pipefail
           if ! curl -fsSL \
             https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.schema.json \
             -o /tmp/sisna-session-signature-v2.schema.json; then
             echo "SISNA schema not published yet on main; skipping SISNA parity check."
+            echo "available=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if ! curl -fsSL \
             https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.json \
             -o /tmp/sisna-session-signature-v2.json; then
             echo "SISNA vector file not published yet on main; skipping SISNA parity check."
+            echo "available=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if ! diff -u /tmp/sisna-session-signature-v2.schema.json spec/session-signature-v2.schema.json; then
-            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-              echo "SISNA schema drift detected on PR; allowing for coordinated rollout."
-            else
-              echo "SISNA schema drift detected on ${GITHUB_EVENT_NAME}; failing."
-              exit 1
-            fi
-          fi
-          if ! diff -u /tmp/sisna-session-signature-v2.json spec/session-signature-v2.json; then
-            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-              echo "SISNA vector drift detected on PR; allowing for coordinated rollout."
-            else
-              echo "SISNA vector drift detected on ${GITHUB_EVENT_NAME}; failing."
-              exit 1
-            fi
-          fi
+          echo "available=true" >> "$GITHUB_OUTPUT"
 
-      - name: Compare vectors with starkclaw main
+      - name: Validate parity with SISNA
+        if: steps.fetch_sisna.outputs.available == 'true'
         run: |
+          node scripts/security/check-session-signature-parity.mjs \
+            --counterpart "SISNA" \
+            --local-schema spec/session-signature-v2.schema.json \
+            --remote-schema /tmp/sisna-session-signature-v2.schema.json \
+            --local-vectors spec/session-signature-v2.json \
+            --remote-vectors /tmp/sisna-session-signature-v2.json
+
+      - name: Fetch starkclaw vectors
+        id: fetch_starkclaw
+        run: |
+          set -euo pipefail
           if ! curl -fsSL \
             https://raw.githubusercontent.com/keep-starknet-strange/starkclaw/main/spec/session-signature-v2.schema.json \
             -o /tmp/starkclaw-session-signature-v2.schema.json; then
             echo "starkclaw schema not published yet on main; skipping starkclaw parity check."
+            echo "available=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if ! curl -fsSL \
             https://raw.githubusercontent.com/keep-starknet-strange/starkclaw/main/spec/session-signature-v2.json \
             -o /tmp/starkclaw-session-signature-v2.json; then
             echo "starkclaw vector file not published yet on main; skipping starkclaw parity check."
+            echo "available=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if ! diff -u /tmp/starkclaw-session-signature-v2.schema.json spec/session-signature-v2.schema.json; then
-            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-              echo "starkclaw schema drift detected on PR; allowing for coordinated rollout."
-            else
-              echo "starkclaw schema drift detected on ${GITHUB_EVENT_NAME}; failing."
-              exit 1
-            fi
-          fi
-          if ! diff -u /tmp/starkclaw-session-signature-v2.json spec/session-signature-v2.json; then
-            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-              echo "starkclaw vector drift detected on PR; allowing for coordinated rollout."
-            else
-              echo "starkclaw vector drift detected on ${GITHUB_EVENT_NAME}; failing."
-              exit 1
-            fi
-          fi
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Validate parity with starkclaw
+        if: steps.fetch_starkclaw.outputs.available == 'true'
+        run: |
+          node scripts/security/check-session-signature-parity.mjs \
+            --counterpart "starkclaw" \
+            --local-schema spec/session-signature-v2.schema.json \
+            --remote-schema /tmp/starkclaw-session-signature-v2.schema.json \
+            --local-vectors spec/session-signature-v2.json \
+            --remote-vectors /tmp/starkclaw-session-signature-v2.json
