@@ -4,11 +4,18 @@ version = "1.0.0"
 edition = "2024_07"
 
 [dependencies]
-starknet = "2.8.0"
+starknet = "2.14.0"
+
+[dev-dependencies]
+snforge_std = "0.54.1"
+assert_macros = "2.14.0"
 
 [[target.starknet-contract]]
 sierra = true
 casm = true
 
-[dev-dependencies]
-snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.50.0" }
+[scripts]
+test = "snforge test"
+
+[tool.scarb]
+allow-prebuilt-plugins = ["snforge_std"]
