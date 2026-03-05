@@ -70,6 +70,9 @@ export const RunConfigSchema = z
     strictSecurityProof: z.boolean().default(false),
     starkzapProofEnabled: z.boolean().default(false),
     starkzapEvidencePath: z.string().min(1).optional(),
+    evidenceSigningPrivateKeyPem: z.string().min(1).optional(),
+    evidenceSigningPrivateKeyPath: z.string().min(1).optional(),
+    evidenceSigningPrivateKeyBase64: z.string().min(1).optional(),
     outputDir: z.string().min(1),
   })
   .superRefine((cfg, ctx) => {
@@ -106,6 +109,19 @@ export const RunConfigSchema = z
         code: "custom",
         path: ["starkzapEvidencePath"],
         message: "DEMO_STARKZAP_EVIDENCE_PATH is required when DEMO_ENABLE_STARKZAP_PROOF=1",
+      });
+    }
+
+    const hasEvidenceSigningKey =
+      Boolean(cfg.evidenceSigningPrivateKeyPem) ||
+      Boolean(cfg.evidenceSigningPrivateKeyPath) ||
+      Boolean(cfg.evidenceSigningPrivateKeyBase64);
+    if (cfg.strictSecurityProof && !hasEvidenceSigningKey) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["evidenceSigningPrivateKeyPem"],
+        message:
+          "STRICT_SECURITY_PROOF requires one of DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PEM, DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PATH, or DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_BASE64",
       });
     }
   });

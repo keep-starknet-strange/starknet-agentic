@@ -4,6 +4,11 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import {
+  createSignedEvidenceManifest,
+  resolvePrivateKeyPem,
+  verifyEvidenceManifestFile,
+} from "../../scripts/security/evidence-manifest.mjs";
 
 import { loadAndVerifyBaseAttestation } from "./src/attestation.js";
 import { loadRunConfig, parseCliArgs, buildSidecarEnv } from "./src/config.js";
@@ -70,6 +75,21 @@ function writeArtifact(artifact: DemoArtifact, outputDir: string): string {
   const outputPath = path.join(outputDir, fileName);
   fs.writeFileSync(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
   return outputPath;
+}
+
+function copyEvidenceAttachment(sourcePath: string, outputDir: string, runId: string, label: string): string {
+  const absoluteSource = path.resolve(sourcePath);
+  if (!fs.existsSync(absoluteSource)) {
+    throw new Error(`Evidence attachment not found: ${absoluteSource}`);
+  }
+
+  const extension = path.extname(absoluteSource) || ".json";
+  const safeLabel = label.replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
+  const targetDir = path.join(outputDir, "evidence");
+  const targetPath = path.join(targetDir, `${safeLabel}-${runId}${extension}`);
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.copyFileSync(absoluteSource, targetPath);
+  return targetPath;
 }
 
 function hasTool(tools: string[], name: string): boolean {
@@ -916,12 +936,8 @@ async function main(): Promise<void> {
     );
   }
 
-  const claims = buildClaims(
-    steps,
-    path.resolve(config.outputDir),
-    config.strictSecurityProof,
-    config.starkzapProofEnabled,
-  );
+  const expectedArtifactPath = path.join(path.resolve(config.outputDir), `secure-defi-demo-${runId}.json`);
+  const claims = buildClaims(steps, expectedArtifactPath, config.strictSecurityProof, config.starkzapProofEnabled);
   const missingRequiredClaims = claims.filter(
     (claim) => claim.required && claim.proof_status !== "proved",
   );
@@ -1009,12 +1025,66 @@ async function main(): Promise<void> {
 
   const artifactPath = writeArtifact(artifact, config.outputDir);
   const markdownSummaryPath = writeMarkdownSummary(artifact, config.outputDir);
+  let evidenceManifestPath: string | null = null;
+  let evidenceManifestError: string | null = null;
+
+  const shouldEmitEvidenceManifest =
+    config.strictSecurityProof ||
+    Boolean(config.evidenceSigningPrivateKeyPem) ||
+    Boolean(config.evidenceSigningPrivateKeyPath) ||
+    Boolean(config.evidenceSigningPrivateKeyBase64);
+
+  if (shouldEmitEvidenceManifest) {
+    try {
+      const privateKeyPem = resolvePrivateKeyPem({
+        privateKeyPem: config.evidenceSigningPrivateKeyPem,
+        privateKeyPath: config.evidenceSigningPrivateKeyPath,
+        privateKeyBase64: config.evidenceSigningPrivateKeyBase64,
+      });
+      if (!privateKeyPem) {
+        throw new Error(
+          "Missing evidence signing key. Set DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PEM, DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PATH, or DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_BASE64.",
+        );
+      }
+
+      const evidenceFiles = [artifactPath, markdownSummaryPath];
+      if (baseAttestation?.path) {
+        evidenceFiles.push(copyEvidenceAttachment(baseAttestation.path, config.outputDir, runId, "base-attestation"));
+      }
+      if (config.starkzapProofEnabled && config.starkzapEvidencePath) {
+        evidenceFiles.push(copyEvidenceAttachment(config.starkzapEvidencePath, config.outputDir, runId, "starkzap-evidence"));
+      }
+
+      const manifestResult = createSignedEvidenceManifest({
+        manifestPath: path.join(config.outputDir, "artifact-manifest.json"),
+        privateKeyPem,
+        runId,
+        mode: config.mode,
+        strictSecurityProof: config.strictSecurityProof,
+        networkLabel: config.networkLabel,
+        filePaths: evidenceFiles,
+        claims,
+      });
+      verifyEvidenceManifestFile({
+        manifestPath: manifestResult.manifestPath,
+        requireStrict: config.strictSecurityProof,
+      });
+      evidenceManifestPath = manifestResult.manifestPath;
+    } catch (error) {
+      evidenceManifestError = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`secure-defi-demo evidence-manifest failed: ${evidenceManifestError}\n`);
+    }
+  }
 
   process.stdout.write(
-    `${JSON.stringify({ artifactPath, markdownSummaryPath, summary, recommendations }, null, 2)}\n`,
+    `${JSON.stringify({ artifactPath, markdownSummaryPath, evidenceManifestPath, summary, recommendations }, null, 2)}\n`,
   );
 
-  if (summary.failed > 0 || (config.strictSecurityProof && missingRequiredClaims.length > 0)) {
+  if (
+    summary.failed > 0 ||
+    (config.strictSecurityProof && missingRequiredClaims.length > 0) ||
+    (config.strictSecurityProof && evidenceManifestError !== null)
+  ) {
     process.exitCode = 1;
   }
   } finally {

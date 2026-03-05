@@ -48,6 +48,7 @@ The output artifact is validated by zod schema:
 - optional signed base attestation verification record
 - step-by-step status + details
 - deterministic security claim map (`claims[]` with `proof_status`, `tx_hash`, `evidence_path`)
+- signed evidence manifest (`artifact-manifest.json`) with file hashes + tx references + build provenance
 - summary counts
 - recommendations
 - markdown companion summary file (`secure-defi-demo-<runId>.md`)
@@ -82,6 +83,10 @@ Before execute mode:
    - `DEMO_SESSION_KEY_PUBLIC_KEY`
 8. Optional strict proof gate:
    - `STRICT_SECURITY_PROOF=1`
+   - one of:
+     - `DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PATH`
+     - `DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PEM`
+     - `DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_BASE64`
    - optional `DEMO_ENABLE_STARKZAP_PROOF=1` + `DEMO_STARKZAP_EVIDENCE_PATH=<path>`
 
 ## Acceptance for v1
@@ -92,6 +97,7 @@ Before execute mode:
 - Execute mode produces transfer transaction evidence; Vesu deposit evidence is required when Vesu pool contracts are available (otherwise Vesu steps are explicitly skipped).
 - Artifacts are generated and stored for audit trail.
 - Strict profile fails unless required claims are all `proved` in `artifact.claims`.
+- Strict profile fails if signed evidence-manifest generation or verification fails.
 
 ## Next v2 Extensions
 

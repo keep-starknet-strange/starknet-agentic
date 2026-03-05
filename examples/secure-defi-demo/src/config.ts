@@ -127,6 +127,9 @@ export function loadRunConfig(args: CliArgs): RunConfig {
     strictSecurityProof: optionalBoolEnv("STRICT_SECURITY_PROOF", false),
     starkzapProofEnabled: optionalBoolEnv("DEMO_ENABLE_STARKZAP_PROOF", false),
     starkzapEvidencePath: optionalEnv("DEMO_STARKZAP_EVIDENCE_PATH"),
+    evidenceSigningPrivateKeyPem: optionalEnv("DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PEM"),
+    evidenceSigningPrivateKeyPath: optionalEnv("DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PATH"),
+    evidenceSigningPrivateKeyBase64: optionalEnv("DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_BASE64"),
     outputDir: args.outputDir ?? optionalEnv("DEMO_OUTPUT_DIR") ?? path.resolve(getDemoRootDir(), "artifacts"),
   });
 

@@ -144,3 +144,38 @@ test("loadRunConfig requires Starkzap evidence path when Starkzap proof is enabl
     /DEMO_STARKZAP_EVIDENCE_PATH is required when DEMO_ENABLE_STARKZAP_PROOF=1/,
   );
 });
+
+test("loadRunConfig requires evidence signing key inputs for strict mode", () => {
+  process.argv = ["node", "run.ts", "--mode", "execute"];
+  process.env.STARKNET_SIGNER_MODE = "direct";
+  process.env.STARKNET_RPC_URL = "https://starknet-sepolia-rpc.publicnode.com";
+  process.env.STARKNET_ACCOUNT_ADDRESS = "0x123";
+  process.env.STARKNET_PRIVATE_KEY = "0xabc";
+  process.env.DEMO_MCP_ENTRY = path.resolve("README.md");
+  process.env.STRICT_SECURITY_PROOF = "1";
+  delete process.env.DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PEM;
+  delete process.env.DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PATH;
+  delete process.env.DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_BASE64;
+
+  const args = parseCliArgs();
+  assert.throws(
+    () => loadRunConfig(args),
+    /STRICT_SECURITY_PROOF requires one of DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PEM/,
+  );
+});
+
+test("loadRunConfig accepts strict mode when evidence signing key is provided", () => {
+  process.argv = ["node", "run.ts", "--mode", "execute"];
+  process.env.STARKNET_SIGNER_MODE = "direct";
+  process.env.STARKNET_RPC_URL = "https://starknet-sepolia-rpc.publicnode.com";
+  process.env.STARKNET_ACCOUNT_ADDRESS = "0x123";
+  process.env.STARKNET_PRIVATE_KEY = "0xabc";
+  process.env.DEMO_MCP_ENTRY = path.resolve("README.md");
+  process.env.STRICT_SECURITY_PROOF = "1";
+  process.env.DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PEM = "-----BEGIN PRIVATE KEY-----\\nfake\\n-----END PRIVATE KEY-----";
+
+  const args = parseCliArgs();
+  const cfg = loadRunConfig(args);
+  assert.equal(cfg.strictSecurityProof, true);
+  assert.equal(Boolean(cfg.evidenceSigningPrivateKeyPem), true);
+});
