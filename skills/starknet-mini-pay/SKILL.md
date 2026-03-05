@@ -100,11 +100,12 @@ const provider = new RpcProvider({
   nodeUrl: process.env.STARKNET_RPC || 'https://rpc.starknet.lava.build' 
 });
 
-const account = new Account({
+// starknet.js v5+ uses positional args: new Account(provider, address, signer)
+const account = new Account(
   provider,
-  address: process.env.ADDRESS,
-  signer: process.env.PRIVATE_KEY
-});
+  process.env.ADDRESS,
+  process.env.PRIVATE_KEY
+);
 
 // USDC contract (native)
 const USDC_ADDRESS = '0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb';
