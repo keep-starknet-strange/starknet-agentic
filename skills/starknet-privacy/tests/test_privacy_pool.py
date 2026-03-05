@@ -112,7 +112,7 @@ class TestZKPrivacyPool(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         self.circuit_dir = Path(__file__).parent.parent / "zk_circuits"
-        sys.path.insert(0, str(self.circuit_dir.parent.parent))
+        sys.path.insert(0, str(self.circuit_dir.parent))
 
     def test_initialization(self):
         """Verify pool initializes correctly."""
