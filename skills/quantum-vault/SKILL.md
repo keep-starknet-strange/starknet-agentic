@@ -90,11 +90,11 @@ print(f"Locked: {status['is_locked']}, Release at: {status['release_time']}")
 |------------|-----------|----------|
 | `ONLY_OWNER` | Caller is not the vault owner | Use owner account for signing |
 | `NOT_LOCKED` | No funds currently locked | Lock funds first with `lock_funds` |
-| `LOCKED` | Vault already has locked funds | Wait for release or cancel |
+| `ALREADY_LOCKED` | Vault already has locked funds | Wait for release or cancel |
 | `TIMELOCK_NOT_EXPIRED` | Attempted early release | Wait for lock period to end |
-| `ZERO_DURATION` | Duration is zero or below minimum | Use duration >= 300 seconds |
-| `MAX_LESS_THAN_MIN` | max_duration < min_duration | Set max_duration >= min_duration |
-| `INSUFFICIENT_BALANCE` | Not enough balance to lock | Fund the vault before locking |
+| `DURATION_TOO_SHORT` | Duration below minimum | Use duration >= min_duration |
+| `DURATION_TOO_LONG` | Duration exceeds maximum | Use duration <= max_duration |
+| `MIN_GT_MAX` | max_duration < min_duration | Set max_duration >= min_duration |
 
 ### Network Errors
 
