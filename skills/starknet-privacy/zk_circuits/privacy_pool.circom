@@ -53,7 +53,10 @@ template PrivacyPool() {
         muxSelectors[i].s <== merkleIndices[i];   // selector (0=left, 1=right)
         
         merkleHashers[i].inputs[0] <== muxSelectors[i].out;
-        merkleHashers[i].inputs[1] <== merklePath[i];
+        // FIX: Use muxSelectors to select between cur and merklePath based on merkleIndices
+        // When index=0 (left): inputs = (cur, merklePath) -> Poseidon(cur, merklePath[i])
+        // When index=1 (right): inputs = (merklePath, cur) -> Poseidon(merklePath[i], cur)
+        merkleHashers[i].inputs[1] <== muxSelectors[i].out === cur ? merklePath[i] : cur;
         cur <== merkleHashers[i].out;
     }
     
