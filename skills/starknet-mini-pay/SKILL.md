@@ -18,6 +18,11 @@ keywords:
 allowed-tools:
   - Bash
   - Read
+license: Apache-2.0
+metadata:
+  author: starknet-agentic
+  version: 1.0.0
+  org: keep-starknet-strange
   - Write
   - Glob
   - Grep
