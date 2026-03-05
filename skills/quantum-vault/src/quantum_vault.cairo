@@ -14,6 +14,7 @@ pub trait IQuantumVault<TContractState> {
 }
 
 #[derive(Drop, Copy, Debug, PartialEq, Serde, starknet::Store)]
+#[allow(starknet::store_no_default_variant)]
 pub enum QuantumVaultStatus {
     Unlocked,
     Locked,
@@ -26,7 +27,8 @@ mod QuantumVault {
     use starknet::get_block_timestamp;
     use starknet::get_caller_address;
     use starknet::contract_address::ContractAddress;
-    use starknet::call_contract_syscall;
+    use starknet::storage::StoragePointerWriteAccess;
+    use starknet::storage::StoragePointerReadAccess;
 
     #[storage]
     struct Storage {
@@ -38,27 +40,27 @@ mod QuantumVault {
     }
 
     #[event]
-    #[derive(Drop, starknet::Event, Debug, PartialEq)]
+    #[derive(Drop, starknet::Event)]
     enum Event {
         FundsLocked: FundsLocked,
         FundsReleased: FundsReleased,
         FundsCancelled: FundsCancelled,
     }
 
-    #[derive(Drop, Debug, PartialEq, Serde)]
+    #[derive(Drop, Debug, PartialEq, Serde, starknet::Event)]
     struct FundsLocked {
         owner: ContractAddress,
         release_time: u64,
         duration: u64,
     }
 
-    #[derive(Drop, Debug, PartialEq, Serde)]
+    #[derive(Drop, Debug, PartialEq, Serde, starknet::Event)]
     struct FundsReleased {
         owner: ContractAddress,
         released_at: u64,
     }
 
-    #[derive(Drop, Debug, PartialEq, Serde)]
+    #[derive(Drop, Debug, PartialEq, Serde, starknet::Event)]
     struct FundsCancelled {
         owner: ContractAddress,
         cancelled_at: u64,
@@ -78,7 +80,8 @@ mod QuantumVault {
         self.release_time.write(0);
     }
 
-    impl QuantumVaultImpl of IQuantumVault<ContractState> {
+    #[external(v0)]
+    impl QuantumVaultImpl of super::IQuantumVault<ContractState> {
         fn get_owner(self: @ContractState) -> ContractAddress {
             self.owner.read()
         }

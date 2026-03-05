@@ -50,8 +50,14 @@ from mini_pay import MiniPay
 # Configuration
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 STARKNET_RPC = os.environ.get("STARKNET_RPC", "https://rpc.starknet.lava.build:443")
-WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "your_secret_here")
+WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")  # For receiving tx confirmations
+
+# Validate required configuration
+if not TELEGRAM_BOT_TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
+if not WEBHOOK_SECRET:
+    raise ValueError("WEBHOOK_SECRET environment variable is required - cannot use default fallback")
 
 # Logging
 logging.basicConfig(level=logging.INFO)
