@@ -10,7 +10,7 @@
 
 To report a security vulnerability:
 1. Do NOT open a public issue
-2. Contact maintainers directly
+2. Contact maintainers directly at: security@starknet-agentic.io
 3. Or report via GitHub's private vulnerability reporting
 
 ## Security Best Practices

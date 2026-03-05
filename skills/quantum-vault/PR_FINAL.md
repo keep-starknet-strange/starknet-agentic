@@ -93,7 +93,7 @@ This is an initial implementation. If there's interest, happy to continue:
 
 ## Related Issues
 
-- Closes #XXX (create issue first)
+This PR adds a new skill to the starknet-agentic ecosystem.
 
 ## Notes for Reviewers
 
