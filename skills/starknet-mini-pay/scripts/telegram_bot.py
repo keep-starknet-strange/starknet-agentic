@@ -555,7 +555,7 @@ TX: <code>{tx_hash}</code>
         if memo:
             params.append(f"memo={memo}")
         
-        payment_url = f"?{ '&'.join(params)}"
+        payment_url = f"?{'&'.join(params)}"
         
         return {
             "argent": f"argent://starknet/pay{payment_url}",
