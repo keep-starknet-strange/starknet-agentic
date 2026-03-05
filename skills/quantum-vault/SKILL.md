@@ -94,11 +94,12 @@ const provider = new RpcProvider({
   nodeUrl: process.env.STARKNET_RPC || 'https://rpc.starknet.lava.build' 
 });
 
-const owner = new Account({
+// starknet.js v5+ uses positional args: new Account(provider, address, signer)
+const owner = new Account(
   provider,
-  address: process.env.OWNER_ADDRESS,
-  signer: process.env.OWNER_PRIVATE_KEY
-});
+  process.env.OWNER_ADDRESS,
+  process.env.OWNER_PRIVATE_KEY
+);
 
 // Load vault contract
 const vault = new Contract(ABI, VAULT_ADDRESS, owner);
