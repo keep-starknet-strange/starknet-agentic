@@ -74,6 +74,34 @@ python3.12 scripts/cli.py status 0xabcdef...
 python3.12 scripts/cli.py balance 0x123...
 ```
 
+### JavaScript (starknet.js)
+
+```typescript
+import { RpcProvider, Account, Contract, uint256 } from 'starknet';
+
+const provider = new RpcProvider({ 
+  nodeUrl: process.env.STARKNET_RPC || 'https://rpc.starknet.lava.build' 
+});
+
+const account = new Account({
+  provider,
+  address: process.env.ADDRESS,
+  signer: process.env.PRIVATE_KEY
+});
+
+// USDC contract (native)
+const USDC_ADDRESS = '0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb';
+
+const usdc = new Contract(USDC_ABI, USDC_ADDRESS, account);
+
+// Send 10 USDC
+const tx = await usdc.transfer(
+  recipient_address,
+  uint256.uint256ToBN({ low: 10n * 6n, high: 0 })
+);
+await provider.waitForTransaction(tx.transaction_hash);
+```
+
 ### Payment Link Format
 
 ```
@@ -82,7 +110,7 @@ starknet:<address>?amount=<value>&memo=<text>&token=<ETH|STRK|USDC>
 
 **Example:**
 ```
-starknet:0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005?amount=0.01&memo=coffee&token=ETH
+starknet:0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb?amount=0.01&memo=coffee&token=USDC
 ```
 
 ### Telegram Bot Commands
@@ -167,7 +195,7 @@ from qr_generator import QRGenerator
 
 qr = QRGenerator()
 qr.generate(
-    address="0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005",
+    address="0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
     amount=None,  # Optional amount
     memo=None,     # Optional memo
     output_file="address_qr.png"
