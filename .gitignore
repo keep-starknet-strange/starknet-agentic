@@ -163,3 +163,9 @@ examples/**/validation_receipt.json
 
 # macOS
 .DS_Store
+
+# Circom compiled binaries
+*.r1cs
+*.wasm
+*.sym
+*.json
