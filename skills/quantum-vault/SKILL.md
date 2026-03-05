@@ -76,12 +76,44 @@ vault = QuantumVault(
 )
 
 # Lock funds
-tx = vault.lockFunds(duration=3600)
+tx = vault.lock_funds(duration=3600)
 await tx.wait()
 
 # Check status
-status = vault.getStatus()
+status = vault.get_status()
 print(f"Locked: {status['is_locked']}, Release at: {status['release_time']}")
+```
+
+### JavaScript (starknet.js)
+
+```typescript
+import { RpcProvider, Account, Contract } from 'starknet';
+
+// Connect to Starknet
+const provider = new RpcProvider({ 
+  nodeUrl: process.env.STARKNET_RPC || 'https://rpc.starknet.lava.build' 
+});
+
+const owner = new Account({
+  provider,
+  address: process.env.OWNER_ADDRESS,
+  signer: process.env.OWNER_PRIVATE_KEY
+});
+
+// Load vault contract
+const vault = new Contract(ABI, VAULT_ADDRESS, owner);
+
+// Lock funds (1 hour)
+const { transaction_hash } = await vault.lock_funds(3600n);
+await provider.waitForTransaction(transaction_hash);
+
+// Check status
+const status = await vault.get_status();
+console.log('Locked:', status.is_locked);
+
+// Release after timelock
+const releaseTx = await vault.release();
+await provider.waitForTransaction(releaseTx.transaction_hash);
 ```
 
 ## Error Codes and Recovery
