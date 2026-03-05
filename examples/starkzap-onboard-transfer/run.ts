@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S npx tsx
 /**
  * Starkzap Demo: Gasless Onboarding + STRK Transfer on Sepolia
  *

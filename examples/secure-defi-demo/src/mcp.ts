@@ -10,9 +10,24 @@ export class McpSidecar {
   ) {}
 
   async connect(label: string): Promise<void> {
+    const passthroughKeys = [
+      "PATH",
+      "HOME",
+      "USER",
+      "TMPDIR",
+      "TMP",
+      "TEMP",
+      "SystemRoot",
+      "WINDIR",
+      "COMSPEC",
+      "PATHEXT",
+    ];
     const mergedEnv: Record<string, string> = {};
-    for (const [key, value] of Object.entries(process.env)) {
-      if (typeof value === "string") mergedEnv[key] = value;
+    for (const key of passthroughKeys) {
+      const value = process.env[key];
+      if (typeof value === "string" && value.length > 0) {
+        mergedEnv[key] = value;
+      }
     }
     for (const [key, value] of Object.entries(this.env)) {
       mergedEnv[key] = value;

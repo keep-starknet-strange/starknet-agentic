@@ -13,6 +13,14 @@ function restoreProcessState(): void {
   process.env = { ...originalEnv };
 }
 
+test.beforeEach(() => {
+  restoreProcessState();
+});
+
+test.afterEach(() => {
+  restoreProcessState();
+});
+
 test("buildSummary counts statuses correctly", () => {
   const summary = buildSummary([
     {
@@ -78,13 +86,11 @@ test("DemoArtifactSchema accepts valid artifact", () => {
 });
 
 test("parseCliArgs validates mode", () => {
-  restoreProcessState();
   process.argv = ["node", "run.ts", "--mode", "bad-mode"];
   assert.throws(() => parseCliArgs(), /--mode must be one of/);
 });
 
 test("loadRunConfig requires private key in direct mode", () => {
-  restoreProcessState();
   process.argv = ["node", "run.ts", "--mode", "dry-run"];
   process.env.STARKNET_SIGNER_MODE = "direct";
   process.env.STARKNET_RPC_URL = "https://starknet-sepolia-rpc.publicnode.com";
@@ -97,7 +103,6 @@ test("loadRunConfig requires private key in direct mode", () => {
 });
 
 test("loadRunConfig requires proxy credentials in proxy mode", () => {
-  restoreProcessState();
   process.argv = ["node", "run.ts", "--mode", "dry-run"];
   process.env.STARKNET_SIGNER_MODE = "proxy";
   process.env.STARKNET_RPC_URL = "https://starknet-sepolia-rpc.publicnode.com";
@@ -108,8 +113,4 @@ test("loadRunConfig requires proxy credentials in proxy mode", () => {
 
   const args = parseCliArgs();
   assert.throws(() => loadRunConfig(args), /Missing required env var: KEYRING_PROXY_URL/);
-});
-
-test.after(() => {
-  restoreProcessState();
 });

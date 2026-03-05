@@ -1,6 +1,6 @@
 # Base to Starknet Secure Agent DeFi Demo (Sepolia)
 
-On March 4, 2026 we ran a live Sepolia demo to show one narrative end to end:
+On March 4, 2026, we ran a live Sepolia demo to show one narrative end to end:
 
 1. Cross-chain context can be attached (signed Base attestation fixture).
 2. Starknet agent actions can execute real DeFi operations.

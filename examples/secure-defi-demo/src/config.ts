@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { RunConfigSchema, type RunConfig } from "./types.js";
 
 interface CliArgs {
@@ -52,7 +53,7 @@ function optionalBoolEnv(name: string, fallback = false): boolean {
 }
 
 function getDemoRootDir(): string {
-  return path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 }
 
 function resolveMcpEntry(): string {
@@ -81,6 +82,7 @@ function resolveMcpEntry(): string {
 export function loadRunConfig(args: CliArgs): RunConfig {
   const signerModeRaw = (optionalEnv("STARKNET_SIGNER_MODE") ?? "direct").toLowerCase();
   const rpcUrl = requiredEnv("STARKNET_RPC_URL");
+  const swapSlippageRaw = optionalEnv("DEMO_SWAP_SLIPPAGE");
   if (signerModeRaw !== "direct" && signerModeRaw !== "proxy") {
     throw new Error("STARKNET_SIGNER_MODE must be direct or proxy");
   }
@@ -106,7 +108,7 @@ export function loadRunConfig(args: CliArgs): RunConfig {
     rejectionProbeAmount: optionalEnv("DEMO_REJECTION_PROBE_AMOUNT") ?? "999999",
     swapSellToken: optionalEnv("DEMO_SWAP_SELL_TOKEN"),
     swapAmount: optionalEnv("DEMO_SWAP_AMOUNT"),
-    swapSlippage: optionalEnv("DEMO_SWAP_SLIPPAGE") ? Number(optionalEnv("DEMO_SWAP_SLIPPAGE")) : undefined,
+    swapSlippage: swapSlippageRaw ? Number(swapSlippageRaw) : undefined,
     vesuToken: optionalEnv("DEMO_VESU_TOKEN") ?? "STRK",
     vesuPool: optionalEnv("DEMO_VESU_POOL"),
     vesuDepositAmount: optionalEnv("DEMO_VESU_DEPOSIT_AMOUNT") ?? "0.01",
@@ -128,6 +130,26 @@ export function loadRunConfig(args: CliArgs): RunConfig {
   return config;
 }
 
+function resolvePolicyJson(): string {
+  const rawPolicy = optionalEnv("STARKNET_MCP_POLICY");
+  if (!rawPolicy) {
+    return JSON.stringify({
+      transfer: {
+        maxAmountPerCall: optionalEnv("DEMO_POLICY_MAX_TRANSFER") ?? "0.01",
+      },
+    });
+  }
+
+  try {
+    JSON.parse(rawPolicy);
+  } catch (error) {
+    throw new Error(
+      `STARKNET_MCP_POLICY is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  return rawPolicy;
+}
+
 export function buildSidecarEnv(config: RunConfig): Record<string, string> {
   const env: Record<string, string> = {
     STARKNET_RPC_URL: requiredEnv("STARKNET_RPC_URL"),
@@ -140,13 +162,7 @@ export function buildSidecarEnv(config: RunConfig): Record<string, string> {
     STARKNET_VESU_POOL_FACTORY: optionalEnv("STARKNET_VESU_POOL_FACTORY") ?? "",
     AGENT_ACCOUNT_FACTORY_ADDRESS: optionalEnv("AGENT_ACCOUNT_FACTORY_ADDRESS") ?? "",
     ERC8004_IDENTITY_REGISTRY_ADDRESS: optionalEnv("ERC8004_IDENTITY_REGISTRY_ADDRESS") ?? "",
-    STARKNET_MCP_POLICY:
-      optionalEnv("STARKNET_MCP_POLICY") ??
-      JSON.stringify({
-        transfer: {
-          maxAmountPerCall: optionalEnv("DEMO_POLICY_MAX_TRANSFER") ?? "0.01",
-        },
-      }),
+    STARKNET_MCP_POLICY: resolvePolicyJson(),
   };
 
   if (config.signerMode === "direct") {
@@ -154,11 +170,12 @@ export function buildSidecarEnv(config: RunConfig): Record<string, string> {
   } else {
     env.KEYRING_PROXY_URL = requiredEnv("KEYRING_PROXY_URL");
     env.KEYRING_HMAC_SECRET = requiredEnv("KEYRING_HMAC_SECRET");
-    if (optionalEnv("KEYRING_CLIENT_ID")) env.KEYRING_CLIENT_ID = optionalEnv("KEYRING_CLIENT_ID")!;
-    if (optionalEnv("KEYRING_SIGNING_KEY_ID")) env.KEYRING_SIGNING_KEY_ID = optionalEnv("KEYRING_SIGNING_KEY_ID")!;
-    if (optionalEnv("KEYRING_REQUEST_TIMEOUT_MS")) {
-      env.KEYRING_REQUEST_TIMEOUT_MS = optionalEnv("KEYRING_REQUEST_TIMEOUT_MS")!;
-    }
+    const keyringClientId = optionalEnv("KEYRING_CLIENT_ID");
+    const keyringSigningKeyId = optionalEnv("KEYRING_SIGNING_KEY_ID");
+    const keyringRequestTimeoutMs = optionalEnv("KEYRING_REQUEST_TIMEOUT_MS");
+    if (keyringClientId) env.KEYRING_CLIENT_ID = keyringClientId;
+    if (keyringSigningKeyId) env.KEYRING_SIGNING_KEY_ID = keyringSigningKeyId;
+    if (keyringRequestTimeoutMs) env.KEYRING_REQUEST_TIMEOUT_MS = keyringRequestTimeoutMs;
   }
 
   // Keep only non-empty values to avoid overriding defaults in the MCP server.

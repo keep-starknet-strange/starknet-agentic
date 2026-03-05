@@ -211,7 +211,7 @@ if (isProductionRuntime) {
 
 // Initialize Starknet provider and account
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
-const vesuPoolFactoryAddress = env.STARKNET_VESU_POOL_FACTORY ?? VESU_POOL_FACTORY;
+let vesuPoolFactoryAddress = env.STARKNET_VESU_POOL_FACTORY ?? VESU_POOL_FACTORY;
 
 // Fee mode:
 // - sponsored: dApp pays all gas (requires AVNU paymaster to authorize the API key)
@@ -297,6 +297,11 @@ function parseAddress(name: string, value: string): string {
   }
 }
 
+vesuPoolFactoryAddress = parseAddress(
+  "STARKNET_VESU_POOL_FACTORY",
+  env.STARKNET_VESU_POOL_FACTORY ?? VESU_POOL_FACTORY
+);
+
 const MAX_CALLDATA_LEN = 256;
 
 function parseCalldata(name: string, calldata: string[]): string[] {
@@ -337,6 +342,7 @@ const TX_WAIT_INTERVAL_MS = 3_000;
 type TxReceiptLike = {
   transaction_hash?: string;
   execution_status?: string;
+  finality_status?: string;
   statusReceipt?: string;
   revert_reason?: string | null;
   isSuccess?: () => boolean;
@@ -347,28 +353,64 @@ function normalizeReceiptStatus(receipt?: TxReceiptLike): string {
   if (!receipt) return "UNKNOWN";
   const executionStatus =
     typeof receipt.execution_status === "string" ? receipt.execution_status.toUpperCase() : undefined;
+  const finalityStatus =
+    typeof receipt.finality_status === "string" ? receipt.finality_status.toUpperCase() : undefined;
   const legacyStatus =
     typeof receipt.statusReceipt === "string" ? receipt.statusReceipt.toUpperCase() : undefined;
-  return executionStatus ?? legacyStatus ?? "UNKNOWN";
+  return executionStatus ?? finalityStatus ?? legacyStatus ?? "UNKNOWN";
 }
 
 function isReceiptSuccessful(receipt?: TxReceiptLike): boolean {
   if (!receipt) return false;
+  if (typeof receipt.isReverted === "function") {
+    try {
+      if (receipt.isReverted()) return false;
+    } catch {
+      // Fall through to field-based checks.
+    }
+  }
   if (typeof receipt.isSuccess === "function") {
     try {
-      return Boolean(receipt.isSuccess());
+      if (receipt.isSuccess()) {
+        const finalityStatus =
+          typeof receipt.finality_status === "string" ? receipt.finality_status.toUpperCase() : undefined;
+        return (
+          finalityStatus === undefined ||
+          finalityStatus === "ACCEPTED_ON_L2" ||
+          finalityStatus === "ACCEPTED_ON_L1"
+        );
+      }
     } catch {
       // Fall back to explicit status fields below.
     }
   }
 
-  const status = normalizeReceiptStatus(receipt);
-  if (status === "SUCCEEDED") return true;
-  if (status === "REVERTED") return false;
+  const executionStatus =
+    typeof receipt.execution_status === "string" ? receipt.execution_status.toUpperCase() : undefined;
+  const finalityStatus =
+    typeof receipt.finality_status === "string" ? receipt.finality_status.toUpperCase() : undefined;
 
-  const revertReason =
-    typeof receipt.revert_reason === "string" ? receipt.revert_reason.trim() : "";
-  return revertReason.length === 0;
+  if (executionStatus === "REVERTED") return false;
+  if (finalityStatus === "REJECTED" || finalityStatus === "ABORTED") return false;
+  if (
+    finalityStatus === "NOT_RECEIVED" ||
+    finalityStatus === "RECEIVED" ||
+    finalityStatus === "CANDIDATE" ||
+    finalityStatus === "PRE_CONFIRMED"
+  ) {
+    return false;
+  }
+
+  if (executionStatus === "SUCCEEDED") {
+    return (
+      finalityStatus === undefined ||
+      finalityStatus === "ACCEPTED_ON_L2" ||
+      finalityStatus === "ACCEPTED_ON_L1"
+    );
+  }
+
+  // Unknown/non-final states are not safe to treat as success.
+  return false;
 }
 
 async function waitForTransactionSuccess(
@@ -483,8 +525,13 @@ function parseDeployResultFromReceipt(
 async function executeTransaction(
   calls: Call | Call[],
   gasfree: boolean,
-  gasToken: string = TOKENS.STRK
+  gasToken: string = TOKENS.STRK,
+  dryRun = false
 ): Promise<string> {
+  if (dryRun) {
+    return "0x0";
+  }
+
   if (!gasfree) {
     const result = await account.execute(calls);
     return result.transaction_hash;
@@ -587,6 +634,11 @@ const tools: Tool[] = [
         gasToken: {
           type: "string",
           description: "Token to pay gas fees in (symbol or address). Only used when gasfree=true and no API key is set.",
+        },
+        dryRun: {
+          type: "boolean",
+          description: "Validate and simulate transfer without submitting a transaction.",
+          default: false,
         },
       },
       required: ["recipient", "token", "amount"],
@@ -1267,12 +1319,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "starknet_transfer": {
-        const { recipient, token, amount, gasfree = false, gasToken } = args as {
+        const { recipient, token, amount, gasfree = false, gasToken, dryRun = false } = args as {
           recipient: string;
           token: string;
           amount: string;
           gasfree?: boolean;
           gasToken?: string;
+          dryRun?: boolean;
         };
 
         const validatedRecipient = parseAddress("recipient", recipient);
@@ -1289,8 +1342,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }),
         };
 
-        const transactionHash = await executeTransaction(transferCall, gasfree, gasTokenAddress);
-        await waitForTransactionSuccess(transactionHash, "starknet_transfer");
+        const transactionHash = await executeTransaction(transferCall, gasfree, gasTokenAddress, dryRun);
+        if (!dryRun) {
+          await waitForTransactionSuccess(transactionHash, "starknet_transfer");
+        }
 
         return {
           content: [
@@ -1298,11 +1353,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: "text",
               text: JSON.stringify({
                 success: true,
-                transactionHash,
+                transactionHash: dryRun ? null : transactionHash,
                 recipient,
                 token,
                 amount,
                 gasfree,
+                dryRun,
+                simulated: dryRun,
               }, null, 2),
             },
           ],

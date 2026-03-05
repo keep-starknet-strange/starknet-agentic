@@ -25,6 +25,7 @@ type BaseAttestationEnvelope = z.infer<typeof BaseAttestationEnvelopeSchema>;
 function canonicalize(value: unknown): string {
   if (value === null) return "null";
   if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "bigint") return value.toString();
   if (typeof value === "number") {
     if (!Number.isFinite(value)) {
       throw new Error("Attestation contains non-finite number");
@@ -45,11 +46,19 @@ function canonicalize(value: unknown): string {
 }
 
 function decodeBase64(label: string, value: string): Buffer {
-  try {
-    return Buffer.from(value, "base64");
-  } catch {
+  const normalized = value
+    .replace(/\s+/g, "")
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized) || normalized.length % 4 !== 0) {
     throw new Error(`${label} is not valid base64`);
   }
+
+  const decoded = Buffer.from(normalized, "base64");
+  if (decoded.toString("base64") !== normalized) {
+    throw new Error(`${label} is not valid base64`);
+  }
+  return decoded;
 }
 
 function buildSignedMessage(envelope: BaseAttestationEnvelope): Buffer {
@@ -67,7 +76,18 @@ export function loadAndVerifyBaseAttestation(
   filePath: string,
 ): NonNullable<DemoArtifact["baseAttestation"]> {
   const absolutePath = path.resolve(filePath);
-  const raw = fs.readFileSync(absolutePath);
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`Base attestation file not found: ${absolutePath}`);
+  }
+
+  let raw: Buffer;
+  try {
+    raw = fs.readFileSync(absolutePath);
+  } catch (error) {
+    throw new Error(
+      `Failed to read base attestation file at ${absolutePath}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
   const envelope = BaseAttestationEnvelopeSchema.parse(
     JSON.parse(raw.toString("utf8")) as unknown,
   );

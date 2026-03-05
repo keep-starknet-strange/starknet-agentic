@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S npx tsx
 import dotenv from "dotenv";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
@@ -82,17 +82,40 @@ function isVesuUnavailableError(error: unknown): boolean {
 
 function isTimeoutError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /request timed out|timeout/i.test(message);
+  return /request.*timed out|transaction.*timeout|rpc.*timeout/i.test(message);
 }
 
 function isPolicyRejectionError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /policy violation|blocked|not covered by policy|exceeds policy|is not in the allowed/i.test(message);
+  return /policy violation|blocked by policy|not covered by policy|exceeds policy|is not in the allowed|denied by policy/i.test(message);
 }
 
 function isSessionRejectionError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /session|expired|revoke|max calls|not active|invalid signature|unauthorized/i.test(message);
+  return /session.*(expired|revoke|not active|invalid|max calls|unauthorized)|invalid signature/i.test(message);
+}
+
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  initialDelayMs = 500,
+  multiplier = 2,
+): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxAttempts) {
+        const delayMs = Math.round(initialDelayMs * Math.pow(multiplier, attempt - 1));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 function parseSessionData(result: unknown): SessionState {
@@ -222,6 +245,7 @@ async function main(): Promise<void> {
     ? { address: config.accountAddress, tokens: [config.vesuToken], pool: config.vesuPool }
     : { address: config.accountAddress, tokens: [config.vesuToken] };
 
+  try {
   steps.push(
     await runStep("startup", "Connect MCP sidecar", async () => {
       await sidecar.connect(config.mode);
@@ -507,10 +531,11 @@ async function main(): Promise<void> {
           recipient: config.accountAddress,
           token: config.transferToken,
           amount: config.rejectionProbeAmount,
+          dryRun: config.mode === "dry-run",
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        if (/policy/i.test(message) || /exceeds/i.test(message)) {
+        if (isPolicyRejectionError(error)) {
           return {
             expectedRejection: true,
             amount: config.rejectionProbeAmount,
@@ -581,7 +606,7 @@ async function main(): Promise<void> {
   }
 
   const vesuBefore = await runStep("vesu_positions_before", "Read Vesu position before write", async () => {
-    const positions = await sidecar.callTool("starknet_vesu_positions", vesuArgs);
+    const positions = await retryWithBackoff(() => sidecar.callTool("starknet_vesu_positions", vesuArgs));
     return { token: config.vesuToken, positions };
   });
   if (vesuBefore.status === "failed" && (isVesuUnavailableError(vesuBefore.error) || isTimeoutError(vesuBefore.error))) {
@@ -598,7 +623,14 @@ async function main(): Promise<void> {
     steps.push(vesuBefore);
   }
 
-  if (config.mode === "execute") {
+  const policyProbePassed = steps.some(
+    (step) =>
+      step.id === "policy_rejection_probe" &&
+      step.status === "ok" &&
+      Boolean(step.details && step.details.expectedRejection === true),
+  );
+
+  if (config.mode === "execute" && policyProbePassed) {
     steps.push(
       await runStep("allowed_transfer_execute", "Execute allowed transfer", async () => {
         const tx = await sidecar.callTool("starknet_transfer", {
@@ -678,7 +710,7 @@ async function main(): Promise<void> {
     }
 
     const vesuAfter = await runStep("vesu_positions_after", "Read Vesu position after write", async () => {
-      const positions = await sidecar.callTool("starknet_vesu_positions", vesuArgs);
+      const positions = await retryWithBackoff(() => sidecar.callTool("starknet_vesu_positions", vesuArgs));
       return { token: config.vesuToken, positions };
     });
     if (vesuAfter.status === "failed" && (isVesuUnavailableError(vesuAfter.error) || isTimeoutError(vesuAfter.error))) {
@@ -726,6 +758,13 @@ async function main(): Promise<void> {
         }
       }
     }
+  } else if (config.mode === "execute") {
+    const reason = "Skipping writes: policy rejection probe did not confirm guardrails.";
+    steps.push(skippedStep("allowed_transfer_execute", "Execute allowed transfer", reason));
+    steps.push(skippedStep("swap_into_vesu_asset", "Swap into Vesu deposit asset", reason));
+    steps.push(skippedStep("vesu_deposit", "Execute Vesu deposit", reason));
+    steps.push(skippedStep("vesu_positions_after", "Read Vesu position after write", reason));
+    steps.push(skippedStep("vesu_withdraw", "Execute Vesu withdraw", reason));
   } else {
     steps.push(skippedStep("allowed_transfer_execute", "Execute allowed transfer", "Run with --mode execute"));
     steps.push(skippedStep("swap_into_vesu_asset", "Swap into Vesu deposit asset", "Run with --mode execute"));
@@ -733,8 +772,6 @@ async function main(): Promise<void> {
     steps.push(skippedStep("vesu_positions_after", "Read Vesu position after write", "Run with --mode execute"));
     steps.push(skippedStep("vesu_withdraw", "Execute Vesu withdraw", "Run with --mode execute --with-withdraw"));
   }
-
-  await sidecar.close();
 
   const summary = buildSummary(steps);
   const recommendations: string[] = [];
@@ -788,6 +825,11 @@ async function main(): Promise<void> {
 
   if (summary.failed > 0) {
     process.exitCode = 1;
+  }
+  } finally {
+    await sidecar.close().catch(() => {
+      // Best-effort cleanup for subprocess resources.
+    });
   }
 }
 

@@ -288,6 +288,8 @@ describe("MCP Tool Handlers", () => {
     it("registers with token_uri and parses agent_id from receipt event keys (Registered)", async () => {
       mockExecute.mockResolvedValue({ transaction_hash: "0xabc" });
       mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
         events: [
           {
             from_address: mockEnv.ERC8004_IDENTITY_REGISTRY_ADDRESS,
@@ -359,7 +361,10 @@ describe("MCP Tool Handlers", () => {
 
     it("executes transfer without gasfree mode", async () => {
       mockExecute.mockResolvedValue({ transaction_hash: "0xabc123" });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_transfer", {
         recipient,
@@ -379,7 +384,10 @@ describe("MCP Tool Handlers", () => {
 
     it("executes transfer with gasfree mode (no API key)", async () => {
       mockExecutePaymasterTransaction.mockResolvedValue({ transaction_hash: "0xpaymaster456" });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_transfer", {
         recipient,
@@ -404,7 +412,10 @@ describe("MCP Tool Handlers", () => {
 
     it("handles decimal amounts correctly", async () => {
       mockExecute.mockResolvedValue({ transaction_hash: "0xdef789" });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       await callTool("starknet_transfer", {
         recipient,
@@ -430,6 +441,24 @@ describe("MCP Tool Handlers", () => {
       expect(result.error).toBe(true);
     });
 
+    it("simulates transfer when dryRun is true", async () => {
+      const response = await callTool("starknet_transfer", {
+        recipient,
+        token: "ETH",
+        amount: "1",
+        dryRun: true,
+      });
+
+      const result = parseResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.simulated).toBe(true);
+      expect(result.dryRun).toBe(true);
+      expect(result.transactionHash).toBeNull();
+      expect(mockExecute).not.toHaveBeenCalled();
+      expect(mockExecutePaymasterTransaction).not.toHaveBeenCalled();
+      expect(mockWaitForTransaction).not.toHaveBeenCalled();
+    });
+
     it("returns error when transaction receipt is reverted", async () => {
       mockExecute.mockResolvedValue({ transaction_hash: "0xabc123" });
       mockWaitForTransaction.mockResolvedValue({
@@ -449,6 +478,25 @@ describe("MCP Tool Handlers", () => {
       expect(result.error).toBe(true);
       expect(result.message).toContain("failed during starknet_transfer");
       expect(result.message).toContain("Spending: exceeds per-call");
+    });
+
+    it("returns error when transfer finality status is rejected", async () => {
+      mockExecute.mockResolvedValue({ transaction_hash: "0xabc124" });
+      mockWaitForTransaction.mockResolvedValue({
+        finality_status: "REJECTED",
+      });
+
+      const response = await callTool("starknet_transfer", {
+        recipient,
+        token: "ETH",
+        amount: "1",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toContain("failed during starknet_transfer");
+      expect(result.message).toContain("status=REJECTED");
     });
   });
 
@@ -519,7 +567,10 @@ describe("MCP Tool Handlers", () => {
 
     it("invokes contract without gasfree mode", async () => {
       mockExecute.mockResolvedValue({ transaction_hash: "0xinvoke123" });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_invoke_contract", {
         contractAddress,
@@ -542,7 +593,10 @@ describe("MCP Tool Handlers", () => {
       mockExecutePaymasterTransaction.mockResolvedValue({
         transaction_hash: "0xgasfree789",
       });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_invoke_contract", {
         contractAddress,
@@ -783,7 +837,10 @@ describe("MCP Tool Handlers", () => {
     it("deposits to Vesu Prime pool successfully", async () => {
       mockCallContract.mockResolvedValueOnce([VTOKEN_STRK]);
       mockExecute.mockResolvedValue({ transaction_hash: "0xvesu123" });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_vesu_deposit", {
         token: "STRK",
@@ -802,7 +859,10 @@ describe("MCP Tool Handlers", () => {
     it("uses custom pool when provided", async () => {
       mockCallContract.mockResolvedValueOnce([VTOKEN_STRK]);
       mockExecute.mockResolvedValue({ transaction_hash: "0xvesu456" });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_vesu_deposit", {
         token: "USDC",
@@ -851,7 +911,10 @@ describe("MCP Tool Handlers", () => {
     it("withdraws from Vesu successfully", async () => {
       mockCallContract.mockResolvedValueOnce([VTOKEN_STRK]);
       mockExecute.mockResolvedValue({ transaction_hash: "0xwithdraw123" });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_vesu_withdraw", {
         token: "STRK",
@@ -943,7 +1006,10 @@ describe("MCP Tool Handlers", () => {
         chainId: "SN_MAIN",
       });
       mockExecute.mockResolvedValue({ transaction_hash: "0xswap123" });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_swap", {
         sellToken: "ETH",
@@ -1033,6 +1099,33 @@ describe("MCP Tool Handlers", () => {
       expect(result.error).toBe(true);
       expect(result.message).toContain("failed during starknet_swap");
       expect(result.message).toContain("Spending: exceeds window limit");
+    });
+
+    it("returns error when swap finality status is rejected", async () => {
+      mockGetQuotes.mockResolvedValue([mockQuote]);
+      mockQuoteToCalls.mockResolvedValue({
+        calls: [
+          { contractAddress: TOKENS.ETH, entrypoint: "approve", calldata: [] },
+          { contractAddress: "0xrouter", entrypoint: "swap", calldata: [] },
+        ],
+        chainId: "SN_MAIN",
+      });
+      mockExecute.mockResolvedValue({ transaction_hash: "0xswaprej" });
+      mockWaitForTransaction.mockResolvedValue({
+        finality_status: "REJECTED",
+      });
+
+      const response = await callTool("starknet_swap", {
+        sellToken: "ETH",
+        buyToken: "USDC",
+        amount: "1",
+      });
+
+      expect(response.isError).toBe(true);
+      const result = parseResponse(response);
+      expect(result.error).toBe(true);
+      expect(result.message).toContain("failed during starknet_swap");
+      expect(result.message).toContain("status=REJECTED");
     });
   });
 
@@ -1230,6 +1323,8 @@ describe("MCP Tool Handlers", () => {
     it("deploys via factory and returns tx receipt-derived data", async () => {
       mockExecute.mockResolvedValue({ transaction_hash: "0xdeploy123" });
       mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
         events: [
           {
             from_address: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
@@ -1311,6 +1406,8 @@ describe("MCP Tool Handlers", () => {
         transaction_hash: "0xdeploy-sponsored",
       });
       mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
         events: [
           {
             from_address: process.env.AGENT_ACCOUNT_FACTORY_ADDRESS,
@@ -1367,7 +1464,10 @@ describe("MCP Tool Handlers", () => {
   describe("starknet_set_agent_metadata", () => {
     it("sets metadata and returns tx hash", async () => {
       mockExecute.mockResolvedValue({ transaction_hash: "0xmeta123" });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_set_agent_metadata", {
         agent_id: "1",
@@ -1422,7 +1522,10 @@ describe("MCP Tool Handlers", () => {
       mockExecutePaymasterTransaction.mockResolvedValue({
         transaction_hash: "0xmetapaymaster",
       });
-      mockWaitForTransaction.mockResolvedValue({});
+      mockWaitForTransaction.mockResolvedValue({
+        execution_status: "SUCCEEDED",
+        finality_status: "ACCEPTED_ON_L2",
+      });
 
       const response = await callTool("starknet_set_agent_metadata", {
         agent_id: "1",

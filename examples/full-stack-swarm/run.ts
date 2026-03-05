@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S npx tsx
 /**
  * Full Stack Swarm (Sepolia)
  *
@@ -159,6 +159,7 @@ function createSemaphore(limit: number) {
 
 type TxReceiptLike = {
   execution_status?: string;
+  finality_status?: string;
   statusReceipt?: string;
   revert_reason?: string | null;
   isSuccess?: () => boolean;
@@ -168,9 +169,11 @@ function receiptStatus(receipt?: TxReceiptLike): string {
   if (!receipt) return "UNKNOWN";
   const executionStatus =
     typeof receipt.execution_status === "string" ? receipt.execution_status.toUpperCase() : undefined;
+  const finalityStatus =
+    typeof receipt.finality_status === "string" ? receipt.finality_status.toUpperCase() : undefined;
   const legacyStatus =
     typeof receipt.statusReceipt === "string" ? receipt.statusReceipt.toUpperCase() : undefined;
-  return executionStatus ?? legacyStatus ?? "UNKNOWN";
+  return executionStatus ?? finalityStatus ?? legacyStatus ?? "UNKNOWN";
 }
 
 function receiptSucceeded(receipt?: TxReceiptLike): boolean {
@@ -182,11 +185,23 @@ function receiptSucceeded(receipt?: TxReceiptLike): boolean {
       // Fall back to explicit status fields.
     }
   }
-  const status = receiptStatus(receipt);
-  if (status === "SUCCEEDED") return true;
-  if (status === "REVERTED") return false;
-  const reason = typeof receipt.revert_reason === "string" ? receipt.revert_reason.trim() : "";
-  return reason.length === 0;
+  const executionStatus =
+    typeof receipt.execution_status === "string" ? receipt.execution_status.toUpperCase() : undefined;
+  const finalityStatus =
+    typeof receipt.finality_status === "string" ? receipt.finality_status.toUpperCase() : undefined;
+
+  if (executionStatus === "REVERTED") return false;
+  if (finalityStatus === "REJECTED" || finalityStatus === "ABORTED") return false;
+
+  if (executionStatus === "SUCCEEDED") {
+    return (
+      finalityStatus === undefined ||
+      finalityStatus === "ACCEPTED_ON_L2" ||
+      finalityStatus === "ACCEPTED_ON_L1"
+    );
+  }
+
+  return false;
 }
 
 async function waitForTransactionSuccess(

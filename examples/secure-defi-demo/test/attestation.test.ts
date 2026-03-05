@@ -24,7 +24,7 @@ function canonicalize(value: unknown): string {
 function writeAttestationFile(
   payload: Record<string, unknown>,
   overrideSignature?: string,
-): string {
+): { filePath: string; tempDir: string } {
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
   const publicKeyPem = publicKey.export({ type: "spki", format: "pem" }).toString();
 
@@ -50,11 +50,12 @@ function writeAttestationFile(
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "secure-defi-attestation-"));
   const filePath = path.join(tempDir, "base-attestation.json");
   fs.writeFileSync(filePath, JSON.stringify(full, null, 2), "utf8");
-  return filePath;
+  return { filePath, tempDir };
 }
 
-test("loadAndVerifyBaseAttestation validates a signed envelope", () => {
-  const filePath = writeAttestationFile({ reputationScore: 99, attestations: ["base"] });
+test("loadAndVerifyBaseAttestation validates a signed envelope", (t) => {
+  const { filePath, tempDir } = writeAttestationFile({ reputationScore: 99, attestations: ["base"] });
+  t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
   const result = loadAndVerifyBaseAttestation(filePath);
 
   assert.equal(result.schemaVersion, "1");
@@ -66,10 +67,20 @@ test("loadAndVerifyBaseAttestation validates a signed envelope", () => {
   assert.match(result.publicKeyFingerprint, /^[a-f0-9]{64}$/);
 });
 
-test("loadAndVerifyBaseAttestation rejects invalid signature", () => {
-  const filePath = writeAttestationFile({ reputationScore: 80 }, "ZmFrZV9zaWduYXR1cmU=");
+test("loadAndVerifyBaseAttestation rejects invalid signature", (t) => {
+  const { filePath, tempDir } = writeAttestationFile({ reputationScore: 80 }, "ZmFrZV9zaWduYXR1cmU=");
+  t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
   assert.throws(
     () => loadAndVerifyBaseAttestation(filePath),
     /Base attestation signature verification failed/,
+  );
+});
+
+test("loadAndVerifyBaseAttestation rejects malformed base64 signature", (t) => {
+  const { filePath, tempDir } = writeAttestationFile({ reputationScore: 70 }, "!!!not-base64!!!");
+  t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
+  assert.throws(
+    () => loadAndVerifyBaseAttestation(filePath),
+    /signing\.signatureBase64 is not valid base64/,
   );
 });

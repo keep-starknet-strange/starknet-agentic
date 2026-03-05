@@ -61,16 +61,22 @@ Before execute mode:
 1. Build MCP server dist:
    - `pnpm --filter @starknet-agentic/mcp-server build`
 2. Ensure funded test account:
-   - `STARKNET_ACCOUNT_ADDRESS`, `STARKNET_PRIVATE_KEY`
-3. Set safe amounts:
+   - `STARKNET_ACCOUNT_ADDRESS`
+3. Configure signer authentication mode:
+   - `STARKNET_SIGNER_MODE=direct` requires `STARKNET_PRIVATE_KEY`
+   - `STARKNET_SIGNER_MODE=proxy` requires `KEYRING_PROXY_URL`, `KEYRING_HMAC_SECRET`
+   - Optional proxy hardening: `KEYRING_CLIENT_ID`, `KEYRING_SIGNING_KEY_ID`
+4. Set safe amounts:
    - `DEMO_TRANSFER_AMOUNT`
    - `DEMO_VESU_DEPOSIT_AMOUNT`
    - optional `DEMO_VESU_POOL` for non-default deployment
    - optional `STARKNET_VESU_POOL_FACTORY` for non-mainnet Vesu deployments
    - optional `DEMO_SWAP_SELL_TOKEN` + `DEMO_SWAP_AMOUNT` for pre-deposit asset swap
-4. Optional sponsored mode:
+5. Confirm authorization guardrails:
+   - `STARKNET_MCP_POLICY` is set and enforces selector/token/amount constraints.
+6. Optional sponsored mode:
    - `AVNU_PAYMASTER_API_KEY`
-5. Optional session evidence:
+7. Optional session evidence:
    - `DEMO_SESSION_ACCOUNT_ADDRESS`
    - `DEMO_SESSION_KEY_PUBLIC_KEY`
 
@@ -79,7 +85,7 @@ Before execute mode:
 - Dry-run succeeds with no failed steps in startup/discovery/probe path.
 - Rejection probe returns policy-limit denial.
 - Forbidden selector probe returns blocked-entrypoint denial.
-- Execute mode produces transaction evidence for transfer + Vesu deposit.
+- Execute mode produces transfer transaction evidence; Vesu deposit evidence is required when Vesu pool contracts are available (otherwise Vesu steps are explicitly skipped).
 - Artifacts are generated and stored for audit trail.
 
 ## Next v2 Extensions

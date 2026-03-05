@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S npx tsx
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";

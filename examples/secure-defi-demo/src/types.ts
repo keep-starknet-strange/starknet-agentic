@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+const StarknetAddressSchema = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{1,64}$/, "Must be a valid Starknet hex address");
+const DecimalAmountSchema = z
+  .string()
+  .regex(/^(0|[1-9]\d*)(\.\d+)?$/, "Must be a non-negative decimal amount");
+
 export const StepStatusSchema = z.enum(["ok", "failed", "skipped"]);
 
 export const StepResultSchema = z.object({
@@ -14,40 +21,62 @@ export const StepResultSchema = z.object({
 
 export type StepResult = z.infer<typeof StepResultSchema>;
 
-export const RunConfigSchema = z.object({
-  mode: z.enum(["dry-run", "execute"]),
-  networkLabel: z.string().min(1),
-  rpcUrl: z.string().url(),
-  mcpEntry: z.string().min(1),
-  accountAddress: z.string().startsWith("0x"),
-  signerMode: z.enum(["direct", "proxy"]),
-  transferToken: z.string().min(1),
-  transferAmount: z.string().min(1),
-  rejectionProbeAmount: z.string().min(1),
-  swapSellToken: z.string().min(1).optional(),
-  swapAmount: z.string().min(1).optional(),
-  swapSlippage: z.number().positive().max(0.5).optional(),
-  vesuToken: z.string().min(1),
-  vesuPool: z.string().startsWith("0x").optional(),
-  vesuDepositAmount: z.string().min(1),
-  vesuWithdrawAmount: z.string().optional(),
-  identityRegistryAddress: z.string().startsWith("0x").optional(),
-  agentId: z.string().optional(),
-  autoRegisterAgent: z.boolean().default(false),
-  agentTokenUri: z.string().optional(),
-  anchorBaseToErc8004: z.boolean().default(false),
-  baseAnchorMetadataKey: z.string().min(1).default("baseAttestationSha256"),
-  sessionAccountAddress: z.string().startsWith("0x").optional(),
-  sessionKeyPublicKey: z.string().startsWith("0x").optional(),
-  expiredSessionProbeAmount: z.string().min(1),
-  outputDir: z.string().min(1),
-});
+export const RunConfigSchema = z
+  .object({
+    mode: z.enum(["dry-run", "execute"]),
+    networkLabel: z.string().min(1),
+    rpcUrl: z.string().url(),
+    mcpEntry: z.string().min(1),
+    accountAddress: StarknetAddressSchema,
+    signerMode: z.enum(["direct", "proxy"]),
+    transferToken: z.string().min(1),
+    transferAmount: DecimalAmountSchema,
+    rejectionProbeAmount: DecimalAmountSchema,
+    swapSellToken: z.string().min(1).optional(),
+    swapAmount: DecimalAmountSchema.optional(),
+    swapSlippage: z.number().positive().max(0.5).optional(),
+    vesuToken: z.string().min(1),
+    vesuPool: StarknetAddressSchema.optional(),
+    vesuDepositAmount: DecimalAmountSchema,
+    vesuWithdrawAmount: DecimalAmountSchema.optional(),
+    identityRegistryAddress: StarknetAddressSchema.optional(),
+    agentId: z.string().optional(),
+    autoRegisterAgent: z.boolean().default(false),
+    agentTokenUri: z.string().optional(),
+    anchorBaseToErc8004: z.boolean().default(false),
+    baseAnchorMetadataKey: z.string().min(1).default("baseAttestationSha256"),
+    sessionAccountAddress: StarknetAddressSchema.optional(),
+    sessionKeyPublicKey: StarknetAddressSchema.optional(),
+    expiredSessionProbeAmount: DecimalAmountSchema,
+    outputDir: z.string().min(1),
+  })
+  .superRefine((cfg, ctx) => {
+    const hasSwapSellToken = typeof cfg.swapSellToken === "string";
+    const hasSwapAmount = typeof cfg.swapAmount === "string";
+    if (hasSwapSellToken !== hasSwapAmount) {
+      ctx.addIssue({
+        code: "custom",
+        path: hasSwapSellToken ? ["swapAmount"] : ["swapSellToken"],
+        message: "swapSellToken and swapAmount must be provided together",
+      });
+    }
+
+    const hasSessionAccountAddress = typeof cfg.sessionAccountAddress === "string";
+    const hasSessionKeyPublicKey = typeof cfg.sessionKeyPublicKey === "string";
+    if (hasSessionAccountAddress !== hasSessionKeyPublicKey) {
+      ctx.addIssue({
+        code: "custom",
+        path: hasSessionAccountAddress ? ["sessionKeyPublicKey"] : ["sessionAccountAddress"],
+        message: "sessionAccountAddress and sessionKeyPublicKey must be provided together",
+      });
+    }
+  });
 
 export type RunConfig = z.infer<typeof RunConfigSchema>;
 
 export const SessionStateSchema = z.object({
-  accountAddress: z.string().startsWith("0x"),
-  sessionPublicKey: z.string().startsWith("0x"),
+  accountAddress: StarknetAddressSchema,
+  sessionPublicKey: StarknetAddressSchema,
   validUntil: z.number().int().nonnegative(),
   validUntilISO: z.string().datetime().nullable(),
   maxCalls: z.number().int().nonnegative(),
@@ -66,7 +95,7 @@ export const DemoArtifactSchema = z.object({
   networkLabel: z.string().min(1),
   startedAt: z.string().datetime(),
   endedAt: z.string().datetime(),
-  accountAddress: z.string().startsWith("0x"),
+  accountAddress: StarknetAddressSchema,
   signerMode: z.enum(["direct", "proxy"]),
   baseAttestation: z
     .object({

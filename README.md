@@ -136,7 +136,7 @@ starknet-agentic/
 │   ├── x402-starknet/                    # X-402 payment protocol
 │   └── prediction-arb-scanner/           # Cross-venue arb detection
 ├── skills/                               # Skills marketplace (see Skills At A Glance for current inventory)
-├── examples/                             # 4 examples + scaffold reference
+├── examples/                             # Example demos and scaffold references
 ├── docs/                                 # Roadmap, spec, getting started, troubleshooting
 └── website/                              # Next.js documentation site
 ```
