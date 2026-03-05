@@ -313,9 +313,13 @@ async def main():
     pool.trusted_setup()
     
     # Generate witness (example input)
+    # NOTE: These are placeholder values. In production, compute real Poseidon hashes:
+    # - nullifierPublic = Poseidon(commitment, nullifierSecret)
+    # - merkleRootPublic = computed from merkle tree
+    # Using arbitrary values will fail constraint satisfaction.
     input_data = {
-        "nullifierPublic": 1234567890,
-        "merkleRootPublic": 9876543210,
+        "nullifierPublic": 1234567890,  # TODO: compute via Poseidon(commitment, nullifierSecret)
+        "merkleRootPublic": 9876543210,  # TODO: compute from actual merkle tree
         "amountPublic": 100,
         "salt": 1111111111,
         "nullifierSecret": 2222222222,
