@@ -80,7 +80,7 @@ mod QuantumVault {
         self.release_time.write(0);
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl QuantumVaultImpl of super::IQuantumVault<ContractState> {
         fn get_owner(self: @ContractState) -> ContractAddress {
             self.owner.read()
