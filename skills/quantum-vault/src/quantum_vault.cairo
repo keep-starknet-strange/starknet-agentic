@@ -1,3 +1,5 @@
+use starknet::contract_address_const;
+
 #[starknet::interface]
 pub trait IQuantumVault<TContractState> {
     fn get_owner(self: @TContractState) -> starknet::ContractAddress;
@@ -74,7 +76,7 @@ mod QuantumVault {
         max_duration: u64
     ) {
         // Validate owner is non-zero
-        assert(owner != Zeroable::zero(), 'ZERO_OWNER');
+        assert(owner != contract_address_const::<0>(), 'ZERO_OWNER');
         
         // Validate duration bounds
         assert(min_duration <= max_duration, 'MIN_GT_MAX');
