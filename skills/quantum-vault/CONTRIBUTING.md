@@ -6,7 +6,7 @@ This project follows the [starknet-agentic contributing guidelines](../CONTRIBUT
 
 ```bash
 # Clone
-git clone https://github.com/Gaijin-01/starknet-agentic.git
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
 cd starknet-agentic/skills/quantum-vault
 
 # Install dependencies

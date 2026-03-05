@@ -18,6 +18,17 @@ user-invocable: true
 
 Time-lock vault for AI agents on Starknet. Secure fund locking with scheduled release functionality.
 
+## Quick Reference
+
+| Property | Value |
+|----------|-------|
+| **Primary Use** | Time-lock vault for AI agents |
+| **Input** | Duration (seconds), vault address |
+| **Platform** | Starknet (Cairo 1.0+) |
+| **Min Duration** | 5 minutes (300s) |
+| **Max Duration** | 30 days (2592000s) |
+| **Security** | Owner-only release after timelock |
+
 ## Capabilities
 
 - Lock funds with configurable time-lock duration
@@ -72,6 +83,26 @@ await tx.wait()
 status = vault.getStatus()
 print(f"Locked: {status['is_locked']}, Release at: {status['release_time']}")
 ```
+
+## Error Codes and Recovery
+
+| Error Code | Condition | Recovery |
+|------------|-----------|----------|
+| `ONLY_OWNER` | Caller is not the vault owner | Use owner account for signing |
+| `NOT_LOCKED` | No funds currently locked | Lock funds first with `lock_funds` |
+| `LOCKED` | Vault already has locked funds | Wait for release or cancel |
+| `TIMELOCK_NOT_EXPIRED` | Attempted early release | Wait for lock period to end |
+| `ZERO_DURATION` | Duration is zero or below minimum | Use duration >= 300 seconds |
+| `MAX_LESS_THAN_MIN` | max_duration < min_duration | Set max_duration >= min_duration |
+| `INSUFFICIENT_BALANCE` | Not enough balance to lock | Fund the vault before locking |
+
+### Network Errors
+
+| Error | Recovery |
+|-------|----------|
+| RPC unreachable | Check Starknet RPC endpoint, retry later |
+| Transaction reverted | Check gas, nonce, contract state |
+| Timeout | Increase timeout or use faster RPC |
 
 ## See Also
 

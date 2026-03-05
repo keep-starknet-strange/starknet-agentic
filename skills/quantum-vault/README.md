@@ -30,7 +30,7 @@ let vault = QuantumVault::deploy(
 );
 
 // Lock funds with 1 hour timelock
-vault.lockFunds(3600);
+vault.lock_funds(3600);
 
 // Release after timelock expires
 vault.release();
