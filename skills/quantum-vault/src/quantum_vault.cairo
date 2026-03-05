@@ -73,6 +73,12 @@ mod QuantumVault {
         min_duration: u64,
         max_duration: u64
     ) {
+        // Validate owner is non-zero
+        assert(owner != Zeroable::zero(), 'ZERO_OWNER');
+        
+        // Validate duration bounds
+        assert(min_duration <= max_duration, 'MIN_GT_MAX');
+        
         self.owner.write(owner);
         self.min_duration.write(min_duration);
         self.max_duration.write(max_duration);

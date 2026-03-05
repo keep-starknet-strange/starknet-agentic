@@ -88,6 +88,7 @@ print(f"Locked: {status['is_locked']}, Release at: {status['release_time']}")
 
 | Error Code | Condition | Recovery |
 |------------|-----------|----------|
+| `ZERO_OWNER` | Owner address is zero | Set valid owner address |
 | `ONLY_OWNER` | Caller is not the vault owner | Use owner account for signing |
 | `NOT_LOCKED` | No funds currently locked | Lock funds first with `lock_funds` |
 | `ALREADY_LOCKED` | Vault already has locked funds | Wait for release or cancel |
