@@ -412,3 +412,216 @@ fn constructor(ref self: ContractState, owner: ContractAddress) {
     self.ownable.initializer(owner);
 }
 ```
+
+## Quick Reference
+
+### Contract Anatomy
+
+| Section | Attribute | Purpose |
+|---------|----------|---------|
+| Storage | `#[storage]` | Persistent state |
+| Events | `#[event]` | Emit logs |
+| Constructor | `#[constructor]` | Initialize |
+| External | `#[abi(embed_v0)]` | Public entry points |
+| Internal | (no attribute) | Internal logic |
+
+### Storage Types
+
+| Type | Syntax | Notes |
+|------|--------|-------|
+| Single | `value: T` | Direct read/write |
+| Map | `Map<K, V>` | Key-value lookup |
+| Composite | `Map<(K1, K2), V>` | Multi-key lookup |
+
+### Entry Points
+
+- `#[constructor]` — deploy-time initialization
+- `#[abi(embed_v0)]` — external callable functions
+- `#[l1_handler]` — handle messages from L1
+
+### Common Imports
+
+```cairo
+use starknet::ContractAddress;
+use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+use starknet::storage::Map;
+```
+
+### Key Patterns
+
+- **View function**: `self: @ContractState` — read-only
+- **External function**: `ref self: ContractState` — can modify state
+- **Event emission**: `self.emit(EventName { ... })`
+- **Access control**: Use OpenZeppelin components (Ownable, AccessControl)
+
+## Error Codes
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Entry point not found` | Function not marked `#[abi(embed_v0)]` | Add the attribute to make it public |
+| `Storage not initialized` | Reading uninitialized storage | Initialize in constructor or provide defaults |
+| `Zero address` | Using `ContractAddress::zero()` | Validate with `assert(!addr.is_zero(), ...)` |
+| `Insufficient balance` | Transfer exceeds balance | Check balance before transfer |
+| `Unauthorized` | Missing access control | Use Ownable/AccessControl component |
+| `Reentrancy detected` | Reentrant call detected | Implement reentrancy guard |
+| `Paused` | Contract is paused | Unpause via owner |
+| `Safe math overflow` | Integer overflow | Use checked arithmetic |
+
+### Troubleshooting
+
+**"Error: Transaction reverted"**
+- Check error message in the transaction receipt
+- Use `starknet-debug` or block explorer to see revert reason
+
+**"Assertion failed"**
+- Usually means validation failed (zero address, insufficient balance, etc.)
+- Check the error message string for the specific assertion
+
+**"Call to uninitialized contract"**
+- Contract not deployed or wrong address
+- Verify contract address is correct
+
+**"Class hash not found"**
+- Contract class not declared on the network
+- Declare the class first with `sncast declare`
+
+## starknet.js Examples
+
+Interacting with Starknet contracts from JavaScript/TypeScript:
+
+### Setup Provider and Account
+
+```typescript
+import { Account, Provider, RpcProvider, EcdsaPowerSigner } from 'starknet';
+
+// Connect to Starknet mainnet/testnet
+const provider = new RpcProvider({
+  nodeUrl: 'https://starknet-mainnet.infura.io/v3/YOUR_API_KEY',
+});
+
+// Or use a local network
+const localProvider = new RpcProvider({
+  nodeUrl: 'http://localhost:5050/rpc',
+});
+
+// Create account from private key
+const account = new Account(
+  provider,
+  '0xYOUR_ACCOUNT_ADDRESS',
+  new EcdsaPowerSigner() // or use other signers
+);
+```
+
+### Deploy Contract
+
+```typescript
+import { Account, Contract, json } from 'starknet';
+
+// Compile with starknet-compile to get class hash
+const classHash = '0x123...'; // from compilation
+
+// Declare and deploy
+const { address } = await account.deployContract({
+  classHash,
+  constructorCalldata: ['0xowner_address', 'TokenName', 'TKN'],
+});
+```
+
+### Call View Function
+
+```typescript
+// Read-only call (doesn't cost gas)
+const { balance } = await provider.callContract({
+  contractAddress: '0xTOKEN_ADDRESS',
+  entrypoint: 'balance_of',
+  calldata: ['0xUSER_ADDRESS'],
+});
+
+// balance is returned as uint256: { low: ..., high: ... }
+const balanceBigInt = balance.high * BigInt(0x10000000000000000) + balance.low;
+```
+
+### Execute External Function
+
+```typescript
+// Write operation (costs gas)
+const response = await account.execute({
+  contractAddress: '0xTOKEN_ADDRESS',
+  entrypoint: 'transfer',
+  calldata: [
+    '0xRECIPIENT_ADDRESS',  // to
+    '1000000',             // amount (low)
+    '0',                   // amount (high) - for uint256
+  ],
+});
+
+await provider.waitForTransaction(response.transaction_hash);
+```
+
+### Handle Events
+
+```typescript
+// Get events from transaction receipt
+const receipt = await provider.getTransactionReceipt(txHash);
+
+const transferEvents = receipt.events.filter(
+  (event) => event.from === contractAddress && event.keys[0] === transferEventKey
+);
+
+// Decode event data
+// Transfer(from, to, amount) - keys[0] is selector, data contains the values
+```
+
+### Estimate Fees
+
+```typescript
+const estimate = await account.estimateFee({
+  type: 'INVOKE_FUNCTION',
+  payload: {
+    contractAddress: '0x...',
+    entrypoint: 'transfer',
+    calldata: [...],
+  },
+});
+
+console.log(`Estimated fee: ${estimate.overall_fee} wei`);
+```
+
+### Multi-Call (Batching)
+
+```typescript
+import { Call } from 'starknet';
+
+// Batch multiple calls in one transaction
+const calls = [
+  {
+    contractAddress: tokenAddress,
+    entrypoint: 'transfer',
+    calldata: [to1, amount1Low, amount1High],
+  },
+  {
+    contractAddress: tokenAddress,
+    entrypoint: 'transfer',
+    calldata: [to2, amount2Low, amount2High],
+  },
+];
+
+const response = await account.execute(calls);
+```
+
+### Using Contract Class
+
+```typescript
+// Load compiled artifact
+const artifact = json.parse(fs.readFileSync('./artifact.json', 'utf8'));
+
+// Create typed contract instance
+const contract = new Contract(
+  artifact.abi,
+  contractAddress,
+  account
+);
+
+// Call with type safety
+await contract.transfer(toAddress, { low: amount, high: 0n });
+```
