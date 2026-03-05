@@ -119,6 +119,7 @@ jobs:
 
             if ! node scripts/security/check-session-signature-parity.mjs \
               --counterpart "${repo}" \
+              --label "Signer auth parity" \
               --local-schema spec/signer-auth-v1.schema.json \
               --remote-schema "/tmp/${name}-signer-auth-v1.schema.json" \
               --local-vectors spec/signer-auth-v1.json \

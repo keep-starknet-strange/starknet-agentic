@@ -32,6 +32,43 @@ test("parseArgs reads named flags", () => {
   assert.equal(parsed.remoteSchemaPath, "b.json");
   assert.equal(parsed.localVectorsPath, "c.json");
   assert.equal(parsed.remoteVectorsPath, "d.json");
+  assert.equal(parsed.label, "Spec parity");
+  assert.equal(parsed.vectorKey, "vectors");
+});
+
+test("parseArgs supports optional label and vector key", () => {
+  const parsed = parseArgs([
+    "--counterpart",
+    "SISNA",
+    "--local-schema",
+    "a.json",
+    "--remote-schema",
+    "b.json",
+    "--local-vectors",
+    "c.json",
+    "--remote-vectors",
+    "d.json",
+    "--label",
+    "Session signature parity",
+    "--vector-key",
+    "vectors",
+  ]);
+  assert.equal(parsed.label, "Session signature parity");
+  assert.equal(parsed.vectorKey, "vectors");
+});
+
+test("parseArgs rejects unexpected positionals", () => {
+  assert.throws(
+    () => parseArgs(["oops", "--counterpart", "SISNA"]),
+    /Unexpected argument: oops/,
+  );
+});
+
+test("parseArgs rejects missing values", () => {
+  assert.throws(
+    () => parseArgs(["--counterpart"]),
+    /Missing value for --counterpart/,
+  );
 });
 
 test("compareVectorGroup reports missing, extra, and changed IDs", () => {
@@ -85,6 +122,13 @@ test("toMapById rejects vectors missing ids", () => {
   assert.throws(
     () => toMapById([{ id: "ok" }, { notId: "bad" }]),
     /Vector without string id/
+  );
+});
+
+test("toMapById rejects duplicate ids", () => {
+  assert.throws(
+    () => toMapById([{ id: "dup", value: 1 }, { id: "dup", value: 2 }]),
+    /Duplicate vector id found while comparing parity: dup/,
   );
 });
 

@@ -48,7 +48,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install AJV CLI
-        run: npm install --global ajv-cli@5
+        run: npm install --global ajv-cli@5.0.0
 
       - name: Run parity checker unit tests
         run: node --test scripts/security/check-session-signature-parity.test.mjs
@@ -140,6 +140,7 @@ jobs:
         run: |
           if ! node scripts/security/check-session-signature-parity.mjs \
             --counterpart "SISNA" \
+            --label "Session signature parity" \
             --local-schema spec/session-signature-v2.schema.json \
             --remote-schema /tmp/sisna-session-signature-v2.schema.json \
             --local-vectors spec/session-signature-v2.json \
@@ -177,6 +178,7 @@ jobs:
         run: |
           if ! node scripts/security/check-session-signature-parity.mjs \
             --counterpart "starkclaw" \
+            --label "Session signature parity" \
             --local-schema spec/session-signature-v2.schema.json \
             --remote-schema /tmp/starkclaw-session-signature-v2.schema.json \
             --local-vectors spec/session-signature-v2.json \

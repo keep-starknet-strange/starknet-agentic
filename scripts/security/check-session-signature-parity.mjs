@@ -3,16 +3,16 @@
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 
+const USAGE_TEXT =
+  "Usage: node scripts/security/check-session-signature-parity.mjs " +
+  "--counterpart <name> --local-schema <path> --remote-schema <path> " +
+  "--local-vectors <path> --remote-vectors <path> [--label <text>] [--vector-key <key>]";
+
 export function usageAndExit(message) {
-  if (message) {
-    console.error(message);
-  }
-  console.error(
-    "Usage: node scripts/security/check-session-signature-parity.mjs " +
-      "--counterpart <name> --local-schema <path> --remote-schema <path> " +
-      "--local-vectors <path> --remote-vectors <path>"
-  );
-  process.exit(2);
+  const composedMessage = message ? `${message}\n${USAGE_TEXT}` : USAGE_TEXT;
+  const error = new Error(composedMessage);
+  error.name = "UsageError";
+  throw error;
 }
 
 export function parseArgs(argv) {
@@ -35,6 +35,8 @@ export function parseArgs(argv) {
     remoteSchemaPath: args.get("remote-schema"),
     localVectorsPath: args.get("local-vectors"),
     remoteVectorsPath: args.get("remote-vectors"),
+    label: args.get("label") ?? "Spec parity",
+    vectorKey: args.get("vector-key") ?? "vectors",
   };
 }
 
@@ -57,9 +59,14 @@ export function stableStringify(value) {
 
 export function toMapById(vectors) {
   const map = new Map();
-  for (const vector of vectors) {
+  for (const [index, vector] of vectors.entries()) {
     if (typeof vector?.id !== "string" || vector.id.length === 0) {
       throw new Error("Vector without string id found while comparing parity");
+    }
+    if (map.has(vector.id)) {
+      throw new Error(
+        `Duplicate vector id found while comparing parity: ${vector.id} (index ${index} of ${vectors.length})`,
+      );
     }
     map.set(vector.id, vector);
   }
@@ -134,68 +141,78 @@ export function asArrayIfPresent(value) {
   return Array.isArray(value) ? value : null;
 }
 
-export function main() {
-  const parsed = parseArgs(process.argv.slice(2));
-  if (
-    !parsed.counterpart ||
-    !parsed.localSchemaPath ||
-    !parsed.remoteSchemaPath ||
-    !parsed.localVectorsPath ||
-    !parsed.remoteVectorsPath
-  ) {
-    usageAndExit("Missing required arguments");
-  }
+export function main(argv = process.argv.slice(2)) {
+  try {
+    const parsed = parseArgs(argv);
+    if (
+      !parsed.counterpart ||
+      !parsed.localSchemaPath ||
+      !parsed.remoteSchemaPath ||
+      !parsed.localVectorsPath ||
+      !parsed.remoteVectorsPath
+    ) {
+      usageAndExit("Missing required arguments");
+    }
 
-  const localSchema = loadJson(parsed.localSchemaPath);
-  const remoteSchema = loadJson(parsed.remoteSchemaPath);
-  const localVectorsDoc = loadJson(parsed.localVectorsPath);
-  const remoteVectorsDoc = loadJson(parsed.remoteVectorsPath);
+    const localSchema = loadJson(parsed.localSchemaPath);
+    const remoteSchema = loadJson(parsed.remoteSchemaPath);
+    const localVectorsDoc = loadJson(parsed.localVectorsPath);
+    const remoteVectorsDoc = loadJson(parsed.remoteVectorsPath);
 
-  const header = `Session signature parity vs ${parsed.counterpart}`;
-  const summaryLines = [`### ${header}`];
-  const consoleLines = [`[${parsed.counterpart}] ${header}`];
+    const header = `${parsed.label} vs ${parsed.counterpart}`;
+    const summaryLines = [`### ${header}`];
+    const consoleLines = [`[${parsed.counterpart}] ${header}`];
 
-  const schemaMatches = stableStringify(localSchema) === stableStringify(remoteSchema);
-  if (schemaMatches) {
-    consoleLines.push(`[${parsed.counterpart}] schema parity OK`);
-    summaryLines.push("- schema: parity OK");
-  } else {
-    consoleLines.push(`[${parsed.counterpart}] schema parity mismatch`);
-    summaryLines.push("- schema: MISMATCH");
-  }
+    const schemaMatches = stableStringify(localSchema) === stableStringify(remoteSchema);
+    if (schemaMatches) {
+      consoleLines.push(`[${parsed.counterpart}] schema parity OK`);
+      summaryLines.push("- schema: parity OK");
+    } else {
+      consoleLines.push(`[${parsed.counterpart}] schema parity mismatch`);
+      summaryLines.push("- schema: MISMATCH");
+    }
 
-  let hasFailures = !schemaMatches;
+    let hasFailures = !schemaMatches;
 
-  const localOutside = asArrayIfPresent(localVectorsDoc.vectors);
-  const remoteOutside = asArrayIfPresent(remoteVectorsDoc.vectors);
-  if (!localOutside || !remoteOutside) {
-    throw new Error("Both vector documents must include a top-level `vectors` array");
-  }
-  const outsideGroup = compareVectorGroup("vectors", localOutside, remoteOutside);
-  for (const line of outsideGroup.lines) {
-    consoleLines.push(`[${parsed.counterpart}] ${line}`);
-    summaryLines.push(`- ${line}`);
-  }
-  hasFailures = hasFailures || outsideGroup.hasIssues;
-
-  const localSession = asArrayIfPresent(localVectorsDoc.sessionVectors);
-  const remoteSession = asArrayIfPresent(remoteVectorsDoc.sessionVectors);
-  if (localSession || remoteSession) {
-    const effectiveLocal = localSession ?? [];
-    const effectiveRemote = remoteSession ?? [];
-    const sessionGroup = compareVectorGroup("sessionVectors", effectiveLocal, effectiveRemote);
-    for (const line of sessionGroup.lines) {
+    const localOutside = asArrayIfPresent(localVectorsDoc[parsed.vectorKey]);
+    const remoteOutside = asArrayIfPresent(remoteVectorsDoc[parsed.vectorKey]);
+    if (!localOutside || !remoteOutside) {
+      throw new Error(
+        `Both vector documents must include a top-level \`${parsed.vectorKey}\` array ` +
+          `(local=${parsed.localVectorsPath}, remote=${parsed.remoteVectorsPath})`,
+      );
+    }
+    const outsideGroup = compareVectorGroup(parsed.vectorKey, localOutside, remoteOutside);
+    for (const line of outsideGroup.lines) {
       consoleLines.push(`[${parsed.counterpart}] ${line}`);
       summaryLines.push(`- ${line}`);
     }
-    hasFailures = hasFailures || sessionGroup.hasIssues;
-  }
+    hasFailures = hasFailures || outsideGroup.hasIssues;
 
-  console.log(consoleLines.join("\n"));
-  appendSummary(summaryLines);
+    const localSession = asArrayIfPresent(localVectorsDoc.sessionVectors);
+    const remoteSession = asArrayIfPresent(remoteVectorsDoc.sessionVectors);
+    if (localSession || remoteSession) {
+      const effectiveLocal = localSession ?? [];
+      const effectiveRemote = remoteSession ?? [];
+      const sessionGroup = compareVectorGroup("sessionVectors", effectiveLocal, effectiveRemote);
+      for (const line of sessionGroup.lines) {
+        consoleLines.push(`[${parsed.counterpart}] ${line}`);
+        summaryLines.push(`- ${line}`);
+      }
+      hasFailures = hasFailures || sessionGroup.hasIssues;
+    }
 
-  if (hasFailures) {
-    process.exit(1);
+    console.log(consoleLines.join("\n"));
+    appendSummary(summaryLines);
+
+    return hasFailures ? 1 : 0;
+  } catch (error) {
+    if (error instanceof Error && error.name === "UsageError") {
+      console.error(error.message);
+      return 2;
+    }
+    console.error(error instanceof Error ? error.message : String(error));
+    return 1;
   }
 }
 
@@ -204,5 +221,5 @@ const isDirectRun =
   import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isDirectRun) {
-  main();
+  process.exitCode = main();
 }
