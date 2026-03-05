@@ -114,7 +114,7 @@ const usdc = new Contract(USDC_ABI, USDC_ADDRESS, account);
 // Send 10 USDC
 const tx = await usdc.transfer(
   recipient_address,
-  uint256.uint256ToBN({ low: 10n * 6n, high: 0 })
+  uint256.bnToUint256(10n * 10n ** 6n)
 );
 await provider.waitForTransaction(tx.transaction_hash);
 ```
