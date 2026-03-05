@@ -73,4 +73,4 @@ template PrivacyPool() {
     cur[4] === merkleRootPublic;
 }
 
-component main = PrivacyPool();
+component main {public [nullifierPublic, merkleRootPublic, amountPublic]} = PrivacyPool();
