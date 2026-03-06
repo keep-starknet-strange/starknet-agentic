@@ -15,6 +15,7 @@ Status values:
 - `contracts-owner`: contract behavior and invariants
 - `runtime-owner`: runtime flows and operational checks
 - `qa-owner`: test execution and evidence packaging
+- `security-owner`: security review, threat modeling, vuln triage, and sign-off
 
 ## E2E / Load / Sign-Off Matrix
 

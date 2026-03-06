@@ -17,6 +17,8 @@ the no-backend launch profile.
   `docs/security/MAINNET_OWNERSHIP_SIGNER_POLICY.md`.
 - Latest `main` CI is green for contracts and security workflows.
 - Deployment actor has funded mainnet account + signer rights.
+- `DEPLOYER_ACCOUNT` must be the target production multisig
+  (`EXPECTED_MULTISIG`) for factory deployment.
 
 ## Required Inputs
 
@@ -71,11 +73,13 @@ Record resulting class hashes and tx hashes.
 
 ## Step 3: Deploy AgentAccountFactory
 
-Constructor parameters must bind to the intended registry set and owner:
+Constructor parameters (in order):
 
-- `owner = EXPECTED_MULTISIG`
-- `identity_registry = IDENTITY_REGISTRY`
 - `account_class_hash = <declared_agent_account_class_hash>`
+- `identity_registry = IDENTITY_REGISTRY`
+
+Owner is set automatically to the deployer (`get_caller_address()`), so deploy
+the factory from `EXPECTED_MULTISIG`.
 
 Example:
 
@@ -83,9 +87,8 @@ keystore:
 
 ```bash
 starkli deploy <agent_account_factory_class_hash> \
-  "$EXPECTED_MULTISIG" \
-  "$IDENTITY_REGISTRY" \
   "<agent_account_class_hash>" \
+  "$IDENTITY_REGISTRY" \
   --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --keystore "$KEYSTORE_PATH"
 ```
 
@@ -93,9 +96,8 @@ hardware wallet:
 
 ```bash
 starkli deploy <agent_account_factory_class_hash> \
-  "$EXPECTED_MULTISIG" \
-  "$IDENTITY_REGISTRY" \
   "<agent_account_class_hash>" \
+  "$IDENTITY_REGISTRY" \
   --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger
 ```
 
@@ -112,7 +114,7 @@ starkli call "$VALIDATION_REGISTRY" owner --rpc "$RPC_URL"
 
 Acceptance checks:
 
-- `get_owner == EXPECTED_MULTISIG`
+- `get_owner == DEPLOYER_ACCOUNT == EXPECTED_MULTISIG`
 - `get_identity_registry == IDENTITY_REGISTRY` (must not point to legacy set)
 - `get_account_class_hash` matches declared AgentAccount class hash
 - `owner(IDENTITY_REGISTRY) == EXPECTED_MULTISIG`
@@ -156,7 +158,7 @@ Rollback actions:
 
 ## Evidence Package (Mandatory)
 
-Attach all of the following to the tracking issue:
+Attach the following to the tracking issue:
 
 - declaration tx hashes
 - deployment tx hash + deployed address
