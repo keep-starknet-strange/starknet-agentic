@@ -57,7 +57,14 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          existing_assets="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')"
+          if ! existing_assets="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length' 2>&1)"; then
+            echo "ERROR: Could not query release '$RELEASE_TAG'. gh output: $existing_assets"
+            exit 1
+          fi
+          if ! [[ "$existing_assets" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: Unexpected release assets response for '$RELEASE_TAG': $existing_assets"
+            exit 1
+          fi
           if [ "$existing_assets" -gt 0 ]; then
             echo "Release $RELEASE_TAG already has assets. Aborting to prevent attestation mismatch."
             exit 1

@@ -29,6 +29,8 @@ gh release download "$TAG" -R "$REPO" \
 
 Verify Sigstore keyless attestations (primary trust anchor):
 
+<!-- IMPORTANT: keep --signer-workflow in sync with the actual workflow file path/name -->
+
 ```bash
 (
   set -euo pipefail
