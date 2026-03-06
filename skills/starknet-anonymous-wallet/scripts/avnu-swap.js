@@ -43,16 +43,18 @@ async function getAllTokens() {
  * Match token symbols to AVNU tokens
  */
 async function matchTokens(sellSymbol, buySymbol) {
-  const tokens = await getAllTokens();
-  
-  const sellToken = tokens.find(t => 
-    t.symbol.toLowerCase() === sellSymbol.toLowerCase()
+  const tokens = (await getAllTokens()).filter(t => typeof t?.symbol === 'string');
+  const sellNeedle = String(sellSymbol || '').toLowerCase();
+  const buyNeedle = String(buySymbol || '').toLowerCase();
+
+  const sellToken = tokens.find(t =>
+    String(t?.symbol || '').toLowerCase() === sellNeedle
   );
-  
-  const buyToken = tokens.find(t => 
-    t.symbol.toLowerCase() === buySymbol.toLowerCase()
+
+  const buyToken = tokens.find(t =>
+    String(t?.symbol || '').toLowerCase() === buyNeedle
   );
-  
+
   return { sellToken, buyToken };
 }
 
