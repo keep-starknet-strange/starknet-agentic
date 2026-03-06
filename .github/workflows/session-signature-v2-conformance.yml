@@ -16,6 +16,8 @@ on:
       - "packages/starknet-mcp-server/__tests__/helpers/sessionSignatureVectors.test.ts"
       - ".github/workflows/session-signature-v2-conformance.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "30 4 * * *"
 
 permissions:
   contents: read
@@ -109,13 +111,13 @@ jobs:
       - name: Compare vectors with SISNA main
         run: |
           if ! curl -fsSL \
-            https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.schema.json \
+            https://raw.githubusercontent.com/keep-starknet-strange/SISNA/main/spec/session-signature-v2.schema.json \
             -o /tmp/sisna-session-signature-v2.schema.json; then
             echo "SISNA schema not published yet on main; skipping SISNA parity check."
             exit 0
           fi
           if ! curl -fsSL \
-            https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.json \
+            https://raw.githubusercontent.com/keep-starknet-strange/SISNA/main/spec/session-signature-v2.json \
             -o /tmp/sisna-session-signature-v2.json; then
             echo "SISNA vector file not published yet on main; skipping SISNA parity check."
             exit 0
