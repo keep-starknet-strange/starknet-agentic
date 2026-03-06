@@ -34,8 +34,8 @@ export const DEFI_SYNONYMS = {
   'remove_liquidity': ['remove liquidity', 'withdraw liquidity', 'take out liquidity'],
   
   // Staking
-  'stake': ['stake', 'lock', 'deposit', 'farm', 'pool', 'commit'],
-  'unstake': ['unstake', 'unlock', 'withdraw', 'harvest', 'claim and exit'],
+  'stake': ['stake', 'lock', 'farm', 'pool', 'commit'],
+  'unstake': ['unstake', 'unlock', 'claim and exit'],
   'claim_rewards': ['claim', 'harvest', 'collect', 'get rewards', 'redeem'],
   
   // Lending/Borrowing
