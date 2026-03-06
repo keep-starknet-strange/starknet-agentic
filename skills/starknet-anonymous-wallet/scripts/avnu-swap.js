@@ -100,9 +100,7 @@ function resolvePaymasterUrl() {
   return parsed.toString();
 }
 
-const paymaster = new PaymasterRpc({
-  nodeUrl: resolvePaymasterUrl(),
-});
+let paymaster;
 
 async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE) {
   const result = await executeSwap({
@@ -162,6 +160,18 @@ async function main() {
   }
 
   const privateKey = loadPrivateKeyByAccountAddress(accountAddress);
+
+  try {
+    paymaster = new PaymasterRpc({
+      nodeUrl: resolvePaymasterUrl(),
+    });
+  } catch (err) {
+    console.log(JSON.stringify({
+      error: `Paymaster initialization failed: ${err.message}`,
+      nextStep: 'CONFIGURE_PAYMASTER'
+    }));
+    process.exit(1);
+  }
   
   // Create account from passed arguments (no secrets access)
   const rpcUrl = resolveRpcUrl();
