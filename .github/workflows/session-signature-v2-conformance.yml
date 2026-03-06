@@ -157,20 +157,28 @@ jobs:
       - name: Validate parity with SISNA
         if: steps.fetch_sisna.outputs.available == 'true'
         run: |
-          if ! node scripts/security/check-session-signature-parity.mjs \
+          set +e
+          node scripts/security/check-session-signature-parity.mjs \
             --counterpart "SISNA" \
             --label "Session signature parity" \
             --local-schema spec/session-signature-v2.schema.json \
             --remote-schema /tmp/sisna-session-signature-v2.schema.json \
             --local-vectors spec/session-signature-v2.json \
             --remote-vectors /tmp/sisna-session-signature-v2.json \
-            --secondary-key sessionVectors; then
+            --secondary-key sessionVectors
+          parity_exit=$?
+          set -e
+
+          if [ "$parity_exit" -eq 1 ]; then
             if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
               echo "::warning::SISNA parity drift detected on PR; keep coordinated rollout open."
             else
               echo "SISNA parity drift detected on ${GITHUB_EVENT_NAME}; failing."
               exit 1
             fi
+          elif [ "$parity_exit" -ne 0 ]; then
+            echo "::error::SISNA parity check failed with exit code ${parity_exit}."
+            exit "$parity_exit"
           fi
 
       - name: Fetch starkclaw vectors
@@ -215,18 +223,26 @@ jobs:
       - name: Validate parity with starkclaw
         if: steps.fetch_starkclaw.outputs.available == 'true'
         run: |
-          if ! node scripts/security/check-session-signature-parity.mjs \
+          set +e
+          node scripts/security/check-session-signature-parity.mjs \
             --counterpart "starkclaw" \
             --label "Session signature parity" \
             --local-schema spec/session-signature-v2.schema.json \
             --remote-schema /tmp/starkclaw-session-signature-v2.schema.json \
             --local-vectors spec/session-signature-v2.json \
             --remote-vectors /tmp/starkclaw-session-signature-v2.json \
-            --secondary-key sessionVectors; then
+            --secondary-key sessionVectors
+          parity_exit=$?
+          set -e
+
+          if [ "$parity_exit" -eq 1 ]; then
             if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
               echo "::warning::starkclaw parity drift detected on PR; keep coordinated rollout open."
             else
               echo "starkclaw parity drift detected on ${GITHUB_EVENT_NAME}; failing."
               exit 1
             fi
+          elif [ "$parity_exit" -ne 0 ]; then
+            echo "::error::starkclaw parity check failed with exit code ${parity_exit}."
+            exit "$parity_exit"
           fi
