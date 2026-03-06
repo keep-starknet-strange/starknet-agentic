@@ -27,6 +27,19 @@ gh release download "$TAG" -R "$REPO" \
   --pattern "checksums.txt"
 ```
 
+Verify Sigstore keyless attestations (primary trust anchor):
+
+```bash
+for artifact in "$OUT_DIR"/*.tgz "$OUT_DIR"/checksums.txt; do
+  gh attestation verify "$artifact" \
+    --repo "$REPO" \
+    --signer-workflow "keep-starknet-strange/starknet-agentic/.github/workflows/publish.yml" \
+    --cert-oidc-issuer "https://token.actions.githubusercontent.com"
+done
+```
+
+Expected result: each artifact returns a successful verification tied to the repo workflow identity.
+
 Verify checksums:
 
 ```bash
@@ -41,19 +54,6 @@ cd "$OUT_DIR"
 shasum -a 256 -c checksums.txt
 ```
 
-Verify Sigstore keyless attestations:
-
-```bash
-for artifact in "$OUT_DIR"/*.tgz; do
-  gh attestation verify "$artifact" \
-    --repo "$REPO" \
-    --signer-workflow "keep-starknet-strange/starknet-agentic/.github/workflows/publish.yml" \
-    --cert-oidc-issuer "https://token.actions.githubusercontent.com"
-done
-```
-
-Expected result: each package returns a successful verification tied to the repo workflow identity.
-
 ## Strict Demo Artifact Verification
 
 For strict demo artifacts checked by CI, run:
@@ -64,4 +64,4 @@ node scripts/security/verify-secure-defi-claims.mjs \
   --require-strict
 ```
 
-When the strict proof workflow runs on a release tag, it also emits keyless provenance attestation for the verified artifact path.
+The strict proof workflow is a policy gate only: it verifies strict claims and fails the pipeline on violation. It does not emit build provenance attestation for repository fixture files.
