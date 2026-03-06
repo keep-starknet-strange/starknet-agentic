@@ -65,14 +65,17 @@ starkli invoke "$SESSION_ACCOUNT_ADDR" \
 
 ```bash
 # SP-08: sustained-load sample (attach full script + output artifact)
+success=0
+failed=0
 for i in $(seq 1 100); do
   starkli invoke "$SESSION_ACCOUNT_ADDR" \
     "$ERC20_TOKEN_ADDR" transfer "$RECIPIENT_ADDR" u256:1 \
     --rpc "$SEPOLIA_RPC_URL" \
     --account "$SESSION_ACCOUNT_ADDR" \
     --keystore "$SESSION_KEY_KEYSTORE_PATH" \
-    || true
+    && success=$((success + 1)) || failed=$((failed + 1))
 done
+echo "success=$success failed=$failed total=$((success + failed))"
 # include tx_count/hour, success_rate, and failure_rate in evidence bundle
 ```
 

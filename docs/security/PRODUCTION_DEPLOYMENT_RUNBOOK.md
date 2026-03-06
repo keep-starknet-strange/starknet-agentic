@@ -154,6 +154,13 @@ starkli deploy "$COMPUTED_FACTORY_CLASS_HASH" \
 
 ## Step 5: Runtime Verification
 
+First, set `FACTORY_ADDRESS` to the deployed factory address returned by the
+Step 4 deployment output/receipt:
+
+```bash
+export FACTORY_ADDRESS="<deployed_factory_address_from_step4>"
+```
+
 ```bash
 starkli call "$FACTORY_ADDRESS" get_owner --rpc "$RPC_URL"
 starkli call "$FACTORY_ADDRESS" get_identity_registry --rpc "$RPC_URL"
