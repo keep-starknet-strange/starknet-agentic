@@ -209,7 +209,7 @@ function validatePromptSecurity(prompt) {
 
     { pattern: /\bthen\s+(run|execute)\b\s*:/i, threat: 'command_injection' },
     { pattern: /\b(openclaw|crontab|curl|wget)\b/i, threat: 'tool_invocation' },
-    { pattern: /[;&|]{1,2}/, threat: 'shell_metachar' },
+    { pattern: /(?:[;&|]{1,2}|`|\$\()/, threat: 'shell_metachar' },
 
     // Structured payload injection
     { pattern: /"parsed"\s*:/i, threat: 'structured_injection' },
