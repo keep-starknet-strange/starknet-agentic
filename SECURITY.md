@@ -40,4 +40,4 @@ This repository is pre-1.0.
 
 Release artifact provenance verification is documented in:
 
-- `docs/security/PROVENANCE_VERIFICATION.md`
+- [docs/security/PROVENANCE_VERIFICATION.md](docs/security/PROVENANCE_VERIFICATION.md)
