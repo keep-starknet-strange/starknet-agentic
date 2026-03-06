@@ -17,6 +17,14 @@ import "dotenv/config";
 import { Account as TongoAccount } from "@fatsolutions/tongo-sdk";
 import { Account, RpcProvider } from "starknet";
 
+async function waitSuccess(provider: RpcProvider, txHash: string) {
+  const receipt = await provider.waitForTransaction(txHash);
+  if (receipt.execution_status === "REVERTED") {
+    throw new Error(`Transaction reverted: ${receipt.revert_reason}`);
+  }
+  return receipt;
+}
+
 function required(name: string): string {
   const val = process.env[name];
   if (!val) {
@@ -57,7 +65,7 @@ async function main() {
     fee_to_sender: 0n,
   });
   let tx = await account.execute([fundOp.approve, fundOp.toCalldata()]);
-  await provider.waitForTransaction(tx.transaction_hash);
+  await waitSuccess(provider, tx.transaction_hash);
 
   let state = await sender.state();
   console.log(`  Sender balance: ${state.balance}`);
@@ -71,7 +79,7 @@ async function main() {
     fee_to_sender: 0n,
   });
   tx = await account.execute(transferOp.toCalldata());
-  await provider.waitForTransaction(tx.transaction_hash);
+  await waitSuccess(provider, tx.transaction_hash);
 
   state = await receiver.state();
   console.log(`  Receiver pending: ${state.pending}`);
@@ -80,7 +88,7 @@ async function main() {
   console.log("\n[3/4] Rolling over receiver's pending balance...");
   const rolloverOp = await receiver.rollover({ sender: account.address });
   tx = await account.execute(rolloverOp.toCalldata());
-  await provider.waitForTransaction(tx.transaction_hash);
+  await waitSuccess(provider, tx.transaction_hash);
 
   state = await receiver.state();
   console.log(`  Receiver balance: ${state.balance}`);
@@ -94,7 +102,7 @@ async function main() {
     fee_to_sender: 0n,
   });
   tx = await account.execute(withdrawOp.toCalldata());
-  await provider.waitForTransaction(tx.transaction_hash);
+  await waitSuccess(provider, tx.transaction_hash);
 
   state = await receiver.state();
   console.log(`  Receiver balance after withdraw: ${state.balance}`);
