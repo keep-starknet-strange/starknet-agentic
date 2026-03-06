@@ -22,7 +22,7 @@ import { resolveRpcUrl } from './_rpc.js';
 import { loadPrivateKeyByAccountAddress } from './_keys.js';
 
 function fail(message) {
-  console.error(JSON.stringify({ error: message }));
+  console.log(JSON.stringify({ success: false, error: message }));
   process.exit(1);
 }
 
