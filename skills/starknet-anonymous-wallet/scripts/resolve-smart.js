@@ -929,6 +929,7 @@ async function main() {
                 if (!String(inp.type || '').includes('ContractAddress')) continue;
                 const v = args[inp.name];
                 if (typeof v === 'string' && !v.startsWith('0x') && /^[A-Z0-9.]{2,12}$/.test(v)) {
+                  if (!avnuTokens) avnuTokens = await fetchVerifiedTokens();
                   const t = avnuTokens.find(x => String(x.symbol || '').toUpperCase() === v.toUpperCase());
                   if (t?.address) {
                     args[inp.name] = t.address;
