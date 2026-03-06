@@ -20,7 +20,7 @@
  */
 
 import { RpcProvider as Provider, Account, Contract, CallData, shortString, hash } from 'starknet';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, rmSync, statSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { resolveRpcUrl } from './_rpc.js';
@@ -86,6 +86,7 @@ function lootStateMutate(accountAddress, mutateFn) {
   if (!accountAddress) return;
   const lockDir = join(LOOT_STATE_DIR, '.lock');
   const lockTimeoutMs = 2000;
+  const lockStaleMs = 5000;
   const started = Date.now();
 
   try {
@@ -97,6 +98,17 @@ function lootStateMutate(accountAddress, mutateFn) {
         mkdirSync(lockDir);
         break;
       } catch (e) {
+        // Recover stale lock left by crashed process
+        try {
+          const st = statSync(lockDir);
+          if ((Date.now() - st.mtimeMs) > lockStaleMs) {
+            rmSync(lockDir, { recursive: false, force: true });
+            continue;
+          }
+        } catch {
+          // ignore stat/remove races
+        }
+
         if (Date.now() - started > lockTimeoutMs) return;
         sleepSync(20);
       }
