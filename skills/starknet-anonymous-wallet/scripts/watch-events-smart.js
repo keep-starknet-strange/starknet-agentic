@@ -26,7 +26,7 @@
 import { RpcProvider, hash } from 'starknet';
 import { WebSocket } from 'ws';
 import { execSync, execFileSync } from 'child_process';
-import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, lstatSync } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
 
@@ -301,6 +301,9 @@ class SmartEventWatcher {
         for (const file of files) {
           if (!file.endsWith('.sh')) continue;
           const shellPath = join(cronDir, file);
+          const shellStat = lstatSync(shellPath, { throwIfNoEntry: false });
+          if (!shellStat || !shellStat.isFile() || shellStat.isSymbolicLink()) continue;
+
           const content = readFileSync(shellPath, 'utf8');
           if (content.includes(knownConfigPath)) {
             const currentCrontab = execSync('crontab -l 2>/dev/null || echo ""').toString();
