@@ -11,6 +11,9 @@ export const REQUIRED_CLAIM_IDS = [
   "base_to_starknet_anchor_verified",
   "starkzap_execution_receipt",
 ];
+const OPTIONAL_POLICY_CLAIM_IDS = new Set([
+  "starkzap_execution_receipt",
+]);
 
 export function parseArgs(argv) {
   const args = {};
@@ -49,9 +52,15 @@ export function verifyClaimsArtifact(artifact, options = {}) {
     );
   }
 
-  const blocking = claims.filter(
-    (claim) => claim?.required === true && String(claim?.proof_status) !== "proved",
-  );
+  const blocking = claims.filter((claim) => {
+    const claimId = String(claim?.claimId ?? "");
+    if (!REQUIRED_CLAIM_IDS.includes(claimId)) {
+      return false;
+    }
+    const policyRequired =
+      !OPTIONAL_POLICY_CLAIM_IDS.has(claimId) || claim?.required === true;
+    return policyRequired && String(claim?.proof_status) !== "proved";
+  });
   if (blocking.length > 0) {
     const details = blocking
       .map(

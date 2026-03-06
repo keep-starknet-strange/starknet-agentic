@@ -77,6 +77,21 @@ test("verifyClaimsArtifact fails when required claim is not proved", () => {
   );
 });
 
+test("verifyClaimsArtifact fails when mandatory claim is not proved even if required=false", () => {
+  const artifact = makeArtifact({
+    claims: makeArtifact().claims.map((claim) =>
+      claim.claimId === "forbidden_selector_denied"
+        ? { ...claim, required: false, proof_status: "missing" }
+        : claim,
+    ),
+  });
+
+  assert.throws(
+    () => verifyClaimsArtifact(artifact, { requireStrict: true }),
+    /forbidden_selector_denied failed/,
+  );
+});
+
 test("main returns 0 for valid artifact file", (t) => {
   const { tempDir, artifactPath } = writeTempArtifact(makeArtifact());
   t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));

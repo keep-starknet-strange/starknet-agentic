@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   canonicalize,
   createSignedEvidenceManifest,
+  main,
   resolvePrivateKeyPem,
   verifyEvidenceManifestFile,
 } from "./evidence-manifest.mjs";
@@ -195,4 +196,41 @@ test("resolvePrivateKeyPem supports base64-encoded PEM", () => {
   });
 
   assert.equal(resolved, privateKeyPem.trim());
+});
+
+test("main returns 0 for --help", () => {
+  const exitCode = main(["--help"]);
+  assert.equal(exitCode, 0);
+});
+
+test("main honors ARTIFACT_MANIFEST_PATH fallback", (t) => {
+  const tempDir = makeTempDir();
+  t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
+
+  const artifactPath = path.join(tempDir, "artifact.json");
+  fs.writeFileSync(artifactPath, "{\"ok\":true}\n");
+  const privateKeyPem = createSigningKeyPair();
+  const manifestPath = path.join(tempDir, "artifact-manifest.json");
+  createSignedEvidenceManifest({
+    manifestPath,
+    privateKeyPem,
+    runId: "run-env",
+    mode: "execute",
+    strictSecurityProof: true,
+    networkLabel: "starknet-sepolia",
+    filePaths: [artifactPath],
+  });
+
+  const previous = process.env.ARTIFACT_MANIFEST_PATH;
+  process.env.ARTIFACT_MANIFEST_PATH = manifestPath;
+  t.after(() => {
+    if (previous === undefined) {
+      delete process.env.ARTIFACT_MANIFEST_PATH;
+    } else {
+      process.env.ARTIFACT_MANIFEST_PATH = previous;
+    }
+  });
+
+  const exitCode = main([]);
+  assert.equal(exitCode, 0);
 });

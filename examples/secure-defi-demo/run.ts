@@ -1056,7 +1056,7 @@ async function main(): Promise<void> {
       }
 
       const manifestResult = createSignedEvidenceManifest({
-        manifestPath: path.join(config.outputDir, "artifact-manifest.json"),
+        manifestPath: path.join(config.outputDir, `artifact-manifest-${runId}.json`),
         privateKeyPem,
         runId,
         mode: config.mode,
@@ -1077,13 +1077,13 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write(
-    `${JSON.stringify({ artifactPath, markdownSummaryPath, evidenceManifestPath, summary, recommendations }, null, 2)}\n`,
+    `${JSON.stringify({ artifactPath, markdownSummaryPath, evidenceManifestPath, evidenceManifestError, summary, recommendations }, null, 2)}\n`,
   );
 
   if (
     summary.failed > 0 ||
     (config.strictSecurityProof && missingRequiredClaims.length > 0) ||
-    (config.strictSecurityProof && evidenceManifestError !== null)
+    (shouldEmitEvidenceManifest && evidenceManifestError !== null)
   ) {
     process.exitCode = 1;
   }

@@ -38,12 +38,37 @@ jobs:
           MANIFEST_PATH: ${{ github.event.inputs.manifest_path || '' }}
         run: |
           set -euo pipefail
+          WORKSPACE="${GITHUB_WORKSPACE:-$PWD}"
+
+          resolve_repo_path() {
+            local input_path="$1"
+            case "$input_path" in
+              /*|[A-Za-z]:*)
+                echo "Path must be repo-relative: $input_path"
+                exit 1
+                ;;
+            esac
+            local resolved
+            resolved="$(realpath -m "$WORKSPACE/$input_path")"
+            case "$resolved" in
+              "$WORKSPACE"/*)
+                printf '%s\n' "$resolved"
+                ;;
+              *)
+                echo "Path escapes workspace: $input_path"
+                exit 1
+                ;;
+            esac
+          }
+
+          ARTIFACT_PATH="$(resolve_repo_path "$ARTIFACT_PATH")"
           if [ ! -f "$ARTIFACT_PATH" ]; then
             echo "Artifact file not found: $ARTIFACT_PATH"
             exit 1
           fi
           node scripts/security/verify-secure-defi-claims.mjs --artifact "$ARTIFACT_PATH" --require-strict
           if [ -n "$MANIFEST_PATH" ]; then
+            MANIFEST_PATH="$(resolve_repo_path "$MANIFEST_PATH")"
             if [ ! -f "$MANIFEST_PATH" ]; then
               echo "Manifest file not found: $MANIFEST_PATH"
               exit 1

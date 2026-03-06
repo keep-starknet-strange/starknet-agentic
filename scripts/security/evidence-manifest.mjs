@@ -548,14 +548,23 @@ export function verifyEvidenceManifestFile(options) {
 
 function parseCliArgs(argv) {
   const args = {};
+  const allowedFlags = new Set(["manifest", "require-strict", "help"]);
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
-    if (!token.startsWith("--")) continue;
+    if (!token.startsWith("--")) {
+      fail(`Unexpected argument: ${token}`);
+    }
     const name = token.slice(2);
-    const value = argv[i + 1];
-    if (!value || value.startsWith("--")) {
+    if (!allowedFlags.has(name)) {
+      fail(`Unknown flag: ${token}`);
+    }
+    if (name === "help") {
       args[name] = "true";
       continue;
+    }
+    const value = argv[i + 1];
+    if (!value || value.startsWith("--")) {
+      fail(`Missing value for ${token}`);
     }
     args[name] = value;
     i += 1;
@@ -564,14 +573,29 @@ function parseCliArgs(argv) {
 }
 
 function printUsage() {
-  process.stderr.write(
-    "Usage: node scripts/security/evidence-manifest.mjs --manifest <path> [--require-strict]\n",
-  );
+  process.stderr.write("Usage: node scripts/security/evidence-manifest.mjs [--manifest <path>] [--require-strict] [--help]\n");
+  process.stderr.write("Default manifest path fallback: $ARTIFACT_MANIFEST_PATH or examples/secure-defi-demo/artifacts/artifact-manifest.json\n");
 }
 
 export function main(argv = process.argv.slice(2)) {
-  const parsed = parseCliArgs(argv);
-  const manifestPath = parsed.manifest ?? "examples/secure-defi-demo/artifacts/artifact-manifest.json";
+  let parsed;
+  try {
+    parsed = parseCliArgs(argv);
+  } catch (error) {
+    process.stderr.write(`evidence-manifest: BLOCK (${error instanceof Error ? error.message : String(error)})\n`);
+    printUsage();
+    return 1;
+  }
+
+  if (parsed.help === "true") {
+    printUsage();
+    return 0;
+  }
+
+  const manifestPath =
+    parsed.manifest ??
+    process.env.ARTIFACT_MANIFEST_PATH ??
+    "examples/secure-defi-demo/artifacts/artifact-manifest.json";
   const requireStrict = parsed["require-strict"] === "true";
 
   try {
@@ -583,7 +607,7 @@ export function main(argv = process.argv.slice(2)) {
     process.stdout.write(`evidence-manifest: PASS (${summary.verifiedFileCount} files, runId=${summary.runId})\n`);
     return 0;
   } catch (error) {
-    if (!parsed.manifest && !(parsed.help === "true")) {
+    if (!parsed.manifest) {
       process.stderr.write(
         `evidence-manifest: BLOCK (default manifest not verified: ${error instanceof Error ? error.message : String(error)})\n`,
       );
