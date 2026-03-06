@@ -34,6 +34,13 @@ TONGO_CONTRACT_ADDRESS=0x...
 TONGO_PRIVATE_KEY=0x...
 ```
 
+The demo script additionally requires both sender and receiver keys (test-only):
+
+```dotenv
+TONGO_PRIVATE_KEY_SENDER=0x...
+TONGO_PRIVATE_KEY_RECEIVER=0x...
+```
+
 ## Core Concepts
 
 | Concept | Description |
