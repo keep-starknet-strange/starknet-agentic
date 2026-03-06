@@ -30,12 +30,16 @@ gh release download "$TAG" -R "$REPO" \
 Verify Sigstore keyless attestations (primary trust anchor):
 
 ```bash
-for artifact in "$OUT_DIR"/*.tgz "$OUT_DIR"/checksums.txt; do
-  gh attestation verify "$artifact" \
-    --repo "$REPO" \
-    --signer-workflow "keep-starknet-strange/starknet-agentic/.github/workflows/publish.yml" \
-    --cert-oidc-issuer "https://token.actions.githubusercontent.com"
-done
+(
+  set -euo pipefail
+  shopt -s failglob
+  for artifact in "$OUT_DIR"/*.tgz "$OUT_DIR"/checksums.txt; do
+    gh attestation verify "$artifact" \
+      --repo "$REPO" \
+      --signer-workflow "keep-starknet-strange/starknet-agentic/.github/workflows/publish.yml" \
+      --cert-oidc-issuer "https://token.actions.githubusercontent.com"
+  done
+)
 ```
 
 Expected result: each artifact returns a successful verification tied to the repo workflow identity.

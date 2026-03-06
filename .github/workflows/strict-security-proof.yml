@@ -19,12 +19,12 @@ jobs:
   strict-proof-gate:
     name: Strict Security Proof
     runs-on: ubuntu-latest
-    env:
-      STRICT_ARTIFACT_PATH: ${{ github.event.inputs.artifact_path || 'examples/secure-defi-demo/test/fixtures/strict-claims-pass.json' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Verify strict claims artifact
+        env:
+          STRICT_ARTIFACT_PATH: ${{ github.event.inputs.artifact_path || 'examples/secure-defi-demo/test/fixtures/strict-claims-pass.json' }}
         run: |
           set -euo pipefail
           if [ ! -f "$STRICT_ARTIFACT_PATH" ]; then
