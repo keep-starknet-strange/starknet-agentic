@@ -24,6 +24,20 @@ Contracts in scope:
 6. Emergency actions (ownership transfer, upgrade, or freeze-equivalent action)
    require explicit postmortem notes within 24h.
 
+## Current State / Migration Requirement
+
+Current owner value recorded in `docs/DEPLOYMENT_TRUTH_SHEET.md` for all three
+mainnet registries:
+
+- `0x023ad71d10539a910f291472c3dfad913bb6306218ffd65ac97e79d13aad4aaf`
+
+Before closing `#332`, one of the following must be attached as evidence:
+
+1. Attestation that this address is already a policy-compliant `2-of-3`
+   multisig with hardware-backed, split custody signers.
+2. Ownership migration evidence (tx hashes + verification output) proving all
+   in-scope contracts now resolve to a policy-compliant multisig.
+
 ## Roles
 
 - `contracts-owner`: executes deploy/upgrade transactions

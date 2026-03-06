@@ -13,7 +13,8 @@ In scope (required):
   - `contracts/erc8004-cairo/src/validation_registry.cairo`
 - Agent account stack:
   - `contracts/agent-account/src/agent_account.cairo`
-  - factory deployment/binding path
+  - `contracts/agent-account/src/agent_account_factory.cairo`
+    (owner initialization + registry binding path)
 - Session policy enforcement path used by production account flow
 
 Out of scope for this launch gate (tracked separately):

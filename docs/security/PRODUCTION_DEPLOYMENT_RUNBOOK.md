@@ -23,6 +23,7 @@ the no-backend launch profile.
 ## Required Inputs
 
 ```bash
+export SEPOLIA_RPC_URL="<starknet-sepolia-rpc>"
 export RPC_URL="<starknet-mainnet-rpc>"
 export DEPLOYER_ACCOUNT="<account_address>"
 export KEYSTORE_PATH="<path_to_encrypted_keystore>"
@@ -32,6 +33,23 @@ export REPUTATION_REGISTRY="<reputation_registry_addr>"
 export VALIDATION_REGISTRY="<validation_registry_addr>"
 export EXPECTED_MULTISIG="<multisig_owner_addr>"
 ```
+
+## Step 0: Mandatory Sepolia Dry-Run Gate
+
+Before any mainnet declaration/deploy action, run one full Sepolia dry run with
+the same constructor argument order and verification procedure.
+
+Minimum evidence required:
+
+- Sepolia declaration tx hashes (AgentAccount + AgentAccountFactory)
+- Sepolia deployment tx hash + factory address
+- Sepolia output for:
+  - `get_owner`
+  - `get_identity_registry`
+  - `get_account_class_hash`
+  - registry `owner` checks (identity/reputation/validation)
+
+Mainnet deployment is blocked until this evidence is attached.
 
 ## Step 1: Build and Class Hash Verification
 
@@ -130,7 +148,6 @@ SessionAccount rollout options:
 
 Required controls:
 
-- perform at least one Sepolia dry run before mainnet action
 - record tx hashes, constructor args, and owner verification output
 - verify spending policy enforcement paths before broad traffic
 
@@ -162,6 +179,7 @@ Attach the following to the tracking issue:
 
 - declaration tx hashes
 - deployment tx hash + deployed address
+- Sepolia dry-run tx hashes + verification outputs
 - command outputs for `get_owner/get_identity_registry/get_account_class_hash`
 - command outputs for registry `owner` checks (identity/reputation/validation)
 - smoke-test output links
