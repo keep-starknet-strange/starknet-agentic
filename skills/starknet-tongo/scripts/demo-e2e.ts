@@ -72,6 +72,12 @@ async function main() {
   let state = await sender.state();
   console.log(`  Sender balance: ${state.balance}`);
 
+  if (state.balance < AMOUNT) {
+    throw new Error(
+      `Sender balance (${state.balance}) is less than transfer amount (${AMOUNT}). Aborting.`,
+    );
+  }
+
   // --- 2. Transfer ---
   console.log(`\n[2/4] Transferring ${AMOUNT} to receiver...`);
   const transferOp = await sender.transfer({
