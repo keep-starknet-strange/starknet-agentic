@@ -159,10 +159,13 @@ jobs:
             local out="$2"
             local label="$3"
             local http_status
-            http_status="$(curl -sSLo "$out" -w '%{http_code}' \
+            if ! http_status="$(curl -sSLo "$out" -w '%{http_code}' \
               --retry 3 --retry-delay 2 --retry-all-errors \
               --connect-timeout 10 --max-time 30 \
-              "$url")"
+              "$url")"; then
+              echo "::error::Failed to fetch ${label} due to network/transport error."
+              return 1
+            fi
             if [ "$http_status" = "404" ]; then
               echo "::warning::${label} not published yet on main; parity check skipped."
               echo "${label} not published yet on main; skipping parity check."
