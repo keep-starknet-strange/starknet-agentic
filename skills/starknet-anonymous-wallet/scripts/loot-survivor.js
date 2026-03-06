@@ -346,7 +346,7 @@ function tryExtractMintedAdventurerIdFromReceipt(receipt) {
     }
   }
 
-  candidates.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  candidates.sort((a, b) => (a > b ? -1 : a < b ? 1 : 0));
   return candidates[0] ? candidates[0].toString() : null;
 }
 
