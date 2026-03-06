@@ -161,7 +161,7 @@ test("toMapById rejects vectors missing ids", () => {
 test("toMapById rejects duplicate ids", () => {
   assert.throws(
     () => toMapById([{ id: "dup", value: 1 }, { id: "dup", value: 2 }]),
-    /Duplicate vector id found while comparing parity: dup/,
+    /Duplicate vector id found while comparing parity: dup \(index 1 of 2\)/,
   );
 });
 
