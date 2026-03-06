@@ -51,7 +51,7 @@ jobs:
           cd dist-release
           sha256sum *.tgz > checksums.txt
 
-      - name: Upload release assets
+      - name: Preflight release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
@@ -62,7 +62,6 @@ jobs:
             echo "Release $RELEASE_TAG already has assets. Aborting to prevent attestation mismatch."
             exit 1
           fi
-          gh release upload "$RELEASE_TAG" dist-release/*.tgz dist-release/checksums.txt
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
@@ -70,6 +69,14 @@ jobs:
           subject-path: |
             dist-release/*.tgz
             dist-release/checksums.txt
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          gh release upload "$RELEASE_TAG" dist-release/*.tgz dist-release/checksums.txt
 
       - name: Publish to npm
         run: |
