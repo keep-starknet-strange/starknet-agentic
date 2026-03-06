@@ -15,7 +15,15 @@ In scope (required):
   - `contracts/agent-account/src/agent_account.cairo`
   - `contracts/agent-account/src/agent_account_factory.cairo`
     (owner initialization + registry binding path)
-- Session policy enforcement path used by production account flow
+- Session policy enforcement stack:
+  - `contracts/session-account/src/account.cairo`
+    (session signature validation, self-call gating, upgrade timelock)
+  - `contracts/session-account/src/spending_policy/component.cairo`
+    (per-call/per-window spending enforcement)
+  - `contracts/session-account/src/spending_policy/interface.cairo`
+    (policy interface surface)
+  - `contracts/session-account/src/spending_policy.cairo`
+    (module wiring used by production account flow)
 
 Out of scope for this launch gate (tracked separately):
 

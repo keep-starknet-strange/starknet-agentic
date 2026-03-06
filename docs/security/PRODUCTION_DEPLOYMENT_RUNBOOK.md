@@ -19,6 +19,15 @@ the no-backend launch profile.
 - Deployment actor has funded mainnet account + signer rights.
 - `DEPLOYER_ACCOUNT` must be the target production multisig
   (`EXPECTED_MULTISIG`) for factory deployment.
+- Human approval records are mandatory:
+  - before Step 0 (Sepolia dry run)
+  - again before any mainnet declaration/deploy action
+- Approval record fields (required):
+  - reviewer identity (`contracts-owner` or `security-owner`)
+  - ISO 8601 timestamp
+  - target network (`sepolia` or `mainnet`)
+  - linked PR/issue/evidence URL
+- Store approval records as signed comments in `#333` and `#273`.
 
 ## Required Inputs
 
@@ -50,6 +59,12 @@ Minimum evidence required:
   - registry `owner` checks (identity/reputation/validation)
 
 Mainnet deployment is blocked until this evidence is attached.
+
+## Step 1.5: Mainnet Go/No-Go Human Sign-Off
+
+Before Step 2, post a second approval record (mainnet target) in `#333` and
+link it from `#273` with reviewer identity + timestamp + commit/PR reference.
+No mainnet declaration/deploy command should execute without this record.
 
 ## Step 1: Build and Class Hash Verification
 
@@ -150,6 +165,23 @@ Required controls:
 
 - record tx hashes, constructor args, and owner verification output
 - verify spending policy enforcement paths before broad traffic
+- enforce the following invariants with explicit pass/fail evidence:
+  - time bounds (`valid_after` / `valid_until` / slot constraints)
+  - per-call and per-window spend limits
+  - allowlist and blocklist behavior
+  - revocation and kill-switch semantics
+  - expected allowed path and expected denied path for spending-policy checks
+
+Required artifacts for SessionAccount changes:
+
+- unit + integration test output links for each invariant above
+- replayable commands/scripts used for checks
+- tx hashes + constructor args + ownership/authority verification output
+- monitoring/alert runbook link tied to failure modes
+- explicit security reasoning note in PR/issue evidence
+
+No SessionAccount changes merge without documented security reasoning and the
+artifact set above.
 
 ## Step 6: Post-Deploy Smoke Checks
 

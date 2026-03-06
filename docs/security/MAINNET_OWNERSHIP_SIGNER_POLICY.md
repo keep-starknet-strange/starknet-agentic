@@ -69,10 +69,28 @@ Verify factory owner:
 starkli call <agent_account_factory_addr> get_owner --rpc "$RPC_URL"
 ```
 
+Verify SessionAccount authority/upgrade path (sample at least one production
+instance):
+
+```bash
+starkli call <session_account_addr> get_public_key --rpc "$RPC_URL"
+starkli call <session_account_addr> get_upgrade_info --rpc "$RPC_URL"
+```
+
 Acceptance check:
 
 - every returned owner MUST equal `EXPECTED_MULTISIG`
+- SessionAccount authority MUST resolve to the expected production key via
+  `get_public_key`
+- SessionAccount `get_upgrade_info` MUST show:
+  - no pending upgrade outside approved maintenance window
+  - timelock delay at or above policy floor
 - output links/screenshots MUST be attached to the relevant issue/PR
+
+Note: SessionAccount uses account-key/self-call authority rather than a
+separate Ownable admin slot. Execution evidence should be linked with
+`docs/security/PRODUCTION_DEPLOYMENT_RUNBOOK.md` and
+`docs/security/SPENDING_POLICY_AUDIT.md`.
 
 ## Rotation Procedure
 
