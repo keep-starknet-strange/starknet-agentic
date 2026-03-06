@@ -341,6 +341,7 @@ function tokenize(str) {
 function calculateSimilarity(query, target) {
   const q = String(query || '').toLowerCase();
   const t = String(target || '').toLowerCase();
+  if (!q || !t) return 0;
   
   if (t === q) return 100;
   if (t.includes(q)) return 70 + (q.length / t.length) * 20;
