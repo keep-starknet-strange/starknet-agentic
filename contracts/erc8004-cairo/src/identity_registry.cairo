@@ -335,8 +335,11 @@ pub mod IdentityRegistry {
 
             // Burn current nonce to invalidate any previously signed-but-unsubmitted
             // set_agent_wallet payloads after an explicit unset.
-            let nonce = self.wallet_set_nonces.entry(agent_id).read();
-            self.wallet_set_nonces.entry(agent_id).write(nonce + 1);
+            let current_wallet = self.agent_wallets.entry(agent_id).read();
+            if current_wallet != zero_address {
+                let nonce = self.wallet_set_nonces.entry(agent_id).read();
+                self.wallet_set_nonces.entry(agent_id).write(nonce + 1);
+            }
 
             self.agent_wallets.entry(agent_id).write(zero_address);
 

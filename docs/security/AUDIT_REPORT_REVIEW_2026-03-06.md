@@ -10,7 +10,8 @@ standards (SNIP-6, Cairo corelib, ERC-8004 spec).
    - Rationale: prevents session-key griefing of owner-managed approvals.
 2. `agent-account`: cap session-key multicall length (`MAX_SESSION_KEY_CALLS_PER_TX = 64`).
    - Rationale: bounds worst-case single-transaction griefing surface.
-3. `erc8004-cairo`: increment wallet-set nonce on `unset_agent_wallet`.
+3. `erc8004-cairo`: increment wallet-set nonce on `unset_agent_wallet`
+   only when a wallet is currently set.
    - Rationale: invalidates previously signed-but-unsubmitted wallet-set payloads.
 4. `erc8004-cairo`: `_is_approved_or_owner` changed to snapshot
    (`@ContractState`) since it is read-only.

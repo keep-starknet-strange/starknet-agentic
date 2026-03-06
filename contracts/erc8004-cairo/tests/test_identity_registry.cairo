@@ -803,6 +803,22 @@ fn test_unset_agent_wallet_invalidates_pre_signed_set_wallet_signature() {
 }
 
 #[test]
+fn test_unset_agent_wallet_already_zero_does_not_increment_nonce() {
+    let (registry, _, registry_address) = deploy_registry();
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+
+    registry.unset_agent_wallet(agent_id);
+    assert_eq!(registry.get_wallet_set_nonce(agent_id), 1);
+
+    // Repeated unset while already zero should not burn nonce again.
+    registry.unset_agent_wallet(agent_id);
+    assert_eq!(registry.get_wallet_set_nonce(agent_id), 1);
+    stop_cheat_caller_address(registry_address);
+}
+
+#[test]
 fn test_wallet_cleared_on_transfer() {
     let (registry, erc721, registry_address) = deploy_registry();
 

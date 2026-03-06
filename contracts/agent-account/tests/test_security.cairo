@@ -950,6 +950,56 @@ fn test_decrease_allowance_camel_is_blocked_for_session_keys() {
 }
 
 #[test]
+#[should_panic(expected: 'Session: decAllowance blocked')]
+fn test_validate_rejects_decrease_allowance_snake_for_session_keys() {
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+    let mock_token = deploy_mock_erc20();
+
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 0,
+        spending_token: zero_addr(),
+        allowed_contract: mock_token,
+    };
+    register_key(agent, addr, session_kp.public_key, policy);
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let calls = array![decrease_allowance_call(mock_token, 0x1, 1)];
+    account.__validate__(calls);
+}
+
+#[test]
+#[should_panic(expected: 'Session: decAllowance blocked')]
+fn test_validate_rejects_decrease_allowance_camel_for_session_keys() {
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+    let mock_token = deploy_mock_erc20();
+
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 0,
+        spending_token: zero_addr(),
+        allowed_contract: mock_token,
+    };
+    register_key(agent, addr, session_kp.public_key, policy);
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let calls = array![decrease_allowance_camel_call(mock_token, 0x1, 1)];
+    account.__validate__(calls);
+}
+
+#[test]
 #[should_panic(expected: 'Session: too many calls')]
 fn test_session_key_multicall_count_is_capped() {
     let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
@@ -980,6 +1030,36 @@ fn test_session_key_multicall_count_is_capped() {
 }
 
 #[test]
+fn test_session_key_multicall_at_cap_succeeds() {
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 0,
+        spending_token: zero_addr(),
+        allowed_contract: addr,
+    };
+    register_key(agent, addr, session_kp.public_key, policy);
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let mut calls: Array<Call> = ArrayTrait::new();
+    let mut i: u32 = 0;
+    while i < 64 {
+        calls.append(generic_call(addr, selector!("get_active_session_key_count")));
+        i += 1;
+    };
+
+    let results = account.__execute__(calls);
+    assert_eq!(results.len(), 64);
+}
+
+#[test]
 #[should_panic(expected: 'Session: too many calls')]
 fn test_validate_rejects_session_multicall_count_over_cap() {
     let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
@@ -1007,6 +1087,35 @@ fn test_validate_rejects_session_multicall_count_over_cap() {
     };
 
     account.__validate__(calls);
+}
+
+#[test]
+fn test_validate_accepts_session_multicall_at_cap() {
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 0,
+        spending_token: zero_addr(),
+        allowed_contract: addr,
+    };
+    register_key(agent, addr, session_kp.public_key, policy);
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let mut calls: Array<Call> = ArrayTrait::new();
+    let mut i: u32 = 0;
+    while i < 64 {
+        calls.append(generic_call(addr, selector!("get_active_session_key_count")));
+        i += 1;
+    };
+
+    assert_eq!(account.__validate__(calls), starknet::VALIDATED);
 }
 
 #[test]
