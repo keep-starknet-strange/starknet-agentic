@@ -34,7 +34,7 @@ mainnet registries:
 Before closing `#332`, one of the following must be attached as evidence:
 
 1. Attestation that this address is already a policy-compliant `2-of-3`
-   multisig with hardware-backed, split custody signers.
+   multisig with hardware-backed, split-custody signers.
 2. Ownership migration evidence (tx hashes + verification output) proving all
    in-scope contracts now resolve to a policy-compliant multisig.
 
@@ -64,42 +64,73 @@ export EXPECTED_SESSION_PUBLIC_KEY="<expected_session_account_public_key>"
 export EXPECTED_SESSION_TIMELOCK_FLOOR="<minimum_timelock_seconds>"
 ```
 
-Verify registry owners:
+Canonical verification with hard assertions:
 
 ```bash
-starkli call "$IDENTITY_REGISTRY" owner --rpc "$RPC_URL"
-starkli call "$REPUTATION_REGISTRY" owner --rpc "$RPC_URL"
-starkli call "$VALIDATION_REGISTRY" owner --rpc "$RPC_URL"
-```
+normalize_felt() {
+  local value
+  value="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  value="${value#0x}"
+  value="$(printf '%s' "$value" | sed -E 's/^0+//')"
+  [ -n "$value" ] || value="0"
+  printf '0x%s\n' "$value"
+}
 
-Verify factory owner:
+felt_to_u64() {
+  local normalized
+  normalized="$(normalize_felt "$1")"
+  printf '%u\n' "$((16#${normalized#0x}))"
+}
 
-```bash
-starkli call "$AGENT_ACCOUNT_FACTORY" get_owner --rpc "$RPC_URL"
-```
+normalized_expected_multisig="$(normalize_felt "$EXPECTED_MULTISIG")"
+normalized_expected_session_public_key="$(normalize_felt "$EXPECTED_SESSION_PUBLIC_KEY")"
+allow_pending_upgrade="${ALLOW_PENDING_UPGRADE:-0}"
 
-Verify SessionAccount authority/upgrade path (sample at least one production
-instance):
+identity_owner="$(normalize_felt "$(starkli call "$IDENTITY_REGISTRY" owner --rpc "$RPC_URL")")"
+reputation_owner="$(normalize_felt "$(starkli call "$REPUTATION_REGISTRY" owner --rpc "$RPC_URL")")"
+validation_owner="$(normalize_felt "$(starkli call "$VALIDATION_REGISTRY" owner --rpc "$RPC_URL")")"
+factory_owner="$(normalize_felt "$(starkli call "$AGENT_ACCOUNT_FACTORY" get_owner --rpc "$RPC_URL")")"
 
-```bash
-starkli call "$SESSION_ACCOUNT_ADDR" get_public_key --rpc "$RPC_URL"
-starkli call "$SESSION_ACCOUNT_ADDR" get_upgrade_info --rpc "$RPC_URL"
-```
+echo "identity_owner=$identity_owner expected_multisig=$normalized_expected_multisig"
+echo "reputation_owner=$reputation_owner expected_multisig=$normalized_expected_multisig"
+echo "validation_owner=$validation_owner expected_multisig=$normalized_expected_multisig"
+echo "factory_owner=$factory_owner expected_multisig=$normalized_expected_multisig"
 
-Validate SessionAccount checks against expected values:
+test "$identity_owner" = "$normalized_expected_multisig" \
+  || { echo "Identity registry owner mismatch"; exit 1; }
+test "$reputation_owner" = "$normalized_expected_multisig" \
+  || { echo "Reputation registry owner mismatch"; exit 1; }
+test "$validation_owner" = "$normalized_expected_multisig" \
+  || { echo "Validation registry owner mismatch"; exit 1; }
+test "$factory_owner" = "$normalized_expected_multisig" \
+  || { echo "Factory owner mismatch"; exit 1; }
 
-```bash
-SESSION_PUBLIC_KEY="$(starkli call "$SESSION_ACCOUNT_ADDR" get_public_key --rpc "$RPC_URL")"
-echo "Expected session public key: $EXPECTED_SESSION_PUBLIC_KEY"
-echo "Observed session public key: $SESSION_PUBLIC_KEY"
-# assert SESSION_PUBLIC_KEY equals EXPECTED_SESSION_PUBLIC_KEY
+session_public_key="$(
+  normalize_felt "$(starkli call "$SESSION_ACCOUNT_ADDR" get_public_key --rpc "$RPC_URL")"
+)"
+echo "session_public_key=$session_public_key expected_session_public_key=$normalized_expected_session_public_key"
+test "$session_public_key" = "$normalized_expected_session_public_key" \
+  || { echo "Session public key mismatch"; exit 1; }
 
-UPGRADE_INFO="$(starkli call "$SESSION_ACCOUNT_ADDR" get_upgrade_info --rpc "$RPC_URL")"
-echo "Observed upgrade info tuple: $UPGRADE_INFO"
-# tuple order (0-based): [0]=pending_upgrade, [1]=upgrade_scheduled_at,
-# [2]=upgrade_delay, [3]=current_block_timestamp
-# assert UPGRADE_INFO[2] (upgrade_delay) >= EXPECTED_SESSION_TIMELOCK_FLOOR
-# assert UPGRADE_INFO[0] (pending_upgrade) == 0x0 outside approved maintenance window
+upgrade_info_raw="$(starkli call "$SESSION_ACCOUNT_ADDR" get_upgrade_info --rpc "$RPC_URL")"
+pending_upgrade_hex="$(printf '%s\n' "$upgrade_info_raw" | grep -Eo '0x[0-9a-fA-F]+' | sed -n '1p')"
+upgrade_delay_hex="$(printf '%s\n' "$upgrade_info_raw" | grep -Eo '0x[0-9a-fA-F]+' | sed -n '3p')"
+test -n "$pending_upgrade_hex" || { echo "Could not parse pending_upgrade from get_upgrade_info"; exit 1; }
+test -n "$upgrade_delay_hex" || { echo "Could not parse upgrade_delay from get_upgrade_info"; exit 1; }
+
+pending_upgrade="$(normalize_felt "$pending_upgrade_hex")"
+upgrade_delay_seconds="$(felt_to_u64 "$upgrade_delay_hex")"
+echo "pending_upgrade=$pending_upgrade allow_pending_upgrade=$allow_pending_upgrade"
+echo "upgrade_delay_seconds=$upgrade_delay_seconds expected_floor=$EXPECTED_SESSION_TIMELOCK_FLOOR"
+
+if [ "$allow_pending_upgrade" != "1" ]; then
+  test "$pending_upgrade" = "0x0" \
+    || { echo "Unexpected pending upgrade outside approved maintenance window"; exit 1; }
+fi
+test "$upgrade_delay_seconds" -ge "$EXPECTED_SESSION_TIMELOCK_FLOOR" \
+  || { echo "Upgrade delay below expected timelock floor"; exit 1; }
+
+echo "Ownership/signer policy verification PASS."
 ```
 
 Acceptance check:

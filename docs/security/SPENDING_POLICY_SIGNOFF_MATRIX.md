@@ -71,11 +71,29 @@ QA-specific variables:
 
 ```bash
 # SP-06: policy-denied transfer (exceeds per-call limit)
-starkli invoke "$ERC20_TOKEN_ADDR" transfer "$RECIPIENT_ADDR" u256:99999999999 \
-  --rpc "$SEPOLIA_RPC_URL" \
-  --account "$SESSION_ACCOUNT_ADDR" \
-  --keystore "$SESSION_KEY_KEYSTORE_PATH"
-# expected: revert / denied status due to spending policy
+sp06_output="$(
+  starkli invoke "$ERC20_TOKEN_ADDR" transfer "$RECIPIENT_ADDR" u256:99999999999 \
+    --rpc "$SEPOLIA_RPC_URL" \
+    --account "$SESSION_ACCOUNT_ADDR" \
+    --keystore "$SESSION_KEY_KEYSTORE_PATH" \
+    2>&1
+)"
+sp06_status=$?
+printf '%s\n' "$sp06_output"
+
+if [ "$sp06_status" -eq 0 ]; then
+  echo "SP-06 FAIL: command succeeded but policy denial was expected."
+  exit 1
+fi
+
+sp06_expected_pattern="${SP06_EXPECTED_REVERT_PATTERN:-spending|policy|limit|deny|revert|assert|panic}"
+if printf '%s\n' "$sp06_output" | grep -Eiq "$sp06_expected_pattern"; then
+  echo "SP-06 PASS: policy-denied transfer confirmed."
+else
+  echo "SP-06 FAIL: invoke failed, but output did not match policy-denial pattern."
+  echo "Set SP06_EXPECTED_REVERT_PATTERN to your chain-specific revert text if needed."
+  exit 1
+fi
 ```
 
 ```bash

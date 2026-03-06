@@ -48,8 +48,17 @@ export EXPECTED_FACTORY_CLASS_HASH="<audit_attested_factory_hash>"
 Hard guard before any declare/deploy action:
 
 ```bash
-normalized_deployer="$(printf '%s' "$DEPLOYER_ACCOUNT" | tr '[:upper:]' '[:lower:]')"
-normalized_expected_multisig="$(printf '%s' "$EXPECTED_MULTISIG" | tr '[:upper:]' '[:lower:]')"
+normalize_felt() {
+  local value
+  value="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  value="${value#0x}"
+  value="$(printf '%s' "$value" | sed -E 's/^0+//')"
+  [ -n "$value" ] || value="0"
+  printf '0x%s\n' "$value"
+}
+
+normalized_deployer="$(normalize_felt "$DEPLOYER_ACCOUNT")"
+normalized_expected_multisig="$(normalize_felt "$EXPECTED_MULTISIG")"
 test "$normalized_deployer" = "$normalized_expected_multisig" \
   || { echo "DEPLOYER_ACCOUNT must equal EXPECTED_MULTISIG"; exit 1; }
 ```
@@ -211,22 +220,63 @@ export FACTORY_ADDRESS="<deployed_factory_address_from_step4>"
 ```
 
 ```bash
-starkli call "$FACTORY_ADDRESS" get_owner --rpc "$RPC_URL"
-starkli call "$FACTORY_ADDRESS" get_identity_registry --rpc "$RPC_URL"
-starkli call "$FACTORY_ADDRESS" get_account_class_hash --rpc "$RPC_URL"
-starkli call "$IDENTITY_REGISTRY" owner --rpc "$RPC_URL"
-starkli call "$REPUTATION_REGISTRY" owner --rpc "$RPC_URL"
-starkli call "$VALIDATION_REGISTRY" owner --rpc "$RPC_URL"
+normalize_felt() {
+  local value
+  value="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  value="${value#0x}"
+  value="$(printf '%s' "$value" | sed -E 's/^0+//')"
+  [ -n "$value" ] || value="0"
+  printf '0x%s\n' "$value"
+}
+
+normalized_expected_multisig="$(normalize_felt "$EXPECTED_MULTISIG")"
+normalized_deployer="$(normalize_felt "$DEPLOYER_ACCOUNT")"
+normalized_expected_identity_registry="$(normalize_felt "$IDENTITY_REGISTRY")"
+normalized_expected_agent_class_hash="$(normalize_felt "$DECLARED_AGENT_ACCOUNT_CLASS_HASH")"
+
+factory_owner="$(
+  normalize_felt "$(starkli call "$FACTORY_ADDRESS" get_owner --rpc "$RPC_URL")"
+)"
+factory_identity_registry="$(
+  normalize_felt "$(starkli call "$FACTORY_ADDRESS" get_identity_registry --rpc "$RPC_URL")"
+)"
+factory_account_class_hash="$(
+  normalize_felt "$(starkli call "$FACTORY_ADDRESS" get_account_class_hash --rpc "$RPC_URL")"
+)"
+identity_owner="$(
+  normalize_felt "$(starkli call "$IDENTITY_REGISTRY" owner --rpc "$RPC_URL")"
+)"
+reputation_owner="$(
+  normalize_felt "$(starkli call "$REPUTATION_REGISTRY" owner --rpc "$RPC_URL")"
+)"
+validation_owner="$(
+  normalize_felt "$(starkli call "$VALIDATION_REGISTRY" owner --rpc "$RPC_URL")"
+)"
+
+echo "factory_owner=$factory_owner expected_multisig=$normalized_expected_multisig"
+echo "factory_identity_registry=$factory_identity_registry expected_identity_registry=$normalized_expected_identity_registry"
+echo "factory_account_class_hash=$factory_account_class_hash expected_agent_account_class_hash=$normalized_expected_agent_class_hash"
+echo "identity_owner=$identity_owner"
+echo "reputation_owner=$reputation_owner"
+echo "validation_owner=$validation_owner"
+
+test "$factory_owner" = "$normalized_deployer" \
+  || { echo "Factory owner does not match DEPLOYER_ACCOUNT"; exit 1; }
+test "$factory_owner" = "$normalized_expected_multisig" \
+  || { echo "Factory owner does not match EXPECTED_MULTISIG"; exit 1; }
+test "$factory_identity_registry" = "$normalized_expected_identity_registry" \
+  || { echo "Factory identity registry mismatch"; exit 1; }
+test "$factory_account_class_hash" = "$normalized_expected_agent_class_hash" \
+  || { echo "Factory account class hash mismatch"; exit 1; }
+test "$identity_owner" = "$normalized_expected_multisig" \
+  || { echo "Identity registry owner mismatch"; exit 1; }
+test "$reputation_owner" = "$normalized_expected_multisig" \
+  || { echo "Reputation registry owner mismatch"; exit 1; }
+test "$validation_owner" = "$normalized_expected_multisig" \
+  || { echo "Validation registry owner mismatch"; exit 1; }
+
+echo "Step 5 PASS: ownership and class/registry bindings verified."
 ```
-
-Acceptance checks:
-
-- `get_owner(FACTORY_ADDRESS) == DEPLOYER_ACCOUNT == EXPECTED_MULTISIG`
-- `get_identity_registry == IDENTITY_REGISTRY` (must not point to legacy set)
-- `get_account_class_hash` matches declared AgentAccount class hash
-- `owner(IDENTITY_REGISTRY) == EXPECTED_MULTISIG`
-- `owner(REPUTATION_REGISTRY) == EXPECTED_MULTISIG`
-- `owner(VALIDATION_REGISTRY) == EXPECTED_MULTISIG`
 
 ## Step 6: SessionAccount Production Path
 
