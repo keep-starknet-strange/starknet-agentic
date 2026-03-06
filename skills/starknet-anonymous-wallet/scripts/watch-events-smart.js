@@ -101,7 +101,8 @@ function createCronJob(config) {
 
   const shellScript = `#!/bin/bash
 cd "$(dirname "$0")"
-exec node ${shellQuote(scriptPath)} ${shellQuote(`@${configPath}`)}
+LOCKFILE=${shellQuote(`${configPath}.lock`)}
+exec flock -n "$LOCKFILE" node ${shellQuote(scriptPath)} ${shellQuote(`@${configPath}`)}
 `;
   const shellPath = join(cronDir, `${jobName}.sh`);
   writeFileSync(shellPath, shellScript, { mode: 0o755 });
