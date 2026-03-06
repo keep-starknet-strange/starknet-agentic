@@ -802,7 +802,13 @@ async function main() {
           // If no contractAddress provided, resolve from AVNU token list.
           if (!contractAddress && String(op.action).toLowerCase() === 'transfer') {
             const symbol = op.tokenIn || op.protocol; // allow either
-            const tokenInfo = await findTokenFallback(symbol);
+            let tokenInfo = null;
+            try {
+              tokenInfo = await findTokenFallback(symbol);
+            } catch (err) {
+              errors.push({ index: i, type: 'TOKEN_LOOKUP_FAILED', symbol, message: err?.message || String(err) });
+              continue;
+            }
             if (!tokenInfo?.address) {
               errors.push({ index: i, type: 'UNKNOWN_TOKEN', symbol, message: `Token ${symbol} not found in AVNU verified tokens` });
             } else {
