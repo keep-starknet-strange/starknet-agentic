@@ -60,6 +60,26 @@ cd "$OUT_DIR"
 shasum -a 256 -c checksums.txt
 ```
 
+## Staging Bundle (No npm Publish)
+
+To generate a tagged staging bundle with attestations but without publishing to npm:
+
+```bash
+gh workflow run publish.yml \
+  -R "$REPO" \
+  --ref main \
+  -f release_tag="staging-YYYY-MM-DD" \
+  -f publish_to_npm=false
+```
+
+The workflow will:
+- create a prerelease for `release_tag` if it does not already exist
+- attach `*.tgz` + `checksums.txt`
+- emit Sigstore keyless attestations for those assets
+- skip npm publish
+
+Then verify with the canonical procedure above by setting `TAG` to the staging tag.
+
 ## Strict Demo Artifact Verification
 
 For strict demo artifacts checked by CI, run:
