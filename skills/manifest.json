@@ -99,6 +99,14 @@
       "skill_md_path": "skills/starknet-mini-pay/SKILL.md"
     },
     {
+      "description": "Confidential ERC20 payments on Starknet using Tongo protocol. Fund, transfer, withdraw, and rollover encrypted token balances with zero-knowledge proofs. Use when the user needs privacy-preserving transactions, confidential payments, encrypted balances, or auditable private transfers on Starknet.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-tongo",
+      "name": "starknet-tongo",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-tongo/SKILL.md",
+      "repo_path": "skills/starknet-tongo",
+      "skill_md_path": "skills/starknet-tongo/SKILL.md"
+    },
+    {
       "description": "Create and manage Starknet wallets for AI agents. Transfer tokens, check balances, manage session keys, deploy accounts, and interact with smart contracts using native Account Abstraction.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet",
       "name": "starknet-wallet",
