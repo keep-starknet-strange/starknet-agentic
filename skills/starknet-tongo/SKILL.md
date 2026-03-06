@@ -202,7 +202,7 @@ const realBalance = await auditor.getRealuserBalance(0, userPublicKey);
 
 ```typescript
 // All events for an account
-const history = await tongo.getTxHistory(fromBlock, "latest", "all");
+const history = await tongo.getTxHistory(0, "latest", "all");
 
 // Specific event types
 const funds = await tongo.getEventsFund(0);
