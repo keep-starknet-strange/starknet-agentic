@@ -25,7 +25,7 @@ Status values:
 | SP-02 | Deploy mock ERC-20 tokens and fund test account | contracts-owner |  | open | |
 | SP-03 | Generate session key pair and bind policy | runtime-owner |  | open | |
 | SP-04 | Happy-path transfer sequence + counter verification | qa-owner |  | open | |
-| SP-05 | Window reset test (`wait 24h`) | qa-owner |  | open | |
+| SP-05 | Window reset test (devnet time-advance + Sepolia timestamp-delta confirmation) | qa-owner |  | open | |
 | SP-06 | Failure-path tests (per-call/window/blocklist) | qa-owner |  | open | |
 | SP-07 | Edge cases (boundary, multicall, non-spending selectors) | qa-owner |  | open | |
 | SP-08 | Sustained load test (100+ tx/hour) | qa-owner |  | open | |
@@ -44,6 +44,12 @@ For each row marked `done`, include:
 - exact command(s) used
 - pass/fail output summary
 - residual risk (if any)
+
+SP-05 evidence requirements:
+
+- Fast path: devnet/Katana time-advance invocation evidence plus pass output.
+- Launch path: Sepolia confirmation with tx timestamp delta covering the full
+  policy window (or explicit waiver with owner + due date).
 
 ## Suggested Command Evidence Snippets
 

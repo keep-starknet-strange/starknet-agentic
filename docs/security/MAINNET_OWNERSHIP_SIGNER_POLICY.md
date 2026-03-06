@@ -51,30 +51,37 @@ Use deployment addresses from `docs/DEPLOYMENT_TRUTH_SHEET.md`.
 Environment:
 
 ```bash
+# set addresses using the same input model from
+# docs/security/PRODUCTION_DEPLOYMENT_RUNBOOK.md
 export RPC_URL="<starknet-mainnet-rpc>"
 export EXPECTED_MULTISIG="<multisig_address_felt>"
+export IDENTITY_REGISTRY="<identity_registry_addr>"
+export REPUTATION_REGISTRY="<reputation_registry_addr>"
+export VALIDATION_REGISTRY="<validation_registry_addr>"
+export AGENT_ACCOUNT_FACTORY="<agent_account_factory_addr>"
+export SESSION_ACCOUNT_ADDR="<session_account_addr>"
 ```
 
 Verify registry owners:
 
 ```bash
-starkli call <identity_registry_addr> owner --rpc "$RPC_URL"
-starkli call <reputation_registry_addr> owner --rpc "$RPC_URL"
-starkli call <validation_registry_addr> owner --rpc "$RPC_URL"
+starkli call "$IDENTITY_REGISTRY" owner --rpc "$RPC_URL"
+starkli call "$REPUTATION_REGISTRY" owner --rpc "$RPC_URL"
+starkli call "$VALIDATION_REGISTRY" owner --rpc "$RPC_URL"
 ```
 
 Verify factory owner:
 
 ```bash
-starkli call <agent_account_factory_addr> get_owner --rpc "$RPC_URL"
+starkli call "$AGENT_ACCOUNT_FACTORY" get_owner --rpc "$RPC_URL"
 ```
 
 Verify SessionAccount authority/upgrade path (sample at least one production
 instance):
 
 ```bash
-starkli call <session_account_addr> get_public_key --rpc "$RPC_URL"
-starkli call <session_account_addr> get_upgrade_info --rpc "$RPC_URL"
+starkli call "$SESSION_ACCOUNT_ADDR" get_public_key --rpc "$RPC_URL"
+starkli call "$SESSION_ACCOUNT_ADDR" get_upgrade_info --rpc "$RPC_URL"
 ```
 
 Acceptance check:

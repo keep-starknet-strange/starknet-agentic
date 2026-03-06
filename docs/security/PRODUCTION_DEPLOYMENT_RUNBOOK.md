@@ -41,6 +41,8 @@ export IDENTITY_REGISTRY="<identity_registry_addr>"
 export REPUTATION_REGISTRY="<reputation_registry_addr>"
 export VALIDATION_REGISTRY="<validation_registry_addr>"
 export EXPECTED_MULTISIG="<multisig_owner_addr>"
+export EXPECTED_AGENT_ACCOUNT_CLASS_HASH="<audit_attested_agent_account_hash>"
+export EXPECTED_FACTORY_CLASS_HASH="<audit_attested_factory_hash>"
 ```
 
 ## Step 0: Mandatory Sepolia Dry-Run Gate
@@ -70,11 +72,26 @@ No mainnet declaration/deploy command should execute without this record.
 
 ```bash
 scarb build --release
-starkli class-hash contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json
-starkli class-hash contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json
+COMPUTED_AGENT_ACCOUNT_CLASS_HASH="$(
+  starkli class-hash contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json
+)"
+COMPUTED_FACTORY_CLASS_HASH="$(
+  starkli class-hash contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json
+)"
+
+echo "Expected agent-account: $EXPECTED_AGENT_ACCOUNT_CLASS_HASH"
+echo "Computed agent-account: $COMPUTED_AGENT_ACCOUNT_CLASS_HASH"
+test "$COMPUTED_AGENT_ACCOUNT_CLASS_HASH" = "$EXPECTED_AGENT_ACCOUNT_CLASS_HASH" \
+  || { echo "AgentAccount class hash mismatch"; exit 1; }
+
+echo "Expected factory: $EXPECTED_FACTORY_CLASS_HASH"
+echo "Computed factory: $COMPUTED_FACTORY_CLASS_HASH"
+test "$COMPUTED_FACTORY_CLASS_HASH" = "$EXPECTED_FACTORY_CLASS_HASH" \
+  || { echo "Factory class hash mismatch"; exit 1; }
 ```
 
-Record hashes and attach to issue evidence.
+Expected hashes must come from auditor-attested closure evidence in `#334`.
+Record comparison output and attach to issue evidence.
 
 ## Step 2: Declare Classes (Mainnet)
 
@@ -212,6 +229,7 @@ Attach the following to the tracking issue:
 - declaration tx hashes
 - deployment tx hash + deployed address
 - Sepolia dry-run tx hashes + verification outputs
+- class-hash comparison output vs `#334` audited manifest
 - command outputs for `get_owner/get_identity_registry/get_account_class_hash`
 - command outputs for registry `owner` checks (identity/reputation/validation)
 - smoke-test output links
