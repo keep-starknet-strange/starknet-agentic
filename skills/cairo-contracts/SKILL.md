@@ -26,6 +26,80 @@ Covers structure, storage, events, interfaces, and common patterns.
 
 **Not for:** Language basics (use cairo-language), components/OZ (use cairo-components), testing (use cairo-testing), deployment (use cairo-deploy), optimization (use cairo-optimization), Dojo contracts (use [Dojo book skills](https://github.com/dojoengine/book/tree/main/skills))
 
+## Quick Reference
+
+- New contract: define interface first, then `#[starknet::contract]` module.
+- Storage writes: use `ref self: ContractState`; reads use `self: @ContractState`.
+- Events: keep indexed fields minimal (`#[key]`) and stable.
+- External integrations: use dispatchers from interface traits.
+- Constructor safety: validate non-zero addresses and invariants at deploy time.
+- Reentrancy-sensitive flows: guard state-changing external call paths.
+- Cross-team compatibility: keep ABI names/selectors stable once published.
+
+## starknet.js Patterns (v9)
+
+Use these snippets when integrating Cairo contracts from app/runtime code.
+
+```typescript
+import { Account, Contract, RpcProvider, cairo } from "starknet";
+
+const provider = await RpcProvider.create({
+  nodeUrl: process.env.RPC_URL!,
+});
+
+const account = new Account({
+  provider,
+  address: process.env.ACCOUNT_ADDRESS!,
+  signer: process.env.PRIVATE_KEY!,
+  cairoVersion: "1",
+});
+
+const contract = new Contract({
+  abi,
+  address: process.env.CONTRACT_ADDRESS!,
+  providerOrAccount: account,
+});
+
+// View call (read-only)
+const balance = await contract.call("get_balance", [account.address]);
+
+// Write call (transaction)
+const tx = await account.execute([
+  {
+    contractAddress: process.env.CONTRACT_ADDRESS!,
+    entrypoint: "transfer",
+    calldata: cairo.tuple(account.address, cairo.uint256(1n)),
+  },
+]);
+await provider.waitForTransaction(tx.transaction_hash);
+```
+
+```typescript
+// Declare + deploy class hash flow
+const declareResult = await account.declare({
+  contract: compiledSierra,
+  casm: compiledCasm,
+});
+
+const deployResult = await account.deployContract({
+  classHash: declareResult.class_hash,
+  constructorCalldata: [process.env.OWNER_ADDRESS!],
+});
+
+await provider.waitForTransaction(deployResult.transaction_hash);
+```
+
+## Error Codes & Recovery
+
+| Error Class | Typical Signal | Immediate Recovery |
+| --- | --- | --- |
+| `ACCOUNT_NOT_DEPLOYED` | account validation fails before invoke | Deploy/fund account first; re-run with correct network and chain ID. |
+| `ENTRYPOINT_NOT_FOUND` | selector/ABI mismatch | Regenerate ABI, verify entrypoint spelling and versioned interface alignment. |
+| `CLASS_HASH_NOT_DECLARED` | deploy fails on unknown class hash | Declare class on target network first, then deploy with returned hash. |
+| `TRANSACTION_REVERTED` | receipt execution status reverted | Re-run locally with same calldata, inspect contract assertions and preconditions. |
+| `INSUFFICIENT_FEE_BALANCE` | fee transfer/estimation failure | Fund fee token (ETH/STRK as configured), then re-estimate and retry. |
+| `RPC_TIMEOUT_OR_429` | request timeout / rate limit | Retry with backoff, use stable RPC provider, reduce concurrent requests. |
+
 ## Contract Structure
 
 Every Starknet contract follows this skeleton:
