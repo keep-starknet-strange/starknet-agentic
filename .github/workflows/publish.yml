@@ -48,6 +48,7 @@ jobs:
       - name: Generate release checksums
         run: |
           set -euo pipefail
+          shopt -s failglob
           cd dist-release
           sha256sum *.tgz > checksums.txt
 
