@@ -138,12 +138,13 @@ cd ../session-account && scarb build && snforge test
 
 ### 4) Run a minimal E2E demo
 
+Before running, configure the required environment in:
+[`examples/hello-agent/README.md`](./examples/hello-agent/README.md)
+
 ```bash
-# from repo root
+# from repo root (after configuring examples/hello-agent/.env)
 pnpm demo:hello-agent
 ```
-
-Demo setup details: [`examples/hello-agent/README.md`](./examples/hello-agent/README.md)
 
 ## Example Gallery
 
