@@ -77,6 +77,10 @@ function lootStateGetPending(accountAddress) {
   return lootStateGetEntry(map, accountAddress).pendingEncounter;
 }
 
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 function lootStateMutate(accountAddress, mutateFn) {
   if (!accountAddress) return;
   const lockDir = join(LOOT_STATE_DIR, '.lock');
@@ -93,6 +97,7 @@ function lootStateMutate(accountAddress, mutateFn) {
         break;
       } catch (e) {
         if (Date.now() - started > lockTimeoutMs) return;
+        sleepSync(20);
       }
     }
 
