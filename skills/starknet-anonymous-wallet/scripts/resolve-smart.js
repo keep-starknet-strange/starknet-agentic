@@ -1172,14 +1172,18 @@ async function main() {
       };
     }
     
-    if (result.canProceed !== false) {
+    if (!result.executionPlan && result.canProceed !== false) {
+      result.canProceed = false;
+      result.nextStep = "UNSUPPORTED_OPERATION_TYPE";
+      result.error = `Unsupported operationType: ${operationType}`;
+    } else if (result.canProceed !== false) {
       result.canProceed = true;
       result.nextStep = "USER_AUTHORIZATION";
       result.authorizationDetails = {
-      operationType,
-      description: `${operationType} operation${operations.length > 1 ? 's' : ''}`,
-      prompt: "Authorize? (yes/no)"
-    };
+        operationType,
+        description: `${operationType} operation${operations.length > 1 ? 's' : ''}`,
+        prompt: "Authorize? (yes/no)"
+      };
     }
 
     if (result.executionPlan) {
