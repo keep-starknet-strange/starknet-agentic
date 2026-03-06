@@ -45,6 +45,15 @@ export EXPECTED_AGENT_ACCOUNT_CLASS_HASH="<audit_attested_agent_account_hash>"
 export EXPECTED_FACTORY_CLASS_HASH="<audit_attested_factory_hash>"
 ```
 
+Hard guard before any declare/deploy action:
+
+```bash
+normalized_deployer="$(printf '%s' "$DEPLOYER_ACCOUNT" | tr '[:upper:]' '[:lower:]')"
+normalized_expected_multisig="$(printf '%s' "$EXPECTED_MULTISIG" | tr '[:upper:]' '[:lower:]')"
+test "$normalized_deployer" = "$normalized_expected_multisig" \
+  || { echo "DEPLOYER_ACCOUNT must equal EXPECTED_MULTISIG"; exit 1; }
+```
+
 ## Step 0: Mandatory Sepolia Dry-Run Gate
 
 Before any mainnet declaration/deploy action, run one full Sepolia dry run with
@@ -134,35 +143,19 @@ test -n "$DECLARED_FACTORY_CLASS_HASH" \
 - hardware wallet:
 
 ```bash
-declare_agent_output="$(
-  starkli declare contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json \
-    --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger \
-    2>&1
-)"
-printf '%s\n' "$declare_agent_output"
-DECLARED_AGENT_ACCOUNT_CLASS_HASH="$(
-  printf '%s\n' "$declare_agent_output" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -nE 's/.*class hash[^0-9a-f]*(0x[0-9a-f]+).*/\1/p' \
-    | tail -n 1
-)"
+starkli declare contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json \
+  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger
+# Confirm on Ledger device, then copy the printed class hash:
+export DECLARED_AGENT_ACCOUNT_CLASS_HASH="<class_hash_from_output>"
 test -n "$DECLARED_AGENT_ACCOUNT_CLASS_HASH" \
-  || { echo "Failed to parse AgentAccount class hash from declare output"; exit 1; }
+  || { echo "Missing DECLARED_AGENT_ACCOUNT_CLASS_HASH"; exit 1; }
 
-declare_factory_output="$(
-  starkli declare contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json \
-    --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger \
-    2>&1
-)"
-printf '%s\n' "$declare_factory_output"
-DECLARED_FACTORY_CLASS_HASH="$(
-  printf '%s\n' "$declare_factory_output" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -nE 's/.*class hash[^0-9a-f]*(0x[0-9a-f]+).*/\1/p' \
-    | tail -n 1
-)"
+starkli declare contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json \
+  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger
+# Confirm on Ledger device, then copy the printed class hash:
+export DECLARED_FACTORY_CLASS_HASH="<class_hash_from_output>"
 test -n "$DECLARED_FACTORY_CLASS_HASH" \
-  || { echo "Failed to parse Factory class hash from declare output"; exit 1; }
+  || { echo "Missing DECLARED_FACTORY_CLASS_HASH"; exit 1; }
 ```
 
 Do not use `--private-key` for production operations.

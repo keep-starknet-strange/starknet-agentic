@@ -123,6 +123,8 @@ separate Ownable admin slot. Execution evidence should be linked with
 3. Wait finality, then run canonical verification commands above.
 4. Attach transaction hashes + verification output to issue tracker.
 5. Update `docs/DEPLOYMENT_TRUTH_SHEET.md` and launch tracker links.
+6. Update the `Current State / Migration Requirement` section in this document
+   with the new multisig address and evidence links.
 
 ## Incident / Rollback
 
