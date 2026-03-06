@@ -59,9 +59,10 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          gh release upload "${{ github.event.release.tag_name }}" dist-release/*.tgz dist-release/checksums.txt --clobber
+          gh release upload "$RELEASE_TAG" dist-release/*.tgz dist-release/checksums.txt --clobber
 
       - name: Publish to npm
         run: |

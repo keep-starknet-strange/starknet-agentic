@@ -14,8 +14,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
-  attestations: write
 
 jobs:
   strict-proof-gate:
@@ -34,8 +32,3 @@ jobs:
             exit 1
           fi
           node scripts/security/verify-secure-defi-claims.mjs --artifact "$STRICT_ARTIFACT_PATH" --require-strict
-
-      - name: Attest strict artifact provenance
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
-        with:
-          subject-path: ${{ env.STRICT_ARTIFACT_PATH }}
