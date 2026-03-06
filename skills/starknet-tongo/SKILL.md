@@ -50,7 +50,7 @@ import { Account, RpcProvider } from "starknet";
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
 
 // Starknet account for paying gas
-const signer = new Account({
+const account = new Account({
   provider,
   address: process.env.STARKNET_ACCOUNT_ADDRESS,
   signer: process.env.STARKNET_PRIVATE_KEY,
@@ -82,12 +82,12 @@ console.log("Nonce:", state.nonce);
 ```typescript
 const fundOp = await tongo.fund({
   amount: 100n,
-  sender: signer.address,
+  sender: account.address,
   fee_to_sender: 0n,  // Optional relayer fee
 });
 
 // Requires ERC20 approval + fund call
-const response = await signer.execute([fundOp.approve, fundOp.toCalldata()]);
+const response = await account.execute([fundOp.approve, fundOp.toCalldata()]);
 await provider.waitForTransaction(response.transaction_hash);
 ```
 
@@ -100,11 +100,11 @@ const receiverTongoAddress = "Base58EncodedPublicKeyFromReceiver";
 const transferOp = await tongo.transfer({
   amount: 50n,
   to: receiverTongoAddress, // Public Tongo address, never use receiver's private key
-  sender: signer.address,
+  sender: account.address,
   fee_to_sender: 0n,
 });
 
-const response = await signer.execute(transferOp.toCalldata());
+const response = await account.execute(transferOp.toCalldata());
 await provider.waitForTransaction(response.transaction_hash);
 // Amount is encrypted on-chain; receiver sees it in pending balance
 ```
@@ -115,10 +115,10 @@ The receiver calls rollover on their own Tongo account to activate pending funds
 
 ```typescript
 const rolloverOp = await tongo.rollover({
-  sender: signer.address,
+  sender: account.address,
 });
 
-const response = await signer.execute(rolloverOp.toCalldata());
+const response = await account.execute(rolloverOp.toCalldata());
 await provider.waitForTransaction(response.transaction_hash);
 // Pending balance moves to current balance
 ```
@@ -129,11 +129,11 @@ await provider.waitForTransaction(response.transaction_hash);
 const withdrawOp = await tongo.withdraw({
   amount: 25n,
   to: withdrawalAddress, // Starknet address receiving ERC20
-  sender: signer.address,
+  sender: account.address,
   fee_to_sender: 0n,
 });
 
-const response = await signer.execute(withdrawOp.toCalldata());
+const response = await account.execute(withdrawOp.toCalldata());
 await provider.waitForTransaction(response.transaction_hash);
 ```
 
@@ -142,11 +142,11 @@ await provider.waitForTransaction(response.transaction_hash);
 ```typescript
 const ragequitOp = await tongo.ragequit({
   to: withdrawalAddress,
-  sender: signer.address,
+  sender: account.address,
   fee_to_sender: 0n,
 });
 
-const response = await signer.execute(ragequitOp.toCalldata());
+const response = await account.execute(ragequitOp.toCalldata());
 await provider.waitForTransaction(response.transaction_hash);
 // Entire balance withdrawn; more efficient than regular withdraw for full amount
 ```
@@ -159,7 +159,7 @@ const outsideFundOp = await tongo.outside_fund({
   to: recipientPublicKey, // PubKey of the receiver
 });
 
-const response = await signer.execute([
+const response = await account.execute([
   outsideFundOp.approve,
   outsideFundOp.toCalldata(),
 ]);
