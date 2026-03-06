@@ -31,6 +31,7 @@ jobs:
           set -euo pipefail
           node --test scripts/security/verify-secure-defi-claims.test.mjs
           node --test scripts/security/evidence-manifest.test.mjs
+          node --test scripts/security/spending-policy-evidence.test.mjs
 
       - name: Verify strict claims artifact
         env:

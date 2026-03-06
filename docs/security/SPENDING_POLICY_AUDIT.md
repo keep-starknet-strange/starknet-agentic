@@ -630,6 +630,29 @@ fn test_zero_policy_disables_enforcement() {
 - [ ] Transfer with amount = max_per_call exactly
 - [ ] Non-spending call (balanceOf) → should not affect counter
 
+### 7.5 No-Backend Launch Ownership Map (`#335`)
+
+Use the canonical evidence schema at:
+- `docs/security/evidence/spending-policy/execution-report.template.json`
+
+Validate any run bundle with:
+- `node scripts/security/spending-policy-evidence.mjs --report <run_dir>/execution-report.json --bundle-dir <run_dir>`
+
+Required launch-blocking checks:
+
+| Check ID | Checklist Scope | Owner Role |
+|----------|------------------|------------|
+| `SP-01` | Sepolia SessionAccount deployment + funding setup evidence | contracts-maintainer |
+| `SP-02` | Spending-policy baseline configuration evidence | contracts-maintainer |
+| `SP-03` | Happy-path transfer acceptance evidence | runtime-maintainer |
+| `SP-04` | Per-call rejection evidence | runtime-maintainer |
+| `SP-05` | Window-limit rejection evidence | runtime-maintainer |
+| `SP-06` | Session-key policy-mutation blocklist rejection evidence | runtime-maintainer |
+| `SP-07` | Window-boundary behavior evidence (`now > boundary`) | contracts-maintainer |
+| `SP-08` | Multicall cumulative enforcement evidence | runtime-maintainer |
+| `SP-09` | Non-spending selector counter-invariance evidence | runtime-maintainer |
+| `SP-10` | Load validation evidence (`100+ tx/hour`) | qa-maintainer |
+
 ---
 
 ## 8. Formal Verification Candidates
@@ -670,24 +693,37 @@ only_self_or_owner can call set_spending_policy ∧ remove_spending_policy
 
 **Testing:**
 - [x] 130/130 Cairo tests passing (123 original + 7 critical new)
-- [ ] E2E testnet validation complete
+- [ ] E2E testnet validation complete (`SP-01`..`SP-09`)
 - [x] Adversarial scenarios tested (window boundary, reentrancy, overflow)
-- [ ] Load testing (100+ tx/hour) - pending E2E
+- [ ] Load testing (100+ tx/hour) (`SP-10`)
 
 **Documentation:**
-- [ ] Threat model published
-- [ ] User guide with examples
-- [ ] Known limitations documented
+- [x] Threat model published (Section 1)
+- [x] User guide with examples (`docs/E2E_TESTING_GUIDE.md`, `docs/QUICK_START_E2E.md`)
+- [x] Known limitations documented (Section 3 + Conclusion)
 - [ ] Audit report finalized
 
 **Sign-Off:**
-- [ ] Lead Developer: _______________
-- [ ] Security Reviewer: _______________
-- [ ] QA Engineer: _______________
+- [ ] Lead Developer approved (`signoff.leadDeveloper`)
+- [ ] Security Reviewer approved (`signoff.securityReviewer`)
+- [ ] QA Engineer approved (`signoff.qaEngineer`)
 
 ---
 
-## 10. Conclusion
+## 10. `#335` Closure Procedure (No-Backend Profile)
+
+1. Create run bundle:
+   - `node scripts/security/spending-policy-evidence.mjs --init --report docs/security/evidence/spending-policy/runs/<run_id>/execution-report.json --run-id <run_id> --network starknet-sepolia`
+2. Execute required Sepolia checks (`SP-01`..`SP-10`) and attach tx/log evidence in the same run directory.
+3. Validate structure:
+   - `node scripts/security/spending-policy-evidence.mjs --report docs/security/evidence/spending-policy/runs/<run_id>/execution-report.json --bundle-dir docs/security/evidence/spending-policy/runs/<run_id>`
+4. Validate closure readiness:
+   - `node scripts/security/spending-policy-evidence.mjs --report docs/security/evidence/spending-policy/runs/<run_id>/execution-report.json --bundle-dir docs/security/evidence/spending-policy/runs/<run_id> --require-closed`
+5. Post run-directory links in `#335` and reference them from `#273`.
+
+---
+
+## 11. Conclusion
 
 **Current Status**: 🟢 READY FOR E2E TESTING
 

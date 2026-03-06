@@ -11,6 +11,7 @@ without ambiguous "done" claims.
 - Session-signature parity and conformance (`#256`)
 - SNIP-12 v2 tracker hygiene and closure evidence (`#255`)
 - Signer proxy auth hardening evidence linkage (`#219`)
+- Spending-policy E2E/load/sign-off closure evidence (`#335`)
 
 ## P0 Closure Rules
 
@@ -48,6 +49,15 @@ without ambiguous "done" claims.
   - `.github/workflows/session-signature-v2-conformance.yml`
 - Rotation and incident runbook:
   - `docs/security/SIGNER_PROXY_ROTATION_RUNBOOK.md`
+
+### `#335` spending policy E2E/load/sign-off closure
+
+- Checklist and owner mapping:
+  - `docs/security/SPENDING_POLICY_AUDIT.md`
+- Evidence schema + verifier:
+  - `scripts/security/spending-policy-evidence.mjs`
+  - `docs/security/evidence/spending-policy/README.md`
+  - `docs/security/evidence/spending-policy/execution-report.template.json`
 
 ## Required Sign-off Comment Format
 

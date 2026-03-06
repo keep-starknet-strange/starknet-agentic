@@ -182,6 +182,7 @@ jobs:
           node --test scripts/security/check-session-signature-parity.test.mjs
           node --test scripts/security/verify-secure-defi-claims.test.mjs
           node --test scripts/security/evidence-manifest.test.mjs
+          node --test scripts/security/spending-policy-evidence.test.mjs
 
       - name: Build packages
         run: pnpm run build

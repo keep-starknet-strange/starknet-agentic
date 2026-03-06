@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "1",
+  "issue": "#335",
+  "profile": "no-backend",
+  "network": "starknet-sepolia",
+  "runId": "sp-template",
+  "generatedAt": "2026-03-06T00:00:00.000Z",
+  "checks": [
+    {
+      "checkId": "SP-01",
+      "title": "Deploy SessionAccount to Sepolia and capture deploy tx evidence",
+      "owner": "contracts-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "checkId": "SP-02",
+      "title": "Set spending policy baseline and capture policy-state evidence",
+      "owner": "contracts-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "checkId": "SP-03",
+      "title": "Happy path transfers within limits validated on Sepolia",
+      "owner": "runtime-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "checkId": "SP-04",
+      "title": "Per-call limit rejection validated",
+      "owner": "runtime-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "checkId": "SP-05",
+      "title": "Window-limit rejection validated",
+      "owner": "runtime-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "checkId": "SP-06",
+      "title": "Session key blocked from policy mutation selectors",
+      "owner": "runtime-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "checkId": "SP-07",
+      "title": "Window-boundary behavior validated (reset only when now > boundary)",
+      "owner": "contracts-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "checkId": "SP-08",
+      "title": "Multicall cumulative enforcement validated",
+      "owner": "runtime-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "checkId": "SP-09",
+      "title": "Non-spending selector validation (counter unchanged)",
+      "owner": "runtime-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    },
+    {
+      "checkId": "SP-10",
+      "title": "Load validation (100+ tx/hour) completed with consistency evidence",
+      "owner": "qa-maintainer",
+      "status": "pending",
+      "evidence": [],
+      "notes": ""
+    }
+  ],
+  "signoff": {
+    "leadDeveloper": {
+      "name": "",
+      "status": "pending",
+      "signedAt": null
+    },
+    "securityReviewer": {
+      "name": "",
+      "status": "pending",
+      "signedAt": null
+    },
+    "qaEngineer": {
+      "name": "",
+      "status": "pending",
+      "signedAt": null
+    }
+  },
+  "residualRisks": []
+}

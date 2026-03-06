@@ -19,6 +19,8 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "verify:evidence": "node scripts/security/evidence-manifest.mjs --manifest examples/secure-defi-demo/artifacts/artifact-manifest.json --require-strict",
+    "spending:evidence:init": "node scripts/security/spending-policy-evidence.mjs --init --report docs/security/evidence/spending-policy/execution-report.template.json --run-id sp-template --generated-at 2026-03-06T00:00:00.000Z --network starknet-sepolia --force",
+    "spending:evidence:verify": "node scripts/security/spending-policy-evidence.mjs --report docs/security/evidence/spending-policy/execution-report.template.json --bundle-dir docs/security/evidence/spending-policy",
     "demo:hello-agent": "node examples/hello-agent/index.mjs",
     "ci:version": "changeset version",
     "ci:release": "pnpm build && changeset publish"
@@ -39,6 +41,7 @@
     "overrides": {
       "ajv@^6.0.0": "6.14.0",
       "ajv@^8.0.0": "8.18.0",
+      "express-rate-limit": "8.3.0",
       "hono": "4.12.2",
       "qs": "6.14.2",
       "minimatch": "10.2.3",
