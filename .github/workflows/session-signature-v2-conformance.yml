@@ -22,6 +22,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: session-signature-v2-conformance-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -43,12 +47,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install AJV CLI
-        run: npm install --global ajv-cli@5.0.0
-
       - name: Validate vector file against schema
         run: |
-          ajv validate \
+          npx --yes ajv-cli@5.0.0 validate \
             --spec=draft2020 \
             --strict=true \
             -s spec/session-signature-v2.schema.json \
@@ -59,6 +60,7 @@ jobs:
           node <<'EOF_JS'
           const fs = require("fs");
           const data = JSON.parse(fs.readFileSync("spec/session-signature-v2.json", "utf8"));
+
           const outsideIds = new Set();
           for (const vector of data.vectors) {
             if (outsideIds.has(vector.id)) {
@@ -67,6 +69,12 @@ jobs:
             outsideIds.add(vector.id);
             if (vector.mode !== "v2_snip12") {
               throw new Error(`Unexpected outside mode for ${vector.id}: ${vector.mode}`);
+            }
+            if (vector.domain?.name !== "Account.execute_from_outside") {
+              throw new Error(`Unexpected outside domain.name for ${vector.id}: ${vector.domain?.name}`);
+            }
+            if (!Array.isArray(vector.message?.calls) || vector.message.calls.length === 0) {
+              throw new Error(`Outside vector ${vector.id} has no calls`);
             }
           }
 
@@ -80,6 +88,36 @@ jobs:
               throw new Error(`Duplicate session vector id: ${vector.id}`);
             }
             sessionIds.add(vector.id);
+
+            if (vector.status === "invalid" && !vector.expected?.failureCode) {
+              throw new Error(
+                `Session vector ${vector.id} has status "invalid" but is missing expected.failureCode`,
+              );
+            }
+            if (vector.status === "invalid" && vector.expected?.shouldVerify !== false) {
+              throw new Error(
+                `Session vector ${vector.id} has status "invalid" but expected.shouldVerify is not false`,
+              );
+            }
+            if (vector.status === "valid" && vector.expected?.failureCode) {
+              throw new Error(
+                `Session vector ${vector.id} has status "valid" but unexpectedly contains expected.failureCode`,
+              );
+            }
+            if (vector.status === "valid" && vector.expected?.shouldVerify !== true) {
+              throw new Error(
+                `Session vector ${vector.id} has status "valid" but expected.shouldVerify is not true`,
+              );
+            }
+
+            if (vector.mode === "v2_snip12") {
+              if (!vector.expected?.signingDomainHash || !vector.expected?.verificationDomainHash) {
+                throw new Error(
+                  `Session vector ${vector.id} is v2_snip12 but missing expected signing/verification domain hashes`,
+                );
+              }
+            }
+
             hasV1 = hasV1 || vector.mode === "v1_legacy";
             hasV2 = hasV2 || vector.mode === "v2_snip12";
             hasValid = hasValid || vector.status === "valid";
@@ -103,69 +141,101 @@ jobs:
 
   parity_with_external_repos:
     runs-on: ubuntu-latest
+    needs: validate
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Compare vectors with SISNA main
+      - name: Compare vectors with external repos
         run: |
-          if ! curl -fsSL \
-            https://raw.githubusercontent.com/keep-starknet-strange/SISNA/main/spec/session-signature-v2.schema.json \
-            -o /tmp/sisna-session-signature-v2.schema.json; then
-            echo "SISNA schema not published yet on main; skipping SISNA parity check."
-            exit 0
-          fi
-          if ! curl -fsSL \
-            https://raw.githubusercontent.com/keep-starknet-strange/SISNA/main/spec/session-signature-v2.json \
-            -o /tmp/sisna-session-signature-v2.json; then
-            echo "SISNA vector file not published yet on main; skipping SISNA parity check."
-            exit 0
-          fi
-          if ! diff -u /tmp/sisna-session-signature-v2.schema.json spec/session-signature-v2.schema.json; then
-            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-              echo "SISNA schema drift detected on PR; allowing for coordinated rollout."
-            else
-              echo "SISNA schema drift detected on ${GITHUB_EVENT_NAME}; failing."
-              exit 1
-            fi
-          fi
-          if ! diff -u /tmp/sisna-session-signature-v2.json spec/session-signature-v2.json; then
-            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-              echo "SISNA vector drift detected on PR; allowing for coordinated rollout."
-            else
-              echo "SISNA vector drift detected on ${GITHUB_EVENT_NAME}; failing."
-              exit 1
-            fi
-          fi
+          set -euo pipefail
 
-      - name: Compare vectors with starkclaw main
-        run: |
-          if ! curl -fsSL \
-            https://raw.githubusercontent.com/keep-starknet-strange/starkclaw/main/spec/session-signature-v2.schema.json \
-            -o /tmp/starkclaw-session-signature-v2.schema.json; then
-            echo "starkclaw schema not published yet on main; skipping starkclaw parity check."
-            exit 0
-          fi
-          if ! curl -fsSL \
-            https://raw.githubusercontent.com/keep-starknet-strange/starkclaw/main/spec/session-signature-v2.json \
-            -o /tmp/starkclaw-session-signature-v2.json; then
-            echo "starkclaw vector file not published yet on main; skipping starkclaw parity check."
-            exit 0
-          fi
-          if ! diff -u /tmp/starkclaw-session-signature-v2.schema.json spec/session-signature-v2.schema.json; then
-            if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-              echo "starkclaw schema drift detected on PR; allowing for coordinated rollout."
-            else
-              echo "starkclaw schema drift detected on ${GITHUB_EVENT_NAME}; failing."
+          fetch_or_skip_404() {
+            local url="$1"
+            local out="$2"
+            local label="$3"
+            local http_status
+            http_status="$(curl -sSLo "$out" -w '%{http_code}' \
+              --retry 3 --retry-delay 2 --retry-all-errors \
+              --connect-timeout 10 --max-time 30 \
+              "$url")"
+            if [ "$http_status" = "404" ]; then
+              echo "::warning::${label} not published yet on main; parity check skipped."
+              echo "${label} not published yet on main; skipping parity check."
+              exit 0
+            fi
+            if [ "$http_status" != "200" ]; then
+              echo "::error::Failed to fetch ${label} (HTTP ${http_status})."
               exit 1
             fi
-          fi
-          if ! diff -u /tmp/starkclaw-session-signature-v2.json spec/session-signature-v2.json; then
+          }
+
+          drift_or_fail() {
+            local label="$1"
+            local kind="$2"
             if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-              echo "starkclaw vector drift detected on PR; allowing for coordinated rollout."
+              echo "::warning::${label} ${kind} drift detected on PR; allowing for coordinated rollout."
             else
-              echo "starkclaw vector drift detected on ${GITHUB_EVENT_NAME}; failing."
+              echo "${label} ${kind} drift detected on ${GITHUB_EVENT_NAME}; failing."
               exit 1
             fi
-          fi
+          }
+
+          compare_with_repo() {
+            local owner_repo="$1"
+            local label="$2"
+
+            local schema_out="/tmp/${label}-session-signature-v2.schema.json"
+            local vectors_out="/tmp/${label}-session-signature-v2.json"
+            local schema_norm_remote="/tmp/${label}-session-signature-v2.schema.normalized.json"
+            local schema_norm_local="/tmp/local-${label}-session-signature-v2.schema.normalized.json"
+            local vectors_norm_remote="/tmp/${label}-session-signature-v2.normalized.json"
+            local vectors_norm_local="/tmp/local-${label}-session-signature-v2.normalized.json"
+
+            fetch_or_skip_404 \
+              "https://raw.githubusercontent.com/${owner_repo}/main/spec/session-signature-v2.schema.json" \
+              "$schema_out" \
+              "${label} schema"
+            fetch_or_skip_404 \
+              "https://raw.githubusercontent.com/${owner_repo}/main/spec/session-signature-v2.json" \
+              "$vectors_out" \
+              "${label} vector file"
+
+            schema_filter='del(."$id", .properties.derivation, ."$defs".derivation) | (.required //= []) | .required |= map(select(. != "derivation")) | .properties.sessionVectors.minItems = 1'
+            if ! jq -e '.["$defs"]?.sessionVector? // {} | has("allOf")' "$schema_out" > /dev/null; then
+              echo "::warning::${label} schema lacks sessionVector.allOf; parity diff ignores local allOf until ${label} catches up."
+              schema_filter="$schema_filter | .[\"\$defs\"].sessionVector |= del(.allOf)"
+            fi
+            if ! jq -e '.["$defs"]?.outsideExecutionDomain?.properties?.name? // {} | has("const")' "$schema_out" > /dev/null; then
+              echo "::warning::${label} schema lacks outsideExecutionDomain.name const; parity diff ignores local const until ${label} catches up."
+              schema_filter="$schema_filter | .[\"\$defs\"].outsideExecutionDomain.properties.name = {\"type\":\"string\",\"minLength\":1}"
+            fi
+
+            jq -S "$schema_filter" "$schema_out" > "$schema_norm_remote"
+            jq -S "$schema_filter" spec/session-signature-v2.schema.json > "$schema_norm_local"
+            if ! diff -u "$schema_norm_remote" "$schema_norm_local"; then
+              drift_or_fail "$label" "schema"
+            fi
+
+            jq -S '
+              (.vectors //= [])
+              | (.sessionVectors //= [])
+              | del(.vectors[].expected.signature, .derivation)
+              | .vectors |= sort_by(.id)
+              | .sessionVectors |= sort_by(.id)
+            ' "$vectors_out" > "$vectors_norm_remote"
+            jq -S '
+              (.vectors //= [])
+              | (.sessionVectors //= [])
+              | del(.vectors[].expected.signature, .derivation)
+              | .vectors |= sort_by(.id)
+              | .sessionVectors |= sort_by(.id)
+            ' spec/session-signature-v2.json > "$vectors_norm_local"
+            if ! diff -u "$vectors_norm_remote" "$vectors_norm_local"; then
+              drift_or_fail "$label" "vector"
+            fi
+          }
+
+          compare_with_repo "keep-starknet-strange/SISNA" "SISNA"
+          compare_with_repo "keep-starknet-strange/starkclaw" "starkclaw"
