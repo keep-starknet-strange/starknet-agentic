@@ -44,7 +44,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install AJV CLI
-        run: npm install --global ajv-cli@5
+        run: npm install --global ajv-cli@5.0.0
 
       - name: Validate vector file against schema
         run: |
