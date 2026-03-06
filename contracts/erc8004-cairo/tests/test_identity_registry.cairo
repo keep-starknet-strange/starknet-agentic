@@ -777,6 +777,29 @@ fn test_unset_agent_wallet() {
     let wallet = registry.get_agent_wallet(agent_id);
     let zero_address: ContractAddress = 0.try_into().unwrap();
     assert_eq!(wallet, zero_address);
+    assert_eq!(registry.get_wallet_set_nonce(agent_id), 1);
+}
+
+#[test]
+#[should_panic(expected: 'invalid wallet sig')]
+fn test_unset_agent_wallet_invalidates_pre_signed_set_wallet_signature() {
+    let (registry, _, registry_address) = deploy_registry();
+    let wallet = deploy_strict_mock_account();
+    let deadline: u64 = 100;
+
+    start_cheat_caller_address(registry_address, alice());
+    let agent_id = registry.register();
+
+    // Pre-sign for nonce 0, but do not submit yet.
+    let nonce = registry.get_wallet_set_nonce(agent_id);
+    let sig_hash = compute_domain_separated_wallet_hash(
+        agent_id, wallet, alice(), deadline, nonce, registry_address,
+    );
+
+    // Explicit unset burns nonce and invalidates the pre-signed payload.
+    registry.unset_agent_wallet(agent_id);
+    registry.set_agent_wallet(agent_id, wallet, deadline, array![sig_hash]);
+    stop_cheat_caller_address(registry_address);
 }
 
 #[test]

@@ -83,11 +83,23 @@ pub mod AgentAccount {
     pub const INCREASE_ALLOWANCE_CAMEL_SELECTOR: felt252 =
         0x16cc063b8338363cf388ce7fe1df408bf10f16cd51635d392e21d852fafb683;
 
+    /// ERC-20 `decrease_allowance(spender, subtracted_value)` selector (snake_case).
+    pub const DECREASE_ALLOWANCE_SELECTOR: felt252 =
+        selector!("decrease_allowance");
+
+    /// OZ ERC-20 `decreaseAllowance(spender, subtractedValue)` selector (camelCase).
+    pub const DECREASE_ALLOWANCE_CAMEL_SELECTOR: felt252 =
+        selector!("decreaseAllowance");
+
     /// ERC-20 `transfer_from(sender, recipient, amount)` selector (snake_case).
     pub const TRANSFER_FROM_SELECTOR: felt252 = selector!("transfer_from");
 
     /// ERC-20 `transferFrom(sender, recipient, amount)` selector (camelCase).
     pub const TRANSFER_FROM_CAMEL_SELECTOR: felt252 = selector!("transferFrom");
+
+    /// Session-key multicall cap to bound worst-case execution/griefing.
+    /// Owner signatures (2-felt) are intentionally not capped.
+    pub const MAX_SESSION_KEY_CALLS_PER_TX: u32 = 64;
 
     /// Returns true if the selector corresponds to an ERC-20 operation that
     /// moves or authorizes moving value: transfer, approve, increase_allowance.
@@ -103,6 +115,12 @@ pub mod AgentAccount {
     /// can consume pre-existing approvals and bypass per-key spending intent.
     fn is_blocked_transfer_from_selector(sel: felt252) -> bool {
         sel == TRANSFER_FROM_SELECTOR || sel == TRANSFER_FROM_CAMEL_SELECTOR
+    }
+
+    /// decrease_allowance / decreaseAllowance are blocked for session keys:
+    /// they can grief owner-managed allowances without moving value.
+    fn is_blocked_decrease_allowance_selector(sel: felt252) -> bool {
+        sel == DECREASE_ALLOWANCE_SELECTOR || sel == DECREASE_ALLOWANCE_CAMEL_SELECTOR
     }
 
     /// Admin selectors that a session key must never execute, even if
@@ -337,6 +355,10 @@ pub mod AgentAccount {
                 let zero_addr: ContractAddress = 0.try_into().unwrap();
 
                 let calls_span = calls.span();
+                assert(
+                    calls_span.len() <= MAX_SESSION_KEY_CALLS_PER_TX,
+                    'Session: too many calls',
+                );
                 let mut i: u32 = 0;
                 loop {
                     if i >= calls_span.len() {
@@ -349,6 +371,10 @@ pub mod AgentAccount {
                     assert(
                         !is_blocked_transfer_from_selector(selector),
                         'Session: transferFrom blocked',
+                    );
+                    assert(
+                        !is_blocked_decrease_allowance_selector(selector),
+                        'Session: decAllowance blocked',
                     );
 
                     // Enforce allowed_contract policy (zero = any contract allowed)
@@ -395,6 +421,7 @@ pub mod AgentAccount {
             self: @ContractState, hash: felt252, signature: Array<felt252>,
         ) -> felt252 {
             if self.account._is_valid_signature(hash, signature.span()) {
+                // `starknet::VALIDATED` is the SNIP-6 magic value `'VALID'`.
                 starknet::VALIDATED
             } else {
                 0

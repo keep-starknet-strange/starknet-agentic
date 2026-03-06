@@ -332,6 +332,12 @@ pub mod IdentityRegistry {
             assert(self._is_approved_or_owner(agent_id), 'Not authorized');
 
             let zero_address: ContractAddress = 0.try_into().unwrap();
+
+            // Burn current nonce to invalidate any previously signed-but-unsubmitted
+            // set_agent_wallet payloads after an explicit unset.
+            let nonce = self.wallet_set_nonces.entry(agent_id).read();
+            self.wallet_set_nonces.entry(agent_id).write(nonce + 1);
+
             self.agent_wallets.entry(agent_id).write(zero_address);
 
             // Emit MetadataSet event with empty value
@@ -438,7 +444,7 @@ pub mod IdentityRegistry {
             agent_id
         }
 
-        fn _is_approved_or_owner(ref self: ContractState, agent_id: u256) -> bool {
+        fn _is_approved_or_owner(self: @ContractState, agent_id: u256) -> bool {
             let owner = self.erc721.owner_of(agent_id);
             let caller = get_caller_address();
             self.erc721._is_authorized(owner, caller, agent_id)
