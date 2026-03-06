@@ -119,8 +119,8 @@ jobs:
         id: fetch_sisna
         run: |
           set -euo pipefail
-          schema_url="https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.schema.json"
-          vector_url="https://raw.githubusercontent.com/omarespejel/SISNA/main/spec/session-signature-v2.json"
+          schema_url="https://raw.githubusercontent.com/keep-starknet-strange/SISNA/main/spec/session-signature-v2.schema.json"
+          vector_url="https://raw.githubusercontent.com/keep-starknet-strange/SISNA/main/spec/session-signature-v2.json"
 
           schema_status="$(curl -sS -o /dev/null -w '%{http_code}' \
             --retry 3 --retry-all-errors --connect-timeout 10 --max-time 30 \

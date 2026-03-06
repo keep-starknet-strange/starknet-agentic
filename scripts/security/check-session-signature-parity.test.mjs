@@ -1,12 +1,35 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import {
   asArrayIfPresent,
   compareVectorGroup,
+  main,
   parseArgs,
   stableStringify,
   toMapById,
 } from "./check-session-signature-parity.mjs";
+
+function withSilentConsole(run) {
+  const originalLog = console.log;
+  const originalError = console.error;
+  console.log = () => {};
+  console.error = () => {};
+  try {
+    return run();
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+}
+
+function writeJson(dir, fileName, payload) {
+  const filePath = path.join(dir, fileName);
+  fs.writeFileSync(filePath, JSON.stringify(payload), "utf8");
+  return filePath;
+}
 
 test("stableStringify canonicalizes object key order", () => {
   const a = { z: 1, a: { y: 2, x: 3 } };
@@ -146,4 +169,100 @@ test("asArrayIfPresent returns arrays and null otherwise", () => {
   assert.deepEqual(asArrayIfPresent([1, 2]), [1, 2]);
   assert.equal(asArrayIfPresent({}), null);
   assert.equal(asArrayIfPresent(null), null);
+});
+
+test("main returns 0 when schema and vectors are parity-equal", () => {
+  const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), "session-parity-ok-"));
+  try {
+    const schema = { type: "object", properties: { id: { type: "string" } } };
+    const vectors = {
+      vectors: [{ id: "outside-1", value: 1 }],
+      sessionVectors: [{ id: "session-1", value: "ok" }],
+    };
+    const exitCode = withSilentConsole(() =>
+      main([
+        "--counterpart",
+        "SISNA",
+        "--local-schema",
+        writeJson(fixtureDir, "local-schema.json", schema),
+        "--remote-schema",
+        writeJson(fixtureDir, "remote-schema.json", schema),
+        "--local-vectors",
+        writeJson(fixtureDir, "local-vectors.json", vectors),
+        "--remote-vectors",
+        writeJson(fixtureDir, "remote-vectors.json", vectors),
+        "--secondary-key",
+        "sessionVectors",
+      ]),
+    );
+    assert.equal(exitCode, 0);
+  } finally {
+    fs.rmSync(fixtureDir, { recursive: true, force: true });
+  }
+});
+
+test("main returns 1 when vectors drift", () => {
+  const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), "session-parity-drift-"));
+  try {
+    const schema = { type: "object", properties: { id: { type: "string" } } };
+    const localVectors = {
+      vectors: [{ id: "outside-1", value: 1 }],
+      sessionVectors: [{ id: "session-1", value: "ok" }],
+    };
+    const remoteVectors = {
+      vectors: [{ id: "outside-1", value: 2 }],
+      sessionVectors: [{ id: "session-1", value: "ok" }],
+    };
+
+    const exitCode = withSilentConsole(() =>
+      main([
+        "--counterpart",
+        "SISNA",
+        "--local-schema",
+        writeJson(fixtureDir, "local-schema.json", schema),
+        "--remote-schema",
+        writeJson(fixtureDir, "remote-schema.json", schema),
+        "--local-vectors",
+        writeJson(fixtureDir, "local-vectors.json", localVectors),
+        "--remote-vectors",
+        writeJson(fixtureDir, "remote-vectors.json", remoteVectors),
+        "--secondary-key",
+        "sessionVectors",
+      ]),
+    );
+    assert.equal(exitCode, 1);
+  } finally {
+    fs.rmSync(fixtureDir, { recursive: true, force: true });
+  }
+});
+
+test("main returns 2 on usage errors", () => {
+  const exitCode = withSilentConsole(() => main([]));
+  assert.equal(exitCode, 2);
+});
+
+test("main returns 3 on unexpected runtime errors", () => {
+  const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), "session-parity-runtime-"));
+  try {
+    const schema = { type: "object" };
+    const vectors = { vectors: [{ id: "outside-1", value: 1 }] };
+
+    const exitCode = withSilentConsole(() =>
+      main([
+        "--counterpart",
+        "SISNA",
+        "--local-schema",
+        path.join(fixtureDir, "missing-local-schema.json"),
+        "--remote-schema",
+        writeJson(fixtureDir, "remote-schema.json", schema),
+        "--local-vectors",
+        writeJson(fixtureDir, "local-vectors.json", vectors),
+        "--remote-vectors",
+        writeJson(fixtureDir, "remote-vectors.json", vectors),
+      ]),
+    );
+    assert.equal(exitCode, 3);
+  } finally {
+    fs.rmSync(fixtureDir, { recursive: true, force: true });
+  }
 });
