@@ -16,7 +16,7 @@
     "@starknet-agentic/onboarding-utils": "workspace:*",
     "dotenv": "^17.3.1",
     "ethers": "^6.16.0",
-    "starknet": "^9.2.1"
+    "starknet": "^9.4.2"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
