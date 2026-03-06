@@ -218,12 +218,17 @@ async function main() {
     const result = await executeAvnuSwap(quote, account, slippage);
     
     console.log(JSON.stringify({
+      success: true,
       step: "execute",
       status: "success",
       transactionHash: result.transactionHash,
       sellToken,
       buyToken,
       sellAmount,
+      buyAmount: quote.buyAmount.toString(),
+      gasFees: quote.gasFees.toString(),
+      sellTokenAddress: sellTokenData.address,
+      buyTokenAddress: buyTokenData.address,
       explorer: `https://starkscan.co/tx/${result.transactionHash}`
     }));
     
