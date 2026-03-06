@@ -74,6 +74,7 @@ const ALLOWED_SIGNOFF_STATUSES = new Set(["pending", "approved", "rejected"]);
 const ALLOWED_EVIDENCE_TYPES = new Set(["tx", "log", "report", "screenshot", "other"]);
 const REQUIRED_SIGNOFF_KEYS = ["leadDeveloper", "securityReviewer", "qaEngineer"];
 const STRICT_ISO_UTC_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const BOOLEAN_FLAGS = new Set(["help", "init", "require-closed", "force"]);
 
 function fail(message) {
   throw new Error(message);
@@ -193,6 +194,9 @@ export function parseArgs(argv) {
     const name = key.slice(2);
     const value = argv[i + 1];
     if (!value || value.startsWith("--")) {
+      if (!BOOLEAN_FLAGS.has(name)) {
+        fail(`Flag --${name} requires a value`);
+      }
       args[name] = "true";
       continue;
     }

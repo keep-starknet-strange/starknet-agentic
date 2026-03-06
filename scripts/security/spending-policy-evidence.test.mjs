@@ -84,6 +84,17 @@ test("parseArgs parses flags and values", () => {
   assert.equal(args["bundle-dir"], "out");
 });
 
+test("parseArgs rejects missing values for value-bearing flags", () => {
+  assert.throws(
+    () => parseArgs(["--report", "--require-closed"]),
+    /Flag --report requires a value/i,
+  );
+  assert.throws(
+    () => parseArgs(["--bundle-dir"]),
+    /Flag --bundle-dir requires a value/i,
+  );
+});
+
 test("createReportTemplate includes all required checks with pending status", () => {
   const report = createReportTemplate({ runId: "sp-test", generatedAt: "2026-03-06T00:00:00.000Z" });
   assert.equal(report.runId, "sp-test");
