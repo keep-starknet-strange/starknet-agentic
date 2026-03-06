@@ -25,6 +25,12 @@ If you just want Starknet agent capabilities now:
 npx create-starknet-agent@latest
 ```
 
+Sanity check (npm availability):
+
+```bash
+npm view create-starknet-agent version
+```
+
 The scaffolder detects your environment (OpenClaw/MoltBook, Claude Code, Cursor, or standalone) and wires Starknet integration automatically.
 
 ## System Requirements
@@ -39,7 +45,7 @@ The scaffolder detects your environment (OpenClaw/MoltBook, Claude Code, Cursor,
 |---|---|
 | Add Starknet tools to an existing agent | [`packages/create-starknet-agent`](./packages/create-starknet-agent/) |
 | Run local no-backend onboarding demo | [`examples/onboard-agent`](./examples/onboard-agent/) |
-| Run autonomous loop with MCP tools | [`examples/openclaw-agent-loop`](./examples/openclaw-agent-loop/) |
+| Run autonomous loop with MCP tools | [`examples/full-stack-swarm`](./examples/full-stack-swarm/) |
 | Integrate on-chain identity/reputation | [`contracts/erc8004-cairo`](./contracts/erc8004-cairo/) |
 | Build production signer boundary | [`packages/starknet-mcp-server`](./packages/starknet-mcp-server/) + external signer (proxy mode) |
 
@@ -145,8 +151,8 @@ Demo setup details: [`examples/hello-agent/README.md`](./examples/hello-agent/RE
 |---|---|
 | [`examples/hello-agent`](./examples/hello-agent/) | Minimal RPC + state read + transaction path |
 | [`examples/onboard-agent`](./examples/onboard-agent/) | Deploy agent account + register identity + receipt artifacts |
-| [`examples/openclaw-agent-loop`](./examples/openclaw-agent-loop/) | Autonomous Starknet onboarding through MCP |
-| [`examples/full-stack-swarm`](./examples/full-stack-swarm/) | Session policy + signer boundary + gasless flow + ERC-8004 |
+| [`examples/full-stack-swarm`](./examples/full-stack-swarm/) | Autonomous multi-agent run with MCP + signer boundary + ERC-8004 |
+| [`examples/secure-defi-demo`](./examples/secure-defi-demo/) | Base reputation envelope + Starknet guardrails + Vesu flow artifact |
 | [`examples/crosschain-demo`](./examples/crosschain-demo/) | Cross-chain registration flow (Base Sepolia + Starknet Sepolia) |
 | [`examples/erc8004-validation-demo`](./examples/erc8004-validation-demo/) | Validation request/response + summary extraction |
 
