@@ -163,12 +163,13 @@ jobs:
             if [ "$http_status" = "404" ]; then
               echo "::warning::${label} not published yet on main; parity check skipped."
               echo "${label} not published yet on main; skipping parity check."
-              exit 0
+              return 2
             fi
             if [ "$http_status" != "200" ]; then
               echo "::error::Failed to fetch ${label} (HTTP ${http_status})."
-              exit 1
+              return 1
             fi
+            return 0
           }
 
           drift_or_fail() {
@@ -185,6 +186,7 @@ jobs:
           compare_with_repo() {
             local owner_repo="$1"
             local label="$2"
+            local fetch_status=0
 
             local schema_out="/tmp/${label}-session-signature-v2.schema.json"
             local vectors_out="/tmp/${label}-session-signature-v2.json"
@@ -193,14 +195,29 @@ jobs:
             local vectors_norm_remote="/tmp/${label}-session-signature-v2.normalized.json"
             local vectors_norm_local="/tmp/local-${label}-session-signature-v2.normalized.json"
 
+            fetch_status=0
             fetch_or_skip_404 \
               "https://raw.githubusercontent.com/${owner_repo}/main/spec/session-signature-v2.schema.json" \
               "$schema_out" \
-              "${label} schema"
+              "${label} schema" || fetch_status=$?
+            if [ "$fetch_status" -eq 2 ]; then
+              return 0
+            fi
+            if [ "$fetch_status" -ne 0 ]; then
+              return "$fetch_status"
+            fi
+
+            fetch_status=0
             fetch_or_skip_404 \
               "https://raw.githubusercontent.com/${owner_repo}/main/spec/session-signature-v2.json" \
               "$vectors_out" \
-              "${label} vector file"
+              "${label} vector file" || fetch_status=$?
+            if [ "$fetch_status" -eq 2 ]; then
+              return 0
+            fi
+            if [ "$fetch_status" -ne 0 ]; then
+              return "$fetch_status"
+            fi
 
             schema_filter='del(."$id", .properties.derivation, ."$defs".derivation) | (.required //= []) | .required |= map(select(. != "derivation")) | .properties.sessionVectors.minItems = 1'
             if ! jq -e '.["$defs"]?.sessionVector? // {} | has("allOf")' "$schema_out" > /dev/null; then
