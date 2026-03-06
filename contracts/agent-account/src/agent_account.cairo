@@ -307,6 +307,8 @@ pub mod AgentAccount {
             if signature.len() == 3 {
                 // Session key path: [session_key_pubkey, r, s]
                 let session_key = *signature.at(0);
+                let policy = self.session_keys.get_policy(session_key);
+                let zero_addr: ContractAddress = 0.try_into().unwrap();
 
                 // Key must be registered, active, and within its time window
                 assert(self.session_keys.is_valid(session_key), 'Session key not valid');
@@ -318,6 +320,61 @@ pub mod AgentAccount {
                     ),
                     'Session key: bad signature',
                 );
+
+                // Mirror static policy guards here so invalid session multicalls
+                // are rejected during validation (before execution-time fees).
+                let calls_span = calls.span();
+                assert(
+                    calls_span.len() <= MAX_SESSION_KEY_CALLS_PER_TX,
+                    'Session: too many calls',
+                );
+
+                let mut i: u32 = 0;
+                loop {
+                    if i >= calls_span.len() {
+                        break;
+                    }
+                    let call = calls_span.at(i);
+                    let selector = *call.selector;
+
+                    assert(!is_admin_selector(selector), 'Session: admin selector blocked');
+                    assert(
+                        !is_blocked_transfer_from_selector(selector),
+                        'Session: transferFrom blocked',
+                    );
+                    assert(
+                        !is_blocked_decrease_allowance_selector(selector),
+                        'Session: decAllowance blocked',
+                    );
+
+                    if policy.allowed_contract != zero_addr {
+                        assert(
+                            *call.to == policy.allowed_contract,
+                            'Session: contract not allowed',
+                        );
+                    }
+
+                    if is_spending_selector(selector) {
+                        let calldata = *call.calldata;
+                        assert(calldata.len() >= 3, 'Session: bad transfer data');
+
+                        let amount_low: u128 = (*calldata.at(1))
+                            .try_into()
+                            .expect('bad amount_low');
+                        let amount_high: u128 = (*calldata.at(2))
+                            .try_into()
+                            .expect('bad amount_high');
+                        let amount_is_zero = amount_low == 0 && amount_high == 0;
+
+                        if selector == APPROVE_SELECTOR {
+                            assert(!amount_is_zero, 'Session: approve0 blocked');
+                        }
+
+                        assert(*call.to == policy.spending_token, 'Wrong spending token');
+                    }
+
+                    i += 1;
+                };
 
                 return starknet::VALIDATED;
             }
@@ -398,6 +455,11 @@ pub mod AgentAccount {
                             .try_into()
                             .expect('bad amount_high');
                         let amount = u256 { low: amount_low, high: amount_high };
+                        let amount_is_zero = amount_low == 0 && amount_high == 0;
+
+                        if selector == APPROVE_SELECTOR {
+                            assert(!amount_is_zero, 'Session: approve0 blocked');
+                        }
 
                         // call.to is the token contract address
                         self

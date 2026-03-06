@@ -289,6 +289,40 @@ fn test_approve_on_wrong_token_blocked() {
     account.__execute__(calls); // Wrong spending token
 }
 
+#[test]
+#[should_panic(expected: 'Session: approve0 blocked')]
+fn test_approve_zero_is_blocked_for_session_keys() {
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+
+    register_key(agent, addr, session_kp.public_key, spending_policy(100));
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let calls = array![approve_call(token_addr(), 0xDEAD, 0)];
+    account.__execute__(calls);
+}
+
+#[test]
+#[should_panic(expected: 'Session: approve0 blocked')]
+fn test_validate_rejects_approve_zero_for_session_keys() {
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+
+    register_key(agent, addr, session_kp.public_key, spending_policy(100));
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let calls = array![approve_call(token_addr(), 0xDEAD, 0)];
+    account.__validate__(calls);
+}
+
 // ===========================================================================
 // FUZZ: Spending amounts near limit boundary
 // ===========================================================================
@@ -943,6 +977,36 @@ fn test_session_key_multicall_count_is_capped() {
     };
 
     account.__execute__(calls);
+}
+
+#[test]
+#[should_panic(expected: 'Session: too many calls')]
+fn test_validate_rejects_session_multicall_count_over_cap() {
+    let owner_kp = KeyPairTrait::from_secret_key(0x1234_felt252);
+    let session_kp = KeyPairTrait::from_secret_key(0x5678_felt252);
+    let (addr, account, agent) = deploy_agent_account(owner_kp.public_key);
+
+    let policy = SessionPolicy {
+        valid_after: 0,
+        valid_until: 999_999,
+        spending_limit: 0,
+        spending_token: zero_addr(),
+        allowed_contract: addr,
+    };
+    register_key(agent, addr, session_kp.public_key, policy);
+
+    let (r, s) = session_kp.sign(TX_HASH).unwrap();
+    setup_session_key_tx(addr, session_kp.public_key, r, s);
+    start_cheat_block_timestamp(addr, 100);
+
+    let mut calls: Array<Call> = ArrayTrait::new();
+    let mut i: u32 = 0;
+    while i < 65 {
+        calls.append(generic_call(addr, selector!("get_active_session_key_count")));
+        i += 1;
+    };
+
+    account.__validate__(calls);
 }
 
 #[test]
