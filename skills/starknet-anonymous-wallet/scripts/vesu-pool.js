@@ -424,8 +424,8 @@ async function main() {
           if (!pairRes) {
             try { pairRes = await pairCall('pair_configs'); } catch {}
           }
-          if (pairRes?.result?.length >= 1) {
-            const pr = pairRes.result;
+          if (pairRes?.result?.length >= 1 || Array.isArray(pairRes)) {
+            const pr = Array.isArray(pairRes) ? pairRes : pairRes.result;
             maxLtv = pr.length >= 2 ? u256ToBigInt([pr[0], pr[1]]) : BigInt(String(pr[0]));
           }
         } catch (e) {
