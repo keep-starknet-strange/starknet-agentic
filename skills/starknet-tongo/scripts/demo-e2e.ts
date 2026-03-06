@@ -20,7 +20,7 @@ import { Account, RpcProvider, TransactionExecutionStatus } from "starknet";
 async function waitSuccess(provider: RpcProvider, txHash: string) {
   const receipt = await provider.waitForTransaction(txHash);
   if (receipt.execution_status === TransactionExecutionStatus.REVERTED) {
-    throw new Error(`Transaction reverted: ${receipt.revert_reason}`);
+    throw new Error(`Transaction reverted: ${receipt.revert_reason ?? "no revert reason provided"}`);
   }
   return receipt;
 }
