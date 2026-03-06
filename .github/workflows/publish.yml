@@ -13,7 +13,7 @@ jobs:
     name: Publish to npm
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
       attestations: write
     steps:
@@ -45,10 +45,23 @@ jobs:
           cd ../starknet-a2a && npm pack --pack-destination ../../dist-release
           cd ../starknet-agent-passport && npm pack --pack-destination ../../dist-release
 
+      - name: Generate release checksums
+        run: |
+          set -euo pipefail
+          cd dist-release
+          sha256sum *.tgz > checksums.txt
+
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-path: 'dist-release/*.tgz'
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ github.event.release.tag_name }}" dist-release/*.tgz dist-release/checksums.txt --clobber
 
       - name: Publish to npm
         run: |

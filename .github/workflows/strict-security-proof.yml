@@ -14,21 +14,28 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+  attestations: write
 
 jobs:
   strict-proof-gate:
     name: Strict Security Proof
     runs-on: ubuntu-latest
+    env:
+      STRICT_ARTIFACT_PATH: ${{ github.event.inputs.artifact_path || 'examples/secure-defi-demo/test/fixtures/strict-claims-pass.json' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Verify strict claims artifact
-        env:
-          ARTIFACT_PATH: ${{ github.event.inputs.artifact_path || 'examples/secure-defi-demo/test/fixtures/strict-claims-pass.json' }}
         run: |
           set -euo pipefail
-          if [ ! -f "$ARTIFACT_PATH" ]; then
-            echo "Artifact file not found: $ARTIFACT_PATH"
+          if [ ! -f "$STRICT_ARTIFACT_PATH" ]; then
+            echo "Artifact file not found: $STRICT_ARTIFACT_PATH"
             exit 1
           fi
-          node scripts/security/verify-secure-defi-claims.mjs --artifact "$ARTIFACT_PATH" --require-strict
+          node scripts/security/verify-secure-defi-claims.mjs --artifact "$STRICT_ARTIFACT_PATH" --require-strict
+
+      - name: Attest strict artifact provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-path: ${{ env.STRICT_ARTIFACT_PATH }}
