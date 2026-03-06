@@ -8,6 +8,10 @@ on:
   release:
     types: [created]
 
+concurrency:
+  group: publish-manual-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 jobs:
   publish-npm:
     name: Publish to npm
