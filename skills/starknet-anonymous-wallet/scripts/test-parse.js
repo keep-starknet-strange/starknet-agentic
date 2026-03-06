@@ -138,7 +138,8 @@ function parseOperation(segment, availableTokens = [], previousOp = null, knownA
   
   // First try exact matches (case insensitive)
   for (const token of availableTokens) {
-    const tokenPattern = new RegExp(`\\b${token}\\b`, 'i');
+    const escapedToken = String(token).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const tokenPattern = new RegExp(`\\b${escapedToken}\\b`, 'i');
     if (tokenPattern.test(text)) {
       tokenIn = token;
       break;
