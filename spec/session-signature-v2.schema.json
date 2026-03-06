@@ -4,7 +4,7 @@
   "title": "Session signature v1+v2 conformance vectors",
   "type": "object",
   "additionalProperties": false,
-  "required": ["spec", "version", "vectors", "sessionVectors"],
+  "required": ["spec", "version", "derivation", "vectors", "sessionVectors"],
   "properties": {
     "spec": {
       "type": "string",
@@ -13,6 +13,9 @@
     "version": {
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "derivation": {
+      "$ref": "#/$defs/derivation"
     },
     "vectors": {
       "type": "array",
@@ -37,6 +40,38 @@
     "bigNumberish": {
       "type": "string",
       "pattern": "^(0x[0-9a-fA-F]{1,63}|[0-9]{1,76})$"
+    },
+    "derivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalRepository",
+        "canonicalRef",
+        "canonicalSpecPath",
+        "verificationReferences"
+      ],
+      "properties": {
+        "canonicalRepository": {
+          "type": "string",
+          "pattern": "^[^/]+/[^/]+$"
+        },
+        "canonicalRef": {
+          "type": "string",
+          "minLength": 1
+        },
+        "canonicalSpecPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verificationReferences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     },
     "call": {
       "type": "object",
@@ -64,7 +99,7 @@
       "properties": {
         "name": {
           "type": "string",
-          "minLength": 1
+          "const": "Account.execute_from_outside"
         },
         "version": {
           "type": "string",
@@ -251,7 +286,96 @@
         "expected": {
           "$ref": "#/$defs/sessionExpected"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "v2_snip12"
+              }
+            },
+            "required": ["mode"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "expected": {
+                "type": "object",
+                "required": ["signingDomainHash", "verificationDomainHash"],
+                "properties": {
+                  "signingDomainHash": {
+                    "$ref": "#/$defs/felt"
+                  },
+                  "verificationDomainHash": {
+                    "$ref": "#/$defs/felt"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "valid"
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "expected": {
+                "type": "object",
+                "properties": {
+                  "shouldVerify": {
+                    "const": true
+                  }
+                },
+                "not": {
+                  "type": "object",
+                  "required": ["failureCode"],
+                  "properties": {
+                    "failureCode": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "invalid"
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "expected": {
+                "type": "object",
+                "required": ["failureCode"],
+                "properties": {
+                  "shouldVerify": {
+                    "const": false
+                  },
+                  "failureCode": {
+                    "type": "string",
+                    "pattern": "^[A-Z0-9_]+$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }
