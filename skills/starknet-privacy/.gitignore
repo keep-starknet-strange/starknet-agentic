@@ -1,0 +1,26 @@
+# ZK Circuit Build Artifacts
+*.r1cs
+*.wasm
+*.wtns
+
+# Generated proof artifacts
+**/proof.json
+**/public.json
+**/verification_key.json
+**/calldata.json
+**/witness.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Node modules
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

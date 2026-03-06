@@ -1,0 +1,11 @@
+# ZK Privacy Pool Dependencies
+
+# Cryptography (for Pedersen/Poseidon on Python side)
+pysha3>=1.0.0
+ecdsa>=0.18.0
+
+# Async HTTP
+aiohttp>=3.9.0
+
+# Utilities
+python-dotenv>=1.0.0
