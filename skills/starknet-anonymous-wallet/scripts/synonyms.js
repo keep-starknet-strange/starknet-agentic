@@ -1,8 +1,6 @@
 // ERC-20 and DeFi Action Synonyms
 // Maps user-friendly terms to canonical ABI function names
 
-import { escapeRegExp } from './parse-utils.js';
-
 export const ERC20_SYNONYMS = {
   // Transfer operations
   'send': ['transfer', 'move', 'pay', 'dispatch', 'forward'],
@@ -36,7 +34,6 @@ export const DEFI_SYNONYMS = {
   'remove_liquidity': ['remove liquidity', 'withdraw liquidity', 'take out liquidity'],
   
   // Staking
-  // Keep canonical verbs out of sibling variant lists to avoid ambiguous reverse mapping.
   'stake': ['stake', 'lock', 'farm', 'commit'],
   'unstake': ['unstake', 'unlock', 'claim and exit'],
   'claim_rewards': ['claim', 'harvest', 'collect', 'get rewards', 'redeem'],
@@ -76,12 +73,9 @@ export const COMMON_SYNONYMS = {
 export function buildReverseMap(synonymMap) {
   const reverse = {};
   for (const [canonical, variants] of Object.entries(synonymMap)) {
-    const canonicalKey = canonical.toLowerCase();
-    // Canonical names must always resolve to themselves.
-    reverse[canonicalKey] = canonical;
+    reverse[canonical.toLowerCase()] = canonical;
     for (const variant of variants) {
       const key = variant.toLowerCase();
-      // Preserve first-seen canonical mapping for overlapping variants.
       if (reverse[key] !== undefined) continue;
       reverse[key] = canonical;
     }
@@ -99,23 +93,19 @@ export const ALL_SYNONYMS = {
 // Reverse lookup for all
 export const REVERSE_SYNONYMS = buildReverseMap(ALL_SYNONYMS);
 
-function normalizeVariant(value) {
-  return String(value || '').toLowerCase().trim().replace(/\s+/g, '_');
-}
-
-function hasBoundaryMatch(target, variant) {
-  const candidate = normalizeVariant(variant);
-  if (!candidate || candidate.length < 3) return false;
-  const lowerTarget = String(target || '').toLowerCase();
-  const pattern = new RegExp(`(^|[_:])${escapeRegExp(candidate)}($|[_:])`);
-  return pattern.test(lowerTarget);
-}
-
 // Function to find canonical action
 export function findCanonicalAction(action, abiFunctions = []) {
   const lowerAction = String(action || '').toLowerCase().trim();
   if (!Array.isArray(abiFunctions)) abiFunctions = [];
   if (!lowerAction) return undefined;
+
+  const esc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const hasBoundaryMatch = (fName, token) => {
+    const normalized = String(token || '').replace(/\s+/g, '_');
+    if (!normalized || normalized.length < 2) return false;
+    const re = new RegExp(`(^|_)${esc(normalized)}(_|$)`);
+    return re.test(fName);
+  };
   
   // 1. Exact match in ABI
   const exactMatch = abiFunctions.find(f => f.toLowerCase() === lowerAction);
@@ -134,13 +124,20 @@ export function findCanonicalAction(action, abiFunctions = []) {
     // Check variant matches
     const variants = ALL_SYNONYMS[canonical] || [];
     for (const variant of [canonical, ...variants]) {
-      const match = abiFunctions.find(f => hasBoundaryMatch(f, variant));
+      const vName = variant.toLowerCase();
+      const match = abiFunctions.find(f => {
+        const fName = f.toLowerCase();
+        return fName === vName || hasBoundaryMatch(fName, vName);
+      });
       if (match) return match;
     }
   }
   
-  // 3. Token-boundary fallback in ABI
-  return abiFunctions.find(f => hasBoundaryMatch(f, lowerAction));
+  // 3. Boundary-safe fallback in ABI
+  return abiFunctions.find(f => {
+    const fName = f.toLowerCase();
+    return fName === lowerAction || hasBoundaryMatch(fName, lowerAction);
+  });
 }
 
 export default {

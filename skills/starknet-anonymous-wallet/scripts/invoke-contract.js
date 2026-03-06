@@ -7,7 +7,6 @@
  * 
  * INPUT: JSON as first argument
  * {
- *   "privateKey": "0x...",      // Optional (or use PRIVATE_KEY env)
  *   "accountAddress": "0x...",
  *   "contractAddress": "0x...",
  *   "method": "transfer",
@@ -17,14 +16,16 @@
  * }
  */
 
-import { RpcProvider, Account, Contract } from 'starknet';
+import { RpcProvider as Provider, Account, Contract } from 'starknet';
 
 import { resolveRpcUrl } from './_rpc.js';
+import { loadPrivateKeyByAccountAddress } from './_keys.js';
 
 function fail(message) {
-  console.error(JSON.stringify({ error: message }));
+  console.log(JSON.stringify({ success: false, error: message }));
   process.exit(1);
 }
+
 
 async function main() {
   const raw = process.argv[2];
@@ -40,12 +41,17 @@ async function main() {
   if (!input.accountAddress) fail('Missing "accountAddress".');
   if (!input.contractAddress) fail('Missing "contractAddress".');
   if (!input.method) fail('Missing "method".');
+  if (input.privateKey) fail('Do not pass privateKey in JSON input.');
 
-  const privateKey = input.privateKey || process.env.PRIVATE_KEY;
-  if (!privateKey) fail('Missing private key (input.privateKey or PRIVATE_KEY env).');
+  let privateKey;
+  try {
+    privateKey = loadPrivateKeyByAccountAddress(input.accountAddress);
+  } catch (e) {
+    fail(e.message);
+  }
 
   const rpcUrl = resolveRpcUrl();
-  const provider = new RpcProvider({ nodeUrl: rpcUrl });
+  const provider = new Provider({ nodeUrl: rpcUrl });
   const account = new Account({
     provider,
     address: input.accountAddress,

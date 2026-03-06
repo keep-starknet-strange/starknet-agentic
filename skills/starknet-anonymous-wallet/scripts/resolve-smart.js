@@ -10,66 +10,25 @@
  * 5. Handles event watching with callbacks
  */
 
-import { RpcProvider, CallData } from 'starknet';
-import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, mkdirSync, renameSync, openSync, closeSync } from 'fs';
-import { join, dirname, isAbsolute } from 'path';
+import { RpcProvider as Provider, CallData } from 'starknet';
+import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, mkdirSync, renameSync, rmSync, statSync } from 'fs';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
-import { calculateSimilarity, parseAmountToBaseUnits } from './parse-utils.js';
+import { findCanonicalAction, ALL_SYNONYMS } from './synonyms.js';
 
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
+import { loadPrivateKeyByAccountAddress } from './_keys.js';
+
+const AVNU_VIRTUAL_SENTINELS = new Set(['__avnu_virtual__', '0x01']);
+const VESU_VIRTUAL_SENTINELS = new Set(['__vesu_virtual__', '0x02']);
 
 // ============ LOOT SURVIVOR LATEST ADVENTURER (LOCAL UX STATE) ============
 // We intentionally do NOT scan chain/indexers for "latest adventurer".
 // Instead we persist the last-used adventurerId per account locally.
 const LOOT_STATE_DIR = join(homedir(), '.openclaw', 'typhoon-loot-survivor');
 const LOOT_STATE_FILE = join(LOOT_STATE_DIR, 'latest.json');
-const LOOT_STATE_TMP_FILE = join(LOOT_STATE_DIR, 'latest.json.tmp');
-const LOOT_STATE_LOCK_FILE = join(LOOT_STATE_DIR, '.latest.lock');
-const LOCK_SLEEP_CELL = new Int32Array(new SharedArrayBuffer(4));
-
-function sleepSync(ms) {
-  Atomics.wait(LOCK_SLEEP_CELL, 0, 0, ms);
-}
-
-function withLootStateLock(fn) {
-  mkdirSync(LOOT_STATE_DIR, { recursive: true });
-  const deadlineMs = Date.now() + 1000;
-  let lockFd = null;
-  while (lockFd === null) {
-    try {
-      lockFd = openSync(LOOT_STATE_LOCK_FILE, 'wx');
-    } catch (err) {
-      if (err?.code !== 'EEXIST' || Date.now() >= deadlineMs) {
-        throw err;
-      }
-      sleepSync(20);
-    }
-  }
-  try {
-    return fn();
-  } finally {
-    try { closeSync(lockFd); } catch {}
-    try { unlinkSync(LOOT_STATE_LOCK_FILE); } catch {}
-  }
-}
-
-function lootStateMutate(accountAddress, mutateEntry) {
-  if (!accountAddress) return;
-  try {
-    withLootStateLock(() => {
-      const map = lootStateLoad();
-      const entry = lootStateGetEntry(map, accountAddress);
-      mutateEntry(entry);
-      lootStateWriteEntry(map, accountAddress, entry);
-      writeFileSync(LOOT_STATE_TMP_FILE, JSON.stringify(map, null, 2) + '\n', 'utf8');
-      renameSync(LOOT_STATE_TMP_FILE, LOOT_STATE_FILE);
-    });
-  } catch {
-    // best-effort only
-  }
-}
 
 function lootStateLoad() {
   try {
@@ -112,6 +71,56 @@ function lootStateGetPending(accountAddress) {
   return lootStateGetEntry(map, accountAddress).pendingEncounter;
 }
 
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function lootStateMutate(accountAddress, mutateFn) {
+  if (!accountAddress) return;
+  const lockDir = join(LOOT_STATE_DIR, '.lock');
+  const lockTimeoutMs = 2000;
+  const lockStaleMs = 5000;
+  const started = Date.now();
+
+  try {
+    mkdirSync(LOOT_STATE_DIR, { recursive: true });
+
+    while (true) {
+      try {
+        mkdirSync(lockDir);
+        break;
+      } catch {
+        // Recover stale lock left by crashed process
+        try {
+          const st = statSync(lockDir);
+          if ((Date.now() - st.mtimeMs) > lockStaleMs) {
+            rmSync(lockDir, { recursive: false, force: true });
+            continue;
+          }
+        } catch {
+          // ignore stat/remove races
+        }
+
+        if (Date.now() - started > lockTimeoutMs) return;
+        sleepSync(20);
+      }
+    }
+
+    const map = lootStateLoad();
+    const entry = lootStateGetEntry(map, accountAddress);
+    mutateFn(entry);
+    lootStateWriteEntry(map, accountAddress, entry);
+
+    const tmpPath = join(LOOT_STATE_DIR, `latest.${process.pid}.${Date.now()}.tmp`);
+    writeFileSync(tmpPath, JSON.stringify(map, null, 2) + '\n', 'utf8');
+    renameSync(tmpPath, LOOT_STATE_FILE);
+  } catch {
+    // best-effort only
+  } finally {
+    try { rmSync(lockDir, { recursive: false, force: true }); } catch {}
+  }
+}
+
 function lootStateSetLatest(accountAddress, adventurerId) {
   if (accountAddress == null || adventurerId == null || adventurerId === '') return;
   lootStateMutate(accountAddress, (entry) => {
@@ -130,10 +139,6 @@ function lootStateSetPending(accountAddress, pending) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const SKILL_ROOT = join(__dirname, '..');
-const VIRTUAL_PROTOCOL_ADDRESS = Object.freeze({
-  AVNU: '__avnu_virtual__',
-  VESU: '__vesu_virtual__'
-});
 
 // ============ EXECUTION ATTESTATION (PARSE → RESOLVE) ============
 // resolve-smart should only build executable plans from structured parsed input
@@ -141,17 +146,16 @@ const VIRTUAL_PROTOCOL_ADDRESS = Object.freeze({
 const ATTEST_DIR = join(homedir(), '.openclaw', 'typhoon-attest');
 
 function verifyAndConsumeAttestation(token) {
-  if (process.env.TYPHOON_ATTEST_DISABLE === '1') return { ok: true, disabled: true };
   if (!token || typeof token !== 'string') return { ok: false, reason: 'missing' };
   if (!/^[a-f0-9]{20,64}$/i.test(token)) return { ok: false, reason: 'format' };
 
   const p = join(ATTEST_DIR, `${token}.json`);
-  const consumedPath = `${p}.consumed.${process.pid}.${Date.now()}`;
+  const consumedPath = join(ATTEST_DIR, `${token}.consumed.${process.pid}.${Date.now()}.json`);
+
   try {
-    // Atomic claim: only one process can successfully rename+consume.
+    // Atomic claim (prevents parallel double-consume race)
     renameSync(p, consumedPath);
-  } catch (err) {
-    if (err?.code === 'ENOENT') return { ok: false, reason: 'not_found' };
+  } catch {
     return { ok: false, reason: 'not_found' };
   }
 
@@ -162,7 +166,6 @@ function verifyAndConsumeAttestation(token) {
       try { unlinkSync(consumedPath); } catch {}
       return { ok: false, reason: 'expired' };
     }
-    // One-time consume
     try { unlinkSync(consumedPath); } catch {}
     return { ok: true };
   } catch {
@@ -183,6 +186,11 @@ function loadRegistry(filename) {
   return {};
 }
 
+function saveRegistry(filename, data) {
+  const filepath = join(SKILL_ROOT, filename);
+  writeFileSync(filepath, JSON.stringify(data, null, 2) + '\n');
+}
+
 function loadProtocols() {
   const registry = loadRegistry('protocols.json');
   const protocols = {};
@@ -201,6 +209,68 @@ function loadProtocols() {
   return protocols;
 }
 
+// ============ MULTI-ADDRESS ABI SCANNING ============
+async function fetchABI(address, provider) {
+  try {
+    const response = await provider.getClassAt(address);
+    return response.abi || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function findBestFunctionAcrossAddresses(protocolName, action, protocols, provider) {
+  const addresses = protocols[protocolName];
+  if (!addresses || addresses.length === 0) {
+    return { error: `No addresses found for protocol ${protocolName}` };
+  }
+  
+  let bestMatch = null;
+  let bestScore = 0;
+  let allFunctions = [];
+  
+  // Scan all addresses
+  for (const address of addresses) {
+    const abi = await fetchABI(address, provider);
+    const functions = extractABIItems(abi).functions;
+    
+    for (const func of functions) {
+      const score = calculateSimilarity(action, func.name);
+      allFunctions.push({
+        name: func.name,
+        address: address,
+        score: score,
+        inputs: func.inputs || [],
+        outputs: func.outputs || [],
+        state_mutability: func.state_mutability || 'external'
+      });
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = {
+          name: func.name,
+          address: address,
+          score: score,
+          inputs: func.inputs || [],
+          outputs: func.outputs || [],
+          state_mutability: func.state_mutability || 'external',
+          fullABI: abi
+        };
+      }
+    }
+  }
+  
+  // Sort all functions by score for reference
+  allFunctions.sort((a, b) => b.score - a.score);
+  
+  return {
+    bestMatch: bestMatch,
+    allMatches: allFunctions.slice(0, 10), // Top 10 matches
+    scannedAddresses: addresses.length,
+    protocolName: protocolName
+  };
+}
+
 function loadFriends() {
   // FRIENDS FEATURE REMOVED - recipients must be addresses
   return {};
@@ -210,11 +280,18 @@ function loadFriends() {
 // ============ CONFIGURATION (loaded from JSON files) ============
 // Loaded dynamically in main() to allow registration during execution
 
+// ============ HELPERS ============
+function tryParseJSON(str) {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return null;
+  }
+}
+
 // ============ SECRETS MANAGEMENT (SINGLE ACCESS) ============
 function getSecretsDir() {
-  if (process.env.STARKNET_SECRETS_DIR) {
-    return process.env.STARKNET_SECRETS_DIR;
-  }
+  if (process.env.STARKNET_SECRETS_DIR) return process.env.STARKNET_SECRETS_DIR;
   return join(homedir(), '.openclaw', 'secrets', 'starknet');
 }
 
@@ -229,31 +306,17 @@ function loadAccount(index = 0) {
   const accountPath = join(dir, files[index]);
   const data = JSON.parse(readFileSync(accountPath, 'utf8'));
   
-  // Load private key from .key file or inline
+  // Load private key via shared hardened loader (_keys.js)
+  const privateKeyPath = (typeof data.privateKeyPath === 'string' && data.privateKeyPath.trim().length > 0)
+    ? data.privateKeyPath
+    : null;
+
   let privateKey = null;
-  let privateKeyPath = null;
-  if (typeof data.privateKeyPath === 'string' && data.privateKeyPath.trim().length > 0) {
-    privateKeyPath = isAbsolute(data.privateKeyPath)
-      ? data.privateKeyPath
-      : join(dir, data.privateKeyPath);
-
-    if (!existsSync(privateKeyPath)) {
-      return {
-        error: "Missing private key for account",
-        accountPath,
-        privateKeyPath,
-        index,
-        total: files.length
-      };
-    }
-    privateKey = readFileSync(privateKeyPath, 'utf8').trim();
-  } else if (typeof data.privateKey === 'string' && data.privateKey.trim().length > 0) {
-    privateKey = data.privateKey.trim();
-  }
-
-  if (!privateKey) {
+  try {
+    privateKey = loadPrivateKeyByAccountAddress(data.address);
+  } catch (err) {
     return {
-      error: "Missing private key for account",
+      error: err?.message || "Missing private key for account",
       accountPath,
       privateKeyPath,
       index,
@@ -271,6 +334,48 @@ function loadAccount(index = 0) {
 }
 
 // ============ ABI ANALYSIS ============
+function tokenize(str) {
+  return str.replace(/([A-Z])/g, '_$1').replace(/^_/, '').toLowerCase().split(/[_\-]+/).filter(Boolean);
+}
+
+function calculateSimilarity(query, target) {
+  const q = String(query || '').toLowerCase();
+  const t = String(target || '').toLowerCase();
+  if (!q || !t) return 0;
+  
+  if (t === q) return 100;
+  if (t.includes(q)) return 70 + (q.length / t.length) * 20;
+  if (q.includes(t)) return 60 + (t.length / q.length) * 15;
+  
+  let score = 0;
+  const qTokens = tokenize(q);
+  const tTokens = tokenize(t);
+  const MAX_SUBSTRING_LEN = 6;
+  const MAX_SUBSTRING_STARTS = 12;
+  
+  for (const qt of qTokens) {
+    for (const tt of tTokens) {
+      if (qt === tt) score += 30;
+      else if (tt.includes(qt)) score += 20;
+      else if (qt.includes(tt)) score += 15;
+      else {
+        // Common substrings (bounded to avoid runaway O(n^3)-style costs)
+        const maxLen = Math.min(MAX_SUBSTRING_LEN, qt.length, tt.length);
+        for (let len = 3; len <= maxLen; len++) {
+          const maxStarts = Math.min(qt.length - len + 1, MAX_SUBSTRING_STARTS);
+          for (let i = 0; i < maxStarts; i++) {
+            if (tt.includes(qt.substring(i, i + len))) {
+              score += len * 2;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return score;
+}
 
 function extractABIItems(abi) {
   const functions = [];
@@ -324,6 +429,30 @@ function isComplexAbiType(typeStr) {
   );
 }
 
+function estimateCalldataLenFromInputs(inputs) {
+  if (!Array.isArray(inputs)) return null;
+  let n = 0;
+  for (const inp of inputs) {
+    const t = String(inp?.type || '').toLowerCase();
+    if (!t) return null;
+
+    // Complex types: skip strict length enforcement (avoid false positives)
+    if (isComplexAbiType(t)) {
+      return null;
+    }
+
+    // Cairo u256 / Uint256 is typically 2 felts
+    if (t === 'u256' || t.endsWith('::u256') || t.includes('uint256') || t.includes('core::integer::u256')) {
+      n += 2;
+      continue;
+    }
+
+    // Default: 1 felt
+    n += 1;
+  }
+  return n;
+}
+
 async function resolveFromABI(provider, contractAddress, query, type = 'function') {
   try {
     const resp = await provider.getClassAt(contractAddress);
@@ -352,8 +481,103 @@ async function resolveFromABI(provider, contractAddress, query, type = 'function
   }
 }
 
+// ============ TOKEN OPERATIONS ============
+function formatUnitsSafe(value, decimals, maxFractionDigits = 6) {
+  const d = Number(decimals ?? 18);
+  if (!Number.isInteger(d) || d < 0) return value.toString();
+
+  const base = 10n ** BigInt(d);
+  const whole = value / base;
+  const frac = value % base;
+
+  if (d === 0) return whole.toString();
+  let fracStr = frac.toString().padStart(d, '0').slice(0, maxFractionDigits);
+  fracStr = fracStr.replace(/0+$/, '');
+  return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
+}
+
+async function getTokenBalance(provider, tokenAddress, accountAddress, decimals) {
+  try {
+    const result = await provider.callContract({
+      contractAddress: tokenAddress,
+      entrypoint: 'balanceOf',
+      calldata: [accountAddress]
+    });
+    const raw = Array.isArray(result) ? result : (result?.result || []);
+    if (raw.length >= 2) {
+      const value = BigInt(raw[0]) + (BigInt(raw[1]) << 128n);
+      return {
+        raw: value.toString(),
+        human: formatUnitsSafe(value, decimals)
+      };
+    }
+  } catch {}
+  return { raw: "0", human: "0" };
+}
+
+async function getTokenAllowance(provider, tokenAddress, owner, spender) {
+  try {
+    const result = await provider.callContract({
+      contractAddress: tokenAddress,
+      entrypoint: 'allowance',
+      calldata: [owner, spender]
+    });
+    const raw = Array.isArray(result) ? result : (result?.result || []);
+    if (raw.length >= 2) {
+      return BigInt(raw[0]) + (BigInt(raw[1]) << 128n);
+    }
+  } catch {}
+  return 0n;
+}
+
 function toUint256(n) {
   return [(n & ((1n << 128n) - 1n)).toString(), (n >> 128n).toString()];
+}
+
+// Parse decimal amount safely into base units (BigInt) given token decimals.
+// Accepts integer/decimal strings and numbers (numbers must not be in scientific notation).
+function parseAmountToBaseUnits(amount, decimals) {
+  const dec = Number(decimals ?? 18);
+  if (!Number.isInteger(dec) || dec < 0 || dec > 255) {
+    throw new Error(`Invalid decimals: ${decimals}`);
+  }
+
+  if (amount === null || amount === undefined) {
+    throw new Error('Missing amount');
+  }
+
+  // Normalize to string for exact parsing
+  let s;
+  if (typeof amount === 'number') {
+    if (!Number.isFinite(amount)) throw new Error('Amount must be finite');
+    // Reject scientific notation to avoid ambiguity/precision loss
+    s = String(amount);
+    if (/[eE]/.test(s)) {
+      throw new Error('Amount in scientific notation not supported; pass amount as a string');
+    }
+  } else if (typeof amount === 'string') {
+    s = amount.trim();
+  } else {
+    s = String(amount).trim();
+  }
+
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(s)) {
+    throw new Error(`Invalid amount format: ${s}`);
+  }
+
+  const [intPart, fracPartRaw = ''] = s.split('.');
+  const fracPart = fracPartRaw;
+
+  if (fracPart.length > dec) {
+    throw new Error(`Too many decimal places: got ${fracPart.length}, token supports ${dec}`);
+  }
+
+  const base = 10n ** BigInt(dec);
+  const intBI = BigInt(intPart || '0');
+  const fracPadded = (fracPart + '0'.repeat(dec)).slice(0, dec);
+  const fracBI = BigInt(fracPadded || '0');
+
+  return intBI * base + fracBI;
 }
 
 function sanitizeExecutionPlan(plan) {
@@ -396,17 +620,6 @@ async function main() {
   }
   
   const { accountIndex = 0, execute = false, parsed } = input;
-  const executeRequested = execute === true || String(execute).toLowerCase() === 'true';
-  if (executeRequested) {
-    console.log(JSON.stringify({
-      success: false,
-      canProceed: false,
-      nextStep: 'EXECUTION_MODE_UNSUPPORTED',
-      error: 'resolve-smart currently returns an execution plan only; direct execute mode is not implemented.',
-      hint: 'Set execute=false, request explicit user authorization, then execute via the target script from executionPlan.calls.'
-    }));
-    process.exit(1);
-  }
 
   // Attestation check (must come from parse-smart)
   const attestationToken = input?.attestation?.token || parsed?.attestation?.token;
@@ -421,6 +634,16 @@ async function main() {
     }));
     process.exit(1);
   }
+
+  if (execute === true) {
+    console.log(JSON.stringify({
+      success: false,
+      canProceed: false,
+      nextStep: 'EXECUTE_NOT_IMPLEMENTED',
+      error: 'execute flag requested but execution not implemented'
+    }));
+    process.exit(1);
+  }
   
   // ============ HANDLE PRE-PARSED DATA FROM LLM ============
   if (parsed) {
@@ -431,12 +654,7 @@ async function main() {
       orchestration: [{ step: 0, name: "Using LLM-parsed data" }]
     };
     
-    const {
-      operations = [],
-      operationType,
-      abis = {},
-      addresses = {}
-    } = parsed || {};
+    const { operations = [], operationType, abis = {}, addresses = {} } = parsed || {};
     
     result.parsed = parsed;
     result.operationType = operationType;
@@ -458,7 +676,7 @@ async function main() {
     
     // Build execution plan based on operationType
     const rpcUrl = resolveRpcUrl();
-    const provider = new RpcProvider({ nodeUrl: rpcUrl });
+    const provider = new Provider({ nodeUrl: rpcUrl });
 
     if (operationType === "AVNU_SWAP") {
       const swapOp = operations[0];
@@ -514,7 +732,7 @@ async function main() {
           // Retry once with a fresh provider (some RPC hiccups manifest as stuck provider instances)
           try {
             const rpcUrl = resolveRpcUrl();
-            const p2 = new RpcProvider({ nodeUrl: rpcUrl });
+            const p2 = new Provider({ nodeUrl: rpcUrl });
             const resp2 = await p2.getClassAt(addr);
             a = resp2?.abi || [];
           } catch {
@@ -528,18 +746,14 @@ async function main() {
       for (let i = 0; i < operations.length; i++) {
         const op = operations[i];
         
-        // Check if this is an AVNU/Vesu operation (protocol name or virtual marker address)
+        // Check if this is an AVNU/VESU virtual protocol operation
         const isAvnu = op.protocol?.toLowerCase() === "avnu" || 
-                      addresses[op.protocol] === VIRTUAL_PROTOCOL_ADDRESS.AVNU ||
-                      op.contractAddress === VIRTUAL_PROTOCOL_ADDRESS.AVNU ||
-                      addresses[op.protocol] === "0x01" || // backward compatibility
-                      op.contractAddress === "0x01"; // backward compatibility
+                      AVNU_VIRTUAL_SENTINELS.has(String(addresses[op.protocol] || '')) ||
+                      AVNU_VIRTUAL_SENTINELS.has(String(op.contractAddress || ''));
 
         const isVesu = op.protocol?.toLowerCase() === "vesu" ||
-                      addresses[op.protocol] === VIRTUAL_PROTOCOL_ADDRESS.VESU ||
-                      op.contractAddress === VIRTUAL_PROTOCOL_ADDRESS.VESU ||
-                      addresses[op.protocol] === "0x02" || // backward compatibility
-                      op.contractAddress === "0x02"; // backward compatibility
+                      VESU_VIRTUAL_SENTINELS.has(String(addresses[op.protocol] || '')) ||
+                      VESU_VIRTUAL_SENTINELS.has(String(op.contractAddress || ''));
         
         if (isAvnu) {
           // AVNU swap via SDK
@@ -594,12 +808,7 @@ async function main() {
             try {
               tokenInfo = await findTokenFallback(symbol);
             } catch (err) {
-              errors.push({
-                index: i,
-                type: 'TOKEN_LOOKUP_FAILED',
-                symbol,
-                message: err?.message || String(err)
-              });
+              errors.push({ index: i, type: 'TOKEN_LOOKUP_FAILED', symbol, message: err?.message || String(err) });
               continue;
             }
             if (!tokenInfo?.address) {
@@ -770,12 +979,8 @@ async function main() {
                 }
               }
             }
-          } catch (err) {
-            warnings.push({
-              step: i + 1,
-              type: 'TOKEN_SYMBOL_RESOLUTION_FAILED',
-              message: err?.message || String(err)
-            });
+          } catch {
+            // best-effort
           }
 
           // Compile calldata using starknet.js (enforces types/shape better than our heuristics)
@@ -892,12 +1097,12 @@ async function main() {
             const durationMs = tc.unit?.startsWith('minute') ? tc.amount * 60 * 1000 :
                               tc.unit?.startsWith('hour') ? tc.amount * 60 * 60 * 1000 :
                               tc.amount * 1000; // default to seconds
+            const eventName = String(w.condition?.eventName || w.eventName || 'event').toLowerCase();
             const scheduleProtocol = String(watchProtocol || 'watch').toLowerCase();
-            const scheduleEvent = String(w.condition?.eventName || w.eventName || 'event').toLowerCase();
-            
+
             watcherConfig.args.schedule = {
               enabled: true,
-              name: `${scheduleProtocol}-${scheduleEvent}-monitor`,
+              name: `${scheduleProtocol}-${eventName}-monitor`,
               durationMs: durationMs
             };
           }
@@ -905,18 +1110,13 @@ async function main() {
           // Add action if it's a conditional (not pure watch)
           if (operationType === "CONDITIONAL" && w.action && w.action !== "watch") {
             // Determine action script based on protocol/action
-            // AVNU/Vesu are identified by protocol name or virtual marker address
             const isAvnu = w.protocol?.toLowerCase() === "avnu" || 
-                          addresses[w.protocol] === VIRTUAL_PROTOCOL_ADDRESS.AVNU ||
-                          w.contractAddress === VIRTUAL_PROTOCOL_ADDRESS.AVNU ||
-                          addresses[w.protocol] === "0x01" || // backward compatibility
-                          w.contractAddress === "0x01"; // backward compatibility
+                          AVNU_VIRTUAL_SENTINELS.has(String(addresses[w.protocol] || '')) ||
+                          AVNU_VIRTUAL_SENTINELS.has(String(w.contractAddress || ''));
 
             const isVesu = w.protocol?.toLowerCase() === "vesu" ||
-                          addresses[w.protocol] === VIRTUAL_PROTOCOL_ADDRESS.VESU ||
-                          w.contractAddress === VIRTUAL_PROTOCOL_ADDRESS.VESU ||
-                          addresses[w.protocol] === "0x02" || // backward compatibility
-                          w.contractAddress === "0x02"; // backward compatibility
+                          VESU_VIRTUAL_SENTINELS.has(String(addresses[w.protocol] || '')) ||
+                          VESU_VIRTUAL_SENTINELS.has(String(w.contractAddress || ''));
             
             if (isAvnu) {
               watcherConfig.action = {
@@ -989,7 +1189,7 @@ async function main() {
     if (result.executionPlan) {
       result.executionPlan = sanitizeExecutionPlan(result.executionPlan);
     }
-    
+
     console.log(JSON.stringify(result, null, 2));
     return;
   }

@@ -8,7 +8,7 @@
  * ERRORS: JSON to stderr
  */
 
-import { stark, hash, ec, RpcProvider } from 'starknet';
+import { stark, hash, ec, RpcProvider as Provider } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -67,13 +67,11 @@ function parseInput() {
       raw = fs.readFileSync(0, 'utf-8');
     } catch {
       printCreateAccountGuide('NO_INPUT');
-      return;
     }
   }
   
   if (!raw || !raw.trim()) {
     printCreateAccountGuide('EMPTY_INPUT');
-    return;
   }
 
   let notes;
@@ -94,8 +92,7 @@ function parseInput() {
   if (!Array.isArray(notes)) notes = [notes];
 
   const required = ['secret', 'nullifier', 'txHash', 'pool', 'day'];
-  return notes
-    .map((note, i) => {
+  return notes.map((note, i) => {
     for (const field of required) {
       if (note[field] === undefined || note[field] === null) {
         printCreateAccountGuide(`MISSING_FIELD_${field.toUpperCase()}`);
@@ -109,8 +106,7 @@ function parseInput() {
       pool: note.pool,
       day: note.day,
     };
-  })
-    .filter(Boolean);
+  }).filter(Boolean);
 }
 
 function generateKeypair() {
@@ -178,7 +174,7 @@ async function main() {
   let latestBlock = null;
   try {
     const rpcUrl = resolveRpcUrl();
-    const provider = new RpcProvider({ nodeUrl: rpcUrl });
+    const provider = new Provider({ nodeUrl: rpcUrl });
     const b = await provider.getBlock('latest');
     latestBlock = {
       blockNumber: b.block_number,

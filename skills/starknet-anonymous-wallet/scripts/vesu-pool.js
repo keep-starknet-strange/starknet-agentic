@@ -9,27 +9,25 @@
  *   "pool": "Vesu Main Pool",
  *   "user": "0x..." (optional; defaults to accountAddress),
  *   "collateralToken": "STRK",
- *   "collateralAmount": "1000.0", // preferred for supply/borrow
- *   "amount": "1000.0", // optional legacy alias for supply
+ *   "collateralAmount": "1000.0",
  *   "debtToken": "USDC",
  *   "debtAmount": "100.0",
- *   "accountAddress": "0x..."
+ *   "accountAddress": "0x...",
+ *   "rpcUrl": "https://..." (optional)
  * }
  */
 
-import { RpcProvider, Contract } from 'starknet';
+import { RpcProvider as Provider, Contract } from 'starknet';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
-import { parseAmountToBaseUnits } from './parse-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const SKILL_ROOT = join(__dirname, '..');
-const DENOMINATION_ASSETS = '1';
 
 function isHexAddress(v) {
   return typeof v === 'string' && /^0x[0-9a-fA-F]+$/.test(v);
@@ -44,33 +42,65 @@ function loadVesuPools() {
     return all?.VESU?.pools || {};
   } catch (e) {
     if (process.env.OPENCLAW_DEBUG === '1') {
-      console.error(JSON.stringify({
-        warning: 'Failed to parse protocols.json for VESU pools',
-        file: p,
-        error: e?.message || String(e)
-      }));
+      console.error(JSON.stringify({ warning: 'Failed to parse protocols.json', error: e?.message }));
     }
     return {};
   }
 }
 
+// Safe decimal parsing (same rules as resolve-smart)
+function parseAmountToBaseUnits(amount, decimals) {
+  const dec = Number(decimals ?? 18);
+  if (!Number.isInteger(dec) || dec < 0 || dec > 255) {
+    throw new Error(`Invalid decimals: ${decimals}`);
+  }
+  if (amount === null || amount === undefined) throw new Error('Missing amount');
+
+  let s;
+  if (typeof amount === 'number') {
+    if (!Number.isFinite(amount)) throw new Error('Amount must be finite');
+    s = String(amount);
+    if (/[eE]/.test(s)) throw new Error('Scientific notation not supported; pass as string');
+  } else {
+    s = String(amount).trim();
+  }
+
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(s)) throw new Error(`Invalid amount format: ${s}`);
+
+  const [intPart, fracRaw = ''] = s.split('.');
+  if (fracRaw.length > dec) {
+    throw new Error(`Too many decimal places: got ${fracRaw.length}, token supports ${dec}`);
+  }
+
+  const base = 10n ** BigInt(dec);
+  const intBI = BigInt(intPart || '0');
+  const fracPadded = (fracRaw + '0'.repeat(dec)).slice(0, dec);
+  const fracBI = BigInt(fracPadded || '0');
+  return intBI * base + fracBI;
+}
+
+function toUint256(n) {
+  const low = (n & ((1n << 128n) - 1n));
+  const high = (n >> 128n);
+  return { low: low.toString(), high: high.toString() };
+}
+
 function u256ToBigInt(v) {
   if (v === null || v === undefined) return 0n;
-  // starknet.js may return {low, high} or [low, high] or nested under .value
-  let payload = v;
-  while (payload && typeof payload === 'object' && 'value' in payload) {
-    payload = payload.value;
+  // Unwrap starknet.js { value: ... } wrapper (may be nested)
+  while (v && typeof v === 'object' && 'value' in v && !('low' in v) && !Array.isArray(v)) {
+    v = v.value;
   }
-  if (typeof payload === 'object') {
-    if (Array.isArray(payload) && payload.length >= 2) {
-      return BigInt(String(payload[0])) + (BigInt(String(payload[1])) << 128n);
+  if (typeof v === 'object') {
+    if (Array.isArray(v) && v.length >= 2) {
+      return BigInt(String(v[0])) + (BigInt(String(v[1])) << 128n);
     }
-    if ('low' in payload && 'high' in payload) {
-      return BigInt(String(payload.low)) + (BigInt(String(payload.high)) << 128n);
+    if ('low' in v && 'high' in v) {
+      return BigInt(String(v.low)) + (BigInt(String(v.high)) << 128n);
     }
   }
   // fallback single felt
-  return BigInt(String(payload));
+  return BigInt(String(v));
 }
 
 function formatUnits(value, decimals) {
@@ -148,15 +178,15 @@ async function main() {
 
   const poolAddress = poolCfg.poolAddress;
 
-  const provider = new RpcProvider({ nodeUrl: rpcUrl });
+  const provider = new Provider({ nodeUrl: rpcUrl });
 
   // Resolve tokens
   // For Vesu modify_position we need collateral_asset + debt_asset.
   // For supply-only, debt_asset is still required by the protocol; use configured defaultDebtAssetSymbol.
   const collateralToken = input.collateralToken || input.token;
   const debtToken = input.debtToken;
-  let collateralInfo = null;
-  let debtInfo = null;
+  let collateralInfo;
+  let debtInfo;
 
   if (supportedCollaterals && collateralToken) {
     const sym = String(collateralToken).toUpperCase();
@@ -328,12 +358,8 @@ async function main() {
       console.log(JSON.stringify({ success: false, error: 'Borrow requires collateralToken' }));
       process.exit(1);
     }
-    if (!debtToken) {
-      console.log(JSON.stringify({ success: false, error: 'Borrow requires debtToken' }));
-      process.exit(1);
-    }
-    if (!input.debtAmount) {
-      console.log(JSON.stringify({ success: false, error: 'Borrow requires debtAmount' }));
+    if (!debtToken || !input.debtAmount) {
+      console.log(JSON.stringify({ success: false, error: 'Borrow requires debtToken + debtAmount' }));
       process.exit(1);
     }
 
@@ -404,8 +430,8 @@ async function main() {
           if (!pairRes) {
             try { pairRes = await pairCall('pair_configs'); } catch {}
           }
-          const pr = Array.isArray(pairRes) ? pairRes : (pairRes?.result || []);
-          if (pr.length >= 1) {
+          if (pairRes?.result?.length >= 1 || Array.isArray(pairRes)) {
+            const pr = Array.isArray(pairRes) ? pairRes : pairRes.result;
             maxLtv = pr.length >= 2 ? u256ToBigInt([pr[0], pr[1]]) : BigInt(String(pr[0]));
           }
         } catch (e) {
@@ -472,15 +498,7 @@ async function main() {
   const debtAmountHuman = action === 'borrow' ? input.debtAmount : '0';
 
   if (!collateralAmountHuman) {
-    console.log(JSON.stringify({ success: false, error: 'Missing collateralAmount (or amount alias)' }));
-    process.exit(1);
-  }
-  if (!collateralInfo || !debtInfo) {
-    console.log(JSON.stringify({
-      success: false,
-      error: `Token resolution failed for action=${action}`,
-      nextStep: 'CHOOSE_TOKEN'
-    }));
+    console.log(JSON.stringify({ success: false, error: 'Missing amount/collateralAmount' }));
     process.exit(1);
   }
 
@@ -527,10 +545,10 @@ async function main() {
     toFelt(collateralInfo.address),  // collateral_asset
     toFelt(debtInfo.address),        // debt_asset
     toFelt(user),                    // user
-    DENOMINATION_ASSETS,             // collateral.denomination (Assets)
+    '1',                             // collateral.denomination (Assets = 1)
     cLow,                            // collateral.value.low
     cHigh,                           // collateral.value.high
-    DENOMINATION_ASSETS,             // debt.denomination (Assets)
+    '1',                             // debt.denomination (Assets = 1)
     dLow,                            // debt.value.low
     dHigh                            // debt.value.high
   ];

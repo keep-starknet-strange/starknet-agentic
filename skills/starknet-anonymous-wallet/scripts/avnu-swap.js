@@ -14,11 +14,23 @@ import { RpcProvider, Account, PaymasterRpc } from 'starknet';
 import { fileURLToPath } from 'url';
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
-import { parseAmountToBaseUnits } from './parse-utils.js';
+import { loadPrivateKeyByAccountAddress } from './_keys.js';
 
 
 
 const DEFAULT_SLIPPAGE = 0.001; // 0.1%
+
+function amountToBigInt(amount, decimals) {
+  const dec = Number(decimals ?? 18);
+  if (!Number.isInteger(dec) || dec < 0 || dec > 255) throw new Error('Invalid decimals');
+  const s = String(amount).trim();
+  if (!/^\d+(?:\.\d+)?$/.test(s)) throw new Error(`Invalid amount format: ${amount}`);
+  const [i, f = ''] = s.split('.');
+  if (f.length > dec) throw new Error(`Too many decimal places: ${f.length} > ${dec}`);
+  const frac = (f + '0'.repeat(dec)).slice(0, dec);
+  const digits = `${i}${frac}`.replace(/^0+(?=\d)/, '');
+  return BigInt(digits || '0');
+}
 
 /**
  * Fetch all verified tokens from AVNU
@@ -31,19 +43,18 @@ async function getAllTokens() {
  * Match token symbols to AVNU tokens
  */
 async function matchTokens(sellSymbol, buySymbol) {
-  const tokens = await getAllTokens();
-  const safeTokens = tokens.filter((t) => typeof t?.symbol === 'string' && t.symbol.length > 0);
-  const normalizedSell = String(sellSymbol || '').toLowerCase();
-  const normalizedBuy = String(buySymbol || '').toLowerCase();
-  
-  const sellToken = safeTokens.find(t => 
-    String(t?.symbol || '').toLowerCase() === normalizedSell
+  const tokens = (await getAllTokens()).filter(t => typeof t?.symbol === 'string' && t.symbol.length > 0);
+  const sellNeedle = String(sellSymbol || '').toLowerCase();
+  const buyNeedle = String(buySymbol || '').toLowerCase();
+
+  const sellToken = tokens.find(t =>
+    String(t?.symbol || '').toLowerCase() === sellNeedle
   );
-  
-  const buyToken = safeTokens.find(t => 
-    String(t?.symbol || '').toLowerCase() === normalizedBuy
+
+  const buyToken = tokens.find(t =>
+    String(t?.symbol || '').toLowerCase() === buyNeedle
   );
-  
+
   return { sellToken, buyToken };
 }
 
@@ -54,14 +65,14 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
   if (!buyToken) throw new Error(`Unknown buy token: ${buyTokenSymbol}`);
   
   // Parse amount with exact decimal conversion
-  const amountBigInt = parseAmountToBaseUnits(sellAmount, sellToken.decimals);
+  const amountBigInt = amountToBigInt(sellAmount, sellToken.decimals);
   
   const quotes = await getQuotes({
     sellTokenAddress: sellToken.address,
     buyTokenAddress: buyToken.address,
     sellAmount: amountBigInt,
     takerAddress: accountAddress,
-    size: 1,
+    size: 3, // Get top 3 quotes for comparison
   });
   
   if (!quotes || quotes.length === 0) {
@@ -71,19 +82,33 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
   return { quote: quotes[0], sellToken, buyToken };
 }
 
-let cachedPaymaster = null;
+const DEFAULT_PAYMASTER_URL = 'https://starknet.paymaster.avnu.fi';
+const ALLOWED_PAYMASTER_HOSTS = new Set([
+  'starknet.paymaster.avnu.fi',
+  'sepolia.paymaster.avnu.fi'
+]);
 
-function getPaymaster() {
-  if (cachedPaymaster) return cachedPaymaster;
-  cachedPaymaster = new PaymasterRpc({
-    nodeUrl: process.env.PAYMASTER_URL || 'https://starknet.paymaster.avnu.fi',
-  });
-  return cachedPaymaster;
+function resolvePaymasterUrl() {
+  const value = process.env.PAYMASTER_URL || DEFAULT_PAYMASTER_URL;
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`Invalid PAYMASTER_URL: ${value}`);
+  }
+  if (!ALLOWED_PAYMASTER_HOSTS.has(parsed.hostname)) {
+    throw new Error(`Untrusted paymaster host: ${parsed.hostname}`);
+  }
+  return parsed.toString();
 }
 
+let paymaster = null;
+
 async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE) {
+  if (!paymaster) throw new Error('Paymaster not initialized');
+
   const result = await executeSwap({
-    paymaster: getPaymaster(),
+    paymaster: paymaster,
     provider: account,
     quote,
     slippage,
@@ -116,8 +141,7 @@ async function main() {
     buyToken, 
     sellAmount, 
     slippage = DEFAULT_SLIPPAGE,
-    accountAddress,
-    privateKey: privateKeyInput
+    accountAddress
   } = input;
   
   if (!sellToken || !buyToken || !sellAmount) {
@@ -127,10 +151,28 @@ async function main() {
     process.exit(1);
   }
   
-  const privateKey = privateKeyInput || process.env.PRIVATE_KEY;
-  if (!accountAddress || !privateKey) {
+  if (!accountAddress) {
     console.log(JSON.stringify({
-      error: "Missing required fields: accountAddress and private key (input.privateKey or PRIVATE_KEY env)"
+      error: "Missing required field: accountAddress"
+    }));
+    process.exit(1);
+  }
+
+  if (input.privateKey) {
+    console.log(JSON.stringify({ error: 'Do not pass privateKey in JSON input.' }));
+    process.exit(1);
+  }
+
+  const privateKey = loadPrivateKeyByAccountAddress(accountAddress);
+
+  try {
+    paymaster = new PaymasterRpc({
+      nodeUrl: resolvePaymasterUrl(),
+    });
+  } catch (err) {
+    console.log(JSON.stringify({
+      error: `Paymaster initialization failed: ${err.message}`,
+      nextStep: 'CONFIGURE_PAYMASTER'
     }));
     process.exit(1);
   }
@@ -145,35 +187,18 @@ async function main() {
   });
   
   try {
-    const emitProgress = (payload) => {
-      console.error(JSON.stringify(payload));
-    };
-
     // Step 1: Get quote
-    emitProgress({
+    console.error(JSON.stringify({
       step: "quote",
       status: "fetching",
       sellToken,
       buyToken,
       sellAmount
-    });
+    }));
     
-    let quote;
-    let sellTokenData;
-    let buyTokenData;
-    try {
-      ({ quote, sellToken: sellTokenData, buyToken: buyTokenData } = await getSwapQuote(
-        sellToken,
-        buyToken,
-        sellAmount,
-        account.address
-      ));
-    } catch (e) {
-      e.step = "quote";
-      throw e;
-    }
+    const { quote, sellToken: sellTokenData, buyToken: buyTokenData } = await getSwapQuote(sellToken, buyToken, sellAmount, account.address);
     
-    emitProgress({
+    console.error(JSON.stringify({
       step: "quote",
       status: "success",
       buyAmount: quote.buyAmount.toString(),
@@ -183,26 +208,21 @@ async function main() {
       buyToken,
       sellTokenAddress: sellTokenData.address,
       buyTokenAddress: buyTokenData.address
-    });
+    }));
     
     // Step 2: Execute swap
-    emitProgress({
+    console.error(JSON.stringify({
       step: "execute",
       status: "executing",
       slippage: `${slippage * 100}%`
-    });
+    }));
     
-    let result;
-    try {
-      result = await executeAvnuSwap(quote, account, slippage);
-    } catch (e) {
-      e.step = "execute";
-      throw e;
-    }
+    const result = await executeAvnuSwap(quote, account, slippage);
     
-    // Single machine-readable payload on stdout for downstream parsers
     console.log(JSON.stringify({
       success: true,
+      step: "execute",
+      status: "success",
       transactionHash: result.transactionHash,
       sellToken,
       buyToken,
@@ -211,7 +231,7 @@ async function main() {
       gasFees: quote.gasFees.toString(),
       sellTokenAddress: sellTokenData.address,
       buyTokenAddress: buyTokenData.address,
-      explorer: `https://voyager.online/tx/${result.transactionHash}`
+      explorer: `https://starkscan.co/tx/${result.transactionHash}`
     }));
     
   } catch (err) {

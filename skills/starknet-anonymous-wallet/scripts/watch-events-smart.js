@@ -26,23 +26,19 @@
 import { RpcProvider, hash } from 'starknet';
 import { WebSocket } from 'ws';
 import { execSync, execFileSync } from 'child_process';
-import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, lstatSync, realpathSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, lstatSync } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
-import { fileURLToPath } from 'url';
 
 import { resolveRpcUrl } from './_rpc.js';
 
 const DEFAULT_POLL_INTERVAL = 3000;
 const DEFAULT_HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 5000;
-const DEFAULT_POLL_START_RETRY_MS = 5000;
 const MAX_BLOCKS_PER_CYCLE = 200;
 const DEFAULT_WS_RECOVERY_COOLDOWN_MS = 5 * 60 * 1000;
-const MAX_PROCESSED_TXS = 10000;
-const PROCESSED_TXS_TRIM_TO = 9000;
 
-function log(message, type = 'info', mode = 'initializing') {
+function log(message, type = 'info', mode = 'unknown') {
   console.log(JSON.stringify({
     timestamp: new Date().toISOString(),
     type,
@@ -100,12 +96,13 @@ function createCronJob(config) {
   
   writeFileSync(configPath, JSON.stringify(execConfig, null, 2));
 
-  const scriptPath = fileURLToPath(import.meta.url);
-  
+  const scriptPath = new URL(import.meta.url).pathname;
+  const shellQuote = (value) => `'${String(value).replace(/'/g, `'"'"'`)}'`;
+
   const shellScript = `#!/bin/bash
 cd "$(dirname "$0")"
-LOCKFILE="${configPath}.lock"
-exec flock -n "$LOCKFILE" node "${scriptPath}" '@${configPath}'
+LOCKFILE=${shellQuote(`${configPath}.lock`)}
+exec flock -n "$LOCKFILE" node ${shellQuote(scriptPath)} ${shellQuote(`@${configPath}`)}
 `;
   const shellPath = join(cronDir, `${jobName}.sh`);
   writeFileSync(shellPath, shellScript, { mode: 0o755 });
@@ -145,26 +142,40 @@ exec flock -n "$LOCKFILE" node "${scriptPath}" '@${configPath}'
   }
 }
 
+function deriveWebSocketUrl(httpUrl) {
+  const value = String(httpUrl || '').trim();
+  if (!value) return value;
+
+  // Infura Starknet: https://starknet-mainnet.infura.io/v3/<KEY> -> wss://starknet-mainnet.infura.io/ws/v3/<KEY>
+  if (/\.infura\.io\/v3\//i.test(value)) {
+    return value
+      .replace(/^https:\/\//i, 'wss://')
+      .replace(/^http:\/\//i, 'ws://')
+      .replace(/\/v3\//i, '/ws/v3/');
+  }
+
+  // Default (Alchemy and most providers): preserve path, only switch scheme.
+  return value
+    .replace(/^https:\/\//i, 'wss://')
+    .replace(/^http:\/\//i, 'ws://');
+}
+
 // Unified Event Watcher with mode switching
 class SmartEventWatcher {
   constructor(config) {
     this.config = config;
-    this.forcedMode = config.mode || 'auto'; // 'auto', 'websocket', 'polling'
     const rpcUrl = config.httpRpcUrl || resolveRpcUrl();
     this.httpUrl = rpcUrl;
-    // Require explicit wsRpcUrl. Not all providers expose WebSocket endpoints.
-    this.wsUrl = config.wsRpcUrl || null;
-    if (!this.wsUrl && this.forcedMode !== 'polling') {
-      this.log('wsRpcUrl not set; WebSocket mode unavailable, using polling fallback', 'warn');
-    }
+    // Derive WebSocket URL from HTTP URL if not explicitly provided
+    this.wsUrl = config.wsRpcUrl || deriveWebSocketUrl(this.httpUrl);
     this.pollIntervalMs = config.pollIntervalMs || DEFAULT_POLL_INTERVAL;
-    this.pollStartRetryMs = config.pollStartRetryMs || DEFAULT_POLL_START_RETRY_MS;
     this.healthCheckIntervalMs = config.healthCheckIntervalMs || DEFAULT_HEALTH_CHECK_INTERVAL;
     this.webhookTimeoutMs = config.webhookTimeoutMs || DEFAULT_WEBHOOK_TIMEOUT_MS;
     this.webhookUrl = config.webhookUrl || null;
     this.contractAddress = config.contractAddress;
     this.eventNames = config.eventNames || [];
-    this.currentMode = 'initializing'; // 'websocket', 'polling', 'initializing'
+    this.forcedMode = config.mode || 'auto'; // 'auto', 'websocket', 'polling'
+    this.currentMode = 'initializing';
     this.isShuttingDown = false;
     
     // WebSocket state
@@ -291,45 +302,12 @@ class SmartEventWatcher {
 
       // Fallback: scan cron dir for a shell script that references our config path
       if (!removed && knownConfigPath) {
-        const cronDirReal = realpathSync(cronDir);
-        const knownConfigBase = basename(knownConfigPath);
-        let knownConfigReal = null;
-        try {
-          knownConfigReal = realpathSync(knownConfigPath);
-        } catch {}
-
         const files = readdirSync(cronDir);
         for (const file of files) {
           if (!file.endsWith('.sh')) continue;
           const shellPath = join(cronDir, file);
-          let shellStat = null;
-          try {
-            shellStat = lstatSync(shellPath);
-          } catch {
-            continue;
-          }
-          if (!shellStat.isFile() || shellStat.isSymbolicLink()) continue;
-          if (typeof process.getuid === 'function' && shellStat.uid !== process.getuid()) continue;
-
-          let shellReal = null;
-          try {
-            shellReal = realpathSync(shellPath);
-          } catch {
-            continue;
-          }
-          if (!(shellReal === cronDirReal || shellReal.startsWith(`${cronDirReal}/`))) continue;
-
-          const derivedConfigPath = shellPath.replace(/\.sh$/i, '.json');
-          let configMatch = false;
-          try {
-            const derivedConfigReal = realpathSync(derivedConfigPath);
-            configMatch = knownConfigReal
-              ? derivedConfigReal === knownConfigReal
-              : basename(derivedConfigReal) === knownConfigBase;
-          } catch {
-            configMatch = !knownConfigReal && basename(derivedConfigPath) === knownConfigBase;
-          }
-          if (!configMatch) continue;
+          const shellStat = lstatSync(shellPath, { throwIfNoEntry: false });
+          if (!shellStat || !shellStat.isFile() || shellStat.isSymbolicLink()) continue;
 
           const content = readFileSync(shellPath, 'utf8');
           if (content.includes(knownConfigPath)) {
@@ -342,6 +320,7 @@ class SmartEventWatcher {
             try { unlinkSync(tmpCrontab); } catch (e) { this.log(`Failed to remove temp crontab (${tmpCrontab}): ${e}`, 'warn'); }
 
             try { unlinkSync(shellPath); } catch (e) { this.log(`Failed to remove shellPath (${shellPath}): ${e}`, 'warn'); }
+            const derivedConfigPath = shellPath.replace(/\.sh$/i, '.json');
             try { unlinkSync(derivedConfigPath); } catch (e) { this.log(`Failed to remove configPath (${derivedConfigPath}): ${e}`, 'warn'); }
 
             this.log(`Removed cron job: ${file}`, 'info');
@@ -365,14 +344,6 @@ class SmartEventWatcher {
   // Try to connect via WebSocket
   async tryWebSocket() {
     if (this.isShuttingDown) return;
-    if (!this.wsUrl) {
-      if (this.forcedMode === 'websocket') {
-        this.log('wsRpcUrl is required when mode=websocket', 'error');
-        process.exit(1);
-      }
-      await this.startPolling();
-      return false;
-    }
     
     this.log('Attempting WebSocket connection...');
 
@@ -455,9 +426,9 @@ class SmartEventWatcher {
             this.handleEvent(msg.params.result, 'websocket');
           }
         } catch (e) {
-          const raw = Buffer.isBuffer(data) ? data.toString('utf8') : String(data);
-          const rawPreview = raw.length > 320 ? `${raw.slice(0, 320)}...` : raw;
-          this.log(`WebSocket message parse error: ${e.message}; payload=${rawPreview}`, 'debug');
+          if (process.env.OPENCLAW_DEBUG === '1') {
+            this.log(`WebSocket message parse error: ${e.message}`, 'debug');
+          }
         }
       });
 
@@ -499,11 +470,7 @@ class SmartEventWatcher {
       // In auto mode, fallback to polling
       this.log(`WebSocket failed (${reason}), switching to polling mode`);
       this.stopWebSocket();
-      if (this.isPolling) {
-        this.currentMode = 'polling';
-      } else {
-        this.startPolling();
-      }
+      this.startPolling();
     }
   }
 
@@ -531,13 +498,11 @@ class SmartEventWatcher {
       this.currentBlock = block.block_number;
       this.log(`Starting from block ${this.currentBlock}`);
     } catch (err) {
-      this.log(`Failed to get starting block: ${err.message}`, 'error');
+      this.log(`Failed to get starting block: ${err.message}. Retrying in 5s...`, 'error');
       this.isPolling = false;
-      this.pollTimer = setTimeout(() => {
-        if (this.isShuttingDown || this.isPolling) return;
-        this.startPolling();
-      }, this.pollStartRetryMs);
-      this.log(`Retrying polling startup in ${this.pollStartRetryMs}ms`, 'warn');
+      setTimeout(() => {
+        if (!this.isShuttingDown && !this.isPolling) this.startPolling();
+      }, 5000);
       return;
     }
 
@@ -584,7 +549,7 @@ class SmartEventWatcher {
 
       let continuationToken = undefined;
       do {
-        const page = await this.provider.getEvents({
+        const events = await this.provider.getEvents({
           fromBlock: { block_number: blockNumber },
           toBlock: { block_number: blockNumber },
           address: this.contractAddress,
@@ -593,11 +558,11 @@ class SmartEventWatcher {
           continuation_token: continuationToken
         });
 
-        for (const event of page.events || []) {
+        for (const event of events.events || []) {
           this.handleEvent(event, 'polling');
         }
 
-        continuationToken = page.continuation_token;
+        continuationToken = events.continuation_token;
       } while (continuationToken);
     } catch (err) {
       this.log(`Block ${blockNumber} error: ${err.message}`, 'error');
@@ -611,12 +576,13 @@ class SmartEventWatcher {
     if (this.processedTxs.has(txKey)) return;
     this.processedTxs.add(txKey);
     
-    if (this.processedTxs.size > MAX_PROCESSED_TXS) {
-      const iter = this.processedTxs.values();
-      while (this.processedTxs.size > PROCESSED_TXS_TRIM_TO) {
-        const next = iter.next();
-        if (next.done) break;
-        this.processedTxs.delete(next.value);
+    if (this.processedTxs.size > 10000) {
+      const entriesToRemove = this.processedTxs.size - 9000;
+      let removed = 0;
+      for (const key of this.processedTxs.keys()) {
+        if (removed >= entriesToRemove) break;
+        this.processedTxs.delete(key);
+        removed++;
       }
     }
 
@@ -661,7 +627,6 @@ class SmartEventWatcher {
       } else if (this.currentMode === 'polling') {
         // In auto mode, periodically try to recover WebSocket
         if (this.forcedMode !== 'auto') return;
-        if (!this.wsUrl) return;
 
         if (this.lastWsFailureTime && (Date.now() - this.lastWsFailureTime) >= this.wsRecoveryCooldownMs) {
           this.wsReconnectAttempts = 0;
@@ -673,8 +638,10 @@ class SmartEventWatcher {
         }
 
         this.log('Health check: Attempting WebSocket recovery...');
+        this.wsReconnectAttempts = 0;
         this.tryWebSocket().then(success => {
           if (success) {
+            // Stop polling only after WebSocket is confirmed live
             this.stopPolling();
           }
         });
@@ -723,6 +690,7 @@ async function main() {
     console.error(JSON.stringify({ error: `Invalid JSON in ${source}: ${err.message}` }));
     process.exit(1);
   }
+
   // Remember config path/job name when started from cron
   if (configPath) {
     config.__configPath = configPath;
