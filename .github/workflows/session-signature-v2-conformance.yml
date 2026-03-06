@@ -241,14 +241,24 @@ jobs:
             jq -S '
               (.vectors //= [])
               | (.sessionVectors //= [])
-              | del(.vectors[].expected.signature, .derivation)
+              | del(
+                  .vectors[].expected.signature,
+                  .derivation,
+                  .sessionVectors[].expected.signingDomainHash,
+                  .sessionVectors[].expected.verificationDomainHash
+                )
               | .vectors |= sort_by(.id)
               | .sessionVectors |= sort_by(.id)
             ' "$vectors_out" > "$vectors_norm_remote"
             jq -S '
               (.vectors //= [])
               | (.sessionVectors //= [])
-              | del(.vectors[].expected.signature, .derivation)
+              | del(
+                  .vectors[].expected.signature,
+                  .derivation,
+                  .sessionVectors[].expected.signingDomainHash,
+                  .sessionVectors[].expected.verificationDomainHash
+                )
               | .vectors |= sort_by(.id)
               | .sessionVectors |= sort_by(.id)
             ' spec/session-signature-v2.json > "$vectors_norm_local"
