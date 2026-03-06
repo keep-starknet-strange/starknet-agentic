@@ -44,9 +44,11 @@ with reproducible evidence.
   - `docs/security/PRODUCTION_DEPLOYMENT_RUNBOOK.md`
   - `docs/DEPLOYMENT_TRUTH_SHEET.md`
 - `#334` audit scope/closure:
+  - `docs/security/EXTERNAL_AUDIT_SCOPE.md`
   - issue body + sign-off links
 - `#335` E2E/load/sign-off:
   - `docs/security/SPENDING_POLICY_AUDIT.md`
+  - `docs/security/SPENDING_POLICY_SIGNOFF_MATRIX.md`
 
 ### `#335` spending policy E2E/load/sign-off closure
 
