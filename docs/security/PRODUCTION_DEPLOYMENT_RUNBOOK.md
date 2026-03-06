@@ -23,33 +23,49 @@ the no-backend launch profile.
 ```bash
 export RPC_URL="<starknet-mainnet-rpc>"
 export DEPLOYER_ACCOUNT="<account_address>"
-export DEPLOYER_PK="<private_key_or_signer_reference>"
+export KEYSTORE_PATH="<path_to_encrypted_keystore>"
 
 export IDENTITY_REGISTRY="<identity_registry_addr>"
 export REPUTATION_REGISTRY="<reputation_registry_addr>"
 export VALIDATION_REGISTRY="<validation_registry_addr>"
-export FACTORY_OWNER="<multisig_owner_addr>"
+export EXPECTED_MULTISIG="<multisig_owner_addr>"
 ```
 
 ## Step 1: Build and Class Hash Verification
 
 ```bash
-scarb build
-starkli class-hash contracts/agent-account/target/dev/agent_account_AgentAccount.contract_class.json
-starkli class-hash contracts/agent-account/target/dev/agent_account_AgentAccountFactory.contract_class.json
+scarb build --release
+starkli class-hash contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json
+starkli class-hash contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json
 ```
 
 Record hashes and attach to issue evidence.
 
 ## Step 2: Declare Classes (Mainnet)
 
-```bash
-starkli declare contracts/agent-account/target/dev/agent_account_AgentAccount.contract_class.json \
-  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --private-key "$DEPLOYER_PK"
+Use one signer flow only:
 
-starkli declare contracts/agent-account/target/dev/agent_account_AgentAccountFactory.contract_class.json \
-  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --private-key "$DEPLOYER_PK"
+- keystore (recommended):
+
+```bash
+starkli declare contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json \
+  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --keystore "$KEYSTORE_PATH"
+
+starkli declare contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json \
+  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --keystore "$KEYSTORE_PATH"
 ```
+
+- hardware wallet:
+
+```bash
+starkli declare contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json \
+  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger
+
+starkli declare contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json \
+  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger
+```
+
+Do not use `--private-key` for production operations.
 
 Record resulting class hashes and tx hashes.
 
@@ -57,18 +73,30 @@ Record resulting class hashes and tx hashes.
 
 Constructor parameters must bind to the intended registry set and owner:
 
-- `owner = FACTORY_OWNER`
+- `owner = EXPECTED_MULTISIG`
 - `identity_registry = IDENTITY_REGISTRY`
 - `account_class_hash = <declared_agent_account_class_hash>`
 
 Example:
 
+keystore:
+
 ```bash
 starkli deploy <agent_account_factory_class_hash> \
-  "$FACTORY_OWNER" \
+  "$EXPECTED_MULTISIG" \
   "$IDENTITY_REGISTRY" \
   "<agent_account_class_hash>" \
-  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --private-key "$DEPLOYER_PK"
+  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --keystore "$KEYSTORE_PATH"
+```
+
+hardware wallet:
+
+```bash
+starkli deploy <agent_account_factory_class_hash> \
+  "$EXPECTED_MULTISIG" \
+  "$IDENTITY_REGISTRY" \
+  "<agent_account_class_hash>" \
+  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger
 ```
 
 ## Step 4: Runtime Verification
@@ -77,13 +105,19 @@ starkli deploy <agent_account_factory_class_hash> \
 starkli call <factory_address> get_owner --rpc "$RPC_URL"
 starkli call <factory_address> get_identity_registry --rpc "$RPC_URL"
 starkli call <factory_address> get_account_class_hash --rpc "$RPC_URL"
+starkli call "$IDENTITY_REGISTRY" owner --rpc "$RPC_URL"
+starkli call "$REPUTATION_REGISTRY" owner --rpc "$RPC_URL"
+starkli call "$VALIDATION_REGISTRY" owner --rpc "$RPC_URL"
 ```
 
 Acceptance checks:
 
-- `get_owner == FACTORY_OWNER`
+- `get_owner == EXPECTED_MULTISIG`
 - `get_identity_registry == IDENTITY_REGISTRY` (must not point to legacy set)
 - `get_account_class_hash` matches declared AgentAccount class hash
+- `owner(IDENTITY_REGISTRY) == EXPECTED_MULTISIG`
+- `owner(REPUTATION_REGISTRY) == EXPECTED_MULTISIG`
+- `owner(VALIDATION_REGISTRY) == EXPECTED_MULTISIG`
 
 ## Step 5: SessionAccount Production Path
 
@@ -127,6 +161,7 @@ Attach all of the following to the tracking issue:
 - declaration tx hashes
 - deployment tx hash + deployed address
 - command outputs for `get_owner/get_identity_registry/get_account_class_hash`
+- command outputs for registry `owner` checks (identity/reputation/validation)
 - smoke-test output links
 - residual risk note
 
