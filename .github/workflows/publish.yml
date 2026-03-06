@@ -8,12 +8,16 @@ on:
   release:
     types: [created]
 
+concurrency:
+  group: publish-manual-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
 jobs:
   publish-npm:
     name: Publish to npm
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
       attestations: write
     steps:
@@ -45,10 +49,46 @@ jobs:
           cd ../starknet-a2a && npm pack --pack-destination ../../dist-release
           cd ../starknet-agent-passport && npm pack --pack-destination ../../dist-release
 
+      - name: Generate release checksums
+        run: |
+          set -euo pipefail
+          shopt -s failglob
+          cd dist-release
+          sha256sum *.tgz > checksums.txt
+
+      - name: Preflight release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if ! existing_assets="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length' 2>&1)"; then
+            echo "ERROR: Could not query release '$RELEASE_TAG'. gh output: $existing_assets"
+            exit 1
+          fi
+          if ! [[ "$existing_assets" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: Unexpected release assets response for '$RELEASE_TAG': $existing_assets"
+            exit 1
+          fi
+          if [ "$existing_assets" -gt 0 ]; then
+            echo "Release $RELEASE_TAG already has assets. Aborting to prevent attestation mismatch."
+            exit 1
+          fi
+
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
-          subject-path: 'dist-release/*.tgz'
+          subject-path: |
+            dist-release/*.tgz
+            dist-release/checksums.txt
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          gh release upload "$RELEASE_TAG" dist-release/*.tgz dist-release/checksums.txt
 
       - name: Publish to npm
         run: |

@@ -35,3 +35,9 @@ This repository is pre-1.0.
 
 - Security fixes are applied to `main`.
 - Critical fixes may be backported to recent release branches when they exist.
+
+## Release Provenance Verification
+
+Release artifact provenance verification is documented in:
+
+- [docs/security/PROVENANCE_VERIFICATION.md](docs/security/PROVENANCE_VERIFICATION.md)
