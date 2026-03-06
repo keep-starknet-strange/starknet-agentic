@@ -90,7 +90,7 @@ For production environments, use MCP proxy signer mode rather than raw in-proces
 | `@starknet-agentic/mcp-server` | [`packages/starknet-mcp-server`](./packages/starknet-mcp-server/) | Starknet operations over MCP |
 | `@starknet-agentic/a2a` | [`packages/starknet-a2a`](./packages/starknet-a2a/) | A2A protocol adapter |
 | `@starknet-agentic/agent-passport` | [`packages/starknet-agent-passport`](./packages/starknet-agent-passport/) | ERC-8004 capability metadata helpers |
-| `@starknet-agentic/x402-starknet` | [`packages/x402-starknet`](./packages/x402-starknet/) | Starknet payment signing utilities |
+| `x402-starknet` (internal) | [`packages/x402-starknet`](./packages/x402-starknet/) | Internal workspace package for Starknet payment signing utilities |
 | `@starknet-agentic/onboarding-utils` | [`packages/starknet-onboarding-utils`](./packages/starknet-onboarding-utils/) | Shared onboarding helpers |
 
 ### Skills
@@ -151,6 +151,7 @@ Demo setup details: [`examples/hello-agent/README.md`](./examples/hello-agent/RE
 |---|---|
 | [`examples/hello-agent`](./examples/hello-agent/) | Minimal RPC + state read + transaction path |
 | [`examples/onboard-agent`](./examples/onboard-agent/) | Deploy agent account + register identity + receipt artifacts |
+| [`examples/defi-agent`](./examples/defi-agent/) | Autonomous DeFi strategy agent (triangular arb + risk controls) |
 | [`examples/full-stack-swarm`](./examples/full-stack-swarm/) | Autonomous multi-agent run with MCP + signer boundary + ERC-8004 |
 | [`examples/secure-defi-demo`](./examples/secure-defi-demo/) | Base reputation envelope + Starknet guardrails + Vesu flow artifact |
 | [`examples/crosschain-demo`](./examples/crosschain-demo/) | Cross-chain registration flow (Base Sepolia + Starknet Sepolia) |
