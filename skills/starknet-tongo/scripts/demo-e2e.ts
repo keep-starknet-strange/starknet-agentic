@@ -49,6 +49,8 @@ async function main() {
     tongoAddress,
     provider,
   );
+  // WARNING: Test-only pattern. In production, each Tongo private key must only
+  // exist on its owner's machine. Never co-locate multiple Tongo keys.
   const receiver = new TongoAccount(
     required("TONGO_PRIVATE_KEY_RECEIVER"),
     tongoAddress,
