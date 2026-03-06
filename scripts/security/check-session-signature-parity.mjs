@@ -6,7 +6,12 @@ import { pathToFileURL } from "node:url";
 const USAGE_TEXT =
   "Usage: node scripts/security/check-session-signature-parity.mjs " +
   "--counterpart <name> --local-schema <path> --remote-schema <path> " +
-  "--local-vectors <path> --remote-vectors <path> [--label <text>] [--vector-key <key>]";
+  "--local-vectors <path> --remote-vectors <path> [--label <text>] [--vector-key <key>] [--secondary-key <key>]";
+
+const EXIT_OK = 0;
+const EXIT_PARITY_DRIFT = 1;
+const EXIT_USAGE = 2;
+const EXIT_RUNTIME_ERROR = 3;
 
 export function usageAndExit(message) {
   const composedMessage = message ? `${message}\n${USAGE_TEXT}` : USAGE_TEXT;
@@ -17,16 +22,30 @@ export function usageAndExit(message) {
 
 export function parseArgs(argv) {
   const args = new Map();
+  const allowedFlags = new Set([
+    "counterpart",
+    "local-schema",
+    "remote-schema",
+    "local-vectors",
+    "remote-vectors",
+    "label",
+    "vector-key",
+    "secondary-key",
+  ]);
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (!token.startsWith("--")) {
       usageAndExit(`Unexpected argument: ${token}`);
     }
+    const key = token.slice(2);
+    if (!allowedFlags.has(key)) {
+      usageAndExit(`Unknown flag: ${token}`);
+    }
     const value = argv[i + 1];
     if (!value || value.startsWith("--")) {
       usageAndExit(`Missing value for ${token}`);
     }
-    args.set(token.slice(2), value);
+    args.set(key, value);
     i += 1;
   }
   return {
@@ -37,6 +56,7 @@ export function parseArgs(argv) {
     remoteVectorsPath: args.get("remote-vectors"),
     label: args.get("label") ?? "Spec parity",
     vectorKey: args.get("vector-key") ?? "vectors",
+    secondaryKey: args.get("secondary-key") ?? null,
   };
 }
 
@@ -189,30 +209,34 @@ export function main(argv = process.argv.slice(2)) {
     }
     hasFailures = hasFailures || outsideGroup.hasIssues;
 
-    const localSession = asArrayIfPresent(localVectorsDoc.sessionVectors);
-    const remoteSession = asArrayIfPresent(remoteVectorsDoc.sessionVectors);
-    if (localSession || remoteSession) {
-      const effectiveLocal = localSession ?? [];
-      const effectiveRemote = remoteSession ?? [];
-      const sessionGroup = compareVectorGroup("sessionVectors", effectiveLocal, effectiveRemote);
-      for (const line of sessionGroup.lines) {
+    if (parsed.secondaryKey) {
+      const localSecondary = asArrayIfPresent(localVectorsDoc[parsed.secondaryKey]);
+      const remoteSecondary = asArrayIfPresent(remoteVectorsDoc[parsed.secondaryKey]);
+      if (!localSecondary || !remoteSecondary) {
+        throw new Error(
+          `Both vector documents must include a top-level \`${parsed.secondaryKey}\` array ` +
+            `(local=${parsed.localVectorsPath}, remote=${parsed.remoteVectorsPath})`,
+        );
+      }
+      const secondaryGroup = compareVectorGroup(parsed.secondaryKey, localSecondary, remoteSecondary);
+      for (const line of secondaryGroup.lines) {
         consoleLines.push(`[${parsed.counterpart}] ${line}`);
         summaryLines.push(`- ${line}`);
       }
-      hasFailures = hasFailures || sessionGroup.hasIssues;
+      hasFailures = hasFailures || secondaryGroup.hasIssues;
     }
 
     console.log(consoleLines.join("\n"));
     appendSummary(summaryLines);
 
-    return hasFailures ? 1 : 0;
+    return hasFailures ? EXIT_PARITY_DRIFT : EXIT_OK;
   } catch (error) {
     if (error instanceof Error && error.name === "UsageError") {
       console.error(error.message);
-      return 2;
+      return EXIT_USAGE;
     }
     console.error(error instanceof Error ? error.message : String(error));
-    return 1;
+    return EXIT_RUNTIME_ERROR;
   }
 }
 

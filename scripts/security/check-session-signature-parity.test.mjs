@@ -52,9 +52,12 @@ test("parseArgs supports optional label and vector key", () => {
     "Session signature parity",
     "--vector-key",
     "vectors",
+    "--secondary-key",
+    "sessionVectors",
   ]);
   assert.equal(parsed.label, "Session signature parity");
   assert.equal(parsed.vectorKey, "vectors");
+  assert.equal(parsed.secondaryKey, "sessionVectors");
 });
 
 test("parseArgs rejects unexpected positionals", () => {
@@ -68,6 +71,13 @@ test("parseArgs rejects missing values", () => {
   assert.throws(
     () => parseArgs(["--counterpart"]),
     /Missing value for --counterpart/,
+  );
+});
+
+test("parseArgs rejects unknown flags", () => {
+  assert.throws(
+    () => parseArgs(["--counterpart", "SISNA", "--bad-flag", "1"]),
+    /Unknown flag: --bad-flag/,
   );
 });
 
