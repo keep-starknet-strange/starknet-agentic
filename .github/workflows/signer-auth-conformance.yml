@@ -11,6 +11,8 @@ on:
       - "docs/security/SIGNER_API_SPEC.md"
       - "docs/security/SIGNER_PROXY_ROTATION_RUNBOOK.md"
       - ".github/workflows/signer-auth-conformance.yml"
+      - "scripts/security/check-session-signature-parity.mjs"
+      - "scripts/security/check-session-signature-parity.test.mjs"
   push:
     branches:
       - main
@@ -23,7 +25,15 @@ on:
       - "docs/security/SIGNER_API_SPEC.md"
       - "docs/security/SIGNER_PROXY_ROTATION_RUNBOOK.md"
       - ".github/workflows/signer-auth-conformance.yml"
+      - "scripts/security/check-session-signature-parity.mjs"
+      - "scripts/security/check-session-signature-parity.test.mjs"
   workflow_dispatch:
+  schedule:
+    - cron: "35 5 * * *"
+
+concurrency:
+  group: signer-auth-conformance-${{ github.event.pull_request.number || github.ref_name || github.sha }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -43,6 +53,9 @@ jobs:
 
       - name: Install AJV CLI
         run: npm install --global ajv-cli@5.0.0
+
+      - name: Run parity checker unit tests
+        run: node --test scripts/security/check-session-signature-parity.test.mjs
 
       - name: Validate signer auth vectors schema
         run: |
@@ -104,7 +117,18 @@ jobs:
               continue
             fi
 
-            diff -u "spec/signer-auth-v1.schema.json" "/tmp/${name}-signer-auth-v1.schema.json"
-            diff -u "spec/signer-auth-v1.json" "/tmp/${name}-signer-auth-v1.json"
-            echo "Parity OK with ${repo}"
+            if ! node scripts/security/check-session-signature-parity.mjs \
+              --counterpart "${repo}" \
+              --label "Signer auth parity" \
+              --local-schema spec/signer-auth-v1.schema.json \
+              --remote-schema "/tmp/${name}-signer-auth-v1.schema.json" \
+              --local-vectors spec/signer-auth-v1.json \
+              --remote-vectors "/tmp/${name}-signer-auth-v1.json"; then
+              if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+                echo "::warning::${repo} signer-auth parity drift detected on PR; keep coordinated rollout open."
+              else
+                echo "${repo} signer-auth parity drift detected on ${GITHUB_EVENT_NAME}; failing."
+                exit 1
+              fi
+            fi
           done

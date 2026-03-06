@@ -1,6 +1,15 @@
 {
   "spec": "session-signature-v2",
   "version": "2.0.0",
+  "derivation": {
+    "canonicalRepository": "keep-starknet-strange/starknet-agentic",
+    "canonicalRef": "main",
+    "canonicalSpecPath": "spec/session-signature-v2.json",
+    "verificationReferences": [
+      "packages/starknet-mcp-server/__tests__/helpers/sessionSignatureVectors.test.ts",
+      "packages/starknet-mcp-server/__tests__/helpers/keyringProxySigner.test.ts"
+    ]
+  },
   "vectors": [
     {
       "id": "outside_execution_single_call_sepolia_v2",
@@ -28,11 +37,7 @@
       },
       "expected": {
         "domainHash": "0x2534050c42890f9cad3cf470a8b54a39c4d283a246dfceb486a8755e44a91df",
-        "messageHash": "0x42020b70d5ca7dea4ce8b7866cb1477b218825e4378f69ffd5b5f712406fcef",
-        "signature": {
-          "r": "0x01020304",
-          "s": "0x05060708"
-        }
+        "messageHash": "0x42020b70d5ca7dea4ce8b7866cb1477b218825e4378f69ffd5b5f712406fcef"
       }
     }
   ],

@@ -7,6 +7,10 @@ on:
         description: "Path to secure-defi artifact JSON (repo-relative)"
         required: false
         default: "examples/secure-defi-demo/test/fixtures/strict-claims-pass.json"
+      manifest_path:
+        description: "Optional path to artifact-manifest.json (repo-relative)"
+        required: false
+        default: ""
   push:
     tags:
       - "v*"
@@ -22,13 +26,52 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Verify strict claims artifact
-        env:
-          STRICT_ARTIFACT_PATH: ${{ github.event.inputs.artifact_path || 'examples/secure-defi-demo/test/fixtures/strict-claims-pass.json' }}
+      - name: Run evidence/proof validator unit tests
         run: |
           set -euo pipefail
-          if [ ! -f "$STRICT_ARTIFACT_PATH" ]; then
-            echo "Artifact file not found: $STRICT_ARTIFACT_PATH"
+          node --test scripts/security/verify-secure-defi-claims.test.mjs
+          node --test scripts/security/evidence-manifest.test.mjs
+
+      - name: Verify strict claims artifact
+        env:
+          ARTIFACT_PATH: ${{ github.event.inputs.artifact_path || 'examples/secure-defi-demo/test/fixtures/strict-claims-pass.json' }}
+          MANIFEST_PATH: ${{ github.event.inputs.manifest_path || '' }}
+        run: |
+          set -euo pipefail
+          WORKSPACE="${GITHUB_WORKSPACE:-$PWD}"
+
+          resolve_repo_path() {
+            local input_path="$1"
+            case "$input_path" in
+              /*|[A-Za-z]:*)
+                echo "Path must be repo-relative: $input_path"
+                exit 1
+                ;;
+            esac
+            local resolved
+            resolved="$(realpath -m "$WORKSPACE/$input_path")"
+            case "$resolved" in
+              "$WORKSPACE"/*)
+                printf '%s\n' "$resolved"
+                ;;
+              *)
+                echo "Path escapes workspace: $input_path"
+                exit 1
+                ;;
+            esac
+          }
+
+          ARTIFACT_PATH="$(resolve_repo_path "$ARTIFACT_PATH")"
+          if [ ! -f "$ARTIFACT_PATH" ]; then
+            echo "Artifact file not found: $ARTIFACT_PATH"
             exit 1
           fi
-          node scripts/security/verify-secure-defi-claims.mjs --artifact "$STRICT_ARTIFACT_PATH" --require-strict
+          node scripts/security/verify-secure-defi-claims.mjs --artifact "$ARTIFACT_PATH" --require-strict
+          if [ -n "$MANIFEST_PATH" ]; then
+            MANIFEST_PATH="$(resolve_repo_path "$MANIFEST_PATH")"
+            if [ ! -f "$MANIFEST_PATH" ]; then
+              echo "Manifest file not found: $MANIFEST_PATH"
+              exit 1
+            fi
+            node scripts/security/evidence-manifest.mjs --manifest "$MANIFEST_PATH" --require-strict
+          fi

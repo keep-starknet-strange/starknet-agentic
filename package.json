@@ -18,6 +18,7 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
+    "verify:evidence": "node scripts/security/evidence-manifest.mjs --manifest examples/secure-defi-demo/artifacts/artifact-manifest.json --require-strict",
     "demo:hello-agent": "node examples/hello-agent/index.mjs",
     "ci:version": "changeset version",
     "ci:release": "pnpm build && changeset publish"

@@ -77,6 +77,7 @@ Strict security proof profile (issue #315):
 
 ```bash
 STRICT_SECURITY_PROOF=1 \
+DEMO_EVIDENCE_SIGNING_PRIVATE_KEY_PATH=./keys/demo-evidence-signing-key.pem \
 DEMO_AUTO_REGISTER_AGENT=1 \
 DEMO_ANCHOR_BASE_TO_ERC8004=1 \
 STARKNET_SIGNER_MODE=proxy \
@@ -99,12 +100,19 @@ Artifacts are written to `DEMO_OUTPUT_DIR` (default `./artifacts`).
 Each run returns:
 
 - JSON artifact path + markdown summary path
+- signed `artifact-manifest.json` path (strict profile or when signing key envs are set)
 - run id
 - per-step status (`ok`, `failed`, `skipped`)
 - deterministic `claims[]` map (`proof_status`, `tx_hash`, `evidence_path`)
 - rejection probe evidence
 - Vesu before/after position snapshots (when executed)
 - recommendations for missing requirements
+
+Verify a generated evidence bundle:
+
+```bash
+pnpm verify:evidence
+```
 
 ## Funding Required for `run:execute`
 

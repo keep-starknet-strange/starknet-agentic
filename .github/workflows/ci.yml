@@ -176,6 +176,13 @@ jobs:
           set -euo pipefail
           node scripts/security/audit-gate.mjs --report audit-report.json --allowlist security/audit-allowlist.json --failLevel high
 
+      - name: Run security script unit tests
+        run: |
+          set -euo pipefail
+          node --test scripts/security/check-session-signature-parity.test.mjs
+          node --test scripts/security/verify-secure-defi-claims.test.mjs
+          node --test scripts/security/evidence-manifest.test.mjs
+
       - name: Build packages
         run: pnpm run build
 

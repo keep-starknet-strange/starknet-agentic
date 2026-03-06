@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { pathToFileURL } from "node:url";
 
-const REQUIRED_CLAIM_IDS = [
+export const REQUIRED_CLAIM_IDS = [
   "oversized_spend_denied",
   "forbidden_selector_denied",
   "revoked_or_expired_session_blocked",
@@ -10,8 +11,11 @@ const REQUIRED_CLAIM_IDS = [
   "base_to_starknet_anchor_verified",
   "starkzap_execution_receipt",
 ];
+const OPTIONAL_POLICY_CLAIM_IDS = new Set([
+  "starkzap_execution_receipt",
+]);
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
@@ -28,53 +32,75 @@ function parseArgs(argv) {
   return args;
 }
 
-function loadArtifact(path) {
-  return JSON.parse(fs.readFileSync(path, "utf8"));
+export function loadArtifact(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const artifactPath = args.artifact;
-  const requireStrict = args["require-strict"] === "true" || args["require-strict"] === true;
-
-  if (!artifactPath) {
-    console.error("Usage: node scripts/security/verify-secure-defi-claims.mjs --artifact <path> [--require-strict]");
-    process.exit(2);
-  }
-
-  const artifact = loadArtifact(artifactPath);
+export function verifyClaimsArtifact(artifact, options = {}) {
+  const { requireStrict = false } = options;
   const claims = Array.isArray(artifact?.claims) ? artifact.claims : [];
   const byId = new Map(claims.map((claim) => [String(claim?.claimId), claim]));
 
   if (requireStrict && artifact?.strictSecurityProof !== true) {
-    console.error("strict-proof-gate: BLOCK");
-    console.error("- strictSecurityProof is not true in artifact");
-    process.exit(1);
+    throw new Error("strictSecurityProof is not true in artifact");
   }
 
   const missingClaimEntries = REQUIRED_CLAIM_IDS.filter((id) => !byId.has(id));
   if (missingClaimEntries.length > 0) {
-    console.error("strict-proof-gate: BLOCK");
-    for (const claimId of missingClaimEntries) {
-      console.error(`- missing claim entry: ${claimId}`);
-    }
-    process.exit(1);
+    throw new Error(
+      `missing claim entries: ${missingClaimEntries.join(", ")}`,
+    );
   }
 
-  const blocking = claims.filter(
-    (claim) => claim?.required === true && String(claim?.proof_status) !== "proved",
-  );
+  const blocking = claims.filter((claim) => {
+    const claimId = String(claim?.claimId ?? "");
+    if (!REQUIRED_CLAIM_IDS.includes(claimId)) {
+      return false;
+    }
+    const policyRequired =
+      !OPTIONAL_POLICY_CLAIM_IDS.has(claimId) || claim?.required === true;
+    return policyRequired && String(claim?.proof_status) !== "proved";
+  });
   if (blocking.length > 0) {
-    console.error("strict-proof-gate: BLOCK");
-    for (const claim of blocking) {
-      console.error(
-        `- ${claim.claimId} failed (status=${claim.proof_status}, tx_hash=${claim.tx_hash ?? "null"}, evidence_path=${claim.evidence_path ?? "unknown"})`,
-      );
-    }
-    process.exit(1);
+    const details = blocking
+      .map(
+        (claim) =>
+          `${claim.claimId} failed (status=${claim.proof_status}, tx_hash=${claim.tx_hash ?? "null"}, evidence_path=${claim.evidence_path ?? "unknown"})`,
+      )
+      .join("; ");
+    throw new Error(details);
   }
 
-  console.log(`strict-proof-gate: PASS (${claims.length} claims validated from ${artifactPath})`);
+  return { claimsCount: claims.length };
 }
 
-main();
+function printUsage() {
+  console.error("Usage: node scripts/security/verify-secure-defi-claims.mjs --artifact <path> [--require-strict]");
+}
+
+export function main(argv = process.argv.slice(2)) {
+  const args = parseArgs(argv);
+  const artifactPath = args.artifact;
+  const requireStrict = args["require-strict"] === "true" || args["require-strict"] === true;
+
+  if (!artifactPath) {
+    printUsage();
+    return 2;
+  }
+
+  try {
+    const artifact = loadArtifact(artifactPath);
+    const summary = verifyClaimsArtifact(artifact, { requireStrict });
+    console.log(`strict-proof-gate: PASS (${summary.claimsCount} claims validated from ${artifactPath})`);
+    return 0;
+  } catch (error) {
+    console.error("strict-proof-gate: BLOCK");
+    console.error(`- ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+}
+
+const isCli = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isCli) {
+  process.exitCode = main();
+}
