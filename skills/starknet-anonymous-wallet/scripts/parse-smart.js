@@ -574,13 +574,18 @@ async function main() {
     }
   }
   
-  // Step 5: Handle AVNU - treat as normal protocol with fake ABI/address
+  // Step 5: Handle AVNU/VESU explicit mentions (virtual protocols)
   const hasAvnuExplicit = protocols.some(p => p.toLowerCase() === 'avnu') ||
                           prompt.toLowerCase().includes('avnu');
-  
-  // Add AVNU to protocols list if mentioned
+  const hasVesuExplicit = protocols.some(p => p.toLowerCase() === 'vesu') ||
+                          prompt.toLowerCase().includes('vesu');
+
+  // Add AVNU/VESU to protocols list if mentioned
   if (hasAvnuExplicit && !protocols.includes('AVNU')) {
     protocols.push('AVNU');
+  }
+  if (hasVesuExplicit && !protocols.includes('VESU')) {
+    protocols.push('VESU');
   }
   
   // Step 6: Check for unregistered protocols (AVNU is now treated as registered)
@@ -591,8 +596,8 @@ async function main() {
   );
   
   const unregistered = mentionedProtocols.protocols.filter(p => {
-    // Skip AVNU - it's treated as a special but registered protocol
-    if (p.toLowerCase() === 'avnu') return false;
+    // Skip AVNU/VESU - treated as special but registered protocols
+    if (p.toLowerCase() === 'avnu' || p.toLowerCase() === 'vesu') return false;
     return !knownProtocols.some(kp => kp.toLowerCase() === p.toLowerCase());
   });
   
