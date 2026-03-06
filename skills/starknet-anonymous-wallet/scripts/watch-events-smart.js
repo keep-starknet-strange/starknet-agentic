@@ -421,7 +421,9 @@ class SmartEventWatcher {
             this.handleEvent(msg.params.result, 'websocket');
           }
         } catch (e) {
-          // Ignore parse errors
+          if (process.env.OPENCLAW_DEBUG === '1') {
+            log(`WebSocket message parse error: ${e.message}`, 'debug');
+          }
         }
       });
 
