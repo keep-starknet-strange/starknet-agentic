@@ -8,7 +8,7 @@
  * ERRORS: JSON to stderr
  */
 
-import { stark, hash, ec, Provider } from 'starknet';
+import { stark, hash, ec, RpcProvider as Provider } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
