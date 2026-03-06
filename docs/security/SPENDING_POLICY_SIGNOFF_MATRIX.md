@@ -98,19 +98,46 @@ fi
 
 ```bash
 # SP-08: sustained-load sample (attach full script + output artifact)
+sp08_tx_count="${SP08_TX_COUNT:-100}"
+sp08_transfer_amount="${SP08_TRANSFER_AMOUNT:-1}"
+sp08_expected_window_limit="${SP08_EXPECTED_WINDOW_LIMIT:-}"
+
+# Precondition: avoid exhausting the configured spending window mid-run.
+if [ -n "$sp08_expected_window_limit" ]; then
+  sp08_required_spend=$((sp08_tx_count * sp08_transfer_amount))
+  test "$sp08_required_spend" -le "$sp08_expected_window_limit" \
+    || {
+      echo "SP-08 FAIL: required_spend=$sp08_required_spend exceeds expected_window_limit=$sp08_expected_window_limit."
+      echo "Increase window limit, reduce tx_count, or reduce transfer amount before running SP-08."
+      exit 1
+    }
+fi
+
 start_time=$(date +%s)
 success=0
-failed=0
-for i in $(seq 1 100); do
-  starkli invoke "$ERC20_TOKEN_ADDR" transfer "$RECIPIENT_ADDR" u256:1 \
-    --rpc "$SEPOLIA_RPC_URL" \
-    --account "$SESSION_ACCOUNT_ADDR" \
-    --keystore "$SESSION_KEY_KEYSTORE_PATH" \
-    && success=$((success + 1)) || failed=$((failed + 1))
+policy_denied=0
+other_failed=0
+for i in $(seq 1 "$sp08_tx_count"); do
+  tx_output="$(
+    starkli invoke "$ERC20_TOKEN_ADDR" transfer "$RECIPIENT_ADDR" "u256:$sp08_transfer_amount" \
+      --rpc "$SEPOLIA_RPC_URL" \
+      --account "$SESSION_ACCOUNT_ADDR" \
+      --keystore "$SESSION_KEY_KEYSTORE_PATH" \
+      2>&1
+  )"
+  tx_status=$?
+  if [ "$tx_status" -eq 0 ]; then
+    success=$((success + 1))
+  elif printf '%s\n' "$tx_output" | grep -Eiq 'spending|policy|limit|deny|revert|assert|panic'; then
+    policy_denied=$((policy_denied + 1))
+  else
+    other_failed=$((other_failed + 1))
+  fi
 done
 end_time=$(date +%s)
 elapsed=$((end_time - start_time))
 [ "$elapsed" -le 0 ] && elapsed=1
+failed=$((policy_denied + other_failed))
 total=$((success + failed))
 tx_count_per_hour=$((total * 3600 / elapsed))
 if [ "$total" -gt 0 ]; then
@@ -120,8 +147,14 @@ else
   success_rate=0
   failure_rate=0
 fi
-echo "success=$success failed=$failed total=$total elapsed_seconds=$elapsed tx_count_per_hour=$tx_count_per_hour success_rate_pct=$success_rate failure_rate_pct=$failure_rate"
+echo "success=$success policy_denied=$policy_denied other_failed=$other_failed failed=$failed total=$total elapsed_seconds=$elapsed tx_count_per_hour=$tx_count_per_hour success_rate_pct=$success_rate failure_rate_pct=$failure_rate"
 # include tx_count_per_hour, success_rate_pct, failure_rate_pct, and elapsed_seconds in evidence bundle
+
+test "$other_failed" -eq 0 \
+  || { echo "SP-08 FAIL: non-policy failures observed (RPC/keystore/network)."; exit 1; }
+test "$policy_denied" -eq 0 \
+  || { echo "SP-08 FAIL: spending-policy denials observed; check window-limit precondition."; exit 1; }
+echo "SP-08 PASS: sustained-load run completed with no policy denials and no infra errors."
 ```
 
 ## Tracking
