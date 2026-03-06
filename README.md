@@ -1,214 +1,216 @@
 # Starknet Agentic
 
-Open-source stack for giving AI agents wallets, identity, reputation, and execution rails on Starknet.
+[![CI](https://github.com/keep-starknet-strange/starknet-agentic/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/keep-starknet-strange/starknet-agentic/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/keep-starknet-strange/starknet-agentic/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/keep-starknet-strange/starknet-agentic/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-## What This Repo Is
+Infrastructure for the Starknet agent economy: contracts, runtimes, and skills to run self-custodial AI agents with on-chain identity, policy-enforced execution, and composable tool access.
 
-`starknet-agentic` is a monorepo with:
+## Why This Exists
 
-- Cairo smart contracts for agent wallets, identity, reputation, and validation
-- TypeScript packages for MCP tools, A2A integration, and payment signing
-- Reusable skills for common Starknet agent capabilities
-- Examples and docs for integration
+Most agent stacks treat wallets as add-ons. `starknet-agentic` treats wallets, identity, and execution policy as first-class system boundaries.
 
-If you are integrating agents, this repo gives you contract primitives + runtime tooling in one place.
+This repo gives you:
 
-## What Works Today
+- account-level control rails (session keys, spending policy, revoke paths)
+- ERC-8004 identity, reputation, and validation registries on Starknet
+- MCP and A2A integration packages for agent runtimes
+- reusable skills and end-to-end examples
 
-Snapshot as of 2026-02-10:
+## Fastest Path
 
-| Area | Path | Status |
-|---|---|---|
-| Agent Account contract | `contracts/agent-account` | Active, tested (110 Cairo tests) |
-| ERC-8004 Cairo contracts | `contracts/erc8004-cairo` | Active, tested (131+ unit + 47 E2E tests) |
-| Huginn registry contract | `contracts/huginn-registry` | Active, tested (6 Cairo tests) |
-| MCP package | `packages/starknet-mcp-server` | Active (tool catalog + input validation) |
-| A2A package | `packages/starknet-a2a` | Active |
-| CLI scaffolding | `packages/create-starknet-agent` | Complete (npm publish pending) |
-| Additional packages | `packages/*` | Active/MVP by package |
-| Skills | `skills/*` | Skills marketplace (see Skills At A Glance for current inventory) |
-| Onboarding examples | `examples/onboard-agent`, `crosschain-demo` | Working (with CI smoke tests) |
-| CI/CD | `.github/workflows/` | 11 jobs + daily health check |
-
-## Architecture (Current)
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│                 Agent Frameworks / Apps                │
-│   OpenClaw / MoltBook  |  Daydreams  |  Lucid  |  ...  │
-├─────────────────────────────────────────────────────────┤
-│                Integration + Runtime Layer             │
-│      MCP Server      |       A2A Adapter       | Skills│
-├─────────────────────────────────────────────────────────┤
-│                 Packages / Tooling Layer               │
-│   Wallet + Payments  |  Identity Clients  | Utilities  │
-├─────────────────────────────────────────────────────────┤
-│                 Cairo Contract Layer                   │
-│ Agent Account | ERC-8004 Registries | Huginn Registry  │
-├─────────────────────────────────────────────────────────┤
-│                       Starknet L2                      │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Standards Compatibility
-
-| Standard | Purpose | Where in this repo |
-|---|---|---|
-| [MCP](https://modelcontextprotocol.io/) | Agent-to-tool execution | `packages/starknet-mcp-server` |
-| [A2A](https://a2a-protocol.org/) | Agent-to-agent workflows | `packages/starknet-a2a` |
-| [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) | Agent identity, reputation, validation | `contracts/erc8004-cairo` |
-
-## ERC-8004: Parity + Starknet Extensions
-
-All three ERC-8004 registries (Identity, Reputation, Validation) are implemented in Cairo with API-level parity to the [Solidity reference](https://eips.ethereum.org/EIPS/eip-8004). On top of parity, Starknet's native account abstraction enables extensions that EVM deployments cannot offer:
-
-- **Session keys**: Agents operate with scoped, revocable credentials -- spending cap per token, expiry, contract/selector restrictions -- instead of raw private keys. If a session key leaks, the attacker gets a bounded credential that the owner can revoke instantly. The master key never leaves the owner.
-- **Domain-separated wallet binding**: `set_agent_wallet` includes chain_id + contract_address + nonce in the signature hash, preventing cross-chain and cross-registry replay.
-- **Bounded reads**: Paginated summary APIs for production-scale reputation and validation queries.
-
-Full compatibility matrix, session key details, and cross-chain notes: **[docs/ERC8004-PARITY.md](docs/ERC8004-PARITY.md)**
-
-Tracking issue: [#78](https://github.com/keep-starknet-strange/starknet-agentic/issues/78)
-
-## Skills At A Glance
-
-| Skill | Purpose | Status |
-|---|---|---|
-| `starknet-wallet` | Wallet management, session keys, transfers, balances | Complete |
-| `starknet-mini-pay` | P2P payments, invoices, QR flows, Telegram support | Complete |
-| `starknet-anonymous-wallet` | Privacy-focused wallet creation via Typhoon | Complete |
-| `starkzap-sdk` | End-to-end Starkzap SDK workflows (onboarding, wallets, ERC20, staking, tests) | Complete |
-| `starknet-defi` | DeFi swaps, DCA, staking, lending via avnu | Complete |
-| `starknet-identity` | ERC-8004 on-chain identity and reputation | Complete |
-| `starknet-js` | starknet.js v9.x SDK guide for dApps and contracts | Complete |
-| `huginn-onboard` | Cross-chain onboarding and Huginn registry integration | Complete |
-| `controller-cli` | Cartridge Controller CLI sessions and scoped execution | Complete |
-| `cairo-contracts` | Contract structure, components, OZ v3, storage, events | Complete |
-| `cairo-testing` | snforge test patterns, cheatcodes, fuzzing, fork testing | Complete |
-| `cairo-deploy` | sncast deployment, account setup, network config | Complete |
-| `cairo-optimization` | Gas optimization, BoundedInt patterns, storage packing | Complete |
-| `cairo-security` | Security audit patterns, vulnerabilities, hardening | Complete |
-
-Full definitions and usage are in `skills/*/SKILL.md`.
-
-## Skills Marketplace
-
-The `skills/` directory is a marketplace of Starknet capabilities for agent runtimes that support skill-style tool packs (for example AgentSkills-compatible workflows).
-
-Install pattern:
+If you just want Starknet agent capabilities now:
 
 ```bash
-npx skills add keep-starknet-strange/starknet-agentic/skills/<skill-name>
+npx create-starknet-agent@latest
 ```
 
-Example:
+Sanity check (npm availability):
+
+```bash
+npm view create-starknet-agent version
+```
+
+The scaffolder detects your environment (OpenClaw/MoltBook, Claude Code, Cursor, or standalone) and wires Starknet integration automatically.
+
+## System Requirements
+
+- CLI users (`npx create-starknet-agent@latest`): Node.js `>=18.0.0`
+- Contributors from source (this monorepo):
+  - Node.js `>=20.9.0`
+  - `pnpm` `>=10.28.2` (workspace package manager)
+  - Scarb `>=2.14.0` + Starknet Foundry (`snforge`) `>=0.54.1` (for Cairo builds/tests)
+
+## Choose Your Path
+
+| Goal | Start here |
+|---|---|
+| Add Starknet tools to an existing agent | [`packages/create-starknet-agent`](./packages/create-starknet-agent/) |
+| Run local no-backend onboarding demo | [`examples/onboard-agent`](./examples/onboard-agent/) |
+| Run autonomous loop with MCP tools | [`examples/full-stack-swarm`](./examples/full-stack-swarm/) |
+| Integrate on-chain identity/reputation | [`contracts/erc8004-cairo`](./contracts/erc8004-cairo/) |
+| Build production signer boundary | [`packages/starknet-mcp-server`](./packages/starknet-mcp-server/) + external signer (proxy mode) |
+
+## Architecture
+
+```mermaid
+flowchart TB
+  A["Agent Runtime<br/>(OpenClaw, Claude Code, custom app)"] --> B["MCP / A2A Layer<br/>starknet-mcp-server, starknet-a2a, skills"]
+  B --> C["Signer Boundary<br/>direct (dev) or proxy (prod)"]
+  C --> D["Starknet Contracts"]
+  D --> D1["Agent-account stack<br/>owner controls + spending policy enforcement"]
+  D --> D2["ERC-8004 Registries<br/>Identity, Reputation, Validation"]
+  D --> D3["Session-account primitives<br/>session-key account modules"]
+```
+
+## No-Backend Trust Model (Recommended Launch Profile)
+
+Default launch profile is self-custodial and no-backend:
+
+- users run agent runtime locally or on their own infra
+- transaction policy is enforced on-chain by account contracts
+- no central signer or shared custody by this project
+
+For production environments, use MCP proxy signer mode rather than raw in-process private keys.
+
+## Core Components
+
+### Contracts
+
+| Component | Path | What it does |
+|---|---|---|
+| Agent account contracts | [`contracts/agent-account`](./contracts/agent-account/) | Session keys, policy enforcement, ownership controls |
+| ERC-8004 Cairo registries | [`contracts/erc8004-cairo`](./contracts/erc8004-cairo/) | Identity, reputation, validation primitives |
+| Session-account primitives | [`contracts/session-account`](./contracts/session-account/) | Session-key account modules for policy-centric execution |
+| Huginn registry | [`contracts/huginn-registry`](./contracts/huginn-registry/) | Additional registry primitives used by ecosystem demos |
+
+### Packages
+
+| Package | Path | Purpose |
+|---|---|---|
+| `create-starknet-agent` | [`packages/create-starknet-agent`](./packages/create-starknet-agent/) | Scaffolds/installs Starknet agent integration |
+| `@starknet-agentic/mcp-server` | [`packages/starknet-mcp-server`](./packages/starknet-mcp-server/) | Starknet operations over MCP |
+| `@starknet-agentic/a2a` | [`packages/starknet-a2a`](./packages/starknet-a2a/) | A2A protocol adapter |
+| `@starknet-agentic/agent-passport` | [`packages/starknet-agent-passport`](./packages/starknet-agent-passport/) | ERC-8004 capability metadata helpers |
+| `@starknet-agentic/prediction-arb-scanner` | [`packages/prediction-arb-scanner`](./packages/prediction-arb-scanner/) | Signals-only prediction market arb scanner output model |
+| `x402-starknet` (internal) | [`packages/x402-starknet`](./packages/x402-starknet/) | Internal workspace package for Starknet payment signing utilities |
+| `@starknet-agentic/onboarding-utils` | [`packages/starknet-onboarding-utils`](./packages/starknet-onboarding-utils/) | Shared onboarding helpers |
+
+### Skills
+
+Skill packs live in [`skills/`](./skills/). Browse full catalog and install flows in [`skills/README.md`](./skills/README.md).
+
+Install one skill:
 
 ```bash
 npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 ```
 
-## Examples
+## Standards and Interop
 
-| Example | Description | Path |
-|---------|-------------|------|
-| [DeFi Agent](./examples/defi-agent/) | Autonomous triangular arbitrage agent with risk management | `examples/defi-agent/` |
-| Hello Agent | Minimal E2E proof of concept | `examples/hello-agent/` |
-| [Onboard Agent](./examples/onboard-agent/) | E2E agent onboarding: deploy account, register identity, first action | `examples/onboard-agent/` |
-| [Full Stack Swarm](./examples/full-stack-swarm/) | SessionAccount + SISNA signer boundary + MCP tools + AVNU gasless + ERC-8004 (5-agent demo) | `examples/full-stack-swarm/` |
-| [Secure DeFi Demo](./examples/secure-defi-demo/) | Base reputation envelope + Starknet security guardrails + Vesu flow artifact | `examples/secure-defi-demo/` |
-| [Crosschain Demo](./examples/crosschain-demo/) | Base Sepolia ↔ Starknet ERC-8004 cross-chain registration flow | `examples/crosschain-demo/` |
+| Standard | Purpose | Implementation |
+|---|---|---|
+| [MCP](https://modelcontextprotocol.io/) | Agent tool interface | `packages/starknet-mcp-server` |
+| [A2A](https://a2a-protocol.org/) | Agent-to-agent messaging/workflows | `packages/starknet-a2a` |
+| [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) | Agent identity/reputation/validation | `contracts/erc8004-cairo` |
 
-The **DeFi Agent** is the flagship example demonstrating how to build production-ready autonomous agents on Starknet. The **Onboard Agent** shows the full lifecycle from account deployment to identity registration with AVNU gasfree support.
+Parity and Starknet-specific behavior for ERC-8004 is documented in [`docs/ERC8004-PARITY.md`](./docs/ERC8004-PARITY.md).
 
-## Repository Layout
+## Quickstart From Source (Contributors)
 
-```text
-starknet-agentic/
-├── contracts/
-│   ├── agent-account/                    # Agent account with session keys (110 tests)
-│   ├── erc8004-cairo/                    # Identity, reputation, validation (131+ unit + 47 E2E)
-│   └── huginn-registry/                  # Thought provenance registry
-├── packages/
-│   ├── create-starknet-agent/            # CLI scaffolding tool
-│   ├── starknet-mcp-server/              # MCP server (tool catalog)
-│   ├── starknet-a2a/                     # A2A protocol adapter
-│   ├── starknet-agent-passport/          # Capability metadata client
-│   ├── x402-starknet/                    # X-402 payment protocol
-│   └── prediction-arb-scanner/           # Cross-venue arb detection
-├── skills/                               # Skills marketplace (see Skills At A Glance for current inventory)
-├── examples/                             # Example demos and scaffold references
-├── docs/                                 # Roadmap, spec, getting started, troubleshooting
-└── website/                              # Next.js documentation site
-```
-
-## Quick Start
-
-### 1) Install dependencies
+### 1) Install
 
 ```bash
 pnpm install
 ```
 
-### 2) Run JS/TS monorepo checks
+### 2) Build and test JS/TS workspace (packages, examples, website)
 
 ```bash
-pnpm run build
-pnpm run test
+# full workspace
+pnpm build
+pnpm test
+
+# packages only (faster path when you do not need example/website checks)
+pnpm -r --filter "./packages/*" build
+pnpm -r --filter "./packages/*" test
 ```
 
-### 3) Run Cairo checks locally
+### 3) Run Cairo checks
 
 ```bash
-cd contracts/erc8004-cairo && scarb build && snforge test
-cd ../agent-account && scarb build && snforge test
-cd ../huginn-registry && scarb build && snforge test
+failed=0
+for dir in contracts/erc8004-cairo contracts/huginn-registry contracts/agent-account contracts/session-account; do
+  if ! (cd "$dir" && scarb build && snforge test); then
+    echo "Cairo checks failed in $dir"
+    failed=1
+    break
+  fi
+done
+[ "$failed" -eq 0 ]
 ```
 
-### 4) Run MCP package in dev mode
+### 4) Run a minimal E2E demo
+
+Before running, configure the required environment in:
+[`examples/hello-agent/README.md`](./examples/hello-agent/README.md)
 
 ```bash
-pnpm --filter @starknet-agentic/mcp-server dev
+# from repo root (after configuring examples/hello-agent/.env)
+pnpm demo:hello-agent
 ```
 
-## MCP Tools Snapshot
+## Example Gallery
 
-Current MCP package (`@starknet-agentic/mcp-server`) exposes tools across:
-
-- balances and transfers
-- contract read/write calls
-- swap and quote flows
-- fee estimation
-- x402 Starknet payment signing
-
-See package source/docs for exact tool names and request schemas:
-
-- `packages/starknet-mcp-server/`
-
-## External Foundations
-
-These projects are important dependencies or ecosystem foundations for this repo:
-
-| Project | Role |
+| Example | What it proves |
 |---|---|
-| [starknet.js](https://github.com/starknet-io/starknet.js) | TS SDK used across packages |
-| [OpenZeppelin Cairo](https://github.com/OpenZeppelin/cairo-contracts) | Base contract components/patterns |
-| [Daydreams](https://github.com/daydreamsai/daydreams) | Agent framework integration target |
-| [Lucid Agents](https://github.com/daydreamsai/lucid-agents) | Commerce + wallet interoperability target |
-| [OpenClaw / MoltBook](https://docs.openclaw.ai/) | Skill distribution and agent ecosystem |
-| [Cartridge Controller](https://docs.cartridge.gg/controller/getting-started) | Session-key wallet patterns on Starknet |
+| [`examples/hello-agent`](./examples/hello-agent/) | Minimal RPC + state read + transaction path |
+| [`examples/onboard-agent`](./examples/onboard-agent/) | Deploy agent account + register identity + receipt artifacts |
+| [`examples/defi-agent`](./examples/defi-agent/) | Autonomous DeFi strategy agent (triangular arb + risk controls) |
+| [`examples/full-stack-swarm`](./examples/full-stack-swarm/) | Autonomous multi-agent run with MCP + signer boundary + ERC-8004 |
+| [`examples/secure-defi-demo`](./examples/secure-defi-demo/) | Base reputation envelope + Starknet guardrails + Vesu flow artifact |
+| [`examples/crosschain-demo`](./examples/crosschain-demo/) | Cross-chain registration flow (Base Sepolia + Starknet Sepolia) |
+| [`examples/erc8004-validation-demo`](./examples/erc8004-validation-demo/) | Validation request/response + summary extraction |
+| [`examples/starkzap-onboard-transfer`](./examples/starkzap-onboard-transfer/) | End-to-end Starkzap onboarding and STRK transfer flow (Sepolia) |
+| [`examples/controller-calls`](./examples/controller-calls/) | Non-custodial unsigned-call flow with external signer execution |
 
-## Contract Docs and Deployments
+## Security and Release Integrity
 
-For contract-specific behavior and deployment addresses:
+- read security policy: [`SECURITY.md`](./SECURITY.md)
+- hardened signer setup: use proxy signer mode in [`packages/starknet-mcp-server`](./packages/starknet-mcp-server/)
+- GitHub Actions quality gates: [`ci.yml`](./.github/workflows/ci.yml), [`codeql.yml`](./.github/workflows/codeql.yml), [`dependency-review.yml`](./.github/workflows/dependency-review.yml)
+- publish pipeline uses provenance + attestations: [`publish.yml`](./.github/workflows/publish.yml)
 
-- `contracts/erc8004-cairo/README.md`
-- `contracts/agent-account/README.md`
-- `contracts/huginn-registry/README.md` (if present in this branch)
+Release artifact verification (recommended):
+
+```bash
+gh attestation verify <artifact-file> --repo keep-starknet-strange/starknet-agentic
+```
+
+## Repository Layout
+
+```text
+starknet-agentic/
+├── contracts/        # Cairo contracts (account, ERC-8004, session-account)
+├── packages/         # MCP/A2A/CLI and supporting libraries
+├── skills/           # Agent skill packs
+├── examples/         # End-to-end demos and reference flows
+├── docs/             # Specs, roadmap, troubleshooting, launch material
+└── website/          # Documentation website
+```
+
+## Documentation
+
+- getting started: [`docs/GETTING_STARTED.md`](./docs/GETTING_STARTED.md)
+- roadmap: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
+- specification: [`docs/SPECIFICATION.md`](./docs/SPECIFICATION.md)
+- troubleshooting: [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md)
+- good first tasks: [`docs/GOOD_FIRST_ISSUES.md`](./docs/GOOD_FIRST_ISSUES.md)
 
 ## Contributing
 
-- Start with `CONTRIBUTING.md`
-- Roadmap: `docs/ROADMAP.md`
-- Good first tasks: `docs/GOOD_FIRST_ISSUES.md`
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
-Validation: dependency-review live run check (2026-02-14).
+## License
+
+MIT ([`LICENSE`](./LICENSE))
