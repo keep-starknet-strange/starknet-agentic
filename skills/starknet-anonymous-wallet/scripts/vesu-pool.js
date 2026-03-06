@@ -40,7 +40,10 @@ function loadVesuPools() {
   try {
     const all = JSON.parse(readFileSync(p, 'utf8'));
     return all?.VESU?.pools || {};
-  } catch {
+  } catch (e) {
+    if (process.env.OPENCLAW_DEBUG === '1') {
+      console.error(JSON.stringify({ warning: 'Failed to parse protocols.json', error: e?.message }));
+    }
     return {};
   }
 }
