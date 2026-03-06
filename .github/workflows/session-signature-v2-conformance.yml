@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: session-signature-v2-conformance-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name || github.sha }}
+  group: session-signature-v2-conformance-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref_name || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -150,6 +150,7 @@ jobs:
       - name: Compare vectors with external repos
         run: |
           set -euo pipefail
+          DRIFT_DETECTED=0
 
           fetch_or_skip_404() {
             local url="$1"
@@ -178,8 +179,8 @@ jobs:
             if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
               echo "::warning::${label} ${kind} drift detected on PR; allowing for coordinated rollout."
             else
-              echo "${label} ${kind} drift detected on ${GITHUB_EVENT_NAME}; failing."
-              exit 1
+              echo "::error::${label} ${kind} drift detected on ${GITHUB_EVENT_NAME}."
+              DRIFT_DETECTED=1
             fi
           }
 
@@ -256,3 +257,8 @@ jobs:
 
           compare_with_repo "keep-starknet-strange/SISNA" "SISNA"
           compare_with_repo "keep-starknet-strange/starkclaw" "starkclaw"
+
+          if [ "$DRIFT_DETECTED" -ne 0 ]; then
+            echo "One or more parity drifts detected; failing."
+            exit 1
+          fi
