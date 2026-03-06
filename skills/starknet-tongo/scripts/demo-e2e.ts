@@ -66,7 +66,7 @@ async function main() {
   console.log(`\n[2/4] Transferring ${AMOUNT} to receiver...`);
   const transferOp = await sender.transfer({
     amount: AMOUNT,
-    to: receiver.publicKey,
+    to: receiver.tongoAddress(),
     sender: account.address,
     fee_to_sender: 0n,
   });
