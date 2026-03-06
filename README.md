@@ -56,9 +56,9 @@ flowchart TB
   A["Agent Runtime<br/>(OpenClaw, Claude Code, custom app)"] --> B["MCP / A2A Layer<br/>starknet-mcp-server, starknet-a2a, skills"]
   B --> C["Signer Boundary<br/>direct (dev) or proxy (prod)"]
   C --> D["Starknet Contracts"]
-  D --> D1["Agent Account / Session Policy"]
+  D --> D1["Agent-account stack<br/>owner controls + spending policy enforcement"]
   D --> D2["ERC-8004 Registries<br/>Identity, Reputation, Validation"]
-  D --> D3["Session Account primitives"]
+  D --> D3["Session-account primitives<br/>session-key account modules"]
 ```
 
 ## No-Backend Trust Model (Recommended Launch Profile)
@@ -132,6 +132,7 @@ pnpm test
 
 ```bash
 cd contracts/erc8004-cairo && scarb build && snforge test
+cd ../huginn-registry && scarb build && snforge test
 cd ../agent-account && scarb build && snforge test
 cd ../session-account && scarb build && snforge test
 ```
