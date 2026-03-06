@@ -213,6 +213,8 @@ const realBalance = await auditor.getRealuserBalance(0, userTongoAddress);
 
 ```typescript
 // All events for an account
+// NOTE: Using 0 scans from genesis and will be slow on mainnet.
+// In production, use the Tongo contract's deployment block instead.
 const history = await tongo.getTxHistory(0, "latest", "all");
 
 // Specific event types
