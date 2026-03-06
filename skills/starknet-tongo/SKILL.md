@@ -163,7 +163,7 @@ await provider.waitForTransaction(response.transaction_hash);
 ```typescript
 const outsideFundOp = await tongo.outside_fund({
   amount: 100n,
-  to: recipientPublicKey, // PubKey of the receiver
+  to: "Base58EncodedTongoAddressOfRecipient", // Tongo address of the receiver
 });
 
 const response = await account.execute([
