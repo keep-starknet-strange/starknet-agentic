@@ -683,6 +683,9 @@ only_self_or_owner can call set_spending_policy ∧ remove_spending_policy
 
 ## 9. Sign-Off Criteria
 
+Launch-gate execution tracking for this section is maintained in
+`docs/security/SPENDING_POLICY_SIGNOFF_MATRIX.md`.
+
 ### 9.1 Security Approval Checklist
 
 **Code Review:**

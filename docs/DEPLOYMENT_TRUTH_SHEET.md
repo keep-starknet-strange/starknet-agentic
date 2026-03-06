@@ -99,3 +99,8 @@ Conclusion:
 
 - `docs/ERC8004-PARITY.md` and website docs previously contained stale deployment status and should be treated as historical context unless they explicitly reference this file.
 - `contracts/erc8004-cairo/README.md` is maintained as the contract-local quick reference, but this truth sheet is the canonical reconciliation source.
+- Production operations policy/runbook references:
+  - `docs/security/MAINNET_OWNERSHIP_SIGNER_POLICY.md`
+  - `docs/security/PRODUCTION_DEPLOYMENT_RUNBOOK.md`
+  - `docs/security/EXTERNAL_AUDIT_SCOPE.md`
+  - `docs/security/SPENDING_POLICY_SIGNOFF_MATRIX.md`

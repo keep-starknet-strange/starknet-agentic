@@ -1,54 +1,59 @@
-# Launch Readiness Tracker (P0)
+# Launch Readiness Tracker (No-Backend Profile)
 
-Last updated: 2026-03-05
+Last updated: 2026-03-06
 
-This tracker is the operational checklist to close the release gate in
+This tracker is the operational checklist to close the no-backend launch gate in
 [#273](https://github.com/keep-starknet-strange/starknet-agentic/issues/273)
-without ambiguous "done" claims.
+with reproducible evidence.
 
 ## Scope
 
-- Session-signature parity and conformance (`#256`)
-- SNIP-12 v2 tracker hygiene and closure evidence (`#255`)
-- Signer proxy auth hardening evidence linkage (`#219`)
-- Spending-policy E2E/load/sign-off closure evidence (`#335`)
+- Launch gate: `#273` (no-backend / self-custodial profile)
+- Completed blockers:
+  - `#256` cross-repo session-signature parity
+  - `#316` provenance + attestation verification
+  - `#335` spending-policy E2E/load/sign-off closure
+- Remaining blockers:
+  - `#332` mainnet ownership/signer policy
+  - `#333` production deployment runbook
+  - `#334` external audit scope and closure policy
+- Deferred (out of scope for `#273`, gated before any managed-backend launch):
+  - `#219`, `#222`, `#223`, `#224`, `#225`, `#317`
+  - tracking anchor: this tracker + `docs/security/EXTERNAL_AUDIT_SCOPE.md`
+  - owner: runtime-owner
+  - closure gate: no managed-backend release may proceed until all deferred items are closed with evidence
 
 ## P0 Closure Rules
 
-1. CI parity evidence must come from green workflows on default branches.
-2. Docs/runbook references must point to versioned files in git.
-3. Any unresolved delta must remain as an open issue with explicit acceptance criteria.
+1. Evidence must come from immutable links (merged PRs, workflow runs, releases, docs paths in git).
+2. Any unresolved control must stay open as an issue with explicit acceptance criteria.
+3. Launch claims must match this tracker and `#273` checkboxes.
 
 ## Evidence Map
 
-### `#255` SNIP-12 v2 verification path
+### Completed
 
-- Contract implementation landed in merged PRs:
-  - [#258](https://github.com/keep-starknet-strange/starknet-agentic/pull/258)
-  - [#283](https://github.com/keep-starknet-strange/starknet-agentic/pull/283)
-- Migration notes:
-  - `docs/security/SESSION_SIGNATURE_MODE_MIGRATION.md`
+- `#256` parity:
+  - source vectors/schema in `spec/session-signature-v2.{json,schema.json}`
+  - parity workflow: `.github/workflows/session-signature-v2-conformance.yml`
+- `#316` provenance:
+  - verifier docs: `docs/security/PROVENANCE_VERIFICATION.md`
+  - staging provenance release/tag links are posted in `#316`
 
-### `#256` shared vectors + parity
+### Remaining
 
-- Source vectors and schema:
-  - `spec/session-signature-v2.json`
-  - `spec/session-signature-v2.schema.json`
-- Local runtime conformance test:
-  - `packages/starknet-mcp-server/__tests__/helpers/sessionSignatureVectors.test.ts`
-- Cross-repo parity workflow:
-  - `.github/workflows/session-signature-v2-conformance.yml`
-
-### `#219` signer proxy auth + replay
-
-- Runtime guardrails:
-  - `packages/starknet-mcp-server/src/index.ts`
-  - `packages/starknet-mcp-server/src/helpers/keyringProxySigner.ts`
-- Auth conformance workflows:
-  - `.github/workflows/signer-auth-conformance.yml`
-  - `.github/workflows/session-signature-v2-conformance.yml`
-- Rotation and incident runbook:
-  - `docs/security/SIGNER_PROXY_ROTATION_RUNBOOK.md`
+- `#332` ownership/signer policy:
+  - `docs/security/MAINNET_OWNERSHIP_SIGNER_POLICY.md`
+  - `docs/DEPLOYMENT_TRUTH_SHEET.md`
+- `#333` deployment runbook:
+  - `docs/security/PRODUCTION_DEPLOYMENT_RUNBOOK.md`
+  - `docs/DEPLOYMENT_TRUTH_SHEET.md`
+- `#334` audit scope/closure:
+  - `docs/security/EXTERNAL_AUDIT_SCOPE.md`
+  - issue body + sign-off links
+- `#335` E2E/load/sign-off:
+  - `docs/security/SPENDING_POLICY_AUDIT.md`
+  - `docs/security/SPENDING_POLICY_SIGNOFF_MATRIX.md`
 
 ### `#335` spending policy E2E/load/sign-off closure
 
@@ -61,9 +66,9 @@ without ambiguous "done" claims.
 
 ## Required Sign-off Comment Format
 
-Post this in each issue before closing:
+Post this in each child issue before closing:
 
-- What changed (code + workflow + docs)
-- Evidence links (workflow runs, merged PRs, test output)
-- Residual risk (if any)
-- Explicit statement: "No open acceptance criteria remain" or list remaining deltas
+- What changed (docs/code/workflow)
+- Evidence links (runs, commits, release tags, command output)
+- Residual risk and explicit owner
+- Explicit statement: "No open acceptance criteria remain"
