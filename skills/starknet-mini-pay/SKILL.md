@@ -1,10 +1,32 @@
 ---
 name: starknet-mini-pay
-description: Simple P2P payments on Starknet. Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC. Like Lightning, but native.
+description: >
+  Simple P2P payments on Starknet. Like Lightning, but native.
+  Generate QR codes, payment links, invoices, and transfer ETH/STRK/USDC.
+keywords:
+  - starknet
+  - payments
+  - qr-code
+  - payment-links
+  - lightning
+  - p2p
+  - transfer
+  - invoice
+  - strk
+  - eth
+  - usdc
+allowed-tools:
+  - Bash
+  - Read
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"1.0.0","org":"keep-starknet-strange"}
-keywords: [starknet, payments, qr-code, payment-links, lightning, p2p, transfer, invoice, strk, eth, usdc]
-allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
+metadata:
+  author: starknet-agentic
+  version: 1.0.0
+  org: keep-starknet-strange
+  - Write
+  - Glob
+  - Grep
+  - Task
 user-invocable: true
 ---
 
@@ -74,6 +96,35 @@ python3.12 scripts/cli.py status 0xabcdef...
 python3.12 scripts/cli.py balance 0x123...
 ```
 
+### JavaScript (starknet.js)
+
+```typescript
+import { RpcProvider, Account, Contract, uint256 } from 'starknet';
+
+const provider = new RpcProvider({ 
+  nodeUrl: process.env.STARKNET_RPC || 'https://rpc.starknet.lava.build' 
+});
+
+// starknet.js v5+ uses positional args: new Account(provider, address, signer)
+const account = new Account(
+  provider,
+  process.env.ADDRESS,
+  process.env.PRIVATE_KEY
+);
+
+// USDC contract (native)
+const USDC_ADDRESS = '0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb';
+
+const usdc = new Contract(USDC_ABI, USDC_ADDRESS, account);
+
+// Send 10 USDC
+const tx = await usdc.transfer(
+  recipient_address,
+  uint256.bnToUint256(10n * 10n ** 6n)
+);
+await provider.waitForTransaction(tx.transaction_hash);
+```
+
 ### Payment Link Format
 
 ```
@@ -82,7 +133,7 @@ starknet:<address>?amount=<value>&memo=<text>&token=<ETH|STRK|USDC>
 
 **Example:**
 ```
-starknet:0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005?amount=0.01&memo=coffee&token=ETH
+starknet:0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb?amount=0.01&memo=coffee&token=USDC
 ```
 
 ### Telegram Bot Commands
@@ -167,7 +218,7 @@ from qr_generator import QRGenerator
 
 qr = QRGenerator()
 qr.generate(
-    address="0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005",
+    address="0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb",
     amount=None,  # Optional amount
     memo=None,     # Optional memo
     output_file="address_qr.png"

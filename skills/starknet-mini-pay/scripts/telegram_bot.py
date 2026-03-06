@@ -50,7 +50,7 @@ from mini_pay import MiniPay
 # Configuration
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 STARKNET_RPC = os.environ.get("STARKNET_RPC", "https://rpc.starknet.lava.build:443")
-WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "your_secret_here")
+WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET")  # Must be set for production
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")  # For receiving tx confirmations
 
 # Logging
@@ -555,7 +555,7 @@ TX: <code>{tx_hash}</code>
         if memo:
             params.append(f"memo={memo}")
         
-        payment_url = f"?{ '&'.join(params)}"
+        payment_url = f"?{'&'.join(params)}"
         
         return {
             "argent": f"argent://starknet/pay{payment_url}",
@@ -633,7 +633,21 @@ TX: <code>{tx_hash}</code>
     async def handle_webhook(self, request: web.Request):
         """Handle incoming webhook from payment system"""
         try:
-            data = await request.json()
+            # Verify HMAC signature if secret is configured
+            signature = request.headers.get("X-Webhook-Signature", "")
+            body = await request.read()
+            
+            if self.webhook_secret:
+                expected = hmac.new(
+                    self.webhook_secret.encode(),
+                    body,
+                    hashlib.sha256
+                ).hexdigest()
+                if not hmac.compare_digest(signature, expected):
+                    logger.warning("Invalid webhook signature")
+                    return web.json_response({"error": "Invalid signature"}, status=401)
+            
+            data = json.loads(body)
             
             tx_hash = data.get("tx_hash")
             status = data.get("status")
