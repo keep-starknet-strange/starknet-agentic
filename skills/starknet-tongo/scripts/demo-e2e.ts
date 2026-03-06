@@ -92,6 +92,10 @@ async function main() {
   state = await receiver.state();
   console.log(`  Receiver pending: ${state.pending}`);
 
+  if (state.pending === 0n) {
+    throw new Error("Receiver pending is 0 after transfer. Aborting.");
+  }
+
   // --- 3. Rollover ---
   // NOTE: In production, receiver would have their own Starknet account for gas.
   // This demo reuses `account` for simplicity (test-only pattern).
