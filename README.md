@@ -139,9 +139,15 @@ pnpm -r --filter "./packages/*" test
 ### 3) Run Cairo checks
 
 ```bash
+failed=0
 for dir in contracts/erc8004-cairo contracts/huginn-registry contracts/agent-account contracts/session-account; do
-  (cd "$dir" && scarb build && snforge test) || exit 1
+  if ! (cd "$dir" && scarb build && snforge test); then
+    echo "Cairo checks failed in $dir"
+    failed=1
+    break
+  fi
 done
+[ "$failed" -eq 0 ]
 ```
 
 ### 4) Run a minimal E2E demo
