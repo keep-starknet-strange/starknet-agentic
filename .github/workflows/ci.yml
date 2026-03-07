@@ -204,7 +204,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
+        uses: software-mansion/setup-scarb@9d86a1616deecc95e8e8435daf902c5d025dc8b8 # v1.6.1
         with:
           scarb-version: "2.14.0"
 
@@ -238,7 +238,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
+        uses: software-mansion/setup-scarb@9d86a1616deecc95e8e8435daf902c5d025dc8b8 # v1.6.1
         with:
           scarb-version: "2.14.0"
 
@@ -265,7 +265,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
+        uses: software-mansion/setup-scarb@9d86a1616deecc95e8e8435daf902c5d025dc8b8 # v1.6.1
         with:
           scarb-version: "2.14.0"
 
@@ -292,7 +292,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
+        uses: software-mansion/setup-scarb@9d86a1616deecc95e8e8435daf902c5d025dc8b8 # v1.6.1
         with:
           scarb-version: "2.14.0"
 
@@ -319,7 +319,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
+        uses: software-mansion/setup-scarb@9d86a1616deecc95e8e8435daf902c5d025dc8b8 # v1.6.1
         with:
           scarb-version: "2.14.0"
 
