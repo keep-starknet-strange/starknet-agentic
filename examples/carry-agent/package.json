@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "run": "npx tsx run.ts",
+    "run:execute": "CARRY_RUN_MODE=execute npx tsx run.ts",
     "test": "node --test --import tsx test/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

@@ -5,8 +5,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseConfig } from "./src/config.js";
+import { executeHedgedEntry, MockExecutionVenue } from "./src/execution.js";
 import { createExtendedClient } from "./src/extended.js";
+import { evaluateExecutionSafety } from "./src/safety.js";
 import { estimateCarryEdge, evaluateCarryDecision } from "./src/strategy.js";
+import type { ExecutionOutcome } from "./src/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
@@ -42,6 +45,7 @@ async function main(): Promise<void> {
     notionalUsd: cfg.CARRY_NOTIONAL_USD,
     holdHours: cfg.CARRY_HOLD_HOURS,
     fundingWindowHours: cfg.CARRY_FUNDING_WINDOW_HOURS,
+    runMode: cfg.CARRY_RUN_MODE,
   });
 
   const nowMs = Date.now();
@@ -83,13 +87,16 @@ async function main(): Promise<void> {
   });
 
   const fundingHistoryHourly = fundingHistory.map((point) => point.fundingRate);
+  const spotQuoteAgeMs = 500;
+  const perpSnapshotAgeMs = 500;
+  const feesAgeMs = 500;
   const decision = evaluateCarryDecision({
     market: cfg.CARRY_MARKET,
     hasOpenPosition: cfg.CARRY_HAS_OPEN_POSITION,
     venueHealthy: cfg.CARRY_VENUE_HEALTHY,
-    spotQuoteAgeMs: 500,
-    perpSnapshotAgeMs: 500,
-    feesAgeMs: 500,
+    spotQuoteAgeMs,
+    perpSnapshotAgeMs,
+    feesAgeMs,
     maxDataAgeMs: cfg.CARRY_MAX_DATA_AGE_MS,
     fundingHistoryHourly,
     minFundingAverageHourly: cfg.CARRY_MIN_FUNDING_AVG_HOURLY,
@@ -99,6 +106,39 @@ async function main(): Promise<void> {
     holdMinNetEdgeUsd: cfg.CARRY_HOLD_MIN_NET_EDGE_USD,
     edge,
   });
+
+  const executionSafety = evaluateExecutionSafety({
+    runMode: cfg.CARRY_RUN_MODE,
+    decisionAction: decision.action,
+    notionalUsd: cfg.CARRY_NOTIONAL_USD,
+    maxNotionalUsd: cfg.CARRY_MAX_NOTIONAL_USD,
+    spotQuoteAgeMs,
+    perpSnapshotAgeMs,
+    feesAgeMs,
+    maxDataAgeMs: cfg.CARRY_MAX_DATA_AGE_MS,
+  });
+
+  let executionOutcome: ExecutionOutcome | undefined = undefined;
+  if (executionSafety.allowed) {
+    const venue = new MockExecutionVenue(
+      cfg.CARRY_EXECUTION_SCENARIO,
+      cfg.CARRY_MOCK_SECOND_LEG_DELAY_MS,
+      cfg.CARRY_MOCK_SECOND_LEG_FILL_RATIO,
+    );
+
+    executionOutcome = await executeHedgedEntry(venue, {
+      market: cfg.CARRY_MARKET,
+      notionalUsd: cfg.CARRY_NOTIONAL_USD,
+      maxUnhedgedNotionalUsd: cfg.CARRY_MAX_UNHEDGED_NOTIONAL_USD,
+      leggingTimeoutMs: cfg.CARRY_LEGGING_TIMEOUT_MS,
+      partialFillTimeoutMs: cfg.CARRY_PARTIAL_FILL_TIMEOUT_MS,
+      deadmanSwitchEnabled: cfg.CARRY_DEADMAN_SWITCH_ENABLED,
+      deadmanSwitchSeconds: cfg.CARRY_DEADMAN_SWITCH_SECONDS,
+      marketSnapshot: snapshot,
+    });
+  } else if (cfg.CARRY_RUN_MODE === "execute") {
+    log("WARN", "Execution blocked by safety rails.", executionSafety);
+  }
 
   const runId = `carry-${new Date().toISOString().replace(/[:.]/g, "-")}`;
   const outputDir = path.resolve(__dirname, cfg.CARRY_OUTPUT_DIR);
@@ -111,16 +151,20 @@ async function main(): Promise<void> {
     config: {
       market: cfg.CARRY_MARKET,
       notionalUsd: cfg.CARRY_NOTIONAL_USD,
+      maxNotionalUsd: cfg.CARRY_MAX_NOTIONAL_USD,
       holdHours: cfg.CARRY_HOLD_HOURS,
       fundingWindowHours: cfg.CARRY_FUNDING_WINDOW_HOURS,
       hasOpenPosition: cfg.CARRY_HAS_OPEN_POSITION,
       venueHealthy: cfg.CARRY_VENUE_HEALTHY,
+      runMode: cfg.CARRY_RUN_MODE,
     },
     marketSnapshot: snapshot,
     fundingPoints: fundingHistory.length,
     fundingHistoryHourly,
     feeMode: feesSource,
     decision,
+    executionSafety,
+    executionOutcome,
   };
 
   fs.writeFileSync(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
@@ -130,11 +174,13 @@ async function main(): Promise<void> {
     reasonCode: decision.reasonCode,
     netEdgeUsd: decision.edge.netEdgeUsd,
     netEdgeBps: decision.edge.netEdgeBps,
+    executionSafety,
+    executionOutcome,
     artifactPath,
   });
 
-  if (decision.action === "ENTER") {
-    log("WARN", "Decision is ENTER. This demo is monitor-only and does not execute orders.");
+  if (cfg.CARRY_RUN_MODE === "dry-run" && decision.action === "ENTER") {
+    log("WARN", "Decision is ENTER. Dry-run mode does not execute orders.");
   }
 }
 

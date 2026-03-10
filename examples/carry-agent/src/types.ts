@@ -71,3 +71,34 @@ export type CarryDecision = {
   };
   edge: CarryCostEstimate;
 };
+
+export type CarryRunMode = "dry-run" | "execute";
+
+export type ExecutionIncidentType =
+  | "legging_timeout"
+  | "second_leg_failed"
+  | "unhedged_exceeds_cap";
+
+export type ExecutionIncident = {
+  type: ExecutionIncidentType;
+  message: string;
+};
+
+export type ExecutionStatus = "executed" | "neutralized" | "blocked";
+
+export type ExecutionOrderResult = {
+  orderId: string;
+  filledNotionalUsd: number;
+  txHash?: string;
+};
+
+export type ExecutionOutcome = {
+  status: ExecutionStatus;
+  reasonCode: string;
+  message: string;
+  incidents: ExecutionIncident[];
+  deadmanArmed: boolean;
+  spotOrder?: ExecutionOrderResult;
+  perpOrder?: ExecutionOrderResult;
+  neutralizationOrder?: ExecutionOrderResult;
+};

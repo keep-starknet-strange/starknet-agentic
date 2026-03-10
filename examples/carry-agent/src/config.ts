@@ -35,6 +35,21 @@ const envSchema = z
       .transform((v) => v === "1" || v.toLowerCase() === "true"),
     CARRY_MAX_DATA_AGE_MS: z.coerce.number().int().positive().default(5000),
     CARRY_OUTPUT_DIR: z.string().default("./artifacts"),
+    CARRY_RUN_MODE: z.enum(["dry-run", "execute"]).default("dry-run"),
+    CARRY_MAX_NOTIONAL_USD: z.coerce.number().positive().default(1000),
+    CARRY_MAX_UNHEDGED_NOTIONAL_USD: z.coerce.number().positive().default(250),
+    CARRY_LEGGING_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+    CARRY_PARTIAL_FILL_TIMEOUT_MS: z.coerce.number().int().positive().default(7000),
+    CARRY_DEADMAN_SWITCH_ENABLED: z
+      .string()
+      .default("1")
+      .transform((v) => v === "1" || v.toLowerCase() === "true"),
+    CARRY_DEADMAN_SWITCH_SECONDS: z.coerce.number().int().positive().default(60),
+    CARRY_EXECUTION_SCENARIO: z
+      .enum(["success", "second_leg_failure", "second_leg_timeout", "partial_fill"])
+      .default("success"),
+    CARRY_MOCK_SECOND_LEG_DELAY_MS: z.coerce.number().int().nonnegative().default(250),
+    CARRY_MOCK_SECOND_LEG_FILL_RATIO: z.coerce.number().positive().max(1).default(1),
   })
   .passthrough();
 
