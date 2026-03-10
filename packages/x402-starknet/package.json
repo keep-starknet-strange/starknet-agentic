@@ -15,8 +15,8 @@
     "starknet": "^9.4.2"
   },
   "devDependencies": {
-    "@types/node": "^25.3.5",
-    "eslint": "^10.0.2",
+    "@types/node": "^25.4.0",
+    "eslint": "^10.0.3",
     "@eslint/js": "^10.0.1",
     "typescript": "^5.9.0",
     "tsup": "^8.5.0",
