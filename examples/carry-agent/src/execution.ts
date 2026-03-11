@@ -30,6 +30,10 @@ export type MockExecutionScenario =
   | "second_leg_timeout"
   | "partial_fill";
 
+export type ToolCaller = {
+  callTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+};
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -37,6 +41,24 @@ function sleep(ms: number): Promise<void> {
 function mockHash(seed: string): string {
   const suffix = Buffer.from(`${seed}-${Date.now()}`).toString("hex").slice(0, 16);
   return `0x${suffix.padEnd(64, "0")}`;
+}
+
+function extractTxHash(payload: unknown): string | undefined {
+  if (payload === null || typeof payload !== "object") {
+    return undefined;
+  }
+  const asRecord = payload as Record<string, unknown>;
+  for (const key of ["transactionHash", "txHash", "hash"]) {
+    const value = asRecord[key];
+    if (typeof value === "string" && value.startsWith("0x")) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function toDecimalAmount(value: number, decimals = 6): string {
+  return value.toFixed(decimals).replace(/\.?0+$/, "");
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
@@ -52,6 +74,65 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMes
     if (timer) {
       clearTimeout(timer);
     }
+  }
+}
+
+export class McpSpotExecutionVenue implements ExecutionVenue {
+  constructor(
+    private readonly toolCaller: ToolCaller,
+    private readonly settings: {
+      spotSellToken: string;
+      spotBuyToken: string;
+      slippage: number;
+      markPrice: number;
+    },
+  ) {}
+
+  async armDeadmanSwitch(_seconds: number): Promise<void> {
+    return;
+  }
+
+  async cancelAllOpenOrders(): Promise<void> {
+    return;
+  }
+
+  async placeSpotBuy(input: { market: string; notionalUsd: number }): Promise<ExecutionOrderResult> {
+    const response = await this.toolCaller.callTool("starknet_swap", {
+      sellToken: this.settings.spotSellToken,
+      buyToken: this.settings.spotBuyToken,
+      amount: toDecimalAmount(input.notionalUsd, 6),
+      slippage: this.settings.slippage,
+    });
+
+    return {
+      orderId: `mcp-spot-${Date.now()}`,
+      filledNotionalUsd: input.notionalUsd,
+      txHash: extractTxHash(response),
+    };
+  }
+
+  async placePerpShort(input: { market: string; notionalUsd: number }): Promise<ExecutionOrderResult> {
+    return {
+      orderId: `perp-mock-${Date.now()}`,
+      filledNotionalUsd: input.notionalUsd,
+      txHash: mockHash(`perp-mock:${input.market}`),
+    };
+  }
+
+  async neutralizeSpot(input: { market: string; notionalUsd: number }): Promise<ExecutionOrderResult> {
+    const estimatedBaseAmount = input.notionalUsd / this.settings.markPrice;
+    const response = await this.toolCaller.callTool("starknet_swap", {
+      sellToken: this.settings.spotBuyToken,
+      buyToken: this.settings.spotSellToken,
+      amount: toDecimalAmount(estimatedBaseAmount, 8),
+      slippage: this.settings.slippage,
+    });
+
+    return {
+      orderId: `mcp-neutralize-${Date.now()}`,
+      filledNotionalUsd: input.notionalUsd,
+      txHash: extractTxHash(response),
+    };
   }
 }
 

@@ -50,6 +50,12 @@ const envSchema = z
       .default("success"),
     CARRY_MOCK_SECOND_LEG_DELAY_MS: z.coerce.number().int().nonnegative().default(250),
     CARRY_MOCK_SECOND_LEG_FILL_RATIO: z.coerce.number().positive().max(1).default(1),
+    CARRY_EXECUTION_SURFACE: z.enum(["mock", "mcp_spot"]).default("mock"),
+    CARRY_MCP_ENTRY: z.string().default("../../packages/starknet-mcp-server/dist/index.js"),
+    CARRY_MCP_LABEL: z.string().default("carry-agent"),
+    CARRY_SPOT_SELL_TOKEN: z.string().default("USDC"),
+    CARRY_SPOT_BUY_TOKEN: z.string().default("ETH"),
+    CARRY_SWAP_SLIPPAGE: z.coerce.number().positive().max(1).default(0.02),
   })
   .passthrough();
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { executeHedgedEntry, MockExecutionVenue } from "../src/execution.js";
+import { executeHedgedEntry, McpSpotExecutionVenue, MockExecutionVenue } from "../src/execution.js";
 
 const snapshot = {
   market: "ETH-USD",
@@ -123,5 +123,41 @@ describe("executeHedgedEntry", () => {
     assert.equal(outcome.status, "neutralized");
     assert.equal(outcome.reasonCode, "NEUTRALIZED_PARTIAL_FILL_TIMEOUT");
     assert.equal(outcome.incidents[0]?.type, "unhedged_exceeds_cap");
+  });
+});
+
+describe("McpSpotExecutionVenue", () => {
+  it("calls starknet_swap for spot buy and reverse swap for neutralization", async () => {
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const toolCaller = {
+      callTool: async (name: string, args: Record<string, unknown>) => {
+        calls.push({ name, args });
+        return { transactionHash: "0xabc" };
+      },
+    };
+
+    const venue = new McpSpotExecutionVenue(toolCaller, {
+      spotSellToken: "USDC",
+      spotBuyToken: "ETH",
+      slippage: 0.02,
+      markPrice: 2000,
+    });
+
+    const spot = await venue.placeSpotBuy({ market: "ETH-USD", notionalUsd: 1000 });
+    const unwind = await venue.neutralizeSpot({ market: "ETH-USD", notionalUsd: 1000 });
+
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0]?.name, "starknet_swap");
+    assert.equal(calls[0]?.args.sellToken, "USDC");
+    assert.equal(calls[0]?.args.buyToken, "ETH");
+    assert.equal(calls[0]?.args.amount, "1000");
+
+    assert.equal(calls[1]?.name, "starknet_swap");
+    assert.equal(calls[1]?.args.sellToken, "ETH");
+    assert.equal(calls[1]?.args.buyToken, "USDC");
+    assert.equal(calls[1]?.args.amount, "0.5");
+
+    assert.equal(spot.txHash, "0xabc");
+    assert.equal(unwind.txHash, "0xabc");
   });
 });

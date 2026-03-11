@@ -5,8 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseConfig } from "./src/config.js";
-import { executeHedgedEntry, MockExecutionVenue } from "./src/execution.js";
+import { executeHedgedEntry, McpSpotExecutionVenue, MockExecutionVenue } from "./src/execution.js";
 import { createExtendedClient } from "./src/extended.js";
+import { McpSidecar } from "./src/mcp.js";
 import { evaluateExecutionSafety } from "./src/safety.js";
 import { estimateCarryEdge, evaluateCarryDecision } from "./src/strategy.js";
 import type { ExecutionOutcome } from "./src/types.js";
@@ -32,6 +33,31 @@ function log(level: "INFO" | "WARN" | "ERROR", message: string, data?: Record<st
   }
 }
 
+function buildMcpEnv(): Record<string, string> {
+  const keys = [
+    "STARKNET_RPC_URL",
+    "STARKNET_ACCOUNT_ADDRESS",
+    "STARKNET_PRIVATE_KEY",
+    "STARKNET_SIGNER_MODE",
+    "KEYRING_PROXY_URL",
+    "KEYRING_HMAC_SECRET",
+    "KEYRING_CLIENT_ID",
+    "KEYRING_SIGNING_KEY_ID",
+    "AVNU_PAYMASTER_API_KEY",
+    "AVNU_PAYMASTER_FEE_MODE",
+    "STARKNET_MCP_POLICY",
+  ];
+
+  const env: Record<string, string> = {};
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === "string" && value.length > 0) {
+      env[key] = value;
+    }
+  }
+  return env;
+}
+
 async function main(): Promise<void> {
   const cfg = parseConfig();
   const client = createExtendedClient({
@@ -46,6 +72,7 @@ async function main(): Promise<void> {
     holdHours: cfg.CARRY_HOLD_HOURS,
     fundingWindowHours: cfg.CARRY_FUNDING_WINDOW_HOURS,
     runMode: cfg.CARRY_RUN_MODE,
+    executionSurface: cfg.CARRY_EXECUTION_SURFACE,
   });
 
   const nowMs = Date.now();
@@ -120,22 +147,57 @@ async function main(): Promise<void> {
 
   let executionOutcome: ExecutionOutcome | undefined = undefined;
   if (executionSafety.allowed) {
-    const venue = new MockExecutionVenue(
-      cfg.CARRY_EXECUTION_SCENARIO,
-      cfg.CARRY_MOCK_SECOND_LEG_DELAY_MS,
-      cfg.CARRY_MOCK_SECOND_LEG_FILL_RATIO,
-    );
+    if (cfg.CARRY_EXECUTION_SURFACE === "mcp_spot") {
+      const resolvedEntry = path.isAbsolute(cfg.CARRY_MCP_ENTRY)
+        ? cfg.CARRY_MCP_ENTRY
+        : path.resolve(__dirname, cfg.CARRY_MCP_ENTRY);
+      const sidecar = new McpSidecar(resolvedEntry, buildMcpEnv());
+      await sidecar.connect(cfg.CARRY_MCP_LABEL);
 
-    executionOutcome = await executeHedgedEntry(venue, {
-      market: cfg.CARRY_MARKET,
-      notionalUsd: cfg.CARRY_NOTIONAL_USD,
-      maxUnhedgedNotionalUsd: cfg.CARRY_MAX_UNHEDGED_NOTIONAL_USD,
-      leggingTimeoutMs: cfg.CARRY_LEGGING_TIMEOUT_MS,
-      partialFillTimeoutMs: cfg.CARRY_PARTIAL_FILL_TIMEOUT_MS,
-      deadmanSwitchEnabled: cfg.CARRY_DEADMAN_SWITCH_ENABLED,
-      deadmanSwitchSeconds: cfg.CARRY_DEADMAN_SWITCH_SECONDS,
-      marketSnapshot: snapshot,
-    });
+      try {
+        const tools = await sidecar.listTools();
+        if (!tools.includes("starknet_swap")) {
+          throw new Error("starknet_swap tool is required for mcp_spot execution surface.");
+        }
+
+        const venue = new McpSpotExecutionVenue(sidecar, {
+          spotSellToken: cfg.CARRY_SPOT_SELL_TOKEN,
+          spotBuyToken: cfg.CARRY_SPOT_BUY_TOKEN,
+          slippage: cfg.CARRY_SWAP_SLIPPAGE,
+          markPrice: snapshot.markPrice,
+        });
+
+        executionOutcome = await executeHedgedEntry(venue, {
+          market: cfg.CARRY_MARKET,
+          notionalUsd: cfg.CARRY_NOTIONAL_USD,
+          maxUnhedgedNotionalUsd: cfg.CARRY_MAX_UNHEDGED_NOTIONAL_USD,
+          leggingTimeoutMs: cfg.CARRY_LEGGING_TIMEOUT_MS,
+          partialFillTimeoutMs: cfg.CARRY_PARTIAL_FILL_TIMEOUT_MS,
+          deadmanSwitchEnabled: cfg.CARRY_DEADMAN_SWITCH_ENABLED,
+          deadmanSwitchSeconds: cfg.CARRY_DEADMAN_SWITCH_SECONDS,
+          marketSnapshot: snapshot,
+        });
+      } finally {
+        await sidecar.close();
+      }
+    } else {
+      const venue = new MockExecutionVenue(
+        cfg.CARRY_EXECUTION_SCENARIO,
+        cfg.CARRY_MOCK_SECOND_LEG_DELAY_MS,
+        cfg.CARRY_MOCK_SECOND_LEG_FILL_RATIO,
+      );
+
+      executionOutcome = await executeHedgedEntry(venue, {
+        market: cfg.CARRY_MARKET,
+        notionalUsd: cfg.CARRY_NOTIONAL_USD,
+        maxUnhedgedNotionalUsd: cfg.CARRY_MAX_UNHEDGED_NOTIONAL_USD,
+        leggingTimeoutMs: cfg.CARRY_LEGGING_TIMEOUT_MS,
+        partialFillTimeoutMs: cfg.CARRY_PARTIAL_FILL_TIMEOUT_MS,
+        deadmanSwitchEnabled: cfg.CARRY_DEADMAN_SWITCH_ENABLED,
+        deadmanSwitchSeconds: cfg.CARRY_DEADMAN_SWITCH_SECONDS,
+        marketSnapshot: snapshot,
+      });
+    }
   } else if (cfg.CARRY_RUN_MODE === "execute") {
     log("WARN", "Execution blocked by safety rails.", executionSafety);
   }
@@ -157,6 +219,7 @@ async function main(): Promise<void> {
       hasOpenPosition: cfg.CARRY_HAS_OPEN_POSITION,
       venueHealthy: cfg.CARRY_VENUE_HEALTHY,
       runMode: cfg.CARRY_RUN_MODE,
+      executionSurface: cfg.CARRY_EXECUTION_SURFACE,
     },
     marketSnapshot: snapshot,
     fundingPoints: fundingHistory.length,
@@ -181,6 +244,13 @@ async function main(): Promise<void> {
 
   if (cfg.CARRY_RUN_MODE === "dry-run" && decision.action === "ENTER") {
     log("WARN", "Decision is ENTER. Dry-run mode does not execute orders.");
+  }
+
+  if (cfg.CARRY_EXECUTION_SURFACE === "mcp_spot" && cfg.CARRY_RUN_MODE === "execute") {
+    log(
+      "WARN",
+      "Perp leg remains mocked in mcp_spot mode; only spot execution is delegated to MCP/Starknet tools.",
+    );
   }
 }
 

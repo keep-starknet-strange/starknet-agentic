@@ -7,7 +7,7 @@ This example fetches Extended market + funding data, applies a policy-first basi
 It supports two modes:
 
 - `dry-run` (default): decision-only, no execution.
-- `execute`: mock hedged entry path with safety rails (no real orders).
+- `execute`: hedged-entry execution path with safety rails.
 
 ## What it proves
 
@@ -40,6 +40,18 @@ Execute mode with safety rails:
 pnpm --filter @starknet-agentic/carry-agent-demo run run:execute
 ```
 
+Spot execution through MCP (Starknet tool surface):
+
+```bash
+# build MCP server once
+pnpm --filter @starknet-agentic/mcp-server build
+
+# run carry agent with spot execution delegated to MCP starknet_swap
+CARRY_RUN_MODE=execute \
+CARRY_EXECUTION_SURFACE=mcp_spot \
+pnpm --filter @starknet-agentic/carry-agent-demo run run
+```
+
 Output:
 
 - structured JSON logs to stdout
@@ -54,7 +66,9 @@ pnpm --filter @starknet-agentic/carry-agent-demo typecheck
 
 ## Safety notes
 
-- The current `execute` path is mock-only and exists to verify safety logic end-to-end.
+- The current `execute` path is safety-focused and still partially mocked (perp leg).
+- `CARRY_EXECUTION_SURFACE=mock` runs both legs in mock mode.
+- `CARRY_EXECUTION_SURFACE=mcp_spot` executes the spot leg via MCP (`starknet_swap`) and keeps perp leg mocked.
 - Hard rails enforced before/through execute mode:
   - max notional cap (`CARRY_MAX_NOTIONAL_USD`)
   - stale-data block (`CARRY_MAX_DATA_AGE_MS`)
