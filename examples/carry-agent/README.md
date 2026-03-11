@@ -28,6 +28,14 @@ Optional for user-specific fee tier:
 EXTENDED_API_KEY=...
 ```
 
+For real perp execution in `mcp_spot` mode, install the official Extended Python SDK once:
+
+```bash
+python3 -m venv examples/carry-agent/.venv
+source examples/carry-agent/.venv/bin/activate
+pip install x10-python-trading-starknet==0.0.17
+```
+
 ## Run
 
 ```bash
@@ -49,6 +57,7 @@ pnpm --filter @starknet-agentic/mcp-server build
 # run carry agent with spot execution delegated to MCP starknet_swap
 CARRY_RUN_MODE=execute \
 CARRY_EXECUTION_SURFACE=mcp_spot \
+CARRY_EXTENDED_PYTHON_BIN=examples/carry-agent/.venv/bin/python \
 pnpm --filter @starknet-agentic/carry-agent-demo run run
 ```
 
@@ -66,9 +75,9 @@ pnpm --filter @starknet-agentic/carry-agent-demo typecheck
 
 ## Safety notes
 
-- The current `execute` path is safety-focused and still partially mocked (perp leg).
 - `CARRY_EXECUTION_SURFACE=mock` runs both legs in mock mode.
-- `CARRY_EXECUTION_SURFACE=mcp_spot` executes the spot leg via MCP (`starknet_swap`) and keeps perp leg mocked.
+- `CARRY_EXECUTION_SURFACE=mcp_spot` executes the spot leg via MCP (`starknet_swap`) and executes the perp hedge on Extended via Python SDK signing.
+- `mcp_spot` execute mode requires: `EXTENDED_API_KEY`, `EXTENDED_PUBLIC_KEY`, `EXTENDED_PRIVATE_KEY`, `EXTENDED_VAULT_NUMBER`.
 - Hard rails enforced before/through execute mode:
   - max notional cap (`CARRY_MAX_NOTIONAL_USD`)
   - stale-data block (`CARRY_MAX_DATA_AGE_MS`)

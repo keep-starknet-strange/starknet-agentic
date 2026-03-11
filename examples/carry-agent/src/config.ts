@@ -5,6 +5,9 @@ const envSchema = z
     EXTENDED_BASE_URL: z.string().url().default("https://api.starknet.extended.exchange"),
     EXTENDED_API_PREFIX: z.string().default("/api/v1"),
     EXTENDED_API_KEY: z.string().optional(),
+    EXTENDED_PUBLIC_KEY: z.string().optional(),
+    EXTENDED_PRIVATE_KEY: z.string().optional(),
+    EXTENDED_VAULT_NUMBER: z.coerce.number().int().positive().optional(),
 
     CARRY_MARKET: z
       .string()
@@ -56,6 +59,12 @@ const envSchema = z
     CARRY_SPOT_SELL_TOKEN: z.string().default("USDC"),
     CARRY_SPOT_BUY_TOKEN: z.string().default("ETH"),
     CARRY_SWAP_SLIPPAGE: z.coerce.number().positive().max(1).default(0.02),
+    CARRY_PERP_SLIPPAGE_BPS: z.coerce.number().nonnegative().default(20),
+    CARRY_PERP_ORDER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(350),
+    CARRY_PERP_ORDER_POLL_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
+    CARRY_EXTENDED_PYTHON_BIN: z.string().default("python3"),
+    CARRY_EXTENDED_PYTHON_SCRIPT: z.string().default("./scripts/extended_perp_adapter.py"),
+    CARRY_EXTENDED_COMMAND_TIMEOUT_MS: z.coerce.number().int().positive().default(25000),
   })
   .passthrough();
 

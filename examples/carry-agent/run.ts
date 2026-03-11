@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseConfig } from "./src/config.js";
+import { ExtendedPythonPerpExecutor } from "./src/extendedPerp.js";
 import { executeHedgedEntry, McpSpotExecutionVenue, MockExecutionVenue } from "./src/execution.js";
 import { createExtendedClient } from "./src/extended.js";
 import { McpSidecar } from "./src/mcp.js";
@@ -56,6 +57,37 @@ function buildMcpEnv(): Record<string, string> {
     }
   }
   return env;
+}
+
+function requiredExtendedEnv(config: ReturnType<typeof parseConfig>): {
+  apiKey: string;
+  publicKey: string;
+  privateKey: string;
+  vaultNumber: number;
+} {
+  const apiKey = config.EXTENDED_API_KEY;
+  const publicKey = config.EXTENDED_PUBLIC_KEY;
+  const privateKey = config.EXTENDED_PRIVATE_KEY;
+  const vaultNumber = config.EXTENDED_VAULT_NUMBER;
+
+  const missing: string[] = [];
+  if (!apiKey) missing.push("EXTENDED_API_KEY");
+  if (!publicKey) missing.push("EXTENDED_PUBLIC_KEY");
+  if (!privateKey) missing.push("EXTENDED_PRIVATE_KEY");
+  if (!vaultNumber) missing.push("EXTENDED_VAULT_NUMBER");
+
+  if (missing.length > 0) {
+    throw new Error(
+      `CARRY_EXECUTION_SURFACE=mcp_spot requires Extended perp credentials: ${missing.join(", ")}`,
+    );
+  }
+
+  return {
+    apiKey: apiKey!,
+    publicKey: publicKey!,
+    privateKey: privateKey!,
+    vaultNumber: vaultNumber!,
+  };
 }
 
 async function main(): Promise<void> {
@@ -165,7 +197,19 @@ async function main(): Promise<void> {
           spotBuyToken: cfg.CARRY_SPOT_BUY_TOKEN,
           slippage: cfg.CARRY_SWAP_SLIPPAGE,
           markPrice: snapshot.markPrice,
-        });
+        }, new ExtendedPythonPerpExecutor({
+          pythonBin: cfg.CARRY_EXTENDED_PYTHON_BIN,
+          scriptPath: path.isAbsolute(cfg.CARRY_EXTENDED_PYTHON_SCRIPT)
+            ? cfg.CARRY_EXTENDED_PYTHON_SCRIPT
+            : path.resolve(__dirname, cfg.CARRY_EXTENDED_PYTHON_SCRIPT),
+          baseUrl: cfg.EXTENDED_BASE_URL,
+          apiPrefix: cfg.EXTENDED_API_PREFIX,
+          slippageBps: cfg.CARRY_PERP_SLIPPAGE_BPS,
+          pollIntervalMs: cfg.CARRY_PERP_ORDER_POLL_INTERVAL_MS,
+          pollTimeoutMs: cfg.CARRY_PERP_ORDER_POLL_TIMEOUT_MS,
+          commandTimeoutMs: cfg.CARRY_EXTENDED_COMMAND_TIMEOUT_MS,
+          ...requiredExtendedEnv(cfg),
+        }));
 
         executionOutcome = await executeHedgedEntry(venue, {
           market: cfg.CARRY_MARKET,
@@ -244,13 +288,6 @@ async function main(): Promise<void> {
 
   if (cfg.CARRY_RUN_MODE === "dry-run" && decision.action === "ENTER") {
     log("WARN", "Decision is ENTER. Dry-run mode does not execute orders.");
-  }
-
-  if (cfg.CARRY_EXECUTION_SURFACE === "mcp_spot" && cfg.CARRY_RUN_MODE === "execute") {
-    log(
-      "WARN",
-      "Perp leg remains mocked in mcp_spot mode; only spot execution is delegated to MCP/Starknet tools.",
-    );
   }
 }
 

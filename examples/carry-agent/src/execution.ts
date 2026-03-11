@@ -4,6 +4,7 @@ import type {
   ExecutionOrderResult,
   ExtendedMarketSnapshot,
 } from "./types.js";
+import type { PerpExecutionClient } from "./extendedPerp.js";
 
 export type ExecuteEntryInput = {
   market: string;
@@ -86,13 +87,21 @@ export class McpSpotExecutionVenue implements ExecutionVenue {
       slippage: number;
       markPrice: number;
     },
+    private readonly perpExecutionClient?: PerpExecutionClient,
   ) {}
 
-  async armDeadmanSwitch(_seconds: number): Promise<void> {
-    return;
+  async armDeadmanSwitch(seconds: number): Promise<void> {
+    if (!this.perpExecutionClient) {
+      return;
+    }
+    await this.perpExecutionClient.armDeadmanSwitch(seconds);
   }
 
   async cancelAllOpenOrders(): Promise<void> {
+    if (!this.perpExecutionClient) {
+      return;
+    }
+    await this.perpExecutionClient.cancelAllOpenOrders();
     return;
   }
 
@@ -112,6 +121,14 @@ export class McpSpotExecutionVenue implements ExecutionVenue {
   }
 
   async placePerpShort(input: { market: string; notionalUsd: number }): Promise<ExecutionOrderResult> {
+    if (this.perpExecutionClient) {
+      return this.perpExecutionClient.placePerpShort({
+        market: input.market,
+        notionalUsd: input.notionalUsd,
+        markPrice: this.settings.markPrice,
+      });
+    }
+
     return {
       orderId: `perp-mock-${Date.now()}`,
       filledNotionalUsd: input.notionalUsd,
