@@ -47,8 +47,7 @@ rules:
       include:
         - "**/*.cairo"
     patterns:
-      - pattern-regex: "(balanceOf|balance_of|transferFrom|transfer_from)"
-      - pattern-regex: "(fallback|retry|or_else|match\\s+Err|if[\\s\\S]{0,120}?\\berr\\b)"
+      - pattern-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,900}?(balanceOf|balance_of|transferFrom|transfer_from)[\\s\\S]{0,260}?(fallback|retry|or_else|match\\s+Err)[\\s\\S]{0,260}?(balanceOf|balance_of|transferFrom|transfer_from|call_contract_syscall|dispatcher)"
 
   - id: cairo.external.arbitrary-call-proxy
     message: "Privileged path appears to forward arbitrary external calls."
@@ -99,8 +98,8 @@ rules:
       include:
         - "**/*.cairo"
     patterns:
-      - pattern-regex: "(l1_handler|consume_message_from_l1|send_message_to_l1|message_hash)"
-      - pattern-not-regex: "(nonce|processed_messages|sender_domain|source_chain|origin)"
+      - pattern-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,1200}?(l1_handler|consume_message_from_l1|send_message_to_l1|message_hash)"
+      - pattern-not-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,1200}?(l1_handler|consume_message_from_l1|send_message_to_l1)[\\s\\S]{0,1200}?(nonce|processed_messages|sender_domain|source_chain|origin(_chain|_domain)?|message_hash\\.read\\()"
 
   - id: cairo.external.decode-shape-not-validated
     message: "External return payload may be decoded without explicit shape/length checks."
@@ -116,8 +115,8 @@ rules:
       include:
         - "**/*.cairo"
     patterns:
-      - pattern-regex: "(call_contract_syscall|dispatcher|decode)"
-      - pattern-not-regex: "(len\\(|span\\.len|assert\\(.*len|expected_len|validate_length)"
+      - pattern-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,1200}?(call_contract_syscall|dispatcher|decode)"
+      - pattern-not-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,1200}?(call_contract_syscall|dispatcher|decode)[\\s\\S]{0,1200}?(len\\(|span\\.len|assert\\([^\\n]{0,200}len|expected_len|validate_length)"
 
   - id: cairo.external.multicall-order-dependence
     message: "Multicall/batch execution appears state-order dependent without strong invariant gate."

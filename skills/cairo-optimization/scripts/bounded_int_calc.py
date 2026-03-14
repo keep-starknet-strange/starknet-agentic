@@ -21,13 +21,21 @@ FELT252_PRIME = 0x80000000000001100000000000000000000000000000000000000000000000
 
 
 def validate_felt252(value: int, name: str) -> None:
-    """Warn if value exceeds felt252 range."""
+    """Reject bounds that cannot be represented in felt252."""
     if value < 0:
         # Negative values are represented as P - |value| in felt252
         if abs(value) >= FELT252_PRIME:
-            print(f"WARNING: {name} = {value} exceeds felt252 range!", file=sys.stderr)
+            raise ValueError(f"{name} = {value} exceeds felt252 range")
     elif value >= FELT252_PRIME:
-        print(f"WARNING: {name} = {value} exceeds felt252 range!", file=sys.stderr)
+        raise ValueError(f"{name} = {value} exceeds felt252 range")
+
+
+def validate_interval(lo: int, hi: int, name: str) -> None:
+    """Validate a closed interval [lo, hi]."""
+    if lo > hi:
+        raise ValueError(f"{name}: lower bound must be <= upper bound")
+    validate_felt252(lo, f"{name} lower bound")
+    validate_felt252(hi, f"{name} upper bound")
 
 
 def format_bound(value: int) -> str:
@@ -194,6 +202,9 @@ Examples:
 
     args = parser.parse_args()
 
+    validate_interval(args.a_lo, args.a_hi, "first operand")
+    validate_interval(args.b_lo, args.b_hi, "second operand")
+
     if args.operation == "add":
         print(generate_add_impl(args.a_lo, args.a_hi, args.b_lo, args.b_hi, args.name))
     elif args.operation == "sub":
@@ -205,4 +216,8 @@ Examples:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)

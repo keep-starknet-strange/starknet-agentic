@@ -17,7 +17,7 @@ Runner:
 - `scripts/quality/check_semgrep_vector_coverage.py`
 
 Default config:
-- `cairo-auditor/references/semgrep/rules/`
+- `skills/cairo-auditor/references/semgrep/rules/`
 
 Rule packs:
 - `rules/access-upgrade.yaml`

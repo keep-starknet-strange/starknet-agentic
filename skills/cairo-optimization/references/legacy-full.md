@@ -21,7 +21,7 @@ Rules and patterns for writing efficient Cairo code. Sourced from audit findings
 | # | Rule | Instead of | Use |
 |---|------|-----------|-----|
 | 1 | Combined quotient+remainder | `x / m` + `x % m` | `DivRem::div_rem(x, m)` |
-| 2 | Cheap loop conditions | `while i < n` | `while i != n` |
+| 2 | Exact-trip loop equality checks | `while i < n` | `while i != n` (only when trip count is exact) |
 | 3 | Constant powers of 2 | `2_u32.pow(k)` | `match`-based lookup table |
 | 4 | Pointer-based iteration | `*data.at(i)` in index loop | `pop_front` / `for` / `multi_pop_front` |
 | 5 | Cache array length | `.len()` in loop condition | `let n = data.len();` before loop |
@@ -48,17 +48,19 @@ let r = x % m;
 let (q, r) = DivRem::div_rem(x, m);
 ```
 
-### 2. Never use `<` or `>` in while loop conditions — use `!=`
+### 2. Use `!=` only for exact-trip loops
 
-Equality checks are cheaper than comparisons in Cairo.
+Equality checks can be cheaper than comparisons in Cairo, but only use `while i != n` when the loop cannot overshoot and the trip count is exact.
 
 ```cairo
 // BAD
 while i < n { ... i += 1; }
 
-// GOOD
+// GOOD (exact-trip loop only)
 while i != n { ... i += 1; }
 ```
+
+If the index can start past the bound or skip by more than 1, keep `<`/`>` to avoid non-terminating loops.
 
 ### 3. Never compute `2^k` with `pow()` — use a lookup table
 
@@ -463,7 +465,9 @@ type U128AsBounded = BoundedInt<0, 340282366920938463463374607431768211455>;
 fn felt252_as_u128(x: felt252) -> u128 {
     match u128s_from_felt252(x) {
         U128sFromFelt252Result::Narrow(low) => low,
-        U128sFromFelt252Result::Wide((_, low)) => low,
+        U128sFromFelt252Result::Wide(_) => {
+            core::panic_with_felt252('value exceeds u128')
+        },
     }
 }
 

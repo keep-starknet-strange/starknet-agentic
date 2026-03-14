@@ -2,7 +2,7 @@
 name: cairo-testing
 description: Cairo smart-contract testing with snforge. Trigger on "write tests", "add unit tests", "fuzz test", "integration test", "test this contract", "regression test". Guides test strategy, cheatcode usage, and coverage.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.2.0","org":"keep-starknet-strange","source":"starknet-skills"}
+metadata: {"author":"starknet-agentic","version":"0.2.0","org":"keep-starknet-strange","source":"starknet-agentic"}
 keywords: [cairo, testing, snforge, starknet-foundry, fuzzing, integration]
 allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
@@ -73,7 +73,7 @@ You are a Cairo testing assistant. Your job is to understand what the user needs
 | Event testing, spy_events | `{skill_dir}/references/legacy-full.md` (Event Testing section) |
 | Fuzz / property tests | `{skill_dir}/references/legacy-full.md` (Fuzzing section) |
 | Fork testing against mainnet | `{skill_dir}/references/legacy-full.md` (Fork Testing section) |
-| Security regression recipes | `../../datasets/distilled/test-recipes/` |
+| Security regression recipes | `../cairo-auditor/references/vulnerability-db/` |
 
 Where `{skill_dir}` is the directory containing this SKILL.md. Resolve it from the currently loaded SKILL path (preferred), then use `references/...` relative paths from that directory.
 
@@ -96,9 +96,11 @@ Keep the plan under 30 lines. Wait for user confirmation before implementing.
 - Name tests descriptively: `test_<function>_<scenario>` (e.g., `test_transfer_non_owner_rejected`).
 
 *Coverage rules (mandatory):*
-- Every storage-mutating `#[abi(embed_v0)]` impl function and `#[external(v0)]` function MUST have both a success test and a revert test.
+- Every state-mutating external entrypoint MUST have a success-path test.
+- Add negative-path tests for entrypoints with explicit authorization, validation, or other rejection conditions.
 - Every access-controlled function MUST be tested with: (1) authorized caller succeeds, (2) unauthorized caller panics with expected message.
-- Constructor MUST be tested: correct initial state, zero-address rejection.
+- Constructors MUST be tested for correct initial state, plus zero-address rejection when the constructor explicitly forbids zero addresses.
+- Read-only externals (`self: @ContractState`) MUST verify return correctness; revert tests are optional unless the function defines a failure path.
 - Every event-emitting function MUST verify the event with `spy_events` + `assert_emitted`.
 
 *Cheatcode rules:*
@@ -128,11 +130,38 @@ After writing tests, run `snforge test` to verify they pass. If any fail, fix an
 - "Run `cairo-auditor` for a security review — it may surface additional test cases."
 - "Consider adding fork tests if this contract interacts with deployed protocols."
 
+## Runnable Example (starknet.js)
+
+```ts
+import { Account, Contract, RpcProvider } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
+const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
+const contract = new Contract(abi, process.env.CONTRACT_ADDRESS!, provider).connect(account);
+
+// Execute path (state mutation)
+const tx = await contract.invoke("transfer", [process.env.USER_ADDRESS!, 100, 0]);
+await provider.waitForTransaction(tx.transaction_hash);
+
+// Read path (view assertion)
+const balance = await contract.call("balance_of", [process.env.USER_ADDRESS!]);
+console.log({ balance });
+```
+
+## Error Codes and Recovery
+
+| Code | Condition | Recovery |
+| --- | --- | --- |
+| `TEST-001` | `snforge test` fails to compile | Fix imports/dependencies in `Scarb.toml`, then rerun full suite. |
+| `TEST-002` | Access-control negative test missing | Add unauthorized caller case with expected panic message. |
+| `TEST-003` | Event assertion mismatch | Use `spy_events` + `assert_emitted` with full event payload ordering. |
+| `TEST-004` | Flaky fuzz results | Pin `#[fuzzer(seed: ...)]`, constrain inputs, and rerun deterministic seed. |
+
 ## Security-Critical Rules
 
 These are non-negotiable. Every test suite you write must satisfy all of them:
 
-1. Every storage-mutating external function has both a positive and negative test.
+1. Every state-mutating external function has a positive test, plus negative tests for explicit rejection conditions.
 2. Every access-controlled function is tested with authorized and unauthorized callers.
 3. Expected panic messages are asserted with `#[should_panic(expected: '...')]` — not bare `#[should_panic]`.
 4. Event assertions use `spy_events` + `assert_emitted` with full event data — not just event count.
@@ -143,7 +172,7 @@ These are non-negotiable. Every test suite you write must satisfy all of them:
 - Testing patterns and snforge API: [legacy-full.md](references/legacy-full.md)
 - Cross-skill handoff format: `../references/skill-handoff.md`
 - Module index: [references/README.md](references/README.md)
-- Security regression recipes: `../../datasets/distilled/test-recipes/`
+- Security regression recipes: `../cairo-auditor/references/vulnerability-db/`
 
 ## Workflow
 

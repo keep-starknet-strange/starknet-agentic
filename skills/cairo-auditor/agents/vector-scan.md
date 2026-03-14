@@ -39,7 +39,7 @@ For each `Borderline`, keep one sentence: specific function + why concept can st
 
 ## Deep Pass Rules
 
-Only process `Survive` vectors.
+Process all `Survive` vectors, plus any `Borderline` vector that names a concrete equivalent mechanism.
 
 Use this one-line structure per vector before final formatted findings:
 

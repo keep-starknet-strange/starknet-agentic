@@ -38,6 +38,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+import tomllib
 
 
 # ---------------------------------------------------------------------------
@@ -78,8 +79,8 @@ def _git_short_hash(repo_root: str) -> str:
 
 
 def _profile_filename(output_dir: str, package: str, name: str, metric: str, commit: str, ext: str) -> str:
-    """Generate deterministic profile filename."""
-    ts = datetime.now().strftime("%y-%m-%d-%H:%M")
+    """Generate a stable filename shape for profile artifacts."""
+    ts = datetime.now().strftime("%y-%m-%d-%H-%M")
     return os.path.join(output_dir, f"{ts}_{package}_{name}_{metric}_{commit}.{ext}")
 
 
@@ -126,14 +127,40 @@ METRIC_CONFIG = {
 # Pipeline steps
 # ---------------------------------------------------------------------------
 
+def _read_package_name(scarb_toml_path: str) -> str | None:
+    """Read package.name from a Scarb manifest if present."""
+    try:
+        with open(scarb_toml_path, "rb") as handle:
+            parsed = tomllib.load(handle)
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+
+    package_block = parsed.get("package")
+    if isinstance(package_block, dict):
+        package_name = package_block.get("name")
+        if isinstance(package_name, str) and package_name:
+            return package_name
+    return None
+
+
 def _find_package_dir(repo_root: str, package: str) -> str:
     """Resolve package directory from workspace."""
-    pkg_dir = os.path.join(repo_root, "packages", package)
-    if os.path.isdir(pkg_dir) and os.path.isfile(os.path.join(pkg_dir, "Scarb.toml")):
+    normalized = package.strip()
+    pkg_dir = os.path.join(repo_root, "packages", normalized)
+    if normalized and os.path.isdir(pkg_dir) and os.path.isfile(os.path.join(pkg_dir, "Scarb.toml")):
         return pkg_dir
-    # Maybe it's a top-level package
-    if os.path.isfile(os.path.join(repo_root, "Scarb.toml")):
-        return repo_root
+
+    root_scarb = os.path.join(repo_root, "Scarb.toml")
+    if os.path.isfile(root_scarb):
+        root_package = _read_package_name(root_scarb)
+        if normalized in {"", ".", root_package or ""}:
+            return repo_root
+        _fail(
+            1,
+            f"Cannot find package '{package}'. Looked in packages/{package}/ and root package "
+            f"'{root_package or 'unknown'}'.",
+        )
+
     _fail(1, f"Cannot find package '{package}'. Looked in packages/{package}/ and repo root.")
     return ""  # unreachable
 

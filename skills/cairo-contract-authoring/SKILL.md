@@ -2,7 +2,7 @@
 name: cairo-contract-authoring
 description: Cairo smart-contract authoring on Starknet. Trigger on "write a contract", "create a contract", "implement this in Cairo", "add storage/events/interface", "compose components". Guides structure, security patterns, and component wiring.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.2.0","org":"keep-starknet-strange","source":"starknet-skills","contributors":["kronosapiens/dojoengine"]}
+metadata: {"author":"starknet-agentic","version":"0.2.0","org":"keep-starknet-strange","source":"starknet-agentic","contributors":["kronosapiens/dojoengine"]}
 keywords: [cairo, contract-authoring, starknet, openzeppelin, components, storage, events, interfaces]
 allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
@@ -117,6 +117,15 @@ These are non-negotiable. Every contract you write must satisfy all of them:
 3. Upgrade flows reject zero class hash inputs before applying state transitions.
 4. Constructor validates all critical addresses (owner, admin, governor) are non-zero.
 5. Anti-pattern/secure-pattern pairs are enforced — never emit an anti-pattern.
+
+## Error Codes
+
+| Code | Condition | Recovery |
+| --- | --- | --- |
+| `AUTH-001` | `scarb build` fails due to missing component imports | Verify `Scarb.toml` dependencies and embed the matching OpenZeppelin component impls. |
+| `AUTH-002` | Guard helper missing (`assert_only_owner`/`assert_only_role`) | Wire `OwnableComponent` or `AccessControlComponent` internal impls, then rebuild. |
+| `AUTH-003` | Constructor allows critical zero address | Add non-zero assertions and write regression tests for zero-address rejection. |
+| `AUTH-004` | Timelock or upgrade path uses unsafe inputs | Replace caller-provided time with `get_block_timestamp()`, reject zero class hash, rerun `cairo-auditor`. |
 
 ## References
 

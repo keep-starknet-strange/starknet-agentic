@@ -65,7 +65,8 @@ rules:
       include:
         - "**/*.cairo"
     patterns:
-      - pattern-regex: "(try_into|into\\(\\)|as\\s+u|as\\s+felt252|\\-\\s*[a-zA-Z0-9_]+)"
+      - pattern-regex: "(try_into|into\\(\\)|as\\s+u|as\\s+felt252)"
+      - pattern-regex: "(=\\s*[^\\n]{0,160}-\\s*[a-zA-Z0-9_]+|\\.write\\([^\\n]{0,160}-\\s*[a-zA-Z0-9_]+)"
       - pattern-not-regex: "(assert\\(.*<=.*\\)|checked_|safe_cast|saturating)"
 
   - id: cairo.math.oracle-cap-bypass

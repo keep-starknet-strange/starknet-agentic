@@ -126,6 +126,35 @@ After each optimization, run `snforge test` and `python3 {skill_dir}/scripts/pro
 
 For the full execution checklist, use [workflows/default.md](workflows/default.md).
 
+## starknet.js Example
+
+```ts
+import { Account, Contract, RpcProvider } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
+const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
+const contract = new Contract(abi, process.env.CONTRACT_ADDRESS!, provider).connect(account);
+
+try {
+  const before = await contract.call("hot_path_steps", []);
+  const tx = await contract.invoke("apply_optimized_path", []);
+  await provider.waitForTransaction(tx.transaction_hash);
+  const after = await contract.call("hot_path_steps", []);
+  console.log({ before, after });
+} catch (err) {
+  console.error("optimization check failed", err);
+}
+```
+
+## Error Codes and Recovery
+
+| Code | Condition | Recovery |
+| --- | --- | --- |
+| `OPT-001` | Baseline tests failed before optimization | Stop optimization work, fix failing tests, then rerun baseline profiling. |
+| `OPT-002` | Profiling artifacts missing (`trace`/`pb.gz`) | Re-run `profile.py` with correct `--mode`/`--package` and validate tool availability. |
+| `OPT-003` | BoundedInt bounds invalid or unsafe | Recompute bounds with `bounded_int_calc.py`; reject manual bounds and rerun tests. |
+| `OPT-004` | Post-change profile regressed | Revert the change, isolate one optimization class, and measure again with identical inputs. |
+
 ## Security-Critical Rules
 
 These are non-negotiable. Every optimization you apply must satisfy all of them:

@@ -9,7 +9,7 @@ Construct realistic exploit paths that cross function and contract boundaries.
 - Session/account validation-execute interplay.
 - Upgrade/admin takeover paths and failure modes.
 
-## Required Output
+## Output Requirements
 
 For each candidate:
 

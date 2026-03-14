@@ -1,7 +1,11 @@
 ---
 name: cairo-auditor
 description: Security audit of Cairo/Starknet code. Trigger on "audit", "check this contract", "review for security". Modes - default (full repo), deep (+ adversarial reasoning), or specific filenames.
+license: Apache-2.0
+metadata: {"author":"starknet-agentic","version":"0.2.0","org":"keep-starknet-strange","source":"starknet-agentic"}
+keywords: [cairo, starknet, security, audit, vulnerabilities, semgrep]
 allowed-tools: [Bash, Read, Glob, Grep, Task, Agent]
+user-invocable: true
 ---
 
 # Cairo/Starknet Security Audit
@@ -13,6 +17,38 @@ You are the orchestrator of a parallelized Cairo/Starknet security audit. Your j
 - Default flow: [workflows/default.md](workflows/default.md)
 - Deep flow: [workflows/deep.md](workflows/deep.md)
 - Report schema: [references/report-formatting.md](references/report-formatting.md)
+
+## Starknet.js Examples
+
+```ts
+import { Account, Contract, RpcProvider } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
+const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
+const contract = new Contract(abi, process.env.CONTRACT_ADDRESS!, provider).connect(account);
+
+try {
+  // View call for quick sanity checks while triaging findings.
+  const owner = await contract.call("owner", []);
+
+  // State-changing probe used during exploit-path validation.
+  const tx = await contract.invoke("set_owner", [owner]);
+  const receipt = await provider.waitForTransaction(tx.transaction_hash);
+  console.log({ finality: receipt.finality_status });
+} catch (err) {
+  console.error("audit probe failed", err);
+}
+```
+
+## Error Codes and Recovery
+
+| Code | Condition | Recovery |
+| --- | --- | --- |
+| `CAUD-001` | In-scope file discovery produced zero files | Re-run with explicit filenames and verify exclude rules did not hide target contracts. |
+| `CAUD-002` | Preflight scan failed or unavailable | Run `python3 scripts/quality/audit_local_repo.py` manually and attach output to the audit context. |
+| `CAUD-003` | Agent bundle generation failed | Rebuild `/tmp/cairo-audit-agent-*-bundle.md` and confirm each bundle has non-zero line count. |
+| `CAUD-004` | Conflicting findings across agents | Keep the highest-confidence root cause, then request a focused re-run on the disputed file. |
+| `CAUD-005` | Report includes only low-confidence items | Run deep mode (`/cairo-auditor deep`) and add deterministic checks from Semgrep/audit findings. |
 
 ## When to Use
 
@@ -197,16 +233,16 @@ Before doing anything else, print this exactly:
 
 ## Version Check
 
-After printing the banner, run two parallel tool calls: (a) Read the local `VERSION` file from the same directory as this skill, (b) Bash `curl -sf --connect-timeout 5 --max-time 10 https://raw.githubusercontent.com/keep-starknet-strange/starknet-skills/main/cairo-auditor/VERSION`. If the remote fetch succeeds and the versions differ, print:
+After printing the banner, run two parallel tool calls: (a) Read the local `VERSION` file from the same directory as this skill, (b) Bash `curl -sf --connect-timeout 5 --max-time 10 https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-auditor/VERSION`. If the remote fetch succeeds and the versions differ, print:
 
-> You are not using the latest version. Run `/plugin marketplace update keep-starknet-strange/starknet-skills` for best security coverage.
+> You are not using the latest version. Run `/plugin marketplace update keep-starknet-strange/starknet-agentic` for best security coverage.
 
 Then continue normally. If the fetch fails (offline, timeout), skip silently.
 
 Use this command for the remote check:
 
 ```bash
-curl -sf --connect-timeout 5 --max-time 10 https://raw.githubusercontent.com/keep-starknet-strange/starknet-skills/main/cairo-auditor/VERSION
+curl -sf --connect-timeout 5 --max-time 10 https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-auditor/VERSION
 ```
 
 ## Limitations
@@ -233,9 +269,9 @@ Each finding must include:
 
 1. `references/vulnerability-db/`
 2. `references/attack-vectors/`
-3. `../../datasets/normalized/findings/`
-4. `../../datasets/distilled/vuln-cards/`
-5. `../../evals/cases/`
+3. `references/audit-findings/`
+4. `../cairo-contract-authoring/references/legacy-full.md`
+5. `../cairo-testing/references/legacy-full.md`
 
 ## Output Rules
 

@@ -2,7 +2,7 @@
 name: account-abstraction
 description: Starknet account abstraction correctness and security guidance for validate/execute paths, nonces, signatures, and session policies.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.1.1","org":"keep-starknet-strange","source":"starknet-skills"}
+metadata: {"author":"starknet-agentic","version":"0.1.1","org":"keep-starknet-strange","source":"starknet-agentic"}
 keywords: [starknet, account-abstraction, signatures, nonces, session-keys, policy]
 allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
@@ -42,3 +42,34 @@ user-invocable: true
 ## References
 
 - Module index: [references index](references/README.md)
+
+## starknet.js Example
+
+```ts
+import { Account, CallData, RpcProvider } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
+const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
+
+// Validate preview (debug-only): inspect __validate__ behavior with the current nonce.
+const nonce = await account.getNonce();
+const call = { contractAddress: process.env.TARGET!, entrypoint: "set_limit", calldata: CallData.compile({ value: 7 }) };
+await provider.callContract({
+  contractAddress: account.address,
+  entrypoint: "__validate__",
+  calldata: CallData.compile({ calls: [call], nonce }),
+});
+
+// Execute path: real transaction that triggers __execute__ and nonce checks.
+const tx = await account.execute([call]);
+await provider.waitForTransaction(tx.transaction_hash);
+```
+
+## Error Codes and Recovery
+
+| Code | Condition | Recovery |
+| --- | --- | --- |
+| `AA-001` | `__validate__` is too expensive or stateful | Remove heavy logic from validation; add a test that caps validation steps. |
+| `AA-002` | `__execute__` allows blocked selectors/self-calls | Enforce selector filters and self-call checks; add authorized/unauthorized regression tests. |
+| `AA-003` | Nonce or domain mismatch causes replay risk | Normalize nonce source/hash domain; add replay and cross-domain tests. |
+| `AA-999` | Unexpected runtime panic | Capture calldata + caller context, reproduce in unit tests, then escalate to `cairo-auditor`. |

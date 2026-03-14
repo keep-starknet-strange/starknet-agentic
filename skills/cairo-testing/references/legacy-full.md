@@ -24,8 +24,8 @@ Reference for testing Cairo smart contracts with Starknet Foundry (snforge).
 
 For security regression tests, prefer templates under:
 
-- `../../datasets/distilled/test-recipes/`
-- `../../datasets/normalized/findings/`
+- `../../../datasets/distilled/test-recipes/`
+- `../../../datasets/normalized/findings/`
 
 ## Setup
 

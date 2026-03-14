@@ -25,8 +25,8 @@ Reference for writing Cairo smart contracts on Starknet. Covers structure, stora
 
 Before finalizing implementation for security-sensitive logic, cross-check:
 
-- `../../../datasets/distilled/fix-patterns/`
-- `../../../datasets/distilled/vuln-cards/`
+- `../../cairo-auditor/references/vulnerability-db/`
+- `../../cairo-auditor/references/audit-findings/`
 
 ## Upgrade/Auth Hardening Rules
 
@@ -77,7 +77,7 @@ version = "0.1.0"
 edition = "2024_07"
 
 [dependencies]
-starknet = "^2.16.0"
+starknet = "2.14.0"
 openzeppelin_access = "3.0.0"
 openzeppelin_introspection = "3.0.0"
 openzeppelin_token = "3.0.0"
@@ -85,7 +85,7 @@ openzeppelin_upgrades = "3.0.0"
 openzeppelin_security = "3.0.0"
 
 [dev-dependencies]
-snforge_std = "0.57.0"
+snforge_std = "0.54.1"
 
 [cairo]
 sierra-replace-ids = true
@@ -96,7 +96,7 @@ sierra-replace-ids = true
 allow-prebuilt-plugins = ["snforge_std"]
 ```
 
-> **Version pinning:** This template targets Scarb **2.16.x** with `starknet = "^2.16.0"` and `snforge_std = "0.57.0"`. If you use an older toolchain, pin compatible versions from the release matrix before production use. Check [scarbs.dev](https://scarbs.dev) for updates.
+> **Version pinning:** This repo's deployed contracts pin `starknet = "2.14.0"` and `snforge_std = "0.54.1"`. Update only with an explicit migration plan across all contract packages.
 
 ## Contract Structure
 

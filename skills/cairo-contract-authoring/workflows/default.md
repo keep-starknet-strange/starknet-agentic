@@ -42,7 +42,7 @@ Orchestrated by [SKILL.md](../SKILL.md). This is the reference for each phase.
 
 ## Phase 5 — Handoff and Eval Lock
 
-- Run `references/audit-handoff.md` flow if security-sensitive.
+- Run `../references/audit-handoff.md` flow if security-sensitive.
 - Execute local deterministic preflight:
   `python3 scripts/quality/audit_local_repo.py --repo-root <project-root> --scan-id handoff-audit`
 - Patch findings and add regression tests.
