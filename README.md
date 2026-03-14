@@ -33,6 +33,25 @@ npm view create-starknet-agent version
 
 The scaffolder detects your environment (OpenClaw/MoltBook, Claude Code, Cursor, or standalone) and wires Starknet integration automatically.
 
+## Install & Use
+
+Use the path that matches your runtime:
+
+```bash
+# Full project scaffold
+npx create-starknet-agent@latest
+
+# Claude Code marketplace
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@keep-starknet-strange-starknet-agentic
+/plugin menu
+
+# Individual skill install via Agent Skills CLI
+npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
+```
+
+For the full skill catalog and Cairo migration notes, see [skills/README.md](./skills/README.md) and [docs/CAIRO_SKILLS_MIGRATION.md](./docs/CAIRO_SKILLS_MIGRATION.md).
+
 ## System Requirements
 
 - CLI users (`npx create-starknet-agent@latest`): Node.js `>=18.0.0`

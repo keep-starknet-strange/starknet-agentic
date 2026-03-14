@@ -12,6 +12,21 @@ user-invocable: true
 
 Register and manage AI agent identities on Starknet using the ERC-8004 standard.
 
+## When to Use
+
+- Registering agents on-chain, updating agent metadata, or managing reputation and validation flows.
+- Building features that depend on ERC-8004 identity, feedback, or validator attestations.
+
+## When NOT to Use
+
+- Simple wallet, payment, or DeFi flows that do not depend on ERC-8004 registries.
+- Cairo contract authoring, deployment-only tasks, or security auditing.
+
+## Quick Start
+
+1. Install `starknet` and connect a funded account to the target ERC-8004 registry deployment.
+2. Use [skills catalog](../README.md) if the flow also needs wallet setup, deployment, or contract auditing.
+
 ## Overview
 
 ERC-8004 defines three interconnected on-chain registries for AI agents:

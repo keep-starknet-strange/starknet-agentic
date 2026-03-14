@@ -2,7 +2,7 @@
 """Repository-level SKILL.md quality checks.
 
 This validator enforces a minimal, deterministic subset of modern skill-authoring
-standards for the starknet-skills repository.
+standards for the starknet-agentic repository.
 """
 
 from __future__ import annotations
@@ -58,6 +58,19 @@ def parse_frontmatter(text: str, path: Path) -> tuple[dict[str, Any], int, list[
 
 def _normalized_target(target: str) -> str:
     return target.split("#", 1)[0].split("?", 1)[0].strip()
+
+
+def _path_depth(target: str) -> int:
+    parts = [part for part in Path(target).parts if part not in ("/", ".")]
+    return max(len(parts) - 1, 0)
+
+
+def _allow_root_router_link(current_skill: Path, target: str) -> bool:
+    if current_skill.parent != ROOT:
+        return False
+
+    parts = [part for part in Path(target).parts if part not in ("/", ".")]
+    return len(parts) == 3 and parts[0] == "skills" and parts[2] == "SKILL.md"
 
 
 def _resolve_link_path(current_skill: Path, target: str) -> Path:
@@ -120,8 +133,8 @@ def check_skill(path: Path) -> list[str]:
         if not normalized:
             continue
 
-        depth = normalized.count("/")
-        if depth > 1:
+        depth = _path_depth(normalized)
+        if depth > 1 and not _allow_root_router_link(path, normalized):
             errors.append(f"{path}: markdown link '{target}' is deeper than one level from SKILL.md")
 
         resolved = _resolve_link_path(path, normalized)

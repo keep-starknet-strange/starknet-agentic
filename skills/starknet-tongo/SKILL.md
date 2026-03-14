@@ -12,6 +12,21 @@ user-invocable: true
 
 Confidential ERC20 payments on Starknet using the [Tongo protocol](https://github.com/fatlabsxyz/tongo). Tongo wraps any ERC20 token into encrypted balances using ElGamal encryption and zero-knowledge proofs. No trusted setup required.
 
+## When to Use
+
+- Confidential ERC20 payment flows that require encrypted balances or private transfers.
+- Compliance or auditor-enabled privacy flows built on top of Tongo accounts.
+
+## When NOT to Use
+
+- Standard transparent ERC20 transfers, swaps, or wallet management without privacy requirements.
+- Cairo contract authoring, deployment-only tasks, or security auditing of unrelated code.
+
+## Quick Start
+
+1. Install the Tongo SDK, configure the Starknet/Tongo keys, and connect a funded Starknet account.
+2. Use [skills catalog](../README.md) if the flow expands into wallet setup, deployment, or auditing.
+
 ## Prerequisites
 
 ```bash

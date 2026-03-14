@@ -1,6 +1,7 @@
 # Quality Scripts
 
 - `validate_skills.py`: skill contract/lint checks for SKILL.md structure and links.
+- `test_validate_skills.py`: regression tests for validator edge cases such as the root SKILL router.
 - `validate_marketplace.py`: enforces `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` parity (name/version/source/description/author and skill path validity).
 - `parity_check.py`: required repository parity and local tool checks.
 - `check_vulndb_parity.py`: enforces benchmark/detector class parity with `skills/cairo-auditor/references/vulnerability-db/`.

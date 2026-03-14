@@ -13,6 +13,18 @@ user-invocable: true
 **Goal**: Enable any agent on any EVM chain to onboard to Starknet and register
 their identity with the HuginnRegistry.
 
+## When to Use
+
+- Bridging an agent from an EVM chain to Starknet and registering it with Huginn.
+- Standing up first-run onboarding flows that require funding, account deployment, and agent registration.
+
+## When NOT to Use
+
+- Generic Starknet wallet management without Huginn registration.
+- Cairo contract authoring, deployment-only runbooks, or security audits.
+
+Related modules: [skills catalog](../README.md).
+
 ## Prerequisites
 
 - Agent has ETH or USDC on source chain (Ethereum, Base, or Arbitrum)

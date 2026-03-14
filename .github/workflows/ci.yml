@@ -60,9 +60,20 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
             skills:
+              - 'SKILL.md'
+              - 'requirements.txt'
+              - 'README.md'
+              - 'LICENSE'
+              - 'SECURITY.md'
+              - 'CONTRIBUTING.md'
+              - 'CODE_OF_CONDUCT.md'
               - 'skills/**'
-              - 'scripts/quick_validate_skill.py'
+              - 'scripts/quality/README.md'
               - 'scripts/quality/validate_marketplace.py'
+              - 'scripts/quality/parity_check.py'
+              - 'scripts/quality/validate_skills.py'
+              - 'scripts/quality/test_validate_skills.py'
+              - 'scripts/quick_validate_skill.py'
               - 'scripts/skills_manifest.py'
               - '.claude-plugin/**'
             onboarding:
@@ -372,11 +383,28 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Validate skill frontmatter
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
+        with:
+          scarb-version: "2.14.0"
+
+      - name: Setup Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@84390a1602c157576ceefa6f9cfcb8b0504c94c7 # v5.0.0
+        with:
+          starknet-foundry-version: "0.56.0"
+
+      - name: Install Python deps
         run: |
-          echo "Validating Agent Skills format..."
-          python3 scripts/quick_validate_skill.py skills/*/
-          echo ""
+          python3 -m pip install -r requirements.txt
+
+      - name: Validate skill validator regression tests
+        run: |
+          python3 -m unittest scripts/quality/test_validate_skills.py
+
+      - name: Validate skill contracts
+        run: |
+          echo "Validating repository SKILL.md contracts..."
+          python3 scripts/quality/validate_skills.py
           echo "All skills validated successfully!"
 
       - name: Validate skills manifest
@@ -390,6 +418,10 @@ jobs:
           echo "Validating plugin + marketplace parity and skill paths..."
           python3 scripts/quality/validate_marketplace.py
           echo "Plugin metadata validation: OK"
+
+      - name: Run skill parity checks
+        run: |
+          python3 scripts/quality/parity_check.py
 
   onboarding-smoke:
     name: Onboarding Smoke

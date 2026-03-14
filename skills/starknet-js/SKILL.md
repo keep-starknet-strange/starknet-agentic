@@ -1,6 +1,6 @@
 ---
 name: starknet-js
-description: "Guide for building Starknet applications using starknet.js v9.x SDK. Use when developing Starknet dApps, interacting with smart contracts, managing accounts, handling transactions, estimating fees, integrating browser wallets, or working with Paymaster for sponsored/alternative gas token transactions."
+description: "Reference for building Starknet applications using starknet.js v9.x SDK, including contract interaction, account management, transaction handling, fee estimation, wallet integration, and paymaster flows."
 license: Apache-2.0
 metadata:
   author: 0xlny
@@ -34,6 +34,16 @@ user-invocable: true
 ---
 
 # starknet.js v9.x SDK
+
+Related modules: [skills catalog](../README.md).
+
+## When to Use
+
+- Building Starknet apps with provider, account, contract, wallet, or paymaster flows.
+
+## When NOT to Use
+
+- Cairo contract authoring, deployment-only runbooks, or security audits.
 
 ## Quick Start
 

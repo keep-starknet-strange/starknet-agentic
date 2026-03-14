@@ -1,6 +1,6 @@
 ---
 name: starkzap-sdk
-description: "Use when integrating or maintaining applications built with keep-starknet-strange/starkzap. Covers StarkSDK setup, onboarding (Signer/Privy/Cartridge), wallet lifecycle, sponsored transactions, ERC20 transfers, staking flows, tx builder batching, examples, tests, and generated presets."
+description: "Reference for integrating or maintaining applications built with keep-starknet-strange/starkzap, including StarkSDK setup, onboarding, wallet lifecycle, sponsored transactions, ERC20 flows, staking, and transaction builder usage."
 license: Apache-2.0
 metadata:
   author: keep-starknet-strange
@@ -36,7 +36,7 @@ Project-focused guide for `https://github.com/keep-starknet-strange/starkzap`.
 
 Use this skill when requests involve Starkzap SDK code, examples, or docs.
 
-## When To Use
+## When to Use
 
 Trigger for tasks like:
 - "Add a new onboarding flow in Starkzap"
@@ -44,6 +44,16 @@ Trigger for tasks like:
 - "Update staking pool logic or validator presets"
 - "Patch Privy signer/server integration"
 - "Review Starkzap tests/docs/examples"
+
+## When NOT to Use
+
+- Generic Starknet SDK work outside the Starkzap codebase.
+- Cairo contract authoring, deployment operations, or security audits.
+
+## Quick Start
+
+1. Open the target Starkzap repository paths below and choose the smallest workflow surface first.
+2. Use [skills catalog](../README.md) when the task crosses into generic Starknet wallet, deployment, or audit flows.
 
 ## Repository Map
 

@@ -27,7 +27,7 @@
       "skill_md_path": "skills/cairo-contract-authoring/SKILL.md"
     },
     {
-      "description": "Use when deploying Cairo contracts to Starknet \u2014 sncast commands, account setup, declare/deploy workflow, network configuration, contract verification.",
+      "description": "Deployment guidance for Cairo contracts on Starknet covering sncast commands, account setup, declare/deploy workflow, network configuration, and contract verification.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-deploy",
       "name": "cairo-deploy",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-deploy/SKILL.md",
@@ -51,7 +51,7 @@
       "skill_md_path": "skills/cairo-testing/SKILL.md"
     },
     {
-      "description": "Use when installing and operating the Cartridge Controller CLI (`controller`) to create human-approved sessions and execute Starknet transactions (JSON-only, explicit network selection, least-privilege policy scoping, paymaster control, and error recovery).",
+      "description": "Guidance for installing and operating the Cartridge Controller CLI (`controller`) to create human-approved sessions and execute Starknet transactions with JSON output, explicit network selection, scoped policies, paymaster control, and error recovery.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/controller-cli",
       "name": "controller-cli",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/controller-cli/SKILL.md",
@@ -91,7 +91,7 @@
       "skill_md_path": "skills/starknet-identity/SKILL.md"
     },
     {
-      "description": "Guide for building Starknet applications using starknet.js v9.x SDK. Use when developing Starknet dApps, interacting with smart contracts, managing accounts, handling transactions, estimating fees, integrating browser wallets, or working with Paymaster for sponsored/alternative gas token transactions.",
+      "description": "Reference for building Starknet applications using starknet.js v9.x SDK, including contract interaction, account management, transaction handling, fee estimation, wallet integration, and paymaster flows.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-js",
       "name": "starknet-js",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-js/SKILL.md",
@@ -131,7 +131,7 @@
       "skill_md_path": "skills/starknet-wallet/SKILL.md"
     },
     {
-      "description": "Use when integrating or maintaining applications built with keep-starknet-strange/starkzap. Covers StarkSDK setup, onboarding (Signer/Privy/Cartridge), wallet lifecycle, sponsored transactions, ERC20 transfers, staking flows, tx builder batching, examples, tests, and generated presets.",
+      "description": "Reference for integrating or maintaining applications built with keep-starknet-strange/starkzap, including StarkSDK setup, onboarding, wallet lifecycle, sponsored transactions, ERC20 flows, staking, and transaction builder usage.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starkzap-sdk",
       "name": "starkzap-sdk",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starkzap-sdk/SKILL.md",

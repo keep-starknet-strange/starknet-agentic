@@ -1,6 +1,6 @@
 ---
 name: controller-cli
-description: "Use when installing and operating the Cartridge Controller CLI (`controller`) to create human-approved sessions and execute Starknet transactions (JSON-only, explicit network selection, least-privilege policy scoping, paymaster control, and error recovery)."
+description: "Guidance for installing and operating the Cartridge Controller CLI (`controller`) to create human-approved sessions and execute Starknet transactions with JSON output, explicit network selection, scoped policies, paymaster control, and error recovery."
 license: Apache-2.0
 metadata:
   author: keep-starknet-strange
@@ -27,6 +27,18 @@ user-invocable: true
 
 Use this skill when you need to run the Cartridge Controller CLI (`controller-cli`) to create a scoped session (human-approved) and then execute Starknet transactions via that session.
 
+## When to Use
+
+- Operating Cartridge Controller sessions with explicit network and least-privilege policies.
+- Running `controller` or `controller_safe.py` for human-approved Starknet transactions.
+
+## When NOT to Use
+
+- General Starknet scripting that does not rely on Cartridge Controller.
+- Contract authoring, testing, deployment, or security audit workflows.
+
+Related modules: [skills catalog](../README.md).
+
 ## Non-Negotiable Rules
 
 - Always pass `--json` and treat outputs as JSON.
@@ -39,7 +51,7 @@ Use this skill when you need to run the Cartridge Controller CLI (`controller-cl
   - Mainnet: `https://voyager.online/tx/0x...`
   - Sepolia: `https://sepolia.voyager.online/tx/0x...`
 
-## Quick Start (Install)
+## Quick Start
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cartridge-gg/controller-cli/main/install.sh | bash

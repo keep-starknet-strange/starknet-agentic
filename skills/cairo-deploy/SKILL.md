@@ -1,6 +1,6 @@
 ---
 name: cairo-deploy
-description: Use when deploying Cairo contracts to Starknet — sncast commands, account setup, declare/deploy workflow, network configuration, contract verification.
+description: Deployment guidance for Cairo contracts on Starknet covering sncast commands, account setup, declare/deploy workflow, network configuration, and contract verification.
 license: Apache-2.0
 metadata: {"author":"starknet-agentic","version":"1.0.0","org":"keep-starknet-strange"}
 keywords: [cairo, deploy, sncast, starknet, devnet, sepolia, mainnet, declare, verification]
@@ -21,7 +21,17 @@ Reference for deploying Cairo smart contracts to Starknet using sncast (Starknet
 - Verifying deployed contracts
 - Invoking/calling deployed contracts
 
-**Not for:** Writing contracts (use cairo-contract-authoring), testing (use cairo-testing), optimization (use cairo-optimization)
+## When NOT to Use
+
+- Writing or refactoring contract logic (`cairo-contract-authoring`).
+- Unit, integration, or fuzz testing (`cairo-testing`).
+- Gas or performance optimization (`cairo-optimization`).
+- Security review of existing code (`cairo-auditor`).
+
+## Quick Start
+
+1. Build with `scarb build`, then declare and deploy with `sncast`.
+2. Use [skills catalog](../README.md) when the task moves back into authoring, testing, or auditing.
 
 ## Setup
 

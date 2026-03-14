@@ -12,6 +12,18 @@ user-invocable: true
 
 Simple P2P payments on Starknet. Like Lightning, but native.
 
+Related modules: [skills catalog](../README.md).
+
+## When to Use
+
+- Generating payment links, QR codes, invoices, or Telegram payment flows on Starknet.
+- Sending simple user-to-user ETH, STRK, or USDC transfers with payment UX around them.
+
+## When NOT to Use
+
+- DeFi-specific swaps, staking, or lending flows.
+- Cairo contract authoring, deployment-only tasks, or security auditing.
+
 ## Overview
 
 ```

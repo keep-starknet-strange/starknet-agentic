@@ -12,6 +12,21 @@ user-invocable: true
 
 Manage Starknet wallets for AI agents with native Account Abstraction support.
 
+## When to Use
+
+- Creating, funding, and operating Starknet accounts for agent workflows.
+- Checking balances, sending transfers, managing session keys, or invoking contracts from an agent wallet.
+
+## When NOT to Use
+
+- DeFi-specific routing, staking, or lending flows better covered by `starknet-defi`.
+- Cairo contract authoring, deployment-only operations, or security auditing.
+
+## Quick Start
+
+1. Install the SDK dependencies and set Starknet RPC/account environment variables.
+2. Use [skills catalog](../README.md) to pivot to adjacent modules like DeFi, deployment, or auditing.
+
 ## Prerequisites
 
 ```bash
