@@ -1,0 +1,2 @@
+{"release":"v0.4.0","reviewer":"security-reviewer/starknet-maintainers","approved":true,"approved_at":"2026-03-08T22:58:00Z","notes":"Approved baseline fixture hardening (timelock syscall source, owner guards, class-hash checks)."}
+{"release":"v0.5.0","reviewer":"security-reviewer/starknet-maintainers","approved":false,"notes":"Pending final signoff after consecutive reportable release requirement is satisfied."}

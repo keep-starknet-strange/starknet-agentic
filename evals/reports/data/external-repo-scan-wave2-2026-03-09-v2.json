@@ -1,0 +1,311 @@
+{
+  "scan_id": "external-repo-scan-wave2-2026-03-09-v2",
+  "generated_at": "2026-03-08T22:36:50+00:00",
+  "scanner": {
+    "tool": "scripts/quality/scan_external_repos.py",
+    "detectors_source": "scripts/quality/benchmark_cairo_auditor.py",
+    "detectors": [
+      "AA-SELF-CALL-SESSION",
+      "CEI_VIOLATION_ERC1155",
+      "CONSTRUCTOR_DEAD_PARAM",
+      "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "FEES_RECIPIENT_ZERO_DOS",
+      "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "NO_ACCESS_CONTROL_MUTATION",
+      "SHUTDOWN_OVERRIDE_PRECEDENCE",
+      "SYSCALL_SELECTOR_FALLBACK_ASSUMPTION",
+      "UNCHECKED_FEE_BOUND",
+      "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD"
+    ],
+    "exclude_markers": [
+      "test",
+      "tests",
+      "mock",
+      "mocks",
+      "example",
+      "examples"
+    ]
+  },
+  "repos": [
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "url": "https://github.com/OpenZeppelin/cairo-contracts.git",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "all_cairo_files": 307,
+      "prod_cairo_files": 156,
+      "prod_hits": 9
+    },
+    {
+      "repo": "atomiqlabs/atomiq-contracts-starknet",
+      "url": "https://github.com/atomiqlabs/atomiq-contracts-starknet.git",
+      "ref": "b5875a031063c88563cb44c3afa0460abc2f7e2f",
+      "all_cairo_files": 120,
+      "prod_cairo_files": 56,
+      "prod_hits": 0
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "url": "https://github.com/typhoonmixer/typhoon-contracts.git",
+      "ref": "e11dffbe1c8c4cc96eba91b5f300c82425f2ae4e",
+      "all_cairo_files": 16,
+      "prod_cairo_files": 12,
+      "prod_hits": 6
+    },
+    {
+      "repo": "karnotxyz/starknet_bridge",
+      "url": "https://github.com/karnotxyz/starknet_bridge.git",
+      "ref": "44e2255dae07f64bdbec0c12c23d678f86c46fdc",
+      "all_cairo_files": 43,
+      "prod_cairo_files": 18,
+      "prod_hits": 5
+    },
+    {
+      "repo": "keep-starknet-strange/piltover",
+      "url": "https://github.com/keep-starknet-strange/piltover.git",
+      "ref": "658d707a5cc3ccc3e37b710609cbf0f83917a421",
+      "all_cairo_files": 25,
+      "prod_cairo_files": 15,
+      "prod_hits": 2
+    },
+    {
+      "repo": "dojoengine/dojo",
+      "url": "https://github.com/dojoengine/dojo.git",
+      "ref": "4a374ac64300f4e166b3f5b141b4ab6b1434b835",
+      "all_cairo_files": 105,
+      "prod_cairo_files": 47,
+      "prod_hits": 3
+    },
+    {
+      "repo": "spiko-tech/starknet-contracts",
+      "url": "https://github.com/spiko-tech/starknet-contracts.git",
+      "ref": "487823179d75dfd7a9702f7f8adf3d1e24d52423",
+      "all_cairo_files": 5,
+      "prod_cairo_files": 4,
+      "prod_hits": 6
+    }
+  ],
+  "summary": {
+    "all_cairo_files": 621,
+    "prod_cairo_files": 308,
+    "prod_hits": 31
+  },
+  "findings": [
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "file": "packages/presets/src/account.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "file": "packages/presets/src/erc1155.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "file": "packages/presets/src/erc1155.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "file": "packages/presets/src/erc20.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "file": "packages/presets/src/erc20.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "file": "packages/presets/src/erc721.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "file": "packages/presets/src/erc721.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "file": "packages/presets/src/eth_account.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "file": "packages/upgrades/src/upgradeable.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "ref": "e11dffbe1c8c4cc96eba91b5f300c82425f2ae4e",
+      "file": "src/NoteAccount.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "ref": "e11dffbe1c8c4cc96eba91b5f300c82425f2ae4e",
+      "file": "src/NoteAccount.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "ref": "e11dffbe1c8c4cc96eba91b5f300c82425f2ae4e",
+      "file": "src/Pool.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "ref": "e11dffbe1c8c4cc96eba91b5f300c82425f2ae4e",
+      "file": "src/Pool.cairo",
+      "class_id": "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "ref": "e11dffbe1c8c4cc96eba91b5f300c82425f2ae4e",
+      "file": "src/Typhoon.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "ref": "e11dffbe1c8c4cc96eba91b5f300c82425f2ae4e",
+      "file": "src/Typhoon.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "karnotxyz/starknet_bridge",
+      "ref": "44e2255dae07f64bdbec0c12c23d678f86c46fdc",
+      "file": "starknet_bridge/src/bridge/token_bridge.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "karnotxyz/starknet_bridge",
+      "ref": "44e2255dae07f64bdbec0c12c23d678f86c46fdc",
+      "file": "starknet_bridge/src/bridge/token_bridge.cairo",
+      "class_id": "NO_ACCESS_CONTROL_MUTATION",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "karnotxyz/starknet_bridge",
+      "ref": "44e2255dae07f64bdbec0c12c23d678f86c46fdc",
+      "file": "starknet_bridge/src/erc20/erc20.cairo",
+      "class_id": "NO_ACCESS_CONTROL_MUTATION",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "karnotxyz/starknet_bridge",
+      "ref": "44e2255dae07f64bdbec0c12c23d678f86c46fdc",
+      "file": "starknet_bridge/src/fee_token/fee_token.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "karnotxyz/starknet_bridge",
+      "ref": "44e2255dae07f64bdbec0c12c23d678f86c46fdc",
+      "file": "starknet_bridge/src/fee_token/fee_token.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "keep-starknet-strange/piltover",
+      "ref": "658d707a5cc3ccc3e37b710609cbf0f83917a421",
+      "file": "src/appchain.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "keep-starknet-strange/piltover",
+      "ref": "658d707a5cc3ccc3e37b710609cbf0f83917a421",
+      "file": "src/appchain.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "dojoengine/dojo",
+      "ref": "4a374ac64300f4e166b3f5b141b4ab6b1434b835",
+      "file": "crates/dojo/core/src/contract/components/upgradeable.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "dojoengine/dojo",
+      "ref": "4a374ac64300f4e166b3f5b141b4ab6b1434b835",
+      "file": "crates/dojo/core/src/world/world_contract.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "dojoengine/dojo",
+      "ref": "4a374ac64300f4e166b3f5b141b4ab6b1434b835",
+      "file": "crates/dojo/core/src/world/world_contract.cairo",
+      "class_id": "NO_ACCESS_CONTROL_MUTATION",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "spiko-tech/starknet-contracts",
+      "ref": "487823179d75dfd7a9702f7f8adf3d1e24d52423",
+      "file": "src/lib.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "spiko-tech/starknet-contracts",
+      "ref": "487823179d75dfd7a9702f7f8adf3d1e24d52423",
+      "file": "src/lib.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "spiko-tech/starknet-contracts",
+      "ref": "487823179d75dfd7a9702f7f8adf3d1e24d52423",
+      "file": "src/permission_manager.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "spiko-tech/starknet-contracts",
+      "ref": "487823179d75dfd7a9702f7f8adf3d1e24d52423",
+      "file": "src/permission_manager.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "spiko-tech/starknet-contracts",
+      "ref": "487823179d75dfd7a9702f7f8adf3d1e24d52423",
+      "file": "src/redemption.cairo",
+      "class_id": "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+      "scope": "prod_scan"
+    },
+    {
+      "repo": "spiko-tech/starknet-contracts",
+      "ref": "487823179d75dfd7a9702f7f8adf3d1e24d52423",
+      "file": "src/redemption.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "scope": "prod_scan"
+    }
+  ]
+}

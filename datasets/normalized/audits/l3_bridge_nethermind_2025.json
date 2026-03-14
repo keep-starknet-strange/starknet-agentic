@@ -1,0 +1,38 @@
+{
+  "audit_id": "l3_bridge_nethermind_2025",
+  "project": "L3 Bridge",
+  "auditor": "Nethermind",
+  "date": "2025-01-01",
+  "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0544B-FINAL_TOKEN_BRIDGE.pdf",
+  "repository": "https://github.com/karnotxyz/starknet_bridge",
+  "scope_files": [
+    "src/constants.cairo",
+    "src/lib.cairo",
+    "src/withdrawal_limit/component.cairo",
+    "src/withdrawal_limit/interface.cairo",
+    "src/access_control/component.cairo",
+    "src/access_control/roles.cairo",
+    "src/timelock/timelock.cairo",
+    "src/erc20/roles_interface.cairo",
+    "src/erc20/err_msg.cairo",
+    "src/erc20/interface.cairo",
+    "src/erc20/erc20.cairo",
+    "src/erc20/replaceability_interface.cairo",
+    "src/erc20/access_control_interface.cairo",
+    "src/bridge/types.cairo",
+    "src/bridge/interface.cairo",
+    "src/bridge/token_bridge.cairo",
+    "token_bridge.cairo",
+    "src/cairo/token_bridge.cairo"
+  ],
+  "finding_count": 12,
+  "severity_counts": {
+    "best_practice": 3,
+    "info": 8,
+    "low": 1
+  },
+  "status_summary": {
+    "reported": 12
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

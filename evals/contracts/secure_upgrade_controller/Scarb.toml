@@ -1,0 +1,18 @@
+[package]
+name = "secure_upgrade_controller_eval"
+version = "0.1.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = ">=2.14.0"
+
+[dev-dependencies]
+snforge_std = "0.57.0"
+
+[cairo]
+sierra-replace-ids = true
+
+[[target.starknet-contract]]
+
+[tool.scarb]
+allow-prebuilt-plugins = ["snforge_std"]

@@ -1,0 +1,14 @@
+{
+  "case_id": "case-aa-self-call-session",
+  "module": "cairo-auditor",
+  "input": {
+    "language": "cairo",
+    "code": "fn __execute__(ref self: ContractState, calls: Span<Call>) -> Span<Span<felt252>> {\n    // vulnerable session-key path: no self-call denylist\n    let mut results: Array<Span<felt252>> = ArrayTrait::new();\n    for call in calls {\n        let ret = starknet::call_contract_syscall(*call.to, *call.selector, *call.calldata)\n            .unwrap_syscall();\n        results.append(ret);\n    }\n    results.span()\n}"
+  },
+  "expected": {
+    "detect": true,
+    "severity": "high",
+    "class_id": "AA-SELF-CALL-SESSION"
+  },
+  "notes": "Session path allows self-call without privileged-selector deny checks."
+}

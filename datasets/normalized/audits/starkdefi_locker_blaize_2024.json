@@ -1,0 +1,24 @@
+{
+  "audit_id": "starkdefi_locker_blaize_2024",
+  "project": "StarkDeFi Locker",
+  "auditor": "Blaize",
+  "date": "2024-01-01",
+  "source_url": "https://github.com/blaize-security/blaize-security-audits/blob/main/s/starkdefi/StarkDeFi-Locker-audit-report-%5B19-Feb-2024%5D.pdf",
+  "repository": "https://github.com/starkdefi",
+  "scope_files": [
+    "locker.cairo",
+    "StarkDLocker.cairo",
+    "//docs.cairo"
+  ],
+  "finding_count": 16,
+  "severity_counts": {
+    "critical": 2,
+    "low": 12,
+    "medium": 2
+  },
+  "status_summary": {
+    "resolved": 12,
+    "verified": 4
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

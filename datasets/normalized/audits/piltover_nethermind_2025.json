@@ -1,0 +1,36 @@
+{
+  "audit_id": "piltover_nethermind_2025",
+  "project": "Piltover",
+  "auditor": "Nethermind",
+  "date": "2025-01-01",
+  "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0544A-FINAL_PILTOVER.pdf",
+  "repository": "https://github.com/keep-starknet-strange/piltover",
+  "scope_files": [
+    "src/snos_output.cairo",
+    "src/interface.cairo",
+    "src/appchain.cairo",
+    "src/fact_registry.cairo",
+    "src/lib.cairo",
+    "src/config/component.cairo",
+    "src/config/interface.cairo",
+    "src/state/component.cairo",
+    "src/state/interface.cairo",
+    "src/components/onchain_data_fact_tree_encoder.cairo",
+    "src/messaging/types.cairo",
+    "src/messaging/component.cairo",
+    "src/messaging/interface.cairo",
+    "src/messaging/hash.cairo",
+    "snos_output.cairo"
+  ],
+  "finding_count": 9,
+  "severity_counts": {
+    "best_practice": 1,
+    "critical": 1,
+    "info": 7
+  },
+  "status_summary": {
+    "fixed": 1,
+    "reported": 8
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

@@ -1,0 +1,38 @@
+{
+  "finding_id": "EXAMPLE-AA-001",
+  "source_audit_id": "example_audit_2026_q1",
+  "project": "Example Protocol",
+  "auditor": "Example Auditor",
+  "date": "2026-01-15",
+  "severity_original": "High",
+  "severity_normalized": "high",
+  "status": "fixed",
+  "contracts": [
+    "contracts/example/src/account.cairo"
+  ],
+  "functions": [
+    "__execute__"
+  ],
+  "root_cause": "missing selector denylist check for privileged self-call",
+  "exploit_path": "session key invokes privileged selector on self and escalates control",
+  "trigger_condition": "session key path can target self with privileged selector",
+  "vulnerable_snippet": "self.call_contract_syscall(self_addr, selector, calldata)",
+  "fixed_snippet": "assert(call.to != self_addr, 'session self-call blocked')",
+  "recommendation": "block privileged self-call selectors from session-key execution path",
+  "test_that_catches_it": "session key cannot invoke account privileged selector",
+  "false_positive_lookalikes": [
+    "self-call in owner-only path"
+  ],
+  "tags": [
+    "account-abstraction",
+    "session-key",
+    "access-control"
+  ],
+  "source_pages": [
+    12
+  ],
+  "confidence": "high",
+  "evidence_strength": "strong",
+  "reproducibility": "confirmed_by_report",
+  "notes": "Example template only."
+}

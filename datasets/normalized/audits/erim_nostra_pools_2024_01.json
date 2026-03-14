@@ -1,0 +1,26 @@
+{
+  "audit_id": "erim_nostra_pools_2024_01",
+  "project": "Nostra Pools",
+  "auditor": "Erim V.",
+  "date": "2024-01-01",
+  "source_url": "https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Nostra%20Pools%20Security%20Review%20by%200xerim.pdf",
+  "repository": "https://github.com/nostrafinance",
+  "scope_files": [
+    "factory.cairo",
+    "router.cairo",
+    "pair.cairo",
+    "utils.cairo",
+    "Scarb.toml"
+  ],
+  "finding_count": 9,
+  "severity_counts": {
+    "low": 2,
+    "info": 3,
+    "best_practice": 4
+  },
+  "status_summary": {
+    "fixed": 7,
+    "acknowledged": 2
+  },
+  "notes": "Security review of DEX contracts with focus on safety checks and engineering hygiene."
+}

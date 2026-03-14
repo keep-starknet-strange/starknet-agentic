@@ -1,0 +1,64 @@
+{
+  "baseline": "evals/reports/data/external-repo-scan-low-profile-rerun-2026-03-09-v4.json",
+  "rerun": "evals/reports/data/external-repo-scan-low-profile-rerun-2026-03-09-v5.json",
+  "baseline_findings": 39,
+  "rerun_findings": 32,
+  "delta_findings": -7,
+  "baseline_by_class": {
+    "CEI_VIOLATION_ERC1155": 1,
+    "CONSTRUCTOR_DEAD_PARAM": 1,
+    "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD": 14,
+    "FEES_RECIPIENT_ZERO_DOS": 1,
+    "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK": 8,
+    "IRREVOCABLE_ADMIN": 11,
+    "NO_ACCESS_CONTROL_MUTATION": 2,
+    "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD": 1
+  },
+  "rerun_by_class": {
+    "CEI_VIOLATION_ERC1155": 1,
+    "CONSTRUCTOR_DEAD_PARAM": 1,
+    "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD": 13,
+    "FEES_RECIPIENT_ZERO_DOS": 1,
+    "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK": 8,
+    "IRREVOCABLE_ADMIN": 7,
+    "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD": 1
+  },
+  "removed": [
+    {
+      "repo": "ForgeYields/starknet_vault_kit",
+      "file": "packages/vault/src/aum_provider/aum_provider_4626/aum_provider_4626.cairo",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD"
+    },
+    {
+      "repo": "ForgeYields/starknet_vault_kit",
+      "file": "packages/vault/src/vault/vault.cairo",
+      "class_id": "IRREVOCABLE_ADMIN"
+    },
+    {
+      "repo": "ForgeYields/starknet_vault_kit",
+      "file": "packages/vault_allocator/src/manager/manager.cairo",
+      "class_id": "IRREVOCABLE_ADMIN"
+    },
+    {
+      "repo": "cavos-labs/argus",
+      "file": "contracts/src/jwks_registry.cairo",
+      "class_id": "NO_ACCESS_CONTROL_MUTATION"
+    },
+    {
+      "repo": "kiroshi-market/kiroshi-protocol",
+      "file": "contracts/main/src/markets/factory.cairo",
+      "class_id": "IRREVOCABLE_ADMIN"
+    },
+    {
+      "repo": "kiroshi-market/kiroshi-protocol",
+      "file": "contracts/main/src/pool/shielded_pool.cairo",
+      "class_id": "IRREVOCABLE_ADMIN"
+    },
+    {
+      "repo": "salazarsebas/Zylith",
+      "file": "src/verifier/coordinator.cairo",
+      "class_id": "NO_ACCESS_CONTROL_MUTATION"
+    }
+  ],
+  "added": []
+}

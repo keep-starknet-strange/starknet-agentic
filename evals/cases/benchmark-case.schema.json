@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cairo Auditor Benchmark Case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "class_id",
+    "expected_detect",
+    "source",
+    "code"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120,
+      "pattern": "^[a-z0-9_\\-]+$"
+    },
+    "class_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120,
+      "pattern": "^[A-Z0-9_\\-]+$"
+    },
+    "expected_detect": {
+      "type": "boolean"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 400
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://"
+    },
+    "vulnerability_pattern": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "target_contract": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 600
+    },
+    "code": {
+      "type": "string",
+      "minLength": 20
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "audit_id": "spiko_nethermind_2024",
+  "project": "Spiko",
+  "auditor": "Nethermind",
+  "date": "2024-01-01",
+  "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0333-FINAL_SPIKO.pdf",
+  "repository": "https://github.com/spiko-tech/starknet-contracts",
+  "scope_files": [
+    "redemption.cairo",
+    "lib.cairo",
+    "permission_manager.cairo",
+    "roles.cairo"
+  ],
+  "finding_count": 5,
+  "severity_counts": {
+    "best_practice": 1,
+    "info": 1,
+    "low": 3
+  },
+  "status_summary": {
+    "reported": 5
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

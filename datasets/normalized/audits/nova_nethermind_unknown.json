@@ -1,0 +1,51 @@
+{
+  "audit_id": "nova_nethermind_unknown",
+  "project": "Nova",
+  "auditor": "Nethermind",
+  "date": "2024-10-10",
+  "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0259-FINAL_STARKNET_NOVA.pdf",
+  "repository": "unknown",
+  "scope_files": [
+    "novasale.cairo",
+    "novastaking.cairo",
+    "novawhitelister.cairo",
+    "novatoken.cairo",
+    "supernovatoken.cairo",
+    "src/utils.cairo",
+    "src/interfaces.cairo",
+    "src/models.cairo",
+    "src/core.cairo",
+    "src/lib.cairo",
+    "src/core/novawhitelister.cairo",
+    "src/core/novatoken.cairo",
+    "src/core/novasale.cairo",
+    "src/core/novastaking.cairo",
+    "src/core/supernovatoken.cairo",
+    "src/utils/storeu64span.cairo",
+    "src/utils/mockerc20.cairo",
+    "src/models/sale.cairo",
+    "src/models/usercheckpoint.cairo",
+    "src/models/stakingtoken.cairo",
+    "src/models/supernovauser.cairo",
+    "src/interfaces/fundable.cairo",
+    "src/interfaces/purchasable.cairo",
+    "src/interfaces/versionable.cairo",
+    "src/interfaces/novasale.cairo",
+    "src/interfaces/stakeable.cairo",
+    "src/interfaces/supernovatoken.cairo",
+    "src/interfaces/vestable.cairo",
+    "src/interfaces/whitelistable.cairo"
+  ],
+  "finding_count": 8,
+  "severity_counts": {
+    "best_practice": 4,
+    "critical": 1,
+    "high": 1,
+    "info": 1,
+    "medium": 1
+  },
+  "status_summary": {
+    "reported": 8
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

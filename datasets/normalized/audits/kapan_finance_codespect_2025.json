@@ -1,0 +1,30 @@
+{
+  "audit_id": "kapan_finance_codespect_2025",
+  "project": "Kapan Finance",
+  "auditor": "CODESPECT",
+  "date": "2025-01-01",
+  "source_url": "https://www.kapan.finance/audits/022_CODESPECT_KAPAN_FINANCE.pdf",
+  "repository": "unknown",
+  "scope_files": [
+    "kapan/packages/snfoundry/contracts/src/lib.cairo",
+    "kapan/packages/snfoundry/contracts/src/gateways/NostraGateway.cairo",
+    "kapan/packages/snfoundry/contracts/src/gateways/vesu_gateway.cairo",
+    "kapan/packages/snfoundry/contracts/src/gateways/RouterGateway.cairo",
+    "RouterGateway.cairo",
+    "vesu_gateway.cairo",
+    "NostraGateway.cairo",
+    "-Starknet/packages/snfoundry/contracts/src/gateways/vesu_gateway.cairo"
+  ],
+  "finding_count": 12,
+  "severity_counts": {
+    "best_practice": 2,
+    "high": 3,
+    "low": 3,
+    "medium": 4
+  },
+  "status_summary": {
+    "fixed": 1,
+    "reported": 11
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

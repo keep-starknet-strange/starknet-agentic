@@ -1,0 +1,43 @@
+{
+  "baseline_scan": "evals/reports/data/external-repo-scan-wave2-2026-03-09.json",
+  "rerun_scan": "evals/reports/data/external-repo-scan-wave2-2026-03-09-v2.json",
+  "baseline_findings": 35,
+  "rerun_findings": 31,
+  "delta_findings": -4,
+  "baseline_by_class": {
+    "CEI_VIOLATION_ERC1155": 1,
+    "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD": 10,
+    "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK": 17,
+    "NO_ACCESS_CONTROL_MUTATION": 4,
+    "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD": 3
+  },
+  "rerun_by_class": {
+    "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD": 10,
+    "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK": 17,
+    "NO_ACCESS_CONTROL_MUTATION": 3,
+    "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD": 1
+  },
+  "removed_findings": [
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "file": "packages/token/src/erc721/extensions/erc721_wrapper.cairo",
+      "class_id": "CEI_VIOLATION_ERC1155"
+    },
+    {
+      "repo": "spiko-tech/starknet-contracts",
+      "file": "src/lib.cairo",
+      "class_id": "NO_ACCESS_CONTROL_MUTATION"
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "file": "src/NoteAccount.cairo",
+      "class_id": "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD"
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "file": "src/Typhoon.cairo",
+      "class_id": "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD"
+    }
+  ],
+  "added_findings": []
+}

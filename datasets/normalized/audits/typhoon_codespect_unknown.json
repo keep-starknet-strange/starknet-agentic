@@ -1,0 +1,27 @@
+{
+  "audit_id": "typhoon_codespect_unknown",
+  "project": "Typhoon",
+  "auditor": "CODESPECT",
+  "date": "2026-03-08",
+  "source_url": "https://github.com/CODESPECT-security/audit-reports/blob/main/018_CODESPECT_TYPHOON.pdf",
+  "repository": "https://github.com/typhoonmixer/typhoon-contracts",
+  "scope_files": [
+    "NoteAccount.cairo",
+    "lib.cairo",
+    "Pool.cairo",
+    "Typhoon.cairo",
+    "Hasher.cairo"
+  ],
+  "finding_count": 10,
+  "severity_counts": {
+    "best_practice": 1,
+    "critical": 1,
+    "high": 3,
+    "info": 1,
+    "medium": 4
+  },
+  "status_summary": {
+    "reported": 10
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

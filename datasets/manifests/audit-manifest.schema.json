@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keep-starknet-strange.github.io/starknet-skills/audit-manifest.schema.json",
+  "title": "Audit Manifest Record",
+  "type": "object",
+  "required": [
+    "audit_id",
+    "project",
+    "auditor",
+    "source_url",
+    "source_type",
+    "raw_path",
+    "extracted_path",
+    "raw_sha256",
+    "extracted_sha256",
+    "source_sha256",
+    "license",
+    "usage_rights",
+    "redaction_status",
+    "extractor_version"
+  ],
+  "properties": {
+    "audit_id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+    "project": { "type": "string", "minLength": 1 },
+    "auditor": { "type": "string", "minLength": 1 },
+    "date": {
+      "oneOf": [
+        { "type": "string", "pattern": "^\\d{4}(-\\d{2})?(-\\d{2})?$" },
+        { "type": "null" }
+      ]
+    },
+    "source_url": { "type": "string", "format": "uri" },
+    "source_type": { "type": "string", "enum": ["github_blob", "github_raw", "html", "drive", "direct_pdf"] },
+    "repo_url": {
+      "oneOf": [
+        { "type": "string", "format": "uri" },
+        { "type": "null" }
+      ]
+    },
+    "raw_path": { "type": "string" },
+    "extracted_path": { "type": "string" },
+    "raw_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "extracted_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "source_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "license": { "type": "string", "minLength": 1 },
+    "usage_rights": {
+      "type": "string",
+      "enum": [
+        "public_redistributable",
+        "public_reference_only",
+        "restricted_no_redistribution",
+        "unknown"
+      ]
+    },
+    "redaction_status": {
+      "type": "string",
+      "enum": ["none", "partial", "required", "unknown"]
+    },
+    "extractor_version": { "type": "string", "minLength": 1 },
+    "notes": { "type": "string" },
+    "ingested_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
