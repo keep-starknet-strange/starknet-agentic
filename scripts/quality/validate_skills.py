@@ -61,7 +61,7 @@ def _normalized_target(target: str) -> str:
 
 
 def _path_depth(target: str) -> int:
-    parts = [part for part in Path(target).parts if part not in ("/", ".")]
+    parts = [part for part in Path(target).parts if part not in ("/", ".", "..")]
     return max(len(parts) - 1, 0)
 
 

@@ -18,6 +18,10 @@ SPEC.loader.exec_module(VALIDATE_SKILLS)
 
 
 class ValidateSkillsTests(unittest.TestCase):
+    def test_parent_traversal_is_not_counted_as_deeper_nesting(self) -> None:
+        self.assertEqual(VALIDATE_SKILLS._path_depth("../../README.md"), 0)
+        self.assertEqual(VALIDATE_SKILLS._path_depth("../../docs/guide.md"), 1)
+
     def test_root_router_allows_skill_module_links(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()
