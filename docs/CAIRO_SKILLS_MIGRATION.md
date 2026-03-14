@@ -35,6 +35,7 @@ This repository is now the canonical source for Cairo/Starknet skills.
 
 - Old: `/plugin marketplace add keep-starknet-strange/starknet-skills`
 - New: `/plugin marketplace add keep-starknet-strange/starknet-agentic`
+- New install: `/plugin install starknet-agentic-skills@keep-starknet-strange-starknet-agentic`
 
 - Old plugin id: `starknet-skills`
 - Canonical plugin id in this repo: `starknet-agentic-skills`
