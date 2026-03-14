@@ -2,7 +2,7 @@
 name: account-abstraction
 description: Starknet account abstraction correctness and security guidance for validate/execute paths, nonces, signatures, and session policies.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.1.1","org":"keep-starknet-strange","source":"starknet-skills"}
+metadata: {"author":"starknet-agentic","version":"0.1.2","org":"keep-starknet-strange","source":"starknet-agentic","migrated_from":"starknet-skills"}
 keywords: [starknet, account-abstraction, signatures, nonces, session-keys, policy]
 allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true

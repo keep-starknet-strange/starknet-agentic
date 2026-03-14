@@ -16,7 +16,7 @@ Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (
 | DeFi aggregation | `@avnu/avnu-sdk` | ^4.0.1 |
 | Schema validation | zod | ^3.23.0 |
 | TS testing | Vitest | -- |
-| Cairo testing | snforge | 0.54.1 |
+| Cairo testing | snforge | 0.54.1 (contracts/*), 0.57.0 (eval fixtures) |
 | Skills format | SKILL.md (YAML frontmatter + markdown) | AgentSkills spec |
 | Website | Next.js 16 + React 19 + Tailwind | -- |
 
@@ -46,7 +46,14 @@ starknet-agentic/
 │   ├── starknet-anonymous-wallet/        # Privacy-focused wallet (COMPLETE)
 │   ├── starknet-defi/                    # DeFi operations skill (TEMPLATE)
 │   ├── starknet-identity/                # Identity & reputation skill (TEMPLATE)
-│   └── huginn-onboard/                   # Cross-chain onboarding skill (COMPLETE)
+│   ├── huginn-onboard/                   # Cross-chain onboarding skill (COMPLETE)
+│   ├── cairo-contract-authoring/         # Canonical Cairo authoring workflow
+│   ├── cairo-testing/                    # Canonical Cairo testing workflow
+│   ├── cairo-optimization/               # Canonical Cairo optimization workflow
+│   ├── cairo-deploy/                     # Canonical Cairo deployment workflow
+│   ├── cairo-auditor/                    # Canonical Cairo security audit workflow
+│   ├── account-abstraction/              # Account/session-key correctness guidance
+│   └── starknet-network-facts/           # Protocol constraints for secure design
 ├── examples/
 │   ├── hello-agent/                      # Minimal E2E proof (WORKING)
 │   ├── defi-agent/                       # Arbitrage bot example (~337 lines)
@@ -73,6 +80,8 @@ starknet-agentic/
 
 NOTE: The Agent Account contract at `contracts/agent-account/` (~570 lines main contract) has 110 tests across 4 test suites (test_agent_account, test_execute_validate, test_security, test_agent_account_factory).
 
+Cairo skill migration and ownership notes are maintained in `docs/CAIRO_SKILLS_MIGRATION.md`.
+
 </structure>
 
 <commands>
@@ -89,6 +98,9 @@ NOTE: The Agent Account contract at `contracts/agent-account/` (~570 lines main 
 | Dev mode (website) | `pnpm dev` | `website/` |
 | Deploy contracts (Sepolia) | `bash scripts/deploy_sepolia.sh` | `contracts/erc8004-cairo/` |
 | Scaffold new agent | `npx create-starknet-agent@latest` | any |
+| Validate marketplace metadata | `python3 scripts/quality/validate_marketplace.py` | repo root |
+| Run Cairo skill cutover boundary check | `python3 scripts/check_cairo_skill_cutover.py` | repo root |
+| Run deterministic Cairo auditor benchmark | `python3 scripts/quality/benchmark_cairo_auditor.py --cases evals/cases/cairo_auditor_benchmark.jsonl --output /tmp/cairo-auditor.md` | repo root |
 
 </commands>
 

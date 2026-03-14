@@ -15,6 +15,22 @@ A consolidated infrastructure layer that provides:
 5. **CLI scaffolding** (`create-starknet-agent`) for project bootstrapping
 6. **E2E onboarding examples** for cross-chain agent registration
 
+## Canonical Cairo Skills
+
+The canonical Cairo skill source is now this repository (`starknet-agentic/skills/**`).
+
+Core skill boundaries:
+
+- `skills/cairo-contract-authoring/`: contract architecture and secure implementation workflow
+- `skills/cairo-testing/`: test strategy, regression harnesses, and test-quality patterns
+- `skills/cairo-optimization/`: profiling + post-correctness optimization pass
+- `skills/cairo-deploy/`: operational declare/deploy/verify runbooks
+- `skills/cairo-auditor/`: workflow-first security review with structured findings
+- `skills/account-abstraction/`: validate/execute/session-key correctness model
+- `skills/starknet-network-facts/`: protocol constraints affecting security assumptions
+
+Maintainer migration notes: `docs/CAIRO_SKILLS_MIGRATION.md`.
+
 ## References
 
 The `references/` directory is your knowledge base for agentic development on Starknet. Always consult it before writing skills, contracts, or integrations.

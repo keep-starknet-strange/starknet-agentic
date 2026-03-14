@@ -4,6 +4,12 @@
 Defines how multiple AI agents coordinate when working on this repository. Use this when tasks are complex enough to benefit from delegation or parallel execution.
 </purpose>
 
+## Canonical Skills Source
+
+- Treat `starknet-agentic/skills/**` as the only active source for Cairo/Starknet skills.
+- Do not add new feature content to `keep-starknet-strange/starknet-skills`; only deprecation/move notices are allowed during transition.
+- Use `docs/CAIRO_SKILLS_MIGRATION.md` when mapping legacy skill names or links.
+
 ## Roles
 
 <roles>
@@ -150,6 +156,12 @@ pending --> in_progress --> in_review --> done
 ### Skills Tasks
 - Read `references/agentskills/SPECS.md` for format requirements
 - Read existing skills in `skills/` for patterns
+- For Cairo work, prefer this boundary:
+  - `cairo-contract-authoring` -> write contracts
+  - `cairo-testing` -> test contracts
+  - `cairo-optimization` -> optimize after correctness
+  - `cairo-deploy` -> deployment runbooks
+  - `cairo-auditor` -> security review and findings
 - Frontmatter must include: name, description, keywords, allowed-tools, user-invocable
 - Include starknet.js code examples with real token addresses
 - Include error codes with recovery guidance

@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 
-USER_AGENT = "starknet-skills-audit-ingest/1.0 (+https://github.com/keep-starknet-strange/starknet-skills)"
+USER_AGENT = "starknet-agentic-audit-ingest/1.0 (+https://github.com/keep-starknet-strange/starknet-agentic)"
 DEFAULT_TIMEOUT_SECONDS = 45
 EXTRACTOR_VERSION = "ingest_catalog.py@v1"
 

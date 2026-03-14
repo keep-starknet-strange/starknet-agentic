@@ -2,6 +2,8 @@
 
 Production-ready skills for AI agents operating on Starknet. Built for the Agent Skills specification, compatible with 35+ agent platforms including Claude Code, Cursor, GitHub Copilot, and more.
 
+Canonical note: this repository is now the canonical source for Cairo/Starknet skills. See [`docs/CAIRO_SKILLS_MIGRATION.md`](../docs/CAIRO_SKILLS_MIGRATION.md) for maintainer migration details.
+
 ## Available Skills
 
 | Skill | Description | Status |
@@ -53,7 +55,7 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 /plugin marketplace add keep-starknet-strange/starknet-agentic
 
 # Install all skills
-/plugin install starknet-skills@keep-starknet-strange-starknet-agentic
+/plugin install starknet-agentic-skills@keep-starknet-strange-starknet-agentic
 
 # Or install individual skill plugins
 /plugin install starknet-wallet@keep-starknet-strange-starknet-agentic
@@ -86,7 +88,7 @@ Installed skills don't auto-update. To get the latest version:
 npx skills add keep-starknet-strange/starknet-agentic --force
 
 # Claude Code - update plugin
-/plugin update starknet-skills@keep-starknet-strange-starknet-agentic
+/plugin update starknet-agentic-skills@keep-starknet-strange-starknet-agentic
 
 # Git clone - pull latest
 git pull origin main
