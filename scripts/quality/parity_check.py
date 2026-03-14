@@ -70,6 +70,10 @@ def require_exists(path: Path) -> bool:
     return path.exists()
 
 
+def contains_any(text: str, needles: list[str]) -> list[str]:
+    return [needle for needle in needles if needle in text]
+
+
 def plugin_identifier() -> str:
     plugin_path = ROOT / ".claude-plugin" / "plugin.json"
     try:
@@ -310,6 +314,55 @@ def main() -> int:
                 "trailofbits-authoring-parity",
                 "FAIL",
                 "; ".join(tob_errors),
+            )
+        )
+
+    # 8) User-facing website docs should only expose current Cairo skill taxonomy.
+    website_taxonomy_errors: list[str] = []
+    user_facing_docs = {
+        ROOT / "website/content/docs/skills/cairo-coding.mdx": {
+            "required": [
+                "cairo-contract-authoring",
+                "cairo-testing",
+                "cairo-auditor",
+                "cairo-optimization",
+                "cairo-deploy",
+            ],
+            "forbidden": ["cairo-contracts", "cairo-security"],
+        },
+        ROOT / "website/content/docs/skills/overview.mdx": {
+            "required": ["cairo-contract-authoring", "cairo-auditor"],
+            "forbidden": ["cairo-contracts", "cairo-security"],
+        },
+        ROOT / "website/content/docs/getting-started/installation.mdx": {
+            "required": ["cairo-contract-authoring/", "cairo-auditor/"],
+            "forbidden": ["cairo-contracts/", "cairo-security/"],
+        },
+    }
+
+    for path, rules in user_facing_docs.items():
+        content = path.read_text(encoding="utf-8")
+        missing = [needle for needle in rules["required"] if needle not in content]
+        forbidden = contains_any(content, rules["forbidden"])
+        if missing:
+            website_taxonomy_errors.append(f"{path}: missing {', '.join(missing)}")
+        if forbidden:
+            website_taxonomy_errors.append(f"{path}: contains stale ids {', '.join(forbidden)}")
+
+    if not website_taxonomy_errors:
+        results.append(
+            CheckResult(
+                "website-cairo-skill-taxonomy",
+                "PASS",
+                "website Cairo docs expose only current skill ids and install paths",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "website-cairo-skill-taxonomy",
+                "FAIL",
+                "; ".join(website_taxonomy_errors),
             )
         )
 

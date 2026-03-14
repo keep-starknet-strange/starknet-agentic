@@ -1,314 +1,159 @@
 ---
 title: Cairo Development Skills
-description: Comprehensive Cairo smart contract development patterns - contracts, testing, security, optimization, and deployment
+description: Workflow-first guide to the migrated Cairo skill family in Starknet Agentic
 ---
 
-import { Callout, Collapsible, Steps, Step } from "@/components/docs";
+import { Callout, Steps, Step } from "@/components/docs";
 
 # Cairo Development Skills
 
-The Cairo skill family provides comprehensive coverage for Cairo smart contract development on Starknet. These skills are organized into five focused areas that follow the natural development workflow.
+Starknet Agentic ships Cairo support as a coordinated skill family. Load the skill that matches the current stage of work, then move forward through the workflow rather than asking one skill to do everything.
 
-## Skill Overview
+<Callout type="info" title="Canonical Skill IDs">
+This page stays on the historical <code>/docs/skills/cairo-coding</code> route for continuity, but the canonical install and invocation names are the skill IDs listed below.
+</Callout>
 
-| Skill | Purpose | When to Use |
-|-------|---------|-------------|
-| **cairo-contracts** | Contract structure, storage, events, OZ components | Writing new contracts |
-| **cairo-testing** | snforge patterns, cheatcodes, fuzzing, fork testing | After writing contract logic |
-| **cairo-security** | Security patterns from 50+ audits, DeFi pitfalls | Review pass before deployment |
-| **cairo-optimization** | Gas optimization, BoundedInt, storage packing | Post-test optimization pass |
-| **cairo-deploy** | sncast deployment, verification, multicall | Final deployment to network |
+## Core Cairo Skills
+
+| Skill | Purpose | Load it when |
+|-------|---------|--------------|
+| [cairo-contract-authoring](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-contract-authoring) | Workflow-first contract authoring with language guidance, component wiring, and secure defaults | You are writing or modifying Cairo contract code |
+| [cairo-testing](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-testing) | snforge unit, integration, fuzz, and regression testing patterns | Contract logic exists and needs repeatable tests |
+| [cairo-auditor](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor) | Multi-step audit orchestration with deterministic findings gates | You are reviewing code for security risks or triaging findings |
+| [cairo-optimization](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-optimization) | Profile-driven optimization, BoundedInt rules, and benchmarking | Tests already pass and you are reducing step count or gas |
+| [cairo-deploy](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-deploy) | `sncast` account setup, declare/deploy flow, network config, and verification | Code is ready to declare, deploy, verify, or invoke |
+
+## Adjacent Correctness Skills
+
+These are not part of the five-stage authoring flow, but they matter when the task crosses account boundaries or protocol constraints.
+
+| Skill | Purpose | Load it when |
+|-------|---------|--------------|
+| [account-abstraction](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/account-abstraction) | Validate/execute path correctness, session-key safety, signature and nonce handling | The contract behaves like an account or delegates execution authority |
+| [starknet-network-facts](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/starknet-network-facts) | Network-level protocol facts that affect contract and transaction safety | You need chain/version facts that change reasoning about fees, tx versions, or execution |
 
 ## Installation
 
+### Agent Skills CLI
+
 ```bash
-# Install all Cairo skills
-npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-contracts
+# Install the full repo catalog
+npx skills add keep-starknet-strange/starknet-agentic
+
+# Or install only the Cairo workflow skills you need
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-contract-authoring
 npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-testing
-npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-security
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-optimization
 npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-deploy
-
-# Or clone the repo
-git clone https://github.com/keep-starknet-strange/starknet-agentic.git
 ```
 
-## Cairo Contracts Skill
+### Claude Code Marketplace Bundle
 
-Reference for writing Cairo smart contracts with proper structure, storage, events, interfaces, and OpenZeppelin v3 components.
+```bash
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/plugin menu
 
-### Contracts Coverage
-
-- Contract skeleton with storage, events, constructors
-- Interface definitions with `#[starknet::interface]` trait pattern
-- Storage management (basic types, Maps, composite key tuples)
-- Events with indexed/non-indexed fields
-- Components using the Mixin pattern (OZ v3)
-- Common OZ components: Ownable, Upgradeable, ERC20, AccessControl, Pausable, ReentrancyGuard
-
-### Contract Skeleton
-
-```cairo
-#[starknet::contract]
-mod MyContract {
-    use starknet::ContractAddress;
-    use starknet::storage::{Map, StorageMapReadAccess, StorageMapWriteAccess};
-
-    #[storage]
-    struct Storage {
-        owner: ContractAddress,
-        balances: Map<ContractAddress, u256>,
-    }
-
-    #[event]
-    #[derive(Drop, starknet::Event)]
-    enum Event {
-        Transfer: Transfer,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    struct Transfer {
-        #[key]
-        from: ContractAddress,
-        #[key]
-        to: ContractAddress,
-        amount: u256,
-    }
-
-    #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress) {
-        self.owner.write(owner);
-    }
-}
+# Example bundled invocations
+/starknet-agentic-skills:cairo-contract-authoring
+/starknet-agentic-skills:cairo-auditor
 ```
 
-## Cairo Testing Skill
-
-Reference for testing Cairo smart contracts with snforge (Starknet Foundry).
-
-### Testing Coverage
-
-- Test setup with `contract_state_for_testing()`
-- Contract deployment using `declare`, `deploy`, and dispatchers
-- Cheatcodes: `start_cheat_caller_address`, `start_cheat_block_timestamp`
-- Expected failures with `#[should_panic]`
-- Event testing with `spy_events()`
-- Fuzzing with `#[fuzzer(runs: N, seed: N)]`
-- Fork testing against mainnet/testnet state
-
-### Basic Test Pattern
-
-```cairo
-use snforge_std::{declare, ContractClassTrait, DeclareResultTrait};
-use snforge_std::{start_cheat_caller_address, stop_cheat_caller_address};
-
-#[test]
-fn test_transfer() {
-    // Deploy contract
-    let contract = declare("MyContract").unwrap().contract_class();
-    let (contract_address, _) = contract.deploy(@array![owner.into()]).unwrap();
-
-    // Create dispatcher
-    let dispatcher = IMyContractDispatcher { contract_address };
-
-    // Cheat caller address
-    start_cheat_caller_address(contract_address, owner);
-    dispatcher.transfer(recipient, 100);
-    stop_cheat_caller_address(contract_address);
-
-    // Assert
-    assert(dispatcher.balance_of(recipient) == 100, 'Balance mismatch');
-}
-```
-
-## Cairo Security Skill
-
-Comprehensive security patterns and vulnerabilities sourced from 50+ public audits.
-
-<Callout type="warning" title="Critical Patterns">
-  The security skill covers patterns that have caused real exploits, including the $10M zkLend exploit and multiple Code4rena critical findings.
-</Callout>
-
-### Top 10 Critical Patterns
-
-1. **felt252 division is modular inverse, NOT floor division** — Never use felt252 for financial math
-2. **`Map.read()` returns zero on missing keys** — No panic, always validate
-3. **felt252 arithmetic wraps silently** — Use u256/u128 for financial operations
-4. **Floor division rounding favors the actor** — Burn UP against user, mint DOWN
-5. **Empty market initialization + flash loan = catastrophic** — Lock minimum liquidity
-6. **OZ embedded impls leak privileged selectors to session keys** — Block self-calls
-7. **SNIP-9 `execute_from_outside` needs nonce + caller + time bounds** — Missing any enables replay
-8. **Starknet v0.14.0 killed v0/v1/v2 transactions** — Time-dependent logic must recalibrate
-9. **`__validate__` must be lightweight** — No storage writes, no external calls
-10. **Checks-effects-interactions is not optional** — Update state before external calls
-
-### Pre-Deployment Checklist
-
-The skill includes a 41-item pre-deployment checklist covering:
-
-- Access control and initialization
-- Reentrancy and state ordering
-- Precision and rounding
-- Nonces and replay protection
-- Storage collisions
-- Paymaster and gas considerations
-- Time-dependent logic
-
-## Cairo Optimization Skill
-
-Post-test gas optimization pass with 11 rules sourced from audit findings and production profiling.
-
-### Core Optimization Rules
-
-<Collapsible title="1. Use DivRem for Division + Modulo" defaultOpen={true}>
-
-```cairo
-// Bad: Two operations
-let quotient = value / divisor;
-let remainder = value % divisor;
-
-// Good: Single operation
-let (quotient, remainder) = DivRem::div_rem(value, divisor.try_into().unwrap());
-```
-
-</Collapsible>
-
-<Collapsible title="2. Prefer != Over < in Loops">
-
-```cairo
-// Bad: Comparison
-while i < len {
-    i += 1;
-}
-
-// Good: Equality (cheaper)
-while i != len {
-    i += 1;
-}
-```
-
-</Collapsible>
-
-<Collapsible title="3. Use Lookup Tables for Powers of 2">
-
-```cairo
-// Bad: Runtime computation
-let result = pow(2, exponent);
-
-// Good: Lookup table
-fn pow2(exp: u8) -> u256 {
-    match exp {
-        0 => 1,
-        1 => 2,
-        2 => 4,
-        _ => panic!("exponent too large"),
-    }
-}
-```
-
-</Collapsible>
-
-<Collapsible title="4. Use pop_front() or for Loops">
-
-```cairo
-// Bad: Index access
-let mut i = 0;
-while i < arr.len() {
-    let item = *arr.at(i);
-    i += 1;
-}
-
-// Good: for loop
-for item in arr.span() {
-    // use item
-}
-```
-
-</Collapsible>
-
-### BoundedInt for Gas Savings
-
-`BoundedInt<MIN, MAX>` encodes value constraints at compile-time, enabling 2-5x gas savings on limb assembly operations:
-
-```cairo
-use core::integer::BoundedInt;
-
-// Declare a type that can only hold values 0-255
-type Byte = BoundedInt<0, 255>;
-
-// Operations are bounds-checked at compile time
-```
-
-<Callout type="info" title="BoundedInt Calculator">
-  The skill includes a `bounded_int_calc.py` CLI tool for computing bounds when refactoring arithmetic operations.
-</Callout>
-
-## Cairo Deploy Skill
-
-Guide for deploying Cairo contracts to Starknet using sncast (Starknet Foundry).
-
-### Deployment Workflow
+## Recommended Workflow
 
 <Steps>
-<Step title="Declare the Contract">
-
-```bash
-sncast --profile sepolia declare --contract-name MyContract
-```
-
-Returns a class hash for deployment.
-
+<Step number={1} title="Author">
+Start with <code>cairo-contract-authoring</code> to define interfaces, storage, events, component composition, and access posture.
 </Step>
-<Step title="Deploy with Constructor Args">
-
-```bash
-sncast --profile sepolia deploy \
-  --class-hash 0x123... \
-  --constructor-calldata 0xOWNER_ADDRESS
-```
-
+<Step number={2} title="Test">
+Move to <code>cairo-testing</code> once the code exists. Cover success paths, auth failures, events, and regression cases before optimizing.
 </Step>
-<Step title="Verify on Explorer">
-
-```bash
-# Voyager
-sncast --profile sepolia verify \
-  --contract-address 0x456... \
-  --contract-name MyContract \
-  --verifier voyager
-```
-
+<Step number={3} title="Audit">
+Run <code>cairo-auditor</code> on the tested codebase. Treat findings as design feedback, not as a substitute for writing tests.
+</Step>
+<Step number={4} title="Optimize">
+Use <code>cairo-optimization</code> only after correctness is stable. Profile first, then apply one optimization class at a time.
+</Step>
+<Step number={5} title="Deploy">
+Finish with <code>cairo-deploy</code> for account import, declaration, deployment, verification, and post-deploy checks.
 </Step>
 </Steps>
 
-### sncast.toml Configuration
+## Skill Boundaries
 
-```toml
-[sncast.sepolia]
-account = "deployer"
-url = "https://starknet-sepolia.public.blastapi.io"
+### `cairo-contract-authoring`
 
-[sncast.mainnet]
-account = "deployer"
-url = "https://starknet-mainnet.public.blastapi.io"
-```
+Use it for:
 
-### Calldata Encoding
+- new contracts and components
+- storage, events, interfaces, constructors
+- OpenZeppelin component composition
+- secure authoring defaults and audit handoff prep
 
-| Type | Encoding |
-|------|----------|
-| `felt252` | Direct hex value |
-| `ContractAddress` | 0x-prefixed address |
-| `u256` | Two felts: `[low, high]` |
-| `bool` | `0` or `1` |
-| `ByteArray` | Length + chunks + pending word + pending len |
+Do not use it for:
 
-## Attribution
+- writing the full test suite
+- benchmarking or profiling hot paths
+- repo-wide security review after implementation
 
-The Cairo optimization patterns are originally authored by [feltroidprime](https://github.com/feltroidprime/cairo-skills) and integrated with permission. Security patterns are sourced from 50+ public audits including Nethermind, ConsenSys Diligence, Code4rena, ChainSecurity, and Cairo Security Clan.
+### `cairo-testing`
 
-## Next Steps
+Use it for:
 
-- [Writing Your Own Skill](/docs/skills/writing-skills) - Create custom skills
-- [starknet.js SDK Skill](/docs/skills/starknet-js) - TypeScript SDK patterns
-- [Agent Account Contract](/docs/contracts/agent-account) - Smart contract account with session keys
+- unit and integration tests
+- fuzz and regression suites
+- event assertions and cheatcode usage
+
+Do not use it for:
+
+- first-pass contract architecture
+- deployment scripts
+- late security triage without tests
+
+### `cairo-auditor`
+
+Use it for:
+
+- repo or contract security review
+- finding classification and exploit reasoning
+- turning suspected issues into concrete findings
+
+Do not use it for:
+
+- replacing the authoring or testing stages
+- performance tuning
+- network/account setup
+
+### `cairo-optimization`
+
+Use it for:
+
+- step-count and gas reduction
+- BoundedInt refactors
+- storage packing
+- profiling with bundled tooling
+
+Do not use it for:
+
+- code that does not compile or pass tests
+- security signoff
+- deployment runbooks
+
+### `cairo-deploy`
+
+Use it for:
+
+- `sncast` accounts and profiles
+- declare/deploy/invoke/call flows
+- verification and network configuration
+
+Do not use it for:
+
+- contract design
+- test strategy
+- performance analysis
+
+## Migration Notes
+
+The Cairo cutover and legacy-name mapping are documented in [CAIRO_SKILLS_MIGRATION.md](/docs/CAIRO_SKILLS_MIGRATION).

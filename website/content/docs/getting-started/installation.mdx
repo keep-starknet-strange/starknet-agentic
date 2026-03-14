@@ -223,11 +223,13 @@ starknet-agentic/
 |   |-- starknet-identity/
 |   |-- starknet-mini-pay/
 |   |-- starknet-anonymous-wallet/
-|   |-- cairo-contracts/         # Cairo contract patterns
+|   |-- account-abstraction/     # Account validate/execute/session-key guidance
+|   |-- cairo-contract-authoring/ # Cairo contract authoring workflow
 |   |-- cairo-testing/           # snforge testing patterns
-|   |-- cairo-security/          # Security patterns from 50+ audits
-|   |-- cairo-optimization/      # Gas optimization rules
-|   +-- cairo-deploy/            # Deployment with sncast
+|   |-- cairo-auditor/           # Cairo audit orchestration and findings gating
+|   |-- cairo-optimization/      # Profiling + BoundedInt optimization rules
+|   |-- cairo-deploy/            # Deployment with sncast
+|   +-- starknet-network-facts/  # Protocol constraints that affect safety
 |
 +-- examples/                    # Example implementations
     |-- hello-agent/             # Minimal E2E proof

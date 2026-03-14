@@ -1,62 +1,71 @@
 ---
 title: Skills Overview
-description: Introduction to agent skills and how to install them
+description: Official Starknet Agentic skill catalog and installation paths
 ---
 
 import { Callout, Steps, Step } from "@/components/docs";
 
 # Skills Overview
 
-Skills are **reusable capability packages** that extend what AI agents can do on Starknet. Each skill provides a focused set of tools, code examples, and documentation for a specific domain.
+Skills are reusable capability packages that extend what AI agents can do on Starknet. Each skill provides focused instructions, concrete install paths, and source-linked references for a specific job.
 
 ## What are Skills?
 
 A skill is a self-contained package defined by a `SKILL.md` file with:
 
-- **YAML Frontmatter** - Metadata like name, description, and keywords
-- **Documentation** - Detailed guides and code examples
-- **Prerequisites** - Required packages and environment variables
-- **Reference Scripts** - Working code snippets agents can use
+- YAML frontmatter for metadata and discovery
+- workflow instructions for the agent
+- progressive-disclosure links to local references
+- optional scripts, examples, and setup notes
 
 <Callout type="info" title="Skill Format">
-Skills follow the [AgentSkills specification](/docs/skills/writing-skills) - a standard format for defining AI agent capabilities that works across different frameworks and models.
+Skills follow the [AgentSkills specification](/docs/skills/writing-skills) so the same catalog can be consumed by Claude Code, Cursor, Copilot, OpenClaw/MoltBook, and custom runtimes.
 </Callout>
 
 ## Available Skills
 
-Starknet Agentic provides twelve official skills:
+Starknet Agentic currently ships **17 official skills**.
+
+<Callout type="info" title="Link Targets">
+Some entries have dedicated website pages. Others link directly to the canonical source directory on GitHub so the catalog always points at a real install surface.
+</Callout>
+
+### Runtime and Operations
 
 | Skill | Description |
 |-------|-------------|
-| [starknet-wallet](/docs/skills/starknet-wallet) | Wallet management, transfers, balances |
-| [starknet-defi](/docs/skills/starknet-defi) | Token swaps, DCA, staking via AVNU |
-| [starknet-identity](/docs/skills/starknet-identity) | ERC-8004 on-chain agent identity |
-| [starknet-mini-pay](/docs/skills/starknet-mini-pay) | P2P payments, Telegram bot |
-| [starknet-anonymous-wallet](/docs/skills/starknet-anonymous-wallet) | Privacy wallets via Typhoon |
-| [huginn-onboard](/docs/skills/huginn-onboard) | Bridge to Starknet + Huginn registration |
-| [starknet-js](/docs/skills/starknet-js) | starknet.js v9.x SDK patterns and examples |
+| [starknet-wallet](/docs/skills/starknet-wallet) | Wallet management, transfers, session keys, and gasless transactions |
+| [starknet-defi](/docs/skills/starknet-defi) | Token swaps, DCA, staking, and lending flows via AVNU |
+| [starknet-identity](/docs/skills/starknet-identity) | ERC-8004 on-chain identity, reputation, and validation |
+| [starknet-mini-pay](/docs/skills/starknet-mini-pay) | P2P payments, invoices, QR flows, and Telegram usage |
+| [starknet-anonymous-wallet](/docs/skills/starknet-anonymous-wallet) | Anonymous Starknet wallets via Typhoon |
+| [huginn-onboard](/docs/skills/huginn-onboard) | Cross-chain onboarding to Starknet plus Huginn registration |
+| [controller-cli](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/controller-cli) | Cartridge Controller CLI sessions, scoped execution, and paymaster control |
+| [starkzap-sdk](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/starkzap-sdk) | keep-starknet-strange/starkzap SDK, onboarding, wallet, ERC20, and staking flows |
+| [starknet-tongo](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/starknet-tongo) | Confidential ERC20 payments with encrypted balances and ZK-proven transfers |
 
-### Cairo Development Skills
-
-The Cairo skill family provides comprehensive coverage for Cairo smart contract development:
+### Cairo and Protocol Skills
 
 | Skill | Description |
 |-------|-------------|
-| [cairo-contracts](/docs/skills/cairo-coding) | Contract structure, storage, events, OZ components |
-| [cairo-testing](/docs/skills/cairo-coding) | snforge testing patterns, cheatcodes, fuzzing |
-| [cairo-security](/docs/skills/cairo-coding) | Security patterns from 50+ audits |
-| [cairo-optimization](/docs/skills/cairo-coding) | Gas optimization, BoundedInt, storage packing |
-| [cairo-deploy](/docs/skills/cairo-coding) | Deployment with sncast, verification, multicall |
+| [cairo-contract-authoring](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-contract-authoring) | Workflow-first Cairo contract authoring with language guidance and secure defaults |
+| [cairo-testing](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-testing) | snforge unit, integration, fuzz, fork, and regression testing |
+| [cairo-auditor](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor) | Multi-step Cairo security review with strict false-positive gating |
+| [cairo-optimization](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-optimization) | Profile-driven optimization, BoundedInt rules, and benchmarking |
+| [cairo-deploy](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-deploy) | `sncast` deployment, account setup, network config, and verification |
+| [account-abstraction](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/account-abstraction) | Validate/execute path correctness, session policies, nonces, and signatures |
+| [starknet-network-facts](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/starknet-network-facts) | Network-level protocol facts that affect safety decisions |
+| [starknet-js](/docs/skills/starknet-js) | starknet.js v9.x SDK patterns, paymaster flows, and contract interaction |
 
-<SkillsGrid />
+For a workflow-oriented view of the Cairo family, start with [Cairo Development Skills](/docs/skills/cairo-coding).
 
 ## Installing Skills
 
-Skills are designed to be loaded by AI agents at runtime. The agent reads the skill documentation and uses the provided code patterns to accomplish tasks.
+Skills are designed to be loaded by AI agents at runtime. The agent reads the skill documentation and uses the provided code patterns to accomplish the user task.
 
-### Method 1: NPX Skills Add (Recommended)
+### Method 1: Agent Skills CLI
 
-Uses the [Vercel Skills CLI](https://github.com/vercel-labs/skills) to install skills directly into your agent's context.
+Use the [Skills CLI](https://github.com/vercel-labs/skills) to install the full catalog or a specific skill into your agent context.
 
 ```bash
 # Install all skills from the repo
@@ -66,7 +75,7 @@ npx skills add keep-starknet-strange/starknet-agentic
 npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 ```
 
-### Method 2: Claude Code Plugins
+### Method 2: Claude Code Marketplace Bundle
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
@@ -153,28 +162,29 @@ Documentation content here...
 
 When an agent loads a skill, it gains access to:
 
-1. **Code Examples** - Copy-paste ready TypeScript/Python snippets
-2. **Tool Definitions** - MCP tool schemas and handlers
-3. **Error Handling** - Common errors and recovery strategies
-4. **Configuration** - Environment variables and setup
+1. Code examples it can adapt into the target task
+2. Tool usage patterns and execution boundaries
+3. Error handling and recovery guidance
+4. Configuration and prerequisites
 
 <Steps>
 <Step number={1} title="Load the Skill">
-The agent reads the SKILL.md file and extracts the relevant documentation.
+The agent reads the `SKILL.md` file and follows the workflow and boundaries described there.
 </Step>
 <Step number={2} title="Install Dependencies">
-If the skill requires packages, the agent runs the installation commands.
+If the skill requires packages or CLIs, the agent runs the documented install commands.
 </Step>
 <Step number={3} title="Configure Environment">
-Set up required environment variables from the skill's configuration section.
+Set required environment variables and local config before running live operations.
 </Step>
 <Step number={4} title="Execute Operations">
-The agent uses code examples as templates to accomplish the user's task.
+The agent uses the skill references and scripts to accomplish the task while staying inside the documented boundaries.
 </Step>
 </Steps>
 
 ## Next Steps
 
 - **[Wallet Skill](/docs/skills/starknet-wallet)** - Start with wallet operations
+- **[Cairo Development Skills](/docs/skills/cairo-coding)** - Use the workflow map for contract authoring, testing, auditing, optimization, and deployment
 - **[Writing Your Own Skill](/docs/skills/writing-skills)** - Create custom skills
 - **[Publishing to ClawHub](/docs/skills/publishing)** - Share with the community
