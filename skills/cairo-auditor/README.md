@@ -50,7 +50,7 @@ There is no official global `~/.cursor/skills` install path for this package.
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install cairo-auditor@starknet-agentic
+/plugin install cairo-auditor@keep-starknet-strange-starknet-agentic
 ```
 
 **Update to latest:**
@@ -153,8 +153,7 @@ cairo-auditor/
     judging.md                 # FP gate + confidence scoring
     report-formatting.md       # finding template + priority mapping
     semgrep/                   # optional Semgrep auxiliary rules
-  scripts/
-    README.md                  # runnable helpers and script entrypoints
+  scripts/                    # runnable TypeScript/Python examples (e.g., quality/audit_local_repo.py)
   workflows/
     default.md                 # 4-agent pipeline reference
     deep.md                    # + adversarial agent details

@@ -21,21 +21,23 @@ FELT252_PRIME = 0x80000000000001100000000000000000000000000000000000000000000000
 
 
 def validate_felt252(value: int, name: str) -> None:
-    """Reject bounds that cannot be represented in felt252."""
+    """Raise when a value cannot be represented in felt252."""
     if value < 0:
         # Negative values are represented as P - |value| in felt252
         if abs(value) >= FELT252_PRIME:
-            raise ValueError(f"{name} = {value} exceeds felt252 range")
+            raise ValueError(
+                f"{name}={value} exceeds felt252 range: abs(value) must be < {FELT252_PRIME}"
+            )
     elif value >= FELT252_PRIME:
-        raise ValueError(f"{name} = {value} exceeds felt252 range")
+        raise ValueError(
+            f"{name}={value} exceeds felt252 range: value must be < {FELT252_PRIME}"
+        )
 
 
-def validate_interval(lo: int, hi: int, name: str) -> None:
-    """Validate a closed interval [lo, hi]."""
-    if lo > hi:
-        raise ValueError(f"{name}: lower bound must be <= upper bound")
-    validate_felt252(lo, f"{name} lower bound")
-    validate_felt252(hi, f"{name} upper bound")
+def validate_interval(lower: int, upper: int, name: str) -> None:
+    """Raise when an interval is inverted."""
+    if lower > upper:
+        raise ValueError(f"{name} interval is inverted: lower ({lower}) > upper ({upper})")
 
 
 def format_bound(value: int) -> str:
@@ -81,12 +83,12 @@ def calc_div(a_lo: int, a_hi: int, b_lo: int, b_hi: int) -> tuple[tuple[int, int
     Note: Cairo's bounded_int_div_rem requires non-negative dividends.
     """
     if b_lo <= 0:
-        print("ERROR: Divisor lower bound must be positive!", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError("Divisor lower bound must be positive.")
 
     if a_lo < 0:
-        print("ERROR: Dividend lower bound must be non-negative! Cairo's bounded_int_div_rem does not support negative dividends.", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError(
+            "Dividend lower bound must be non-negative. Cairo's bounded_int_div_rem does not support negative dividends."
+        )
 
     quot_lo = a_lo // b_hi
     quot_hi = a_hi // b_lo
@@ -202,8 +204,12 @@ Examples:
 
     args = parser.parse_args()
 
-    validate_interval(args.a_lo, args.a_hi, "first operand")
-    validate_interval(args.b_lo, args.b_hi, "second operand")
+    validate_interval(args.a_lo, args.a_hi, "a")
+    validate_interval(args.b_lo, args.b_hi, "b")
+    validate_felt252(args.a_lo, "a_lo")
+    validate_felt252(args.a_hi, "a_hi")
+    validate_felt252(args.b_lo, "b_lo")
+    validate_felt252(args.b_hi, "b_hi")
 
     if args.operation == "add":
         print(generate_add_impl(args.a_lo, args.a_hi, args.b_lo, args.b_hi, args.name))

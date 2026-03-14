@@ -2,7 +2,7 @@
 name: starknet-network-facts
 description: Starknet network-level constraints and protocol facts that impact contract safety and agent reasoning.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.1.1","org":"keep-starknet-strange","source":"starknet-agentic"}
+metadata: {"author":"starknet-agentic","version":"0.1.2","org":"keep-starknet-strange","source":"starknet-agentic","migrated_from":"starknet-skills"}
 keywords: [starknet, network, fees, tx-version, sequencer, inclusion]
 allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
@@ -32,14 +32,6 @@ user-invocable: true
 - block-time-sensitive logic
 - sequencer and inclusion model implications
 
-## Workflow
-
-- Main network-facts workflow: [default workflow](workflows/default.md)
-
-## References
-
-- Module index: [references index](references/README.md)
-
 ## starknet.js Example
 
 ```ts
@@ -47,7 +39,6 @@ import { RpcProvider } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
 const latest = await provider.getBlock("latest");
-
 console.log({
   blockNumber: latest.block_number,
   l1GasPrice: latest.l1_gas_price,
@@ -57,8 +48,16 @@ console.log({
 
 ## Error Codes and Recovery
 
-| Code | Meaning | Recovery |
+| Code | Condition | Recovery |
 | --- | --- | --- |
-| `SNF-001` | RPC/network fact unavailable | Retry with a fallback RPC and compare outputs before acting. |
-| `SNF-002` | Conflicting tx-version assumption | Re-check references and update guards/tests for current tx version behavior. |
-| `SNF-003` | Fee-token assumption mismatch | Add explicit fee-token checks and fee-bound regression tests. |
+| `SNF-001` | RPC/network fact unavailable | Retry against a fallback RPC and compare outputs before acting on assumptions. |
+| `SNF-002` | Conflicting tx-version assumption | Re-check current protocol docs/runtime behavior and update guards/tests accordingly. |
+| `SNF-003` | Fee-token assumption mismatch | Add explicit fee-token/fee-bound checks and regression tests for both ETH/STRK paths. |
+
+## Workflow
+
+- Main network-facts workflow: [default workflow](workflows/default.md)
+
+## References
+
+- Module index: [references index](references/README.md)

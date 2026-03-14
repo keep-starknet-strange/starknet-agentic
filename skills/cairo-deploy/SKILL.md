@@ -23,6 +23,44 @@ Reference for deploying Cairo smart contracts to Starknet using sncast (Starknet
 
 **Not for:** Writing contracts (use cairo-contract-authoring), testing (use cairo-testing), optimization (use cairo-optimization)
 
+## Programmatic Deployment (starknet.js)
+
+```ts
+import { Account, CallData, Contract, RpcProvider } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
+const account = new Account(
+  provider,
+  process.env.ACCOUNT_ADDRESS!,
+  process.env.ACCOUNT_PRIVATE_KEY!
+);
+
+// 1) Declare class
+const declare = await account.declare({
+  contract: JSON.parse(process.env.SIERRA_JSON!),
+  casm: JSON.parse(process.env.CASM_JSON!),
+});
+await provider.waitForTransaction(declare.transaction_hash);
+
+// 2) Deploy instance
+const constructorCalldata = CallData.compile({ owner: process.env.OWNER_ADDRESS! });
+const deploy = await account.deploy({
+  classHash: declare.class_hash,
+  constructorCalldata,
+});
+await provider.waitForTransaction(deploy.transaction_hash);
+
+// 3) Interact
+const contract = new Contract(
+  JSON.parse(process.env.ABI_JSON!),
+  deploy.contract_address[0],
+  provider
+).connect(account);
+await contract.invoke("transfer", [process.env.RECIPIENT!, "1000", "0"]);
+const balance = await contract.call("get_balance", [process.env.RECIPIENT!]);
+console.log({ balance });
+```
+
 ## Setup
 
 ### Install Starknet Foundry

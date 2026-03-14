@@ -2,7 +2,7 @@
 name: cairo-contract-authoring
 description: Cairo smart-contract authoring on Starknet. Trigger on "write a contract", "create a contract", "implement this in Cairo", "add storage/events/interface", "compose components". Guides structure, security patterns, and component wiring.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.2.0","org":"keep-starknet-strange","source":"starknet-agentic","contributors":["kronosapiens/dojoengine"]}
+metadata: {"author":"starknet-agentic","version":"0.2.1","org":"keep-starknet-strange","source":"starknet-agentic","migrated_from":"starknet-skills","contributors":["kronosapiens/dojoengine"]}
 keywords: [cairo, contract-authoring, starknet, openzeppelin, components, storage, events, interfaces]
 allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
@@ -83,7 +83,7 @@ Keep the plan under 30 lines. Wait for user confirmation before implementing.
 *Structure rules:*
 - Define interfaces outside the contract module with `#[starknet::interface]`.
 - Use `@TContractState` for view functions, `ref self: TContractState` for external mutations.
-- Follow the project structure: `src/lib.cairo` (mod declarations), `src/contract.cairo`, `src/interfaces.cairo`.
+- Follow the project structure: `src/lib.cairo` (mod declarations), `src/contract.cairo`, `src/interfaces/`.
 
 *Security rules (mandatory):*
 - Every storage-mutating `#[abi(embed_v0)]` impl function or `#[external(v0)]` function MUST have explicit access posture: guarded (`assert_only_owner` / role check) or intentionally public with a comment stating why.
@@ -122,10 +122,11 @@ These are non-negotiable. Every contract you write must satisfy all of them:
 
 | Code | Condition | Recovery |
 | --- | --- | --- |
-| `AUTH-001` | `scarb build` fails due to missing component imports | Verify `Scarb.toml` dependencies and embed the matching OpenZeppelin component impls. |
-| `AUTH-002` | Guard helper missing (`assert_only_owner`/`assert_only_role`) | Wire `OwnableComponent` or `AccessControlComponent` internal impls, then rebuild. |
-| `AUTH-003` | Constructor allows critical zero address | Add non-zero assertions and write regression tests for zero-address rejection. |
-| `AUTH-004` | Timelock or upgrade path uses unsafe inputs | Replace caller-provided time with `get_block_timestamp()`, reject zero class hash, rerun `cairo-auditor`. |
+| `CAUTH-001` | `scarb build` fails on component/import wiring | Fix `Scarb.toml` deps and module paths, then rebuild before writing more code. |
+| `CAUTH-002` | Missing owner/role guard on mutating external | Add explicit guard (`assert_only_owner`/role check) or document intentional public posture with rationale. |
+| `CAUTH-003` | Constructor allows zero critical address | Add non-zero assertions for owner/admin/governor addresses and add tests for rejection. |
+| `CAUTH-004` | Upgrade path accepts zero class hash or wrong timelock source | Enforce non-zero hash check and source time from `get_block_timestamp()`. |
+| `CAUTH-005` | Anti-pattern detected during review | Replace with the secure pair from `references/anti-pattern-pairs.md` and add regression coverage. |
 
 ## References
 

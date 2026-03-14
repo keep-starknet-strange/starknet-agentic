@@ -21,5 +21,5 @@ Standard 4-agent parallel scan. Orchestrated by [SKILL.md](../SKILL.md).
 ## Confidence Threshold
 
 - Findings >= 75: full report with fix diff and required tests.
-- If confidence is < 75: keep as low-confidence notes, no fix block.
-- If the FP gate fails: drop the item entirely.
+- If findings < 75: include low-confidence notes only, with no fix block.
+- If findings fail FP gate: drop them entirely.

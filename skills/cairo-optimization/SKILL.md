@@ -37,6 +37,44 @@ You are a Cairo optimization assistant. Your job is to profile existing code, id
 6. Encode stable optimization regressions in `../../evals/cases/contract_skill_benchmark.jsonl` to prevent benchmark drift.
 7. Emit a handoff block using `../references/skill-handoff.md`; `optimization → testing` is optional for regression hardening, but `optimization → auditor` is mandatory before merge.
 
+## starknet.js Example
+
+```ts
+import { Account, Contract, RpcProvider } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
+const account = new Account(
+  provider,
+  process.env.ACCOUNT_ADDRESS!,
+  process.env.ACCOUNT_PRIVATE_KEY!
+);
+const contract = new Contract(
+  JSON.parse(process.env.CONTRACT_ABI_JSON!),
+  process.env.CONTRACT_ADDRESS!,
+  provider
+).connect(account);
+
+// Baseline read path before optimization
+const before = await contract.call("get_metric", [process.env.USER_ADDRESS!]);
+
+// Optimized write path + receipt wait
+const tx = await contract.invoke("run_hot_path", [process.env.USER_ADDRESS!, "1000", "0"]);
+await provider.waitForTransaction(tx.transaction_hash);
+
+const after = await contract.call("get_metric", [process.env.USER_ADDRESS!]);
+console.log({ before, after });
+```
+
+## Error codes and recovery
+
+| Code | Condition | Recovery |
+| --- | --- | --- |
+| `COPT-001` | `snforge test` fails before optimization | Stop optimization, fix correctness first, and re-run baseline tests. |
+| `COPT-002` | Profiler trace/profile generation fails | Verify toolchain (`snforge/scarb/cairo-profiler/pprof`) and rerun with explicit mode/package args. |
+| `COPT-003` | No measurable hotspot delta after change | Revert change and choose a different optimization rule for the same hotspot. |
+| `COPT-004` | BoundedInt bound/type mismatch | Recompute with `bounded_int_calc.py`, update types consistently, and rebuild. |
+| `COPT-005` | Post-optimization regression detected | Keep regression test, revert offending optimization, and profile alternative approach. |
+
 ## Rationalizations to Reject
 
 - "Let's optimize before we have tests."

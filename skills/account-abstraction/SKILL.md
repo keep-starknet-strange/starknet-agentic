@@ -2,7 +2,7 @@
 name: account-abstraction
 description: Starknet account abstraction correctness and security guidance for validate/execute paths, nonces, signatures, and session policies.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.1.1","org":"keep-starknet-strange","source":"starknet-agentic"}
+metadata: {"author":"starknet-agentic","version":"0.1.2","org":"keep-starknet-strange","source":"starknet-agentic","migrated_from":"starknet-skills"}
 keywords: [starknet, account-abstraction, signatures, nonces, session-keys, policy]
 allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true
@@ -28,6 +28,45 @@ user-invocable: true
 4. Add regression tests for each fixed session-key or policy finding.
 5. Run `cairo-auditor` for final AA/security pass before merge.
 
+## starknet.js Examples
+
+```ts
+import { Account, RpcProvider } from "starknet";
+
+const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
+const account = new Account(
+  provider,
+  process.env.ACCOUNT_ADDRESS!,
+  process.env.ACCOUNT_PRIVATE_KEY!
+);
+
+// Validate-oriented read/check flow (non-state-changing path)
+const nonce = await provider.getNonceForAddress(process.env.ACCOUNT_ADDRESS!);
+await provider.callContract({
+  contractAddress: process.env.ACCOUNT_ADDRESS!,
+  entrypoint: "__validate__",
+  calldata: [/* tx fields + signature payload */],
+});
+
+// Execute flow (state-changing)
+const tx = await account.execute({
+  contractAddress: process.env.ACCOUNT_ADDRESS!,
+  entrypoint: "__execute__",
+  calldata: [/* call array + calldata */],
+});
+await provider.waitForTransaction(tx.transaction_hash);
+```
+
+## Error Codes
+
+| Code | Condition | Recovery |
+| --- | --- | --- |
+| `AA-001` | `__validate__` performs heavy/stateful logic | Move expensive logic out of validate path; add boundedness tests and gas/resource assertions. |
+| `AA-002` | `__execute__` allows forbidden selectors/self-calls | Tighten allow/deny policy checks and add explicit self-call block tests. |
+| `AA-003` | Nonce/domain separation mismatch | Recompute signing domain, verify nonce source, and add replay regression tests. |
+| `AA-004` | Session-key policy bypass | Constrain target/selector/token/amount windows and add unauthorized-path tests. |
+| `AA-005` | Unexpected runtime failure in account flow | Reproduce with minimal case, capture calldata/signature/nonce evidence, and escalate to `cairo-auditor` for targeted triage. |
+
 ## Core Focus
 
 - `__validate__` constraints and DoS resistance.
@@ -42,34 +81,3 @@ user-invocable: true
 ## References
 
 - Module index: [references index](references/README.md)
-
-## starknet.js Example
-
-```ts
-import { Account, CallData, RpcProvider } from "starknet";
-
-const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
-const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
-
-// Validate preview (debug-only): inspect __validate__ behavior with the current nonce.
-const nonce = await account.getNonce();
-const call = { contractAddress: process.env.TARGET!, entrypoint: "set_limit", calldata: CallData.compile({ value: 7 }) };
-await provider.callContract({
-  contractAddress: account.address,
-  entrypoint: "__validate__",
-  calldata: CallData.compile({ calls: [call], nonce }),
-});
-
-// Execute path: real transaction that triggers __execute__ and nonce checks.
-const tx = await account.execute([call]);
-await provider.waitForTransaction(tx.transaction_hash);
-```
-
-## Error Codes and Recovery
-
-| Code | Condition | Recovery |
-| --- | --- | --- |
-| `AA-001` | `__validate__` is too expensive or stateful | Remove heavy logic from validation; add a test that caps validation steps. |
-| `AA-002` | `__execute__` allows blocked selectors/self-calls | Enforce selector filters and self-call checks; add authorized/unauthorized regression tests. |
-| `AA-003` | Nonce or domain mismatch causes replay risk | Normalize nonce source/hash domain; add replay and cross-domain tests. |
-| `AA-999` | Unexpected runtime panic | Capture calldata + caller context, reproduce in unit tests, then escalate to `cairo-auditor`. |

@@ -25,8 +25,9 @@ Reference for writing Cairo smart contracts on Starknet. Covers structure, stora
 
 Before finalizing implementation for security-sensitive logic, cross-check:
 
-- `../../cairo-auditor/references/vulnerability-db/`
-- `../../cairo-auditor/references/audit-findings/`
+- `skills/cairo-auditor/references/vulnerability-db/`
+- `skills/cairo-auditor/references/attack-vectors/`
+- Additional distilled datasets are staged in eval/data pipeline PRs; treat these two references as the canonical source in this branch.
 
 ## Upgrade/Auth Hardening Rules
 
@@ -96,7 +97,7 @@ sierra-replace-ids = true
 allow-prebuilt-plugins = ["snforge_std"]
 ```
 
-> **Version pinning:** This repo's deployed contracts pin `starknet = "2.14.0"` and `snforge_std = "0.54.1"`. Update only with an explicit migration plan across all contract packages.
+> **Version pinning:** This template matches the currently deployed `contracts/*` baseline (`starknet = "2.14.0"`, `snforge_std = "0.54.1"`). If you intentionally move to newer toolchains, pin and migrate as a single coordinated change.
 
 ## Contract Structure
 
@@ -442,7 +443,9 @@ my-project/
   src/
     lib.cairo          # mod declarations
     contract.cairo     # main contract
-    interfaces.cairo   # trait definitions
+    interfaces/        # trait definitions (`#[starknet::interface]`)
+      mod.cairo
+      my_interface.cairo
     components/
       mod.cairo
       my_component.cairo

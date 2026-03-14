@@ -133,4 +133,4 @@ rules:
       - pattern-regex: "OwnableComponent"
       - pattern-regex: "AccessControlComponent"
       - pattern-regex: "(assert_only_owner|assert_only_role|has_role\\()"
-      - pattern-not-regex: "(DUAL_AUTH_INTENTIONAL|sync_owner_to_admin|authority_model:\\s*dual)"
+      - pattern-not-regex: "(DUAL_AUTH_INTENTIONAL|authority_model\\s*:\\s*dual|sync_owner_to_admin)"

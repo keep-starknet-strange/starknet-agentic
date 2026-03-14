@@ -10,7 +10,7 @@ Return findings only in your final response. Do not emit draft findings during a
 
 1. Read your assigned bundle in parallel 1000-line chunks on the first turn.
 2. Do triage for every vector: `Skip`, `Borderline`, `Survive`.
-3. Deep-check only surviving vectors and run the FP gate from `../references/judging.md`.
+3. Deep-check all `Survive` vectors and any `Borderline` vector with a concrete equivalent mechanism, then run the FP gate from `../references/judging.md`.
 4. Format all surviving findings using `../references/report-formatting.md`.
 5. If multiple findings survive, run one composability pass before final output.
 
@@ -39,7 +39,7 @@ For each `Borderline`, keep one sentence: specific function + why concept can st
 
 ## Deep Pass Rules
 
-Process all `Survive` vectors, plus any `Borderline` vector that names a concrete equivalent mechanism.
+Process `Survive` vectors and `Borderline` vectors with a concrete equivalent mechanism.
 
 Use this one-line structure per vector before final formatted findings:
 

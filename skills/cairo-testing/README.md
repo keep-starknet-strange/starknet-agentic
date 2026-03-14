@@ -92,8 +92,7 @@ cairo-testing/
   SKILL.md                          # 4-turn orchestration
   references/
     legacy-full.md                  # snforge API: tests, cheatcodes, fuzzing, forks (396 lines)
-  scripts/
-    snforge_smoke.py                # runnable Python example for invoking snforge tests
+  scripts/                          # runnable TypeScript/Python examples
   workflows/
     default.md                      # 5-phase workflow reference
 ```

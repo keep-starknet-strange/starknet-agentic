@@ -24,7 +24,8 @@ Rule packs:
 - `rules/external-calls.yaml`
 - `rules/math-economic.yaml`
 - `rules/storage-trust.yaml`
+- `cairo-auditor-rules.yaml` (legacy monolithic bundle; keep out of default CI runs)
 
 Coverage contract:
-- `attack_vectors_core` metadata in Semgrep rules must cover core vectors `1..80`.
+- `attack_vectors_core` metadata in Semgrep rules must cover core vectors `1..120`.
 - CI enforces this via `scripts/quality/check_semgrep_vector_coverage.py`.
