@@ -71,6 +71,14 @@ def main() -> int:
         default=120,
         help="Inclusive upper bound for required core vectors.",
     )
+    parser.add_argument(
+        "--allow-out-of-range",
+        action="store_true",
+        help=(
+            "Allow Semgrep metadata to reference vectors outside [core-min, core-max] "
+            "without failing the check."
+        ),
+    )
     args = parser.parse_args()
 
     vector_paths = _glob_paths(REPO_ROOT, args.vectors_glob)
@@ -110,6 +118,7 @@ def main() -> int:
         "rules_files": [_display_path(p, REPO_ROOT) for p in rule_paths],
         "core_min": args.core_min,
         "core_max": args.core_max,
+        "allow_out_of_range": args.allow_out_of_range,
         "required_count": len(required_vectors),
         "covered_count": len(required_vectors & semgrep_vectors),
         "missing": missing,
@@ -119,7 +128,11 @@ def main() -> int:
     }
     print(json.dumps(summary, ensure_ascii=True))
 
-    return 1 if missing or out_of_range else 0
+    if missing:
+        return 1
+    if out_of_range and not args.allow_out_of_range:
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
