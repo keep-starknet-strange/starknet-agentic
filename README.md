@@ -43,7 +43,7 @@ npx create-starknet-agent@latest
 
 # Claude Code marketplace
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@keep-starknet-strange-starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
 /plugin menu
 
 # Individual skill install via Agent Skills CLI

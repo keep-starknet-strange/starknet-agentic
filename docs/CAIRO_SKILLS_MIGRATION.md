@@ -52,6 +52,5 @@ Install:
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@keep-starknet-strange-starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
 ```
-

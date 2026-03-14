@@ -55,7 +55,7 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 /plugin marketplace add keep-starknet-strange/starknet-agentic
 
 # Install all skills
-/plugin install starknet-agentic-skills@keep-starknet-strange-starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
 
 # Invoke a specific bundled skill (after installing the plugin)
 /starknet-agentic-skills:cairo-auditor
@@ -84,7 +84,7 @@ Installed skills don't auto-update. To get the latest version:
 npx skills add keep-starknet-strange/starknet-agentic --force
 
 # Claude Code - update plugin
-/plugin update starknet-agentic-skills@keep-starknet-strange-starknet-agentic
+/plugin update starknet-agentic-skills@starknet-agentic-skills
 
 # Git clone - pull latest
 git pull origin main
