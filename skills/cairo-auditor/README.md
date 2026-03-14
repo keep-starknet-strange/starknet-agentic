@@ -50,7 +50,8 @@ There is no official global `~/.cursor/skills` install path for this package.
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install cairo-auditor@starknet-agentic
+/plugin install starknet-agentic-skills@keep-starknet-strange-starknet-agentic
+/starknet-agentic-skills:cairo-auditor
 ```
 
 **Update to latest:**

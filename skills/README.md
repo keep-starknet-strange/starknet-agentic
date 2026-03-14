@@ -56,8 +56,8 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 # Install all skills
 /plugin install starknet-agentic-skills@keep-starknet-strange-starknet-agentic
 
-# Optional: install only the cairo-auditor plugin module
-/plugin install cairo-auditor@keep-starknet-strange-starknet-agentic
+# Invoke a specific bundled skill (after installing the plugin)
+/starknet-agentic-skills:cairo-auditor
 ```
 
 ### Option 3: Direct Git Clone
