@@ -2,7 +2,7 @@
 name: cairo-testing
 description: Cairo smart-contract testing with snforge. Trigger on "write tests", "add unit tests", "fuzz test", "integration test", "test this contract", "regression test". Guides test strategy, cheatcode usage, and coverage.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.2.0","org":"keep-starknet-strange","source":"starknet-skills"}
+metadata: {"author":"starknet-agentic","version":"0.2.1","org":"keep-starknet-strange","source":"starknet-agentic","migrated_from":"starknet-skills"}
 keywords: [cairo, testing, snforge, starknet-foundry, fuzzing, integration]
 allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true

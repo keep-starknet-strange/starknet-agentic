@@ -1,17 +1,21 @@
 {
-  "name": "starknet-agentic",
+  "name": "starknet-agentic-skills",
   "owner": {
     "name": "keep-starknet-strange"
   },
   "metadata": {
-    "description": "Starknet skills for AI agents: wallets, DeFi, identity, payments, and more",
+    "description": "Canonical Starknet Agentic skills bundle for wallets, DeFi, identity, payments, privacy, and Cairo build/audit workflows",
     "version": "1.0.0"
   },
   "plugins": [
     {
-      "name": "starknet-skills",
+      "name": "starknet-agentic-skills",
       "source": "./",
-      "description": "Complete Starknet agent toolkit: wallet management, DeFi operations, on-chain identity, P2P payments, and anonymous transactions"
+      "version": "1.0.0",
+      "description": "Canonical Starknet Agentic skills bundle for wallets, DeFi, identity, payments, privacy, and Cairo build/audit workflows",
+      "author": {
+        "name": "keep-starknet-strange"
+      }
     }
   ]
 }

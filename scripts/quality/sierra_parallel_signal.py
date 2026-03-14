@@ -90,7 +90,7 @@ def _safe_repo_rel(path: Path, repo_dir: Path) -> str:
 
 @functools.cache
 def _sandbox_home() -> Path:
-    sandbox = Path(tempfile.mkdtemp(prefix=f"starknet-skills-sierra-home-{os.getpid()}-")).resolve()
+    sandbox = Path(tempfile.mkdtemp(prefix=f"starknet-agentic-sierra-home-{os.getpid()}-")).resolve()
     (sandbox / ".cache").mkdir(parents=True, exist_ok=True)
     (sandbox / ".config").mkdir(parents=True, exist_ok=True)
     (sandbox / ".local" / "share").mkdir(parents=True, exist_ok=True)
@@ -945,7 +945,7 @@ def main() -> int:
     parser.add_argument("--scan-id", required=True)
     parser.add_argument("--repos", nargs="*", default=[])
     parser.add_argument("--repos-file", default="")
-    parser.add_argument("--workdir", default="/tmp/starknet-skills-sierra-scan")
+    parser.add_argument("--workdir", default="/tmp/starknet-agentic-sierra-scan")
     parser.add_argument("--git-host", default="https://github.com")
     parser.add_argument("--detector-findings-jsonl", default="")
     parser.add_argument("--output-json", required=True)

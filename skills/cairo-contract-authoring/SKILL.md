@@ -2,7 +2,7 @@
 name: cairo-contract-authoring
 description: Cairo smart-contract authoring on Starknet. Trigger on "write a contract", "create a contract", "implement this in Cairo", "add storage/events/interface", "compose components". Guides structure, security patterns, and component wiring.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.2.0","org":"keep-starknet-strange","source":"starknet-skills","contributors":["kronosapiens/dojoengine"]}
+metadata: {"author":"starknet-agentic","version":"0.2.1","org":"keep-starknet-strange","source":"starknet-agentic","migrated_from":"starknet-skills","contributors":["kronosapiens/dojoengine"]}
 keywords: [cairo, contract-authoring, starknet, openzeppelin, components, storage, events, interfaces]
 allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
 user-invocable: true

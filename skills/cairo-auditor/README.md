@@ -30,17 +30,17 @@ Not a substitute for a formal audit — but the check you should never skip.
 **Claude Code CLI:**
 
 ```bash
-git clone https://github.com/keep-starknet-strange/starknet-skills.git \
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git \
   && mkdir -p ~/.claude/commands/cairo-auditor \
-  && cp -R starknet-skills/cairo-auditor/. ~/.claude/commands/cairo-auditor/
+  && cp -R starknet-agentic/skills/cairo-auditor/. ~/.claude/commands/cairo-auditor/
 ```
 
 **Cursor (manual guidance only):**
 
 ```bash
-git clone https://github.com/keep-starknet-strange/starknet-skills.git \
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git \
   && mkdir -p docs/cairo-auditor \
-  && cp -R starknet-skills/cairo-auditor/references/. docs/cairo-auditor/
+  && cp -R starknet-agentic/skills/cairo-auditor/references/. docs/cairo-auditor/
 ```
 
 Cursor does not execute this package as a runnable `/cairo-auditor` command. Use Claude Code CLI or Plugin Marketplace for the executable orchestrator flow. In Cursor, treat these files as reference guidance only.
@@ -49,18 +49,18 @@ There is no official global `~/.cursor/skills` install path for this package.
 **Claude Code Plugin Marketplace:**
 
 ```bash
-/plugin marketplace add keep-starknet-strange/starknet-skills
-/plugin install cairo-auditor@starknet-skills
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install cairo-auditor@keep-starknet-strange-starknet-agentic
 ```
 
 **Update to latest:**
 
 ```bash
-cd starknet-skills && git pull
+cd starknet-agentic && git pull
 # Claude Code CLI:
-cp -R cairo-auditor/. ~/.claude/commands/cairo-auditor/
+cp -R skills/cairo-auditor/. ~/.claude/commands/cairo-auditor/
 # Cursor docs refresh (manual guidance only):
-cp -R cairo-auditor/references/. docs/cairo-auditor/
+cp -R skills/cairo-auditor/references/. docs/cairo-auditor/
 ```
 
 ## Usage

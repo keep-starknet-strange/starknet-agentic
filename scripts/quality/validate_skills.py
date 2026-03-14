@@ -2,7 +2,7 @@
 """Repository-level SKILL.md quality checks.
 
 This validator enforces a minimal, deterministic subset of modern skill-authoring
-standards for the starknet-skills repository.
+standards for the starknet-agentic repository.
 """
 
 from __future__ import annotations

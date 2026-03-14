@@ -100,11 +100,23 @@ For production environments, use MCP proxy signer mode rather than raw in-proces
 
 Skill packs live in [`skills/`](./skills/). Browse full catalog and install flows in [`skills/README.md`](./skills/README.md).
 
+Canonical Cairo skill stack in this repository:
+
+- [`skills/cairo-contract-authoring`](./skills/cairo-contract-authoring/) - contract architecture, components, and secure authoring workflow
+- [`skills/cairo-testing`](./skills/cairo-testing/) - snforge testing strategy and regression patterns
+- [`skills/cairo-optimization`](./skills/cairo-optimization/) - post-correctness optimization and profiling
+- [`skills/cairo-deploy`](./skills/cairo-deploy/) - declare/deploy/verify operational workflows
+- [`skills/cairo-auditor`](./skills/cairo-auditor/) - workflow-first audit orchestration and false-positive gating
+- [`skills/account-abstraction`](./skills/account-abstraction/) - account/session-key correctness boundaries
+- [`skills/starknet-network-facts`](./skills/starknet-network-facts/) - protocol/network constraints for security decisions
+
 Install one skill:
 
 ```bash
 npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 ```
+
+Maintainer migration notes for the Cairo cutover are in [`docs/CAIRO_SKILLS_MIGRATION.md`](./docs/CAIRO_SKILLS_MIGRATION.md).
 
 ## Standards and Interop
 

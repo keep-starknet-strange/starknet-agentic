@@ -229,7 +229,7 @@ def main() -> int:
     parser.add_argument("--output-findings-jsonl", default="")
     parser.add_argument(
         "--workdir",
-        default=str(Path(tempfile.gettempdir()) / "starknet-skills-external-scan"),
+        default=str(Path(tempfile.gettempdir()) / "starknet-agentic-external-scan"),
     )
     parser.add_argument("--exclude", default="test,tests,mock,mocks,example,examples,preset,presets,fixture,fixtures,vendor,vendors")
     parser.add_argument("--detectors", default="")

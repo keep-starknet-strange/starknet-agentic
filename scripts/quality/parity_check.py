@@ -76,13 +76,13 @@ def plugin_identifier() -> str:
         raw = plugin_path.read_text(encoding="utf-8")
         obj = json.loads(raw)
     except (OSError, json.JSONDecodeError):
-        return "starknet-skills"
+        return "starknet-agentic-skills"
 
     if isinstance(obj, dict):
         name = obj.get("name")
         if isinstance(name, str) and name:
             return name
-    return "starknet-skills"
+    return "starknet-agentic-skills"
 
 
 def is_missing_binary(result: subprocess.CompletedProcess[str]) -> bool:
