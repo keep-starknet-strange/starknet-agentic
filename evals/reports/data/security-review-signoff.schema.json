@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Security Reviewer Signoff",
+  "type": "object",
+  "required": [
+    "release",
+    "reviewer",
+    "approved"
+  ],
+  "properties": {
+    "release": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "reviewer": {
+      "type": "string",
+      "minLength": 3
+    },
+    "approved": {
+      "type": "boolean"
+    },
+    "approved_at": {
+      "type": "string",
+      "minLength": 10,
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "approved": { "const": true }
+        }
+      },
+      "then": {
+        "required": ["approved_at"]
+      },
+      "else": {
+        "not": {
+          "required": ["approved_at"]
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

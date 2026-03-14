@@ -1,0 +1,44 @@
+{
+  "audit_id": "caddy_finance_cairo_security_clan_2025",
+  "project": "Caddy Finance",
+  "auditor": "Cairo Security Clan",
+  "date": "2025-01-01",
+  "source_url": "https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Caddy_Finance_Audit_Report_wBTC_vesuV1.pdf",
+  "repository": "https://github.com/CaddyFinance",
+  "scope_files": [
+    "/src/lib.cairo",
+    "vault.cairo",
+    "/src/interfaces.cairo",
+    "/src/utils.cairo",
+    "pool.cairo",
+    "/src/interfaces/IVesu.cairo",
+    "interface.cairo",
+    "/src/interfaces/lendcomp.cairo",
+    "/src/interfaces/oracle.cairo",
+    "/src/utils/CustomLPToken.cairo",
+    "/src/utils/ERC20Helper.cairo",
+    "/src/utils/constants.cairo",
+    "/src/utils/math.cairo",
+    "/src/utils/pow.cairo",
+    "math.cairo",
+    "/src/utils/types.cairo",
+    "/home/runner/work/069-Caddy-Finance/069-Caddy-Finance/contracts/src/bitcoin_vault.cairo",
+    "/home/runner/work/069-Caddy-Finance/069-Caddy-Finance/contracts/src/mocks/mock_erc20.cairo",
+    "/home/runner/work/069-Caddy-Finance/069-Caddy-Finance/contracts/src/utils/constants.cairo",
+    "/home/runner/work/069-Caddy-Finance/069-Caddy-Finance/contracts/src/utils/CustomLPToken.cairo"
+  ],
+  "finding_count": 15,
+  "severity_counts": {
+    "best_practice": 2,
+    "critical": 4,
+    "high": 3,
+    "low": 3,
+    "medium": 3
+  },
+  "status_summary": {
+    "fixed": 10,
+    "mitigated": 4,
+    "unresolved": 1
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

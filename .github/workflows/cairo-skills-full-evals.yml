@@ -1,0 +1,201 @@
+name: Cairo Skills Full Evals
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "SKILL.md"
+      - "skills/**/SKILL.md"
+      - "skills/**/references/**"
+      - "datasets/**"
+      - "evals/**"
+      - "scripts/quality/**"
+      - "scripts/audit-pipeline/**"
+      - "scripts/audit-extraction/**"
+      - "requirements.txt"
+      - ".github/workflows/cairo-skills-full-evals.yml"
+  push:
+    branches: [main]
+    paths:
+      - "SKILL.md"
+      - "skills/**/SKILL.md"
+      - "skills/**/references/**"
+      - "datasets/**"
+      - "evals/**"
+      - "scripts/quality/**"
+      - "scripts/audit-pipeline/**"
+      - "scripts/audit-extraction/**"
+      - "requirements.txt"
+      - ".github/workflows/cairo-skills-full-evals.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-evals:
+    name: Full Evals
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
+        with:
+          scarb-version: "2.14.0"
+
+      - name: Setup Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@84390a1602c157576ceefa6f9cfcb8b0504c94c7 # v5.0.0
+        with:
+          starknet-foundry-version: "0.56.0"
+
+      - name: Install Python deps
+        run: python -m pip install -r requirements.txt
+
+      - name: Python compile check
+        run: python -m compileall scripts/quality scripts/audit-pipeline scripts/audit-extraction
+
+      - name: Validate normalized audit metadata JSON
+        run: |
+          python scripts/audit-pipeline/validate_json.py \
+            --schema datasets/normalized/audit.schema.json \
+            --glob 'datasets/normalized/audits/*.json'
+
+      - name: Validate findings JSONL
+        run: |
+          shopt -s nullglob
+          files=(datasets/normalized/findings/*.jsonl)
+          shopt -u nullglob
+          if (( ${#files[@]} == 0 )); then
+            echo "ERROR: no findings JSONL files found in datasets/normalized/findings/" >&2
+            exit 1
+          fi
+          for file in "${files[@]}"; do
+            python scripts/audit-pipeline/validate_jsonl.py \
+              --schema datasets/normalized/finding.schema.json \
+              --jsonl "$file"
+          done
+
+      - name: Validate benchmark case JSONL
+        run: |
+          python scripts/audit-pipeline/validate_jsonl.py \
+            --schema evals/cases/benchmark-case.schema.json \
+            --jsonl evals/cases/cairo_auditor_benchmark.jsonl
+          python scripts/audit-pipeline/validate_jsonl.py \
+            --schema evals/cases/benchmark-case.schema.json \
+            --jsonl evals/cases/cairo_auditor_realworld_benchmark.jsonl
+          python scripts/audit-pipeline/validate_jsonl.py \
+            --schema evals/cases/contract-benchmark-case.schema.json \
+            --jsonl evals/cases/contract_skill_benchmark.jsonl
+          python scripts/audit-pipeline/validate_jsonl.py \
+            --schema evals/cases/contract-generation-case.schema.json \
+            --jsonl evals/cases/contract_skill_generation_eval.jsonl
+          python scripts/audit-pipeline/validate_jsonl.py \
+            --schema evals/cases/benchmark-case.schema.json \
+            --jsonl evals/heldout/cairo_auditor_llm_eval_cases.jsonl
+          python scripts/audit-pipeline/validate_jsonl.py \
+            --schema evals/reports/data/external-triage-label.schema.json \
+            --jsonl evals/reports/data/external-repo-scan-low-profile-rerun-2026-03-09-v5.labels.jsonl
+          python scripts/audit-pipeline/validate_jsonl.py \
+            --schema evals/reports/data/manual-19-gold.schema.json \
+            --jsonl evals/reports/data/manual-19-gold.jsonl
+
+      - name: Validate manifests + uniqueness
+        run: |
+          python scripts/audit-pipeline/validate_jsonl.py \
+            --schema datasets/manifests/audit-manifest.schema.json \
+            --jsonl datasets/manifests/audits.jsonl
+          python scripts/audit-pipeline/check_unique_ids.py \
+            --jsonl datasets/manifests/audits.jsonl \
+            --keys audit_id source_url raw_path extracted_path raw_sha256
+
+      - name: Held-out leakage check
+        run: python scripts/audit-pipeline/check_no_heldout_leak.py
+
+      - name: Validate vuln-db parity and vector coverage
+        run: |
+          python scripts/quality/check_vulndb_parity.py \
+            --cases evals/cases/cairo_auditor_benchmark.jsonl \
+            --cases evals/cases/cairo_auditor_realworld_benchmark.jsonl
+          python scripts/quality/check_attack_vector_coverage.py \
+            --min-vectors 120
+          python scripts/quality/check_semgrep_vector_coverage.py \
+            --core-min 1 \
+            --core-max 120 \
+            --allow-out-of-range
+
+      - name: Manual-19 gold recall smoke
+        run: |
+          python scripts/quality/check_manual_gold_recall.py \
+            --gold evals/reports/data/manual-19-gold.jsonl \
+            --findings evals/reports/data/external-repo-scan-low-profile-rerun-2026-03-09-v5.findings.jsonl \
+            --output-md /tmp/manual-19-gold-recall.md \
+            --output-json /tmp/manual-19-gold-recall.json \
+            --min-recall 0.80 \
+            --min-class-recall 0.60
+
+      - name: Cairo auditor benchmark
+        run: |
+          python scripts/quality/benchmark_cairo_auditor.py \
+            --cases evals/cases/cairo_auditor_benchmark.jsonl \
+            --output /tmp/cairo-auditor-benchmark.md \
+            --version v0.2.0 \
+            --min-precision 0.90 \
+            --min-recall 0.90 \
+            --min-class-recall 0.90
+
+      - name: Cairo auditor real-world benchmark
+        run: |
+          python scripts/quality/benchmark_cairo_auditor.py \
+            --cases evals/cases/cairo_auditor_realworld_benchmark.jsonl \
+            --output /tmp/cairo-auditor-realworld-benchmark.md \
+            --version v0.2.0 \
+            --title "v0.2.0 Cairo Auditor Real-World Benchmark" \
+            --min-precision 0.90 \
+            --min-recall 0.90 \
+            --min-class-recall 0.90
+
+      - name: Contract skill benchmark
+        run: |
+          python scripts/quality/benchmark_contract_skills.py \
+            --cases evals/cases/contract_skill_benchmark.jsonl \
+            --output /tmp/contract-skill-benchmark.md \
+            --version v0.5.0 \
+            --title "v0.5.0 Contract Skill Benchmark" \
+            --min-precision 0.95 \
+            --min-recall 0.95 \
+            --min-evaluated 60 \
+            --enforce-min-evaluated \
+            --require-tools
+
+      - name: Contract benchmark mutation suite
+        timeout-minutes: 35
+        run: |
+          python scripts/quality/mutation_test_contract_benchmark.py \
+            --cases evals/cases/contract_skill_benchmark.jsonl \
+            --min-precision 1.0 \
+            --min-recall 1.0 \
+            --min-evaluated 60
+
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cairo-skills-full-evals-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            /tmp/manual-19-gold-recall.md
+            /tmp/manual-19-gold-recall.json
+            /tmp/cairo-auditor-benchmark.md
+            /tmp/cairo-auditor-realworld-benchmark.md
+            /tmp/contract-skill-benchmark.md

@@ -1,0 +1,35 @@
+{
+  "audit_id": "troves_ekubo_vault_vesu_strategies_cairo_security_clan_unknown",
+  "project": "Troves Ekubo Vault + Vesu Strategies",
+  "auditor": "Cairo Security Clan",
+  "date": "2026-03-08",
+  "source_url": "https://assets.troves.fi/strkfarm/audit_report_vesu_and_ekubo_strats.pdf",
+  "repository": "unknown",
+  "scope_files": [
+    "src/components/accessControl.cairo",
+    "src/components/common.cairo",
+    "src/components/ekuboSwap.cairo",
+    "src/components/erc4626.cairo",
+    "src/components/vesu.cairo",
+    "src/strategies/cl_vault/cl_vault.cairo",
+    "src/strategies/vesu_rebalance/vesu_rebalance.cairo",
+    "src/helpers/Math.cairo",
+    "src/helpers/safe_decimal_math.cairo",
+    "src/components/harvester/reward_shares.cairo",
+    "src/components/swap.cairo",
+    "/strkfarm-contracts/src/strategies/vesu_rebalance/vesu_rebalance.cairo",
+    "/strkfarm-contracts/contracts/src/strategies/vesu_rebalance/vesu_rebalance.cairo"
+  ],
+  "finding_count": 10,
+  "severity_counts": {
+    "best_practice": 3,
+    "high": 1,
+    "info": 4,
+    "low": 2
+  },
+  "status_summary": {
+    "acknowledged": 2,
+    "fixed": 8
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

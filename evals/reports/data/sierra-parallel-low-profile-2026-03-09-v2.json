@@ -1,0 +1,288 @@
+{
+  "scan_id": "sierra-parallel-low-profile-2026-03-09-v2",
+  "generated_at": "2026-03-09T00:57:39+00:00",
+  "git_host": "https://github.com",
+  "allow_build": true,
+  "scarb_timeout_seconds": 240.0,
+  "detector_findings_jsonl": "evals/reports/data/external-repo-scan-low-profile-rerun-2026-03-09-v4.findings.jsonl",
+  "repos": [
+    {
+      "repo": "ForgeYields/starknet_vault_kit",
+      "ref": "babfc20931cb7ba16a86fae0157634026732dcb6",
+      "projects_total": 3,
+      "projects_built": 3,
+      "projects_failed": 0,
+      "artifacts": 32,
+      "artifact_breakdown": {
+        "sierra_json": 3,
+        "starknet_artifacts": 3,
+        "contract_class": 26
+      },
+      "marker_counts": {
+        "external_call": 67,
+        "replace_class_syscall": 21,
+        "state_write": 32,
+        "state_read": 29,
+        "event_emit": 47
+      },
+      "function_signals": {
+        "functions_total": 2877,
+        "functions_with_external_call": 48,
+        "functions_with_upgrade": 6,
+        "functions_with_state_write": 8
+      },
+      "signal_flags": {
+        "has_external_call_markers": true,
+        "has_state_write_markers": true,
+        "has_upgrade_markers": true,
+        "cei_parallel_signal": true,
+        "has_external_then_write_functions": false
+      },
+      "analysis_status": "completed",
+      "confirmation": {
+        "upgrade_findings": 5,
+        "upgrade_ir_confirmed": true,
+        "upgrade_ir_missing": false,
+        "cei_findings": 0,
+        "cei_ir_confirmed": false,
+        "cei_ir_missing": false,
+        "cei_example_functions": []
+      },
+      "errors": [],
+      "detector_hits": 20
+    },
+    {
+      "repo": "StarkVote/starkvote",
+      "ref": "a25548c0c3a98616e36b31b455ec1822c35a3102",
+      "projects_total": 4,
+      "projects_built": 4,
+      "projects_failed": 0,
+      "artifacts": 7,
+      "artifact_breakdown": {
+        "starknet_artifacts": 1,
+        "contract_class": 4,
+        "sierra_json": 2
+      },
+      "marker_counts": {
+        "external_call": 0,
+        "replace_class_syscall": 0,
+        "state_write": 0,
+        "state_read": 0,
+        "event_emit": 0
+      },
+      "function_signals": {
+        "functions_total": 441
+      },
+      "signal_flags": {
+        "has_external_call_markers": false,
+        "has_state_write_markers": false,
+        "has_upgrade_markers": false,
+        "cei_parallel_signal": false,
+        "has_external_then_write_functions": false
+      },
+      "analysis_status": "completed",
+      "confirmation": {
+        "upgrade_findings": 0,
+        "upgrade_ir_confirmed": false,
+        "upgrade_ir_missing": false,
+        "cei_findings": 0,
+        "cei_ir_confirmed": false,
+        "cei_ir_missing": false,
+        "cei_example_functions": []
+      },
+      "errors": [],
+      "detector_hits": 0
+    },
+    {
+      "repo": "cavos-labs/argus",
+      "ref": "5373340688bc77f3780dc973d8984fd541228831",
+      "projects_total": 0,
+      "projects_built": 0,
+      "projects_failed": 0,
+      "artifacts": 0,
+      "artifact_breakdown": {},
+      "marker_counts": {},
+      "function_signals": {},
+      "signal_flags": {
+        "has_external_call_markers": null,
+        "has_state_write_markers": null,
+        "has_upgrade_markers": null,
+        "cei_parallel_signal": null,
+        "has_external_then_write_functions": null
+      },
+      "analysis_status": "skipped_no_artifacts",
+      "confirmation": {
+        "upgrade_findings": 2,
+        "upgrade_ir_confirmed": false,
+        "upgrade_ir_missing": false,
+        "cei_findings": 0,
+        "cei_ir_confirmed": false,
+        "cei_ir_missing": false,
+        "cei_example_functions": []
+      },
+      "errors": [],
+      "detector_hits": 6
+    },
+    {
+      "repo": "fatlabsxyz/tongo",
+      "ref": "1e201d9ffbfedee607dda92f709967362f302ead",
+      "projects_total": 2,
+      "projects_built": 2,
+      "projects_failed": 0,
+      "artifacts": 6,
+      "artifact_breakdown": {
+        "sierra_json": 2,
+        "starknet_artifacts": 2,
+        "contract_class": 2
+      },
+      "marker_counts": {
+        "state_write": 22,
+        "state_read": 37,
+        "event_emit": 11,
+        "external_call": 4,
+        "replace_class_syscall": 0
+      },
+      "function_signals": {
+        "functions_total": 210,
+        "functions_with_state_write": 5,
+        "functions_with_external_call": 2
+      },
+      "signal_flags": {
+        "has_external_call_markers": true,
+        "has_state_write_markers": true,
+        "has_upgrade_markers": false,
+        "cei_parallel_signal": true,
+        "has_external_then_write_functions": false
+      },
+      "analysis_status": "completed",
+      "confirmation": {
+        "upgrade_findings": 0,
+        "upgrade_ir_confirmed": false,
+        "upgrade_ir_missing": false,
+        "cei_findings": 0,
+        "cei_ir_confirmed": false,
+        "cei_ir_missing": false,
+        "cei_example_functions": []
+      },
+      "errors": [],
+      "detector_hits": 2
+    },
+    {
+      "repo": "kiroshi-market/kiroshi-protocol",
+      "ref": "40d1ba6e1648033ea86421a779298493819cdb96",
+      "projects_total": 2,
+      "projects_built": 2,
+      "projects_failed": 0,
+      "artifacts": 6,
+      "artifact_breakdown": {
+        "starknet_artifacts": 1,
+        "contract_class": 5
+      },
+      "marker_counts": {
+        "external_call": 3,
+        "replace_class_syscall": 2,
+        "state_write": 4,
+        "state_read": 4,
+        "event_emit": 5
+      },
+      "function_signals": {},
+      "signal_flags": {
+        "has_external_call_markers": true,
+        "has_state_write_markers": true,
+        "has_upgrade_markers": true,
+        "cei_parallel_signal": true,
+        "has_external_then_write_functions": false
+      },
+      "analysis_status": "completed",
+      "confirmation": {
+        "upgrade_findings": 1,
+        "upgrade_ir_confirmed": true,
+        "upgrade_ir_missing": false,
+        "cei_findings": 0,
+        "cei_ir_confirmed": false,
+        "cei_ir_missing": false,
+        "cei_example_functions": []
+      },
+      "errors": [],
+      "detector_hits": 3
+    },
+    {
+      "repo": "medialane-io/medialane-contracts",
+      "ref": "aba0fcc775e1e64aad095b902b0fe493b620711b",
+      "projects_total": 1,
+      "projects_built": 1,
+      "projects_failed": 0,
+      "artifacts": 6,
+      "artifact_breakdown": {
+        "starknet_artifacts": 1,
+        "contract_class": 5
+      },
+      "marker_counts": {
+        "external_call": 4,
+        "replace_class_syscall": 1,
+        "state_write": 5,
+        "state_read": 5,
+        "event_emit": 5
+      },
+      "function_signals": {},
+      "signal_flags": {
+        "has_external_call_markers": true,
+        "has_state_write_markers": true,
+        "has_upgrade_markers": true,
+        "cei_parallel_signal": true,
+        "has_external_then_write_functions": false
+      },
+      "analysis_status": "completed",
+      "confirmation": {
+        "upgrade_findings": 1,
+        "upgrade_ir_confirmed": true,
+        "upgrade_ir_missing": false,
+        "cei_findings": 1,
+        "cei_ir_confirmed": false,
+        "cei_ir_missing": true,
+        "cei_example_functions": []
+      },
+      "errors": [],
+      "detector_hits": 3
+    },
+    {
+      "repo": "salazarsebas/Zylith",
+      "ref": "1991f53f794ae7c5856ca9533ddc1981544884c7",
+      "projects_total": 5,
+      "projects_built": 5,
+      "projects_failed": 0,
+      "artifacts": 11,
+      "artifact_breakdown": {
+        "starknet_artifacts": 5,
+        "contract_class": 6
+      },
+      "marker_counts": {
+        "external_call": 2,
+        "replace_class_syscall": 0,
+        "state_write": 2,
+        "state_read": 2,
+        "event_emit": 2
+      },
+      "function_signals": {},
+      "signal_flags": {
+        "has_external_call_markers": true,
+        "has_state_write_markers": true,
+        "has_upgrade_markers": false,
+        "cei_parallel_signal": true,
+        "has_external_then_write_functions": false
+      },
+      "analysis_status": "completed",
+      "confirmation": {
+        "upgrade_findings": 0,
+        "upgrade_ir_confirmed": false,
+        "upgrade_ir_missing": false,
+        "cei_findings": 0,
+        "cei_ir_confirmed": false,
+        "cei_ir_missing": false,
+        "cei_example_functions": []
+      },
+      "errors": [],
+      "detector_hits": 5
+    }
+  ]
+}

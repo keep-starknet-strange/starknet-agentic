@@ -1,0 +1,71 @@
+{
+  "scan_id": "external-repo-scan-2026-03-08",
+  "generated_at": "2026-03-08T16:00:00Z",
+  "scanner": {
+    "tool": "scripts/quality/benchmark_cairo_auditor.py detectors",
+    "tool_version": "v0.2.0",
+    "scanner_git_revision": "8221c25",
+    "command": "python scan_external_repos.py --repos <list> --exclude 'test,tests,mock,mocks' --detectors AA-SELF-CALL-SESSION,UNCHECKED_FEE_BOUND,SHUTDOWN_OVERRIDE_PRECEDENCE,SYSCALL_SELECTOR_FALLBACK_ASSUMPTION"
+  },
+  "repos": [
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "url": "https://github.com/OpenZeppelin/cairo-contracts.git",
+      "ref": "2ce56dd7d736095e874e9649aec29d6bc90736cc",
+      "all_cairo_files": 307,
+      "prod_cairo_files": 156
+    },
+    {
+      "repo": "atomiqlabs/atomiq-contracts-starknet",
+      "url": "https://github.com/atomiqlabs/atomiq-contracts-starknet.git",
+      "ref": "b5875a031063c88563cb44c3afa0460abc2f7e2f",
+      "all_cairo_files": 120,
+      "prod_cairo_files": 56
+    },
+    {
+      "repo": "typhoonmixer/typhoon-contracts",
+      "url": "https://github.com/typhoonmixer/typhoon-contracts.git",
+      "ref": "e11dffbe1c8c4cc96eba91b5f300c82425f2ae4e",
+      "all_cairo_files": 16,
+      "prod_cairo_files": 12
+    },
+    {
+      "repo": "karnotxyz/starknet_bridge",
+      "url": "https://github.com/karnotxyz/starknet_bridge.git",
+      "ref": "44e2255dae07f64bdbec0c12c23d678f86c46fdc",
+      "all_cairo_files": 43,
+      "prod_cairo_files": 18
+    },
+    {
+      "repo": "keep-starknet-strange/piltover",
+      "url": "https://github.com/keep-starknet-strange/piltover.git",
+      "ref": "658d707a5cc3ccc3e37b710609cbf0f83917a421",
+      "all_cairo_files": 25,
+      "prod_cairo_files": 15
+    }
+  ],
+  "detectors": [
+    "AA-SELF-CALL-SESSION",
+    "UNCHECKED_FEE_BOUND",
+    "SHUTDOWN_OVERRIDE_PRECEDENCE",
+    "SYSCALL_SELECTOR_FALLBACK_ASSUMPTION"
+  ],
+  "summary": {
+    "all_cairo_files": 511,
+    "prod_cairo_files": 257,
+    "prod_hits": 0,
+    "full_hits": 1,
+    "true_positive": 0,
+    "false_positive": 1
+  },
+  "findings": [
+    {
+      "repo": "OpenZeppelin/cairo-contracts",
+      "class_id": "AA-SELF-CALL-SESSION",
+      "file": "packages/test_common/src/mocks/account.cairo",
+      "scope": "full_scan",
+      "triage": "false_positive",
+      "triage_reason": "test mock fixture, not production session-key enforcement path"
+    }
+  ]
+}

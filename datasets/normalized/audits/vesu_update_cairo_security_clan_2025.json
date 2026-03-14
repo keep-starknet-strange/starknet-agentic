@@ -1,0 +1,26 @@
+{
+  "audit_id": "vesu_update_cairo_security_clan_2025",
+  "project": "Vesu Update",
+  "auditor": "Cairo Security Clan",
+  "date": "2025-01-01",
+  "source_url": "https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Vesu_Update_Audit_Report.pdf",
+  "repository": "https://github.com/vesuxyz/vesu-v1",
+  "scope_files": [
+    "src/lib.cairo",
+    "src/vendor/ekubo.cairo",
+    "src/extension/components/ekubo_oracle.cairo",
+    "src/extension/default_extension_ek.cairo",
+    "src/extension/components/position_hooks.cairo",
+    "src/extension/default_extension_cl.cairo",
+    "src/extension/default_extension_po.cairo"
+  ],
+  "finding_count": 2,
+  "severity_counts": {
+    "high": 1,
+    "info": 1
+  },
+  "status_summary": {
+    "fixed": 2
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

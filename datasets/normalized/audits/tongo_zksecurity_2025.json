@@ -1,0 +1,27 @@
+{
+  "audit_id": "tongo_zksecurity_2025",
+  "project": "Tongo",
+  "auditor": "zkSecurity",
+  "date": "2025-01-01",
+  "source_url": "https://github.com/fatlabsxyz/tongo/blob/master/audits/Audit_of_Tongo.pdf",
+  "repository": "https://github.com/fatlabsxyz/tongo",
+  "scope_files": [
+    "she/packages/cairo/src/protocols/bit.cairo",
+    "cairo/src/protocols/bit.cairo",
+    "packages/contracts/src/tongo/Tongo.cairo",
+    "packages/.../common/cipherbalance.cairo",
+    "poe.cairo",
+    "bit.cairo"
+  ],
+  "finding_count": 8,
+  "severity_counts": {
+    "high": 2,
+    "info": 1,
+    "low": 4,
+    "medium": 1
+  },
+  "status_summary": {
+    "reported": 8
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

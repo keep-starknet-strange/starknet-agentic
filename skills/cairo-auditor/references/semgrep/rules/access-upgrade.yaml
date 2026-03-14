@@ -1,0 +1,136 @@
+rules:
+  - id: cairo.access.immediate-upgrade-without-delay
+    message: "Immediate upgrade path appears without schedule/execute delay split."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [1, 9, 10, 13]
+      attack_vectors_extended: [76, 82, 83, 84, 86]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,560}?(replace_class_syscall\\(|upgradeable\\.upgrade\\()"
+      - pattern-not-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,560}?(schedule|scheduled|delay|timelock)"
+
+  - id: cairo.access.direct-replace-class-no-nonzero
+    message: "Direct class replacement appears without non-zero class-hash guard."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [2]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,560}?new_class_hash[\\s\\S]{0,320}?replace_class_syscall\\("
+      - pattern-not-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,560}?(is_non_zero\\(|!=\\s*0)"
+
+  - id: cairo.access.constructor-critical-address-no-guard
+    message: "Constructor seeds critical address without non-zero validation."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [3, 17, 20]
+      attack_vectors_extended: [88]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "constructor\\s*\\([^)]*(owner|admin|governor|upgrade|manager|oracle|vault)[^)]*:\\s*ContractAddress[\\s\\S]{0,640}?(\\.write\\(|_grant_role\\(|initializer\\()"
+      - pattern-not-regex: "constructor\\s*\\([^)]*(owner|admin|governor|upgrade|manager|oracle|vault)[^)]*:\\s*ContractAddress[\\s\\S]{0,640}?is_non_zero\\("
+
+  - id: cairo.access.irrevocable-privileged-role
+    message: "Privileged role appears seeded at deploy-time without visible rotation/revocation path."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: file-heuristic
+      attack_vectors_core: [4, 18]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "constructor\\s*\\([^)]*(owner|admin|governor|upgrade)[^)]*:\\s*ContractAddress"
+      - pattern-not-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,640}?(transfer_ownership|renounce_ownership|set_(owner|admin)|change_(owner|admin)|rotate_(owner|admin)|update_(owner|admin)|replace_(owner|admin))"
+
+  - id: cairo.access.one-shot-critical-registration
+    message: "Critical dependency registration looks one-shot with no explicit recovery setter."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [5, 66]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "fn\\s+register_[a-zA-Z0-9_]+[\\s\\S]{0,640}?\\.write\\("
+      - pattern-not-regex: "fn\\s+register_[a-zA-Z0-9_]+[\\s\\S]{0,640}?(is_non_zero\\(|!=\\s*0|assert\\(.*!=\\s*0\\)|assert\\(.*is_non_zero\\()"
+
+  - id: cairo.access.ungated-privileged-mutation
+    message: "External privileged mutation path appears without explicit access check."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [6, 12, 16, 19]
+      attack_vectors_extended: [90]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "#\\[external\\(v0\\)\\][\\s\\S]{0,420}?fn\\s+(set_|update_|register_|pause|unpause|upgrade|emergency_)[a-zA-Z0-9_]*[\\s\\S]{0,520}?(\\.write\\(|replace_class_syscall\\(|upgradeable\\.upgrade\\()"
+      - pattern-not-regex: "#\\[external\\(v0\\)\\][\\s\\S]{0,420}?fn\\s+(set_|update_|register_|pause|unpause|upgrade|emergency_)[a-zA-Z0-9_]*[\\s\\S]{0,520}?(assert_only_|assert\\(get_caller_address\\(|has_role\\(|only_owner|only_role)"
+
+  - id: cairo.access.helper-auth-bypass
+    message: "External wrapper delegates to helper that performs sensitive writes/calls with weak auth signal."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: cross-function-heuristic
+      attack_vectors_core: [7, 8]
+      attack_vectors_extended: [85, 87]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "#\\[external\\(v0\\)\\][\\s\\S]{0,360}?fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,360}?_[a-zA-Z0-9_]+\\("
+      - pattern-regex: "fn\\s+_[a-zA-Z0-9_]+[\\s\\S]{0,560}?(\\.write\\(|replace_class_syscall\\(|call_contract_syscall\\()"
+      - pattern-not-regex: "#\\[external\\(v0\\)\\][\\s\\S]{0,520}?(assert_only_|assert\\(get_caller_address\\(|has_role\\()"
+
+  - id: cairo.access.mixed-authority-drift
+    message: "Ownable + AccessControl authority surfaces appear mixed and may drift."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: file-heuristic
+      attack_vectors_core: [11, 14, 15]
+      attack_vectors_extended: [81, 89]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "OwnableComponent"
+      - pattern-regex: "AccessControlComponent"
+      - pattern-regex: "(assert_only_owner|assert_only_role|has_role\\()"
+      - pattern-not-regex: "(DUAL_AUTH_INTENTIONAL|sync_owner_to_admin|authority_model:\\s*dual)"

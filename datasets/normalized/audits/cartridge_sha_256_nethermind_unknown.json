@@ -1,0 +1,24 @@
+{
+  "audit_id": "cartridge_sha_256_nethermind_unknown",
+  "project": "Cartridge SHA-256",
+  "auditor": "Nethermind",
+  "date": "2022-10-24",
+  "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0061-DRAFT_CARTDRIGE.pdf",
+  "repository": "https://github.com/cartridge-gg",
+  "scope_files": [
+    "src/sha256.cairo",
+    "src/packed_sha256.cairo",
+    "starkware.cairo.common.cairo",
+    "test_sha256.cairo",
+    "tests/test_sha256.cairo"
+  ],
+  "finding_count": 2,
+  "severity_counts": {
+    "best_practice": 1,
+    "low": 1
+  },
+  "status_summary": {
+    "unresolved": 2
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

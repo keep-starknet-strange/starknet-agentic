@@ -1,0 +1,22 @@
+{
+  "name": "cairo-auditor",
+  "version": "0.2.0",
+  "description": "Flagship Cairo/Starknet audit skill for vulnerability discovery with strict FP gating and confidence scoring.",
+  "author": {
+    "name": "keep-starknet-strange",
+    "url": "https://github.com/keep-starknet-strange"
+  },
+  "homepage": "https://github.com/keep-starknet-strange/starknet-skills/tree/main/cairo-auditor",
+  "repository": "https://github.com/keep-starknet-strange/starknet-skills",
+  "license": "MIT",
+  "keywords": [
+    "starknet",
+    "cairo",
+    "security",
+    "auditing",
+    "smart-contracts"
+  ],
+  "skills": [
+    "./"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "audit_id": "spline_nethermind_2025",
+  "project": "Spline",
+  "auditor": "Nethermind",
+  "date": "2025-01-01",
+  "source_url": "https://github.com/SplineFinance/spline-v0/blob/main/audits/nethermind.pdf",
+  "repository": "https://github.com/SplineFinance/spline-v0/tree/main/audits",
+  "scope_files": [
+    "src/lp.cairo",
+    "src/shared_locker.cairo",
+    "src/lib.cairo",
+    "src/sweep.cairo",
+    "src/math.cairo",
+    "src/token.cairo",
+    "src/profile.cairo",
+    "src/profiles/cauchy.cairo",
+    "src/profiles/symmetric.cairo",
+    "src/profiles/bounds.cairo",
+    "/.../src/lp.cairo",
+    "/.../src/math.cairo",
+    "/.../src/test/test_wrapped_token.cairo",
+    "/.../tests/debug_test.cairo",
+    "/.../tests/cauchy_test.cairo",
+    "/.../tests/lp_test.cairo",
+    "/.../tests/symmetric_test.cairo"
+  ],
+  "finding_count": 5,
+  "severity_counts": {
+    "critical": 1,
+    "info": 2,
+    "low": 1,
+    "medium": 1
+  },
+  "status_summary": {
+    "reported": 5
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

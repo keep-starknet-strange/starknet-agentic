@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keep-starknet-strange/starknet-skills/evals/reports/data/external-triage-label.schema.json",
+  "title": "External triage label record",
+  "type": "object",
+  "required": [
+    "finding_id",
+    "release",
+    "scan_id",
+    "repo",
+    "ref",
+    "file",
+    "class_id",
+    "predicted_detect",
+    "human_outcome",
+    "confidence",
+    "reviewer",
+    "reviewed_at",
+    "rationale"
+  ],
+  "properties": {
+    "finding_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "release": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "scan_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "ref": {
+      "type": "string",
+      "minLength": 7
+    },
+    "file": {
+      "type": "string",
+      "minLength": 1
+    },
+    "class_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "predicted_detect": {
+      "type": "boolean"
+    },
+    "human_outcome": {
+      "type": "string",
+      "enum": [
+        "tp",
+        "fp"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "reviewer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewed_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

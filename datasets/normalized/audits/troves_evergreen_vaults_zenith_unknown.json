@@ -1,0 +1,25 @@
+{
+  "audit_id": "troves_evergreen_vaults_zenith_unknown",
+  "project": "Troves Evergreen Vaults",
+  "auditor": "Zenith",
+  "date": "2026-03-08",
+  "source_url": "https://github.com/zenith-security/reports/blob/main/reports/Forge%20-%20Zenith%20Audit%20Report.pdf",
+  "repository": "unknown",
+  "scope_files": [
+    "vault_allocator/src/manager/manager.cairo",
+    "packages/vault/src/vault/vault.cairo",
+    "packages/vault_allocator/src/manager/manager.cairo",
+    "OpenZeppelin/cairo-contracts/packages/merkle_tree/src/merkle_proof.cairo"
+  ],
+  "finding_count": 5,
+  "severity_counts": {
+    "info": 2,
+    "low": 2,
+    "medium": 1
+  },
+  "status_summary": {
+    "acknowledged": 2,
+    "resolved": 3
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

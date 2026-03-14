@@ -1,0 +1,28 @@
+{
+  "audit_id": "kstrk_nethermind_unknown",
+  "project": "kSTRK",
+  "auditor": "Nethermind",
+  "date": "2024-12-15",
+  "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0392_FINAL_ZKLEND_STRK_LIQUID_STAKING.pdf",
+  "repository": "https://github.com/zkLend",
+  "scope_files": [
+    "src/staked_token.cairo",
+    "src/interfaces.cairo",
+    "src/pool.cairo",
+    "src/staker.cairo",
+    "src/lib.cairo",
+    "src/proxy.cairo",
+    "src/staked_token/staked_token.cairo",
+    "src/staked_token/interface.cairo",
+    "src/proxy/interface.cairo",
+    "src/proxy/proxy.cairo",
+    "src/staker/staker.cairo",
+    "src/staker/interface.cairo",
+    "src/pool/pool.cairo",
+    "src/pool/interface.cairo"
+  ],
+  "finding_count": 0,
+  "severity_counts": {},
+  "status_summary": {},
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

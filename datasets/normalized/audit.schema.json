@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Normalized Audit Metadata",
+  "type": "object",
+  "required": [
+    "audit_id",
+    "project",
+    "auditor",
+    "date",
+    "source_url",
+    "repository",
+    "scope_files",
+    "finding_count"
+  ],
+  "properties": {
+    "audit_id": { "type": "string", "minLength": 1 },
+    "project": { "type": "string", "minLength": 1 },
+    "auditor": { "type": "string", "minLength": 1 },
+    "date": { "type": "string", "format": "date" },
+    "source_url": { "type": "string", "minLength": 1 },
+    "repository": { "type": "string", "minLength": 1 },
+    "scope_files": { "type": "array", "items": { "type": "string" } },
+    "finding_count": { "type": "integer", "minimum": 0 },
+    "severity_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "status_summary": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

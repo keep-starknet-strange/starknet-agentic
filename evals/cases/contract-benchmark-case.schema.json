@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Contract Skill Benchmark Case",
+  "type": "object",
+  "required": [
+    "case_id",
+    "skill_id",
+    "security_class",
+    "fixture",
+    "expected_pass",
+    "run_build",
+    "run_tests",
+    "must_match",
+    "must_not_match"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{2,80}$"
+    },
+    "skill_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,80}$"
+    },
+    "security_class": {
+      "type": "string",
+      "enum": [
+        "auth",
+        "input_validation",
+        "optimization_arithmetic",
+        "optimization_loops",
+        "timelock",
+        "upgrade_safety"
+      ]
+    },
+    "fixture": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_pass": {
+      "type": "boolean"
+    },
+    "run_build": {
+      "type": "boolean"
+    },
+    "run_tests": {
+      "type": "boolean"
+    },
+    "test_filter": {
+      "type": "string"
+    },
+    "must_match": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "pattern", "description"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "pattern": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "must_not_match": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "pattern", "description"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "pattern": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

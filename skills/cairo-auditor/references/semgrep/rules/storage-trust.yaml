@@ -1,0 +1,154 @@
+rules:
+  - id: cairo.storage.constructor-dead-param
+    message: "Constructor appears to take parameter(s) that are never consumed in state or auth flow."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [61]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "constructor\\s*\\([^)]*(owner|admin|manager|vault)[^)]*\\)"
+      - pattern-regex: "(//\\s*DEAD\\b|\\bdead_code\\b|#\\[allow\\(unused(_variables|_parameters)?\\)\\])"
+
+  - id: cairo.storage.zero-default-and-stale-auth
+    message: "Zero-default map state or stale revocation residue may be relied on for auth."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: file-heuristic
+      attack_vectors_core: [62, 63, 78]
+      attack_vectors_extended: [114]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(LegacyMap|Map<|mapping|id_to_info|pending_owner|pending_admin)"
+      - pattern-regex: "(revoke|renounce|unset|clear_(role|owner|admin)|revoke_role|remove_role)"
+      - pattern-not-regex: "(remove|delete|clear_all|explicit_exists_flag|is_set)"
+
+  - id: cairo.storage.cross-contract-auth-dependency
+    message: "Authorization appears to depend on mutable external contract state/dispatchers."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: cross-function-heuristic
+      attack_vectors_core: [64, 65]
+      attack_vectors_extended: [76, 120]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(Dispatcher|dispatch|contract_address:\\s*self\\.|has_role\\(|assert_only_role)"
+      - pattern-regex: "(set_|register_|update_).*contract"
+
+  - id: cairo.storage-crypto.domain-separation-gap
+    message: "Hash/signature/nonce domains may be underspecified or colliding."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: file-heuristic
+      attack_vectors_core: [67, 68, 73, 74]
+      attack_vectors_extended: [116, 117]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(pedersen|poseidon|hash|signature|nonce)"
+      - pattern-not-regex: "(domain_separator|chain_id|contract_address|action_type|nonce_domain|version)"
+
+  - id: cairo.storage.audit-trail-and-event-gap
+    message: "Critical state transitions may lack full audit-trail event payloads."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [69, 70, 79]
+      attack_vectors_extended: [119]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(upgrade|revoke|role|relayer|trusted)"
+      - pattern-not-regex: "(emit|Event|old_class_hash|new_class_hash|previous_owner|current_owner|previous_epoch|current_epoch)"
+
+  - id: cairo.storage.init-and-registry-deadlock
+    message: "Initialization/registry flow may deadlock or allow unbounded growth."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [71, 72, 80]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(initialize|init|registry|register|for\\s+item\\s+in|loop)"
+      - pattern-not-regex: "(max_|bound|pagination|batch_limit|initialized_flag)"
+
+  - id: cairo.storage.root-history-and-downgrade-risk
+    message: "Root/class-hash history may be overwritten or downgraded without monotonic guard."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [75, 76]
+      attack_vectors_extended: [113, 118]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(root|class_hash|version|epoch)"
+      - pattern-regex: "(set_|write\\()"
+      - pattern-not-regex: "(monotonic|>\\s*current|no_downgrade|idempotent|already_applied)"
+
+  - id: cairo.storage.queue-wrap-and-overwrite
+    message: "Queue/index arithmetic may wrap and overwrite pending state."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [80]
+      attack_vectors_extended: [115]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(queue|index|head|tail|cursor|counter)"
+      - pattern-regex: "(\\+\\s*1|%|mod)"
+      - pattern-not-regex: "(checked_|saturating|min\\(|max\\()"
+
+  - id: cairo.storage.component-namespace-collision
+    message: "Component/base-address keying may collide across modules."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: file-heuristic
+      attack_vectors_core: [74]
+      attack_vectors_extended: [111, 112]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(Component|storage_address_from_base|base_address|namespace)"
+      - pattern-not-regex: "(domain_separator|full_tuple|component_prefix|namespaced)"

@@ -1,0 +1,29 @@
+{
+  "baseline": "v4",
+  "candidate": "v5",
+  "v4": {
+    "tp": 26,
+    "fp": 13,
+    "fn": 0,
+    "tn": 0,
+    "precision": 0.6666666666666666,
+    "recall": 1.0,
+    "total": 39
+  },
+  "v5": {
+    "tp": 26,
+    "fp": 6,
+    "fn": 0,
+    "tn": 0,
+    "precision": 0.8125,
+    "recall": 1.0,
+    "total": 32
+  },
+  "delta": {
+    "findings": -7,
+    "precision": 0.145833,
+    "recall": 0.0,
+    "fp": -7,
+    "tp": 0
+  }
+}

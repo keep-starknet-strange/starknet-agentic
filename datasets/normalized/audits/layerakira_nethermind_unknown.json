@@ -1,0 +1,43 @@
+{
+  "audit_id": "layerakira_nethermind_unknown",
+  "project": "LayerAkira",
+  "auditor": "Nethermind",
+  "date": "2024-06-28",
+  "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0237-FINAL_LAYERAKIRA.pdf",
+  "repository": "https://github.com/LayerAkira",
+  "scope_files": [
+    "src/ILayerAkira.cairo",
+    "src/FundsTraits.cairo",
+    "src/lib.cairo",
+    "src/WithdrawComponent.cairo",
+    "src/NonceComponent.cairo",
+    "src/EcosystemTradeComponent.cairo",
+    "src/ExchangeBalanceComponent.cairo",
+    "src/SignerComponent.cairo",
+    "src/DepositComponent.cairo",
+    "src/RouterComponent.cairo",
+    "src/LayerAkira.cairo",
+    "src/Order.cairo",
+    "src/signature.cairo",
+    "src/utils.cairo",
+    "src/utils/erc20.cairo",
+    "src/utils/common.cairo",
+    "src/utils/account.cairo",
+    "src/utils/SlowModeLogic.cairo",
+    "src/signature/V0OffchainMessage.cairo",
+    "src/signature/AkiraV0OffchainMessage.cairo",
+    "src/signature/IOffchainMessage.cairo",
+    "EcosystemTradeComponent.cairo"
+  ],
+  "finding_count": 12,
+  "severity_counts": {
+    "best_practice": 4,
+    "info": 4,
+    "low": 3,
+    "medium": 1
+  },
+  "status_summary": {
+    "reported": 12
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

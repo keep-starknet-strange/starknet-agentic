@@ -1,0 +1,153 @@
+rules:
+  - id: cairo.math.unchecked-fee-bound
+    message: "Fee/rate parameter appears written or used without explicit max bound."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [41]
+      attack_vectors_extended: [104]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(fee|bps|rate)\\s*:\\s*(u16|u32|u64|u128|u256|felt252)"
+      - pattern-regex: "(\\.write\\([^)]*(fee|bps|rate)|\\b(fee|bps|rate)[a-zA-Z0-9_]*\\s*=)"
+      - pattern-not-regex: "(<=\\s*MAX_|is_le\\(|max_fee|max_bps|max_rate)"
+
+  - id: cairo.math.fee-recipient-zero-risk
+    message: "fees_recipient may be zero without safe handling."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [42]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "fees_recipient"
+      - pattern-regex: "\\.write\\(\\s*fees_recipient\\s*\\)"
+      - pattern-not-regex: "(fees_recipient\\.is_non_zero\\(|fees_recipient\\s*!=\\s*0|if\\s*\\(fees_recipient\\s*==\\s*0\\))"
+
+  - id: cairo.math.rounding-bias-pattern
+    message: "Rounding direction may systematically favor one side."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [43, 47, 50]
+      attack_vectors_extended: [101]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(\\/\\s*WAD|\\/\\s*RAY|%\\s*[a-zA-Z0-9_]+\\)"
+      - pattern-regex: "(\\+=\\s*1|round_up|round_down|ceil|floor)"
+
+  - id: cairo.math.cast-and-boundary-hazard
+    message: "Potential felt/int cast or subtraction boundary hazard in accounting path."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [44, 45, 53, 55]
+      attack_vectors_extended: [108]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(try_into|into\\(\\)|as\\s+u|as\\s+felt252)"
+      - pattern-regex: "(=\\s*[^\\n]{0,160}-\\s*[a-zA-Z0-9_]+|\\.write\\([^\\n]{0,160}-\\s*[a-zA-Z0-9_]+)"
+      - pattern-not-regex: "(assert\\(.*<=.*\\)|checked_|safe_cast|saturating)"
+
+  - id: cairo.math.oracle-cap-bypass
+    message: "Critical pricing/AUM update path appears weakly constrained."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: cross-function-heuristic
+      attack_vectors_core: [46, 52]
+      attack_vectors_extended: [102, 106]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(report\\(|new_aum|max_delta|oracle|price_update|set_price)"
+      - pattern-not-regex: "(quorum|timelock|twap|median|delta_ratio|max_delta\\.read\\()"
+
+  - id: cairo.math.scale-domain-mismatch
+    message: "Mixed precision/unit domain may be used without explicit normalization."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: file-heuristic
+      attack_vectors_core: [54, 58]
+      attack_vectors_extended: [104, 107]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(WAD|RAY|10_000|10\\^|decimals)"
+      - pattern-not-regex: "(normalize|rescale|scale_to|convert_units|same_precision)"
+
+  - id: cairo.math.slippage-guard-missing
+    message: "Liquidity/trade path appears without min-out/max-in slippage constraints."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [56]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(add_liquidity|remove_liquidity|swap|mint|redeem)"
+      - pattern-not-regex: "(min_out|max_in|slippage|price_limit)"
+
+  - id: cairo.math.timestamp-domain-confusion
+    message: "Freshness/expiry logic may mix timestamp and block-number domains."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: file-heuristic
+      attack_vectors_core: [48, 59, 60]
+      attack_vectors_extended: [103, 109]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(?=[\\s\\S]{0,2500}\\bblock_timestamp\\b)(?=[\\s\\S]{0,2500}\\bblock_number\\b)[\\s\\S]{0,2500}(<=|>=|<|>)"
+
+  - id: cairo.math.reciprocal-and-denominator-guards
+    message: "Reciprocal/division path may miss zero/bounds guard."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [57]
+      attack_vectors_extended: [105, 110]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(\\/\\s*[a-zA-Z0-9_]+|inverse|reciprocal|1\\s*\\/)"
+      - pattern-not-regex: "(is_non_zero\\(|!=\\s*0|assert\\(.*>\\s*0\\))"

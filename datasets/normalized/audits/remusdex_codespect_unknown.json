@@ -1,0 +1,34 @@
+{
+  "audit_id": "remusdex_codespect_unknown",
+  "project": "RemusDEX",
+  "auditor": "CODESPECT",
+  "date": "2026-03-08",
+  "source_url": "https://github.com/CODESPECT-security/audit-reports/blob/main/004_CODESPECT_REMUSDEX_AUDIT.pdf",
+  "repository": "unknown",
+  "scope_files": [
+    "dex.cairo",
+    "types.cairo",
+    "market_config.cairo",
+    "user_orders.cairo",
+    "interfaces.cairo",
+    "price_level_list.cairo",
+    "lib.cairo",
+    "price_level.cairo",
+    "orderbook.cairo",
+    "utils.cairo",
+    "orders/maker_order.cairo",
+    "orders/taker_order.cairo",
+    "maker_order.cairo"
+  ],
+  "finding_count": 6,
+  "severity_counts": {
+    "best_practice": 2,
+    "info": 2,
+    "low": 1,
+    "medium": 1
+  },
+  "status_summary": {
+    "reported": 6
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

@@ -1,0 +1,398 @@
+[
+  {
+    "project": "Caddy Finance",
+    "source_url": "https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Caddy_Finance_Audit_Report_wBTC_vesuV1.pdf",
+    "auditor": "Cairo Security Clan",
+    "date": "2025",
+    "repository": "https://github.com/CaddyFinance",
+    "notes": "wBTC Vesu V1",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Vesu Update",
+    "source_url": "https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Vesu_Update_Audit_Report.pdf",
+    "auditor": "Cairo Security Clan",
+    "date": "2025",
+    "repository": "https://github.com/vesuxyz/vesu-v1",
+    "notes": "Known in-repo baseline audit",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Nostra Pools Security Review",
+    "source_url": "https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Nostra%20Pools%20Security%20Review%20by%200xerim.pdf",
+    "auditor": "Erim V.",
+    "date": "2024",
+    "repository": "https://github.com/nostrafinance",
+    "notes": "Known in-repo baseline audit",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Caddy Finance",
+    "source_url": "https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Caddy_Finance_Vesu_v2_tBTC_Audit_Report.pdf",
+    "auditor": "Cairo Security Clan",
+    "date": "2026",
+    "repository": "https://github.com/CaddyFinance",
+    "notes": "Vesu V2 tBTC",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "StarkDeFi",
+    "source_url": "https://github.com/blaize-security/blaize-security-audits/blob/main/s/starkdefi/StarkDeFi-audit-report-v2-%5B23-Oct-2023%5D.pdf",
+    "auditor": "Blaize",
+    "date": "2023",
+    "repository": "https://github.com/starkdefi",
+    "notes": "StarkDeFi DEX Audit",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "StarkDeFi Locker",
+    "source_url": "https://github.com/blaize-security/blaize-security-audits/blob/main/s/starkdefi/StarkDeFi-Locker-audit-report-%5B19-Feb-2024%5D.pdf",
+    "auditor": "Blaize",
+    "date": "2024",
+    "repository": "https://github.com/starkdefi",
+    "notes": "Locker Audit",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Carmine (Spotnet)",
+    "source_url": "https://docs.carmine.finance/carmine-options-amm/audit",
+    "auditor": "Hackachain, Nethermind",
+    "date": null,
+    "repository": "https://github.com/CarmineOptions",
+    "notes": "2 audits (Nethermind + Hackachain)",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Tongo",
+    "source_url": "https://github.com/fatlabsxyz/tongo/blob/master/audits/Audit_of_Tongo.pdf",
+    "auditor": "zkSecurity",
+    "date": "2025",
+    "repository": "https://github.com/fatlabsxyz/tongo",
+    "notes": "Privacy-preserving transactions on Starknet",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Spline",
+    "source_url": "https://github.com/SplineFinance/spline-v0/blob/main/audits/nethermind.pdf",
+    "auditor": "Nethermind",
+    "date": "2025",
+    "repository": "https://github.com/SplineFinance/spline-v0/tree/main/audits",
+    "notes": "BTCFi stableswap on Starknet/Ekubo",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Spline",
+    "source_url": "https://github.com/SplineFinance/spline-v0/blob/main/audits/openzeppelin.pdf",
+    "auditor": "Nethermind, OpenZeppelin",
+    "date": "2025",
+    "repository": "https://github.com/SplineFinance/spline-v0/tree/main/audits",
+    "notes": "Cairo DeFi audit",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Piltover",
+    "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0544A-FINAL_PILTOVER.pdf",
+    "auditor": "Nethermind",
+    "date": "2025",
+    "repository": "https://github.com/keep-starknet-strange/piltover",
+    "notes": "Starknet core contract components in Cairo",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "L3 Bridge",
+    "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0544B-FINAL_TOKEN_BRIDGE.pdf",
+    "auditor": "Nethermind",
+    "date": "2025",
+    "repository": "https://github.com/karnotxyz/starknet_bridge",
+    "notes": "L2-L3 bridge for Starknet Madara appchains",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Kapan Finance",
+    "source_url": "https://www.kapan.finance/audits/022_CODESPECT_KAPAN_FINANCE.pdf",
+    "auditor": "CODESPECT",
+    "date": "2025",
+    "repository": null,
+    "notes": "Lending aggregator on Starknet",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Atomiq Exchange Initial",
+    "source_url": "https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Atomiq_Labs_Audit_Report.pdf",
+    "auditor": "Cairo Security Clan",
+    "date": null,
+    "repository": "https://github.com/atomiqlabs/atomiq-contracts-starknet/",
+    "notes": "Initial audit",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Atomiq Exchange Reaudit",
+    "source_url": "https://github.com/atomiqlabs/atomiq-readme/blob/main/csc-starknet_cairo-atomiq-audit.pdf",
+    "auditor": "Cairo Security Clan",
+    "date": null,
+    "repository": "https://github.com/atomiqlabs/atomiq-contracts-starknet/",
+    "notes": "Re-audit after fixes",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "ForgeYields CSC",
+    "source_url": "https://github.com/ForgeYields/audits/blob/main/Forge%20-%20Csc%20Audit%20Report.pdf",
+    "auditor": "Cairo Security Clan",
+    "date": null,
+    "repository": "https://github.com/ForgeYields",
+    "notes": "Cross-chain yield aggregator",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "StrkFarm",
+    "source_url": "https://assets.strkfarm.com/strkfarm/audit_report_vesu_and_ekubo_strats.pdf",
+    "auditor": "Cairo Security Clan",
+    "date": null,
+    "repository": "https://github.com/strkfarm",
+    "notes": "Vesu and Ekubo strategies",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "ForgeYields Zenith",
+    "source_url": "https://github.com/ForgeYields/audits/blob/main/Forge%20-%20Zenith%20Audit%20Report.pdf",
+    "auditor": "Zenith",
+    "date": null,
+    "repository": "https://github.com/ForgeYields",
+    "notes": "Zenith report",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Hyperlane Starknet Audit 1",
+    "source_url": "https://github.com/Zellic/publications/blob/master/Hyperlane%20Starknet%20-%20Zellic%20Audit%20Report.pdf",
+    "auditor": "Zellic",
+    "date": null,
+    "repository": "https://github.com/hyperlane-xyz",
+    "notes": "First audit",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Hyperlane Starknet Audit 2",
+    "source_url": "https://reports.zellic.io/publications/hyperlane-starknet",
+    "auditor": "Zellic",
+    "date": null,
+    "repository": "https://github.com/hyperlane-xyz",
+    "notes": "Second audit",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "RemusDEX",
+    "source_url": "https://github.com/CODESPECT-security/audit-reports/blob/main/004_CODESPECT_REMUSDEX_AUDIT.pdf",
+    "auditor": "CODESPECT",
+    "date": null,
+    "repository": null,
+    "notes": "DEX on Starknet",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "kSTRK",
+    "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0392_FINAL_ZKLEND_STRK_LIQUID_STAKING.pdf",
+    "auditor": "Nethermind",
+    "date": null,
+    "repository": "https://github.com/zkLend",
+    "notes": "STRK liquid staking",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "LayerAkira",
+    "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0237-FINAL_LAYERAKIRA.pdf",
+    "auditor": "Nethermind",
+    "date": null,
+    "repository": "https://github.com/LayerAkira",
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Nova",
+    "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0259-FINAL_STARKNET_NOVA.pdf",
+    "auditor": "Nethermind",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Dojo Security Review",
+    "source_url": "https://www.openzeppelin.com/news/dojo-security-review",
+    "auditor": "OpenZeppelin",
+    "date": null,
+    "repository": "https://github.com/dojoengine/dojo",
+    "notes": "Initial security review",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Endur V1 Launch",
+    "source_url": "https://drive.google.com/file/d/1EufZmcW9k5yq5Jivek1MjTCVnft5WRER/view",
+    "auditor": "Cairo Security Clan",
+    "date": "2024",
+    "repository": "https://github.com/endurfi",
+    "notes": "Liquid staking on Starknet",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Dojo Namespace Diff",
+    "source_url": "https://www.openzeppelin.com/news/dojo-namespace-diff-audit",
+    "auditor": "OpenZeppelin",
+    "date": null,
+    "repository": "https://github.com/dojoengine/dojo",
+    "notes": "Namespace changes",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Cartridge SHA-256",
+    "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0061-DRAFT_CARTDRIGE.pdf",
+    "auditor": "Nethermind",
+    "date": null,
+    "repository": "https://github.com/cartridge-gg",
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Troves Ekubo Vault + Vesu Strategies",
+    "source_url": "https://assets.troves.fi/strkfarm/audit_report_vesu_and_ekubo_strats.pdf",
+    "auditor": "Cairo Security Clan",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Endur Withdrawal Queue Upgrade",
+    "source_url": "https://drive.google.com/file/d/1IUySv0Z924vfRDMDNVupH9VR9WdoqKax/view",
+    "auditor": "Cairo Security Clan",
+    "date": "2025",
+    "repository": "https://github.com/endurfi",
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Endur Staking V2 Support",
+    "source_url": "https://drive.google.com/file/d/17A4ivPm55aRCJvUQ5D17PhUpsxjKsLoc/view",
+    "auditor": "Cairo Security Clan",
+    "date": "2025",
+    "repository": "https://github.com/endurfi",
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Endur BTC Staking + Multi-Validator",
+    "source_url": "https://drive.google.com/file/d/1NDr0HnKFbnk0NVlk51BWlxPiVH-IXNhY/view",
+    "auditor": "Cairo Security Clan",
+    "date": "2025",
+    "repository": "https://github.com/endurfi",
+    "notes": "BTC staking and multi-validator",
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Troves Hyper LST Vaults",
+    "source_url": "https://github.com/sherlock-protocol/sherlock-reports/blob/main/audits/2025_09_23_Final_Vesu_Starknet_Vault_Kit_Collaborative_Audit_Report.pdf",
+    "auditor": "Sherlock",
+    "date": "2025",
+    "repository": null,
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Troves Evergreen Vaults",
+    "source_url": "https://github.com/zenith-security/reports/blob/main/reports/Forge%20-%20Zenith%20Audit%20Report.pdf",
+    "auditor": "Zenith",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Paxmata",
+    "source_url": null,
+    "auditor": "Unknown",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "⏳ In Progress"
+  },
+  {
+    "project": "Rosettanet",
+    "source_url": null,
+    "auditor": "Unknown",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "⏳ In Progress"
+  },
+  {
+    "project": "Spiko",
+    "source_url": "https://github.com/NethermindEth/PublicAuditReports/blob/main/NM0333-FINAL_SPIKO.pdf",
+    "auditor": "Nethermind",
+    "date": "2024",
+    "repository": "https://github.com/spiko-tech/starknet-contracts",
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Fathom (now Splyce)",
+    "source_url": null,
+    "auditor": "Unknown",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "❓TBC"
+  },
+  {
+    "project": "iBTC",
+    "source_url": null,
+    "auditor": "Unknown",
+    "date": null,
+    "repository": "https://github.com/DLC-link/ibtc-cairo",
+    "notes": null,
+    "status": "❓TBC"
+  },
+  {
+    "project": "Unruggable",
+    "source_url": null,
+    "auditor": "Unknown",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "❓TBC"
+  },
+  {
+    "project": "iTokens",
+    "source_url": null,
+    "auditor": "Unknown",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "❓TBC"
+  },
+  {
+    "project": "TokenOps",
+    "source_url": null,
+    "auditor": "Unknown",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "❓TBC"
+  },
+  {
+    "project": "Typhoon",
+    "source_url": "https://github.com/CODESPECT-security/audit-reports/blob/main/018_CODESPECT_TYPHOON.pdf",
+    "auditor": "CODESPECT",
+    "date": null,
+    "repository": "https://github.com/typhoonmixer/typhoon-contracts",
+    "notes": null,
+    "status": "✅ Audited"
+  },
+  {
+    "project": "Avalon",
+    "source_url": null,
+    "auditor": "Unknown",
+    "date": null,
+    "repository": null,
+    "notes": null,
+    "status": "❓TBC"
+  }
+]

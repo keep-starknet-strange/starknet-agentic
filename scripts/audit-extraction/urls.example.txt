@@ -1,0 +1,5 @@
+# One URL per line. Supports:
+# - direct PDF URLs
+# - GitHub blob URLs (automatically converted to raw.githubusercontent.com)
+
+https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Vesu_Update_Audit_Report.pdf

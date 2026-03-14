@@ -1,0 +1,29 @@
+{
+  "audit_id": "spline_nethermind_openzeppelin_2025",
+  "project": "Spline",
+  "auditor": "Nethermind, OpenZeppelin",
+  "date": "2025-01-01",
+  "source_url": "https://github.com/SplineFinance/spline-v0/blob/main/audits/openzeppelin.pdf",
+  "repository": "https://github.com/SplineFinance/spline-v0/tree/main/audits",
+  "scope_files": [
+    "lib.cairo",
+    "lp.cairo",
+    "math.cairo",
+    "profile.cairo",
+    "shared_locker.cairo",
+    "token.cairo",
+    "bounds.cairo",
+    "cauchy.cairo",
+    "symmetric.cairo"
+  ],
+  "finding_count": 4,
+  "severity_counts": {
+    "high": 1,
+    "info": 2,
+    "low": 1
+  },
+  "status_summary": {
+    "reported": 4
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

@@ -1,0 +1,86 @@
+# External Repo Detector Sweep (external-repo-scan-wave2-2026-03-09-v2)
+
+Generated: 2026-03-08T22:36:50+00:00
+
+Machine-readable artifact:
+
+- `evals/reports/data/external-repo-scan-wave2-2026-03-09-v2.json`
+
+## Scope
+
+1. `OpenZeppelin/cairo-contracts@2ce56dd7d736`
+2. `atomiqlabs/atomiq-contracts-starknet@b5875a031063`
+3. `typhoonmixer/typhoon-contracts@e11dffbe1c8c`
+4. `karnotxyz/starknet_bridge@44e2255dae07`
+5. `keep-starknet-strange/piltover@658d707a5cc3`
+6. `dojoengine/dojo@4a374ac64300`
+7. `spiko-tech/starknet-contracts@487823179d75`
+
+## Coverage
+
+| Repo | Cairo files (all) | Cairo files (prod-only) | Hits |
+| --- | ---: | ---: | ---: |
+| OpenZeppelin/cairo-contracts | 307 | 156 | 9 |
+| atomiqlabs/atomiq-contracts-starknet | 120 | 56 | 0 |
+| typhoonmixer/typhoon-contracts | 16 | 12 | 6 |
+| karnotxyz/starknet_bridge | 43 | 18 | 5 |
+| keep-starknet-strange/piltover | 25 | 15 | 2 |
+| dojoengine/dojo | 105 | 47 | 3 |
+| spiko-tech/starknet-contracts | 5 | 4 | 6 |
+
+## Results
+
+- Total findings: **31**
+
+By class:
+
+- `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD`: 10
+- `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK`: 17
+- `NO_ACCESS_CONTROL_MUTATION`: 3
+- `UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD`: 1
+
+By repo:
+
+- `OpenZeppelin/cairo-contracts`: 9
+- `dojoengine/dojo`: 3
+- `karnotxyz/starknet_bridge`: 5
+- `keep-starknet-strange/piltover`: 2
+- `spiko-tech/starknet-contracts`: 6
+- `typhoonmixer/typhoon-contracts`: 6
+
+## Findings
+
+| Repo | File | Class |
+| --- | --- | --- |
+| `OpenZeppelin/cairo-contracts` | `packages/presets/src/account.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `OpenZeppelin/cairo-contracts` | `packages/presets/src/erc1155.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `OpenZeppelin/cairo-contracts` | `packages/presets/src/erc1155.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+| `OpenZeppelin/cairo-contracts` | `packages/presets/src/erc20.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `OpenZeppelin/cairo-contracts` | `packages/presets/src/erc20.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+| `OpenZeppelin/cairo-contracts` | `packages/presets/src/erc721.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `OpenZeppelin/cairo-contracts` | `packages/presets/src/erc721.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+| `OpenZeppelin/cairo-contracts` | `packages/presets/src/eth_account.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `OpenZeppelin/cairo-contracts` | `packages/upgrades/src/upgradeable.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `typhoonmixer/typhoon-contracts` | `src/NoteAccount.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `typhoonmixer/typhoon-contracts` | `src/NoteAccount.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+| `typhoonmixer/typhoon-contracts` | `src/Pool.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `typhoonmixer/typhoon-contracts` | `src/Pool.cairo` | `UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD` |
+| `typhoonmixer/typhoon-contracts` | `src/Typhoon.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `typhoonmixer/typhoon-contracts` | `src/Typhoon.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+| `karnotxyz/starknet_bridge` | `starknet_bridge/src/bridge/token_bridge.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `karnotxyz/starknet_bridge` | `starknet_bridge/src/bridge/token_bridge.cairo` | `NO_ACCESS_CONTROL_MUTATION` |
+| `karnotxyz/starknet_bridge` | `starknet_bridge/src/erc20/erc20.cairo` | `NO_ACCESS_CONTROL_MUTATION` |
+| `karnotxyz/starknet_bridge` | `starknet_bridge/src/fee_token/fee_token.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `karnotxyz/starknet_bridge` | `starknet_bridge/src/fee_token/fee_token.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+| `keep-starknet-strange/piltover` | `src/appchain.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `keep-starknet-strange/piltover` | `src/appchain.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+| `dojoengine/dojo` | `crates/dojo/core/src/contract/components/upgradeable.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `dojoengine/dojo` | `crates/dojo/core/src/world/world_contract.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `dojoengine/dojo` | `crates/dojo/core/src/world/world_contract.cairo` | `NO_ACCESS_CONTROL_MUTATION` |
+| `spiko-tech/starknet-contracts` | `src/lib.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `spiko-tech/starknet-contracts` | `src/lib.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+| `spiko-tech/starknet-contracts` | `src/permission_manager.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `spiko-tech/starknet-contracts` | `src/permission_manager.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+| `spiko-tech/starknet-contracts` | `src/redemption.cairo` | `IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK` |
+| `spiko-tech/starknet-contracts` | `src/redemption.cairo` | `CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD` |
+

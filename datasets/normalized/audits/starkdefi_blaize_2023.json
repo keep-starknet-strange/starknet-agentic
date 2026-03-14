@@ -1,0 +1,29 @@
+{
+  "audit_id": "starkdefi_blaize_2023",
+  "project": "StarkDeFi",
+  "auditor": "Blaize",
+  "date": "2023-01-01",
+  "source_url": "https://github.com/blaize-security/blaize-security-audits/blob/main/s/starkdefi/StarkDeFi-audit-report-v2-%5B23-Oct-2023%5D.pdf",
+  "repository": "https://github.com/starkdefi",
+  "scope_files": [
+    "factory.cairo",
+    "pair.cairo",
+    "Pair.cairo",
+    "router.cairo",
+    "pairFees.cairo",
+    "utils.cairo",
+    "pairFee.cairo"
+  ],
+  "finding_count": 13,
+  "severity_counts": {
+    "critical": 2,
+    "high": 1,
+    "low": 9,
+    "medium": 1
+  },
+  "status_summary": {
+    "resolved": 12,
+    "verified": 1
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}

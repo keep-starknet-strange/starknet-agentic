@@ -1,0 +1,28 @@
+{
+  "audit_id": "nostra_pools_security_review_erim_v_2024",
+  "project": "Nostra Pools Security Review",
+  "auditor": "Erim V.",
+  "date": "2024-01-01",
+  "source_url": "https://github.com/Cairo-Security-Clan/Audit-Portfolio/blob/main/Nostra%20Pools%20Security%20Review%20by%200xerim.pdf",
+  "repository": "https://github.com/nostrafinance",
+  "scope_files": [
+    "utils.cairo",
+    "pair.cairo",
+    "factory.cairo",
+    "router.cairo",
+    "Pair.cairo",
+    "Factory.cairo"
+  ],
+  "finding_count": 7,
+  "severity_counts": {
+    "best_practice": 1,
+    "info": 1,
+    "low": 5
+  },
+  "status_summary": {
+    "acknowledged": 2,
+    "fixed": 1,
+    "reported": 4
+  },
+  "notes": "Auto-normalized from ingest manifest and extracted report text."
+}
