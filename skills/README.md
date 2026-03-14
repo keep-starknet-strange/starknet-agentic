@@ -22,6 +22,7 @@ Production-ready skills for AI agents operating on Starknet. Built for the Agent
 | [account-abstraction](./account-abstraction/) | Starknet account validation/session-key correctness and risk patterns | Complete |
 | [starknet-network-facts](./starknet-network-facts/) | Network-level protocol constraints that affect contract safety decisions | Complete |
 | [starknet-js](./starknet-js/) | starknet.js v9.x SDK guide for dApps, accounts, transactions, paymaster | Complete |
+| [starknet-tongo](./starknet-tongo/) | Confidential ERC20 payments with encrypted balances and ZK-proven transfers | Complete |
 
 ## Installation
 
