@@ -99,6 +99,7 @@ For production environments, use MCP proxy signer mode rather than raw in-proces
 ### Skills
 
 Skill packs live in [`skills/`](./skills/). Browse full catalog and install flows in [`skills/README.md`](./skills/README.md).
+Cairo migration notes and legacy mapping live in [`docs/CAIRO_SKILLS_MIGRATION.md`](./docs/CAIRO_SKILLS_MIGRATION.md).
 
 Install one skill:
 

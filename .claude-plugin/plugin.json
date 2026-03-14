@@ -1,8 +1,28 @@
 {
-  "name": "starknet-skills",
-  "description": "Starknet skills for AI agents: wallets, DeFi, identity, payments, and privacy",
+  "name": "starknet-agentic-skills",
+  "version": "1.0.1",
+  "description": "Canonical Starknet skill bundle for AI agents: wallets, DeFi, identity, payments, privacy, and Cairo contract workflows.",
   "author": {
     "name": "keep-starknet-strange",
     "email": "starknet-agentic@proton.me"
-  }
+  },
+  "skills": [
+    "./skills/starknet-wallet",
+    "./skills/starknet-defi",
+    "./skills/starknet-identity",
+    "./skills/starknet-mini-pay",
+    "./skills/starknet-anonymous-wallet",
+    "./skills/starkzap-sdk",
+    "./skills/huginn-onboard",
+    "./skills/controller-cli",
+    "./skills/cairo-contract-authoring",
+    "./skills/cairo-testing",
+    "./skills/cairo-deploy",
+    "./skills/cairo-optimization",
+    "./skills/cairo-auditor",
+    "./skills/account-abstraction",
+    "./skills/starknet-network-facts",
+    "./skills/starknet-js",
+    "./skills/starknet-tongo"
+  ]
 }

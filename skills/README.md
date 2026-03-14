@@ -29,6 +29,7 @@ Production-ready skills for AI agents operating on Starknet. Built for the Agent
 
 For agent platforms (including OpenClaw/MoltBook) and tooling that want to index skills programmatically, see:
 - `skills/manifest.json` (generated, stable format)
+- Cairo cutover and legacy mapping: `../docs/CAIRO_SKILLS_MIGRATION.md`
 
 ### Option 1: GitHub (Recommended)
 
@@ -53,14 +54,10 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 /plugin marketplace add keep-starknet-strange/starknet-agentic
 
 # Install all skills
-/plugin install starknet-skills@keep-starknet-strange-starknet-agentic
+/plugin install starknet-agentic-skills@keep-starknet-strange-starknet-agentic
 
-# Or install individual skill plugins
-/plugin install starknet-wallet@keep-starknet-strange-starknet-agentic
-/plugin install starknet-defi@keep-starknet-strange-starknet-agentic
-/plugin install starknet-identity@keep-starknet-strange-starknet-agentic
-/plugin install starknet-payments@keep-starknet-strange-starknet-agentic
-/plugin install starknet-privacy@keep-starknet-strange-starknet-agentic
+# Optional: install only the cairo-auditor plugin module
+/plugin install cairo-auditor@keep-starknet-strange-starknet-agentic
 ```
 
 ### Option 3: Direct Git Clone
@@ -86,7 +83,7 @@ Installed skills don't auto-update. To get the latest version:
 npx skills add keep-starknet-strange/starknet-agentic --force
 
 # Claude Code - update plugin
-/plugin update starknet-skills@keep-starknet-strange-starknet-agentic
+/plugin update starknet-agentic-skills@keep-starknet-strange-starknet-agentic
 
 # Git clone - pull latest
 git pull origin main
