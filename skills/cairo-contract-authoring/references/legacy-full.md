@@ -1,18 +1,13 @@
 ---
-name: cairo-contracts
-description: Use when writing Cairo smart contracts on Starknet — contract structure, storage, events, interfaces, components, OpenZeppelin v3 patterns, and common contract templates.
-license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"1.0.0","org":"keep-starknet-strange"}
-keywords: [cairo, contracts, starknet, openzeppelin, components, storage, events, interfaces, erc20, erc721]
-allowed-tools: [Bash, Read, Write, Glob, Grep, Task]
-user-invocable: true
+name: cairo-contract-authoring-legacy-full
+description: Comprehensive reference for Cairo contract structure, components, and security hardening patterns.
 ---
 
-# Cairo Contracts
+# Cairo Contract Authoring
 
 Reference for writing Cairo smart contracts on Starknet. Covers structure, storage, events, interfaces, components, and OpenZeppelin v3 patterns.
 
-> **Optimization:** After your contract compiles and tests pass, use the [cairo-optimization](../cairo-optimization/) skill as a separate pass.
+> **Optimization:** After your contract compiles and tests pass, use [cairo-optimization](../../cairo-optimization/SKILL.md) as a separate pass.
 
 ## When to Use
 
@@ -22,7 +17,86 @@ Reference for writing Cairo smart contracts on Starknet. Covers structure, stora
 - Implementing the component pattern with `embeddable_as`
 - Structuring a multi-contract project with Scarb
 
+## When NOT to Use
+
 **Not for:** Gas optimization (use cairo-optimization), testing (use cairo-testing), deployment (use cairo-deploy)
+
+## Audit-Derived Patterns
+
+Before finalizing implementation for security-sensitive logic, cross-check:
+
+- `../../../datasets/distilled/fix-patterns/`
+- `../../../datasets/distilled/vuln-cards/`
+
+## Upgrade/Auth Hardening Rules
+
+### Timelock Time Source
+
+Never accept `now` as a user argument for timelock checks.
+
+```cairo
+// BAD
+fn execute_upgrade(ref self: ContractState, now: u64) {
+    assert!(now >= self.executable_after.read(), "timelock");
+}
+
+// GOOD
+use starknet::get_block_timestamp;
+
+fn execute_upgrade(ref self: ContractState) {
+    let now = get_block_timestamp();
+    assert!(now >= self.executable_after.read(), "timelock");
+}
+```
+
+### State Mutation Access Posture
+
+For every storage-mutating `#[external(v0)]` function, declare the posture explicitly:
+
+- guarded path (`assert_only_owner` / role check), or
+- intentionally public path with an inline comment justifying public mutability.
+
+Silent implicit posture is not acceptable in security-sensitive modules.
+
+### Non-Zero Upgrade Hash Guard
+
+Reject zero class hash in both schedule and immediate-upgrade flows:
+
+```cairo
+assert!(new_class_hash != 0, "class_hash_zero");
+```
+
+## Recommended Scarb.toml
+
+Use these versions for new projects (as of March 2026):
+
+```toml
+[package]
+name = "my_contract"
+version = "0.1.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = "^2.16.0"
+openzeppelin_access = "3.0.0"
+openzeppelin_introspection = "3.0.0"
+openzeppelin_token = "3.0.0"
+openzeppelin_upgrades = "3.0.0"
+openzeppelin_security = "3.0.0"
+
+[dev-dependencies]
+snforge_std = "0.57.0"
+
+[cairo]
+sierra-replace-ids = true
+
+[[target.starknet-contract]]
+
+[tool.scarb]
+allow-prebuilt-plugins = ["snforge_std"]
+```
+
+> **Version pinning:** This template targets Scarb **2.16.x** with `starknet = "^2.16.0"` and `snforge_std = "0.57.0"`. If you use an older toolchain, pin compatible versions from the release matrix before production use. Check [scarbs.dev](https://scarbs.dev) for updates.
 
 ## Contract Structure
 
@@ -216,6 +290,18 @@ mod MyToken {
 }
 ```
 
+#### Component Wiring Checklist
+
+1. Add the `use` import for each component.
+2. Register each component with `component!(...)`.
+3. Embed external ABI impls with `#[abi(embed_v0)]`.
+4. Add internal impl aliases for internal-only calls.
+5. Add `#[substorage(v0)]` fields in `Storage`.
+6. Add `#[flat]` variants in `Event`.
+7. Call each required `.initializer(...)` in constructor.
+
+If `MixinImpl` is not embedded, selectors are not exposed in the contract ABI.
+
 ### Writing a Component
 
 ```cairo
@@ -262,7 +348,7 @@ mod MyComponent {
 
 ```toml
 [dependencies]
-starknet = ">=2.12.0"
+starknet = "^2.16.0"
 openzeppelin_access = "3.0.0"
 openzeppelin_token = "3.0.0"
 openzeppelin_upgrades = "3.0.0"
@@ -350,7 +436,7 @@ self.access_control.assert_only_role(MINTER_ROLE);
 
 ## Project Structure
 
-```
+```text
 my-project/
   Scarb.toml
   src/
@@ -371,6 +457,36 @@ mod contract;
 mod interfaces;
 mod components;
 ```
+
+## Cross-Contract Calls (Dispatchers)
+
+Use compiler-generated dispatchers from an interface trait:
+
+```cairo
+#[starknet::interface]
+trait ITokenContract<TContractState> {
+    fn balance_of(self: @TContractState, account: ContractAddress) -> u256;
+    fn transfer(ref self: TContractState, to: ContractAddress, amount: u256);
+}
+
+use super::{ITokenContractDispatcher, ITokenContractDispatcherTrait};
+
+fn check_balance(token_address: ContractAddress, account: ContractAddress) -> u256 {
+    let token = ITokenContractDispatcher { contract_address: token_address };
+    token.balance_of(account)
+}
+```
+
+- `IFooDispatcher` for external calls (`ref self`).
+- `IFooLibraryDispatcher` for library/delegate-style calls.
+
+## OpenZeppelin Hardening Checks
+
+1. Map each embedded component to externally reachable selectors.
+2. Verify owner/role checks on every privileged selector.
+3. Verify initializer/upgrade selectors are unauthorized for non-admins.
+4. Validate substorage layout compatibility before upgrades.
+5. Add regression tests for unauthorized upgrade/initializer paths.
 
 ## Common Patterns
 

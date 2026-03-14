@@ -14,11 +14,13 @@ Production-ready skills for AI agents operating on Starknet. Built for the Agent
 | [starkzap-sdk](./starkzap-sdk/) | End-to-end workflows for keep-starknet-strange/starkzap (SDK, onboarding, wallets, ERC20, staking, tests) | Complete |
 | [huginn-onboard](./huginn-onboard/) | Bridge to Starknet and register with Huginn | Complete |
 | [controller-cli](./controller-cli/) | Cartridge Controller CLI sessions + scoped execution (JSON-only, explicit network, paymaster, error recovery) | Complete |
-| [cairo-contracts](./cairo-contracts/) | Contract structure, components, OZ v3, storage, events, interfaces | Complete |
+| [cairo-contract-authoring](./cairo-contract-authoring/) | Workflow-first Cairo contract authoring with language guidance, anti-pattern pairs, and audit handoff | Complete |
 | [cairo-testing](./cairo-testing/) | snforge test patterns, cheatcodes, fuzzing, fork testing | Complete |
 | [cairo-deploy](./cairo-deploy/) | sncast deployment, account setup, network config, verification | Complete |
-| [cairo-optimization](./cairo-optimization/) | Cairo optimization rules, BoundedInt patterns, gas-efficient arithmetic (post-test pass) | Complete |
-| [cairo-security](./cairo-security/) | Security patterns, audit checklist, common vulnerabilities, session key safety | Complete |
+| [cairo-optimization](./cairo-optimization/) | Profile-driven optimization with BoundedInt and benchmarking guidance (post-test pass) | Complete |
+| [cairo-auditor](./cairo-auditor/) | 4-turn Cairo audit orchestrator with vector specialists and strict FP gating | Complete |
+| [account-abstraction](./account-abstraction/) | Starknet account validation/session-key correctness and risk patterns | Complete |
+| [starknet-network-facts](./starknet-network-facts/) | Network-level protocol constraints that affect contract safety decisions | Complete |
 | [starknet-js](./starknet-js/) | starknet.js v9.x SDK guide for dApps, accounts, transactions, paymaster | Complete |
 
 ## Installation
@@ -39,8 +41,9 @@ npx skills add keep-starknet-strange/starknet-agentic
 # Install specific skill
 npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-defi
-npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-contracts
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-contract-authoring
 npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-optimization
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 ```
 
 ### Option 2: Claude Code Plugin Marketplace
@@ -115,7 +118,7 @@ npm install starknet@^9.2.1 @avnu/avnu-sdk@^4.0.1
 pip install starknet-py qrcode[pil] python-telegram-bot
 
 # Cairo optimization skill (BoundedInt calculator — no external deps, stdlib only)
-# python3 skills/cairo-optimization/bounded_int_calc.py --help
+# python3 skills/cairo-optimization/scripts/bounded_int_calc.py --help
 
 # Anonymous wallet skill
 npm install starknet@^8.9.1 typhoon-sdk@^1.1.13

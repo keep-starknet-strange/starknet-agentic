@@ -21,7 +21,7 @@ Reference for deploying Cairo smart contracts to Starknet using sncast (Starknet
 - Verifying deployed contracts
 - Invoking/calling deployed contracts
 
-**Not for:** Writing contracts (use cairo-contracts), testing (use cairo-testing), optimization (use cairo-optimization)
+**Not for:** Writing contracts (use cairo-contract-authoring), testing (use cairo-testing), optimization (use cairo-optimization)
 
 ## Setup
 

@@ -1,0 +1,26 @@
+# starknet-agentic skills
+
+> Cairo/Starknet skills for AI coding agents — audit workflow, contract authoring, testing, optimization, deployment, and protocol constraints.
+
+## Skills
+
+- [cairo-auditor](skills/cairo-auditor/SKILL.md): Security review with parallel vector specialists and false-positive gating. 170 attack vectors from 217 real audit findings.
+- [cairo-contract-authoring](skills/cairo-contract-authoring/SKILL.md): Write correct, secure, component-ready Cairo contracts. OpenZeppelin 3.0.0 component wiring. 5 mandatory security rules.
+- [cairo-testing](skills/cairo-testing/SKILL.md): Full test coverage with snforge — unit, integration, fuzz, fork, and regression tests. 5 mandatory coverage rules.
+- [cairo-optimization](skills/cairo-optimization/SKILL.md): Profile-driven optimization with 12 rules including BoundedInt, storage packing, and arithmetic patterns.
+- [cairo-deploy](skills/cairo-deploy/SKILL.md): Build, declare, deploy, and verify operations for Starknet.
+- [account-abstraction](skills/account-abstraction/SKILL.md): Account abstraction patterns, session keys, and validation flow risks.
+- [starknet-network-facts](skills/starknet-network-facts/SKILL.md): Starknet network constraints, fee mechanics, and timing semantics.
+
+## Recommended Flow
+
+cairo-contract-authoring -> cairo-testing -> [cairo-optimization (if needed)] -> cairo-auditor
+
+## Install
+
+Claude Code: `/plugin marketplace add keep-starknet-strange/starknet-agentic`
+Any agent: point at [SKILL.md](https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/SKILL.md)
+
+## Source
+
+https://github.com/keep-starknet-strange/starknet-agentic

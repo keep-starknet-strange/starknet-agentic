@@ -1,0 +1,138 @@
+rules:
+  - id: cairo.external.cei-callback-ordering-risk
+    message: "Interaction-before-effects ordering may allow callback reentrancy."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-ordering-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [21, 24, 26, 30, 33]
+      attack_vectors_extended: [92]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,600}?(safe_transfer_from\\(|call_contract_syscall\\()[\\s\\S]{0,420}?(order_status|state|fulfilled|claimed|\\.write\\()"
+      - pattern-not-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,420}?(order_status|state|fulfilled|claimed|\\.write\\()[\\s\\S]{0,360}?(safe_transfer_from\\(|call_contract_syscall\\()"
+
+  - id: cairo.external.self-call-session-risk
+    message: "Session execution appears to allow self-calls without explicit blocking."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [22]
+      attack_vectors_extended: [96]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(execute_calls|execute_tx|session)[\\s\\S]{0,420}?call_contract_syscall\\("
+      - pattern-not-regex: "(call\\.to\\s*!=\\s*get_contract_address\\(|target\\s*!=\\s*get_contract_address\\()"
+
+  - id: cairo.external.selector-fallback-assumption
+    message: "Selector/ABI fallback logic may mask integration failures."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [23, 27, 39]
+      attack_vectors_extended: [77]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(balanceOf|balance_of|transferFrom|transfer_from)"
+      - pattern-regex: "(fallback|retry|or_else|match\\s+Err|if[\\s\\S]{0,120}?\\berr\\b)"
+
+  - id: cairo.external.arbitrary-call-proxy
+    message: "Privileged path appears to forward arbitrary external calls."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [25, 28, 37, 51]
+      attack_vectors_extended: [98, 99]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,620}?call_contract_syscall\\("
+      - pattern-regex: "(target|contract_address|selector|calldata)"
+      - pattern-not-regex: "(allowlist|allow_list|verify_proof|merkle|policy_root|trusted_target)"
+
+  - id: cairo.external.silent-failure-continue
+    message: "External call/transfer error appears swallowed while execution continues."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [31, 32, 34, 49]
+      attack_vectors_extended: [94, 100]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,820}?(call_contract_syscall\\(|transfer\\()[\\s\\S]{0,520}?(match\\s+[\\s\\S]{0,120}?Err\\s*\\{|if\\s+[\\s\\S]{0,120}?is_err\\(|unwrap_or(?:_default)?\\()[\\s\\S]{0,420}?(continue|\\.write\\(|emit\\(|return\\s+Ok)"
+      - pattern-not-regex: "fn\\s+[a-zA-Z0-9_]+[\\s\\S]{0,1100}?(call_contract_syscall\\(|transfer\\()[\\s\\S]{0,720}?(panic_with|expect\\(|unwrap\\(|return\\s+Err|assert\\([^)]*is_ok)"
+
+  - id: cairo.external.cross-domain-replay-origin-gap
+    message: "L1/L2 message path appears without strong sender/domain/replay verification."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [29, 36]
+      attack_vectors_extended: [91]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(l1_handler|consume_message_from_l1|send_message_to_l1|message_hash)"
+      - pattern-not-regex: "(nonce|processed_messages|sender_domain|source_chain|origin)"
+
+  - id: cairo.external.decode-shape-not-validated
+    message: "External return payload may be decoded without explicit shape/length checks."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: function-heuristic
+      attack_vectors_core: [38]
+      attack_vectors_extended: [93]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(call_contract_syscall|dispatcher|decode)"
+      - pattern-not-regex: "(len\\(|span\\.len|assert\\(.*len|expected_len|validate_length)"
+
+  - id: cairo.external.multicall-order-dependence
+    message: "Multicall/batch execution appears state-order dependent without strong invariant gate."
+    severity: WARNING
+    languages: [generic]
+    metadata:
+      confidence: low
+      triage: manual-review-required
+      detection_scope: cross-function-heuristic
+      attack_vectors_core: [35, 40]
+      attack_vectors_extended: [95, 97]
+    paths:
+      include:
+        - "**/*.cairo"
+    patterns:
+      - pattern-regex: "(execute_calls|multicall|batch|for\\s+call\\s+in)"
+      - pattern-regex: "(emit_event_syscall|emit\\(|state|\\.write\\()"
+      - pattern-not-regex: "(atomic|rollback|reentrancy_guard|order_invariant|topological)"

@@ -12,7 +12,7 @@ user-invocable: true
 
 Security patterns and common vulnerabilities for Cairo smart contracts on Starknet. Sourced from 50+ public audit reports including Nethermind, ConsenSys Diligence, Code4rena, ChainSecurity, Cairo Security Clan, Zellic, and Nethermind AuditAgent, plus the [Cairo Book security chapter](https://book.cairo-lang.org/ch104-01-general-recommendations.html), [Crytic's Not So Smart Contracts](https://github.com/crytic/building-secure-contracts/tree/master/not-so-smart-contracts/cairo), [Oxor.io Cairo Security Flaws](https://oxor.io/blog/2024-08-16-cairo-security-flaws/), and [FuzzingLabs Top 4 Vulnerabilities](https://fuzzinglabs.com/top-4-vulnerability-cairo-starknet-smart-contract/).
 
-> **Versions:** This skill targets **Cairo 2.12.4** (latest stable tagged on GitHub; v2.15.0 exists but 2.12.4 carries the "Latest" tag), **Scarb 2.15.1**, **Starknet Foundry 0.56.0**, **OpenZeppelin Contracts for Cairo 3.0.0** (v4.0.0-alpha.0 is pre-release, uses Scarb 2.15.1 / snforge 0.55.0), and **Starknet v0.14.1** (mainnet Dec 2025). All code examples and import paths are verified against these versions.
+> **Versions (validated as of 2026-03-08):** Cairo **v2.15.0** ([release tag](https://github.com/starkware-libs/cairo/releases/tag/v2.15.0)), Scarb **2.15.1**, Starknet Foundry **0.56.0** ([release tag](https://github.com/foundry-rs/starknet-foundry/releases/tag/v0.56.0)), OpenZeppelin Contracts for Cairo **v3.0.0** ([release tag](https://github.com/OpenZeppelin/cairo-contracts/releases/tag/v3.0.0)), and Starknet **v0.14.1**. Canonical docs: [Cairo Book](https://www.starknet.io/cairo-book/), [Corelib docs](https://docs.starknet.io/build/corelib/intro), [Starknet Foundry book](https://foundry-rs.github.io/starknet-foundry/), [OpenZeppelin Cairo 3.x docs](https://docs.openzeppelin.com/contracts-cairo/3.x).
 
 > **Cairo Editions:** Cairo v2.15.0 introduced `edition 2025_12`, which changes snapshot/member access syntax (e.g., `(@a).b` returns desnapped value). If your `Scarb.toml` specifies this edition, test code that accesses struct members through snapshots — the number of `@` levels needed may differ from pre-2025_12 behavior.
 
@@ -27,7 +27,7 @@ Security patterns and common vulnerabilities for Cairo smart contracts on Starkn
 - Writing session key or delegated execution contracts
 - Reviewing L1/L2 bridge handlers
 
-**Not for:** Writing contracts (use cairo-contracts), testing (use cairo-testing), gas optimization (use cairo-optimization)
+**Not for:** Writing contracts (use cairo-contract-authoring), testing (use cairo-testing), gas optimization (use cairo-optimization)
 
 ## Critical Patterns — Read These First
 
@@ -1255,7 +1255,7 @@ Permissionless DeFi lending protocol audit. All issues were fixed, but ChainSecu
 
 ## 17. OpenZeppelin Cairo Security Components
 
-*Source: [OZ Cairo 3.0 Security Docs](https://docs.openzeppelin.com/contracts-cairo/3.0.0-alpha.1/security)*
+*Source: [OZ Cairo 3.x Security Docs](https://docs.openzeppelin.com/contracts-cairo/3.x/security)*
 
 OZ Cairo provides core security components. Use them instead of rolling your own.
 
@@ -1572,7 +1572,7 @@ Provide:
 ### Official Documentation
 - [Cairo Book — General Recommendations (ch104)](https://book.cairo-lang.org/ch104-01-general-recommendations.html)
 - [Cairo Book — Static Analysis Tools (ch104-03)](https://book.cairo-lang.org/ch104-03-static-analysis-tools.html)
-- [OpenZeppelin Cairo Security Docs (3.0)](https://docs.openzeppelin.com/contracts-cairo/3.0.0-alpha.1/security)
+- [OpenZeppelin Cairo Security Docs (3.x)](https://docs.openzeppelin.com/contracts-cairo/3.x/security)
 - [OpenZeppelin Cairo Contracts Advisories](https://advisories.gitlab.com/pkg/pypi/openzeppelin-cairo-contracts)
 
 ### Audit Reports
