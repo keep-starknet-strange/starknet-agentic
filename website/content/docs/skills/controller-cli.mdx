@@ -1,0 +1,39 @@
+---
+title: Controller CLI Skill
+description: Operate Cartridge Controller sessions with explicit network, JSON output, paymaster control, and least-privilege policies
+---
+
+# Controller CLI Skill
+
+The `controller-cli` skill is the operational guide for Cartridge Controller CLI usage. It is designed for human-approved Starknet execution sessions where network selection, JSON-only output, and least-privilege policy boundaries must stay explicit.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/controller-cli
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:controller-cli
+```
+
+## Non-Negotiable Rules
+
+- always pass `--json`
+- always set `--chain-id` or `--rpc-url` explicitly
+- never automate the browser authorization required by `controller register`
+- keep policies least-privilege by default
+- use Voyager links for transaction references
+
+## Recommended Workflow
+
+1. install `controller`
+2. generate or register the session with explicit network selection
+3. execute through the safe wrapper when possible
+4. inspect JSON output and recovery hints before retrying
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/controller-cli)
+- [SKILL.md](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/controller-cli/SKILL.md)
+- [Safe wrapper script](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/controller-cli/scripts/controller_safe.py)

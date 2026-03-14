@@ -1,0 +1,46 @@
+---
+title: Cairo Deploy
+description: Deploy, declare, verify, and operate Cairo contracts with sncast on Starknet
+---
+
+# Cairo Deploy
+
+The `cairo-deploy` skill covers the deployment and release surface for Cairo contracts: `sncast` account setup, profile configuration, class declaration, instance deployment, contract calls, and verification.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-deploy
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:cairo-deploy
+```
+
+## Use This Skill For
+
+- creating or importing deployer accounts
+- configuring `sncast.toml` profiles for devnet, Sepolia, or mainnet
+- declaring classes and deploying contract instances
+- verifying deployed contracts on supported explorers
+- invoking or calling deployed contracts as part of rollout checks
+
+## Deployment Workflow
+
+1. `scarb build`
+2. `sncast account create|import` and fund the deployer
+3. `sncast declare`
+4. `sncast deploy`
+5. `sncast verify` and smoke-call the deployed contract
+
+## Use Another Skill Instead When
+
+- you are still writing contract logic: [cairo-contract-authoring](/docs/skills/cairo-contract-authoring)
+- you need tests before deployment: [cairo-testing](/docs/skills/cairo-testing)
+- you are optimizing runtime costs: [cairo-optimization](/docs/skills/cairo-optimization)
+- you are performing security review: [cairo-auditor](/docs/skills/cairo-auditor)
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-deploy)
+- [SKILL.md](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/cairo-deploy/SKILL.md)

@@ -1,0 +1,57 @@
+---
+title: Cairo Auditor
+description: Multi-step Cairo security review with deterministic preflight and strict false-positive gating
+---
+
+# Cairo Auditor
+
+The `cairo-auditor` skill is the repo's security-review orchestrator for Cairo and Starknet code. It combines deterministic preflight checks with parallel audit passes and a strict merge/deduplication gate so the final report stays actionable.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:cairo-auditor
+```
+
+## Modes
+
+| Mode | Use it when |
+|------|-------------|
+| `default` | Standard repo or contract review before merge |
+| `deep` | High-risk changes need adversarial reasoning on top of the default pass |
+| `file-targeted` | You want to re-check one or two contracts after a fix |
+
+## What the Skill Does
+
+1. discovers in-scope Cairo files
+2. runs deterministic preflight and local benchmark-backed checks
+3. spawns vector-specialist audit passes in parallel
+4. deduplicates root causes and emits a single report with confidence gating
+
+## Deterministic Local Scan
+
+```bash
+python3 scripts/quality/audit_local_repo.py \
+  --repo-root /path/to/your/cairo-repo \
+  --scan-id my-audit
+```
+
+Deterministic scorecards are regression gates, not proof of full audit sufficiency. Use them to catch drift, then run the full skill for release-critical work.
+
+## Recommended Flow
+
+```text
+cairo-contract-authoring -> cairo-testing -> cairo-auditor
+cairo-contract-authoring -> cairo-testing -> cairo-optimization -> cairo-auditor
+```
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor)
+- [README](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/cairo-auditor/README.md)
+- [Default workflow](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor/workflows/default.md)
+- [Report format](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor/references/report-formatting.md)

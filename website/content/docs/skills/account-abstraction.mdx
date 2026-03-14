@@ -1,0 +1,47 @@
+---
+title: Account Abstraction Skill
+description: Validate execute paths, nonces, signatures, and session-key policy boundaries on Starknet
+---
+
+# Account Abstraction Skill
+
+The `account-abstraction` skill is the focused review guide for Starknet account contracts and session-key systems. Use it when the correctness question is about `__validate__`, `__execute__`, nonce handling, signature domains, or delegated execution policy.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/account-abstraction
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:account-abstraction
+```
+
+## Use This Skill For
+
+- reviewing account-contract validation and execution boundaries
+- checking nonce, signature, and replay semantics
+- validating session-key scope, selector allowlists, and self-call restrictions
+- turning account-layer bugs into regression tests before merge
+
+## Core Checklist
+
+1. `__validate__` stays lightweight, bounded, and free of stateful side effects.
+2. `__execute__` enforces selector and policy boundaries exactly once.
+3. Every signature path has replay protection and domain separation.
+4. Session-key and outside-execution flows cannot reach blocked selectors or privileged self-calls.
+5. Every fixed account issue gets a regression test before release.
+
+## Recommended Flow
+
+```text
+cairo-contract-authoring -> cairo-testing -> account-abstraction -> cairo-auditor
+```
+
+Use [cairo-contract-authoring](/docs/skills/cairo-contract-authoring) when the task is still implementation work. Use [cairo-auditor](/docs/skills/cairo-auditor) for the final security pass.
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/account-abstraction)
+- [Module references index](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/account-abstraction/references)
+- [Workflow](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/account-abstraction/workflows/default.md)

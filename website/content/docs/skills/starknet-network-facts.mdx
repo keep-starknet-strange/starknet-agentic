@@ -1,0 +1,37 @@
+---
+title: Starknet Network Facts
+description: Protocol-level Starknet constraints that affect contract safety, transaction semantics, and release decisions
+---
+
+# Starknet Network Facts
+
+The `starknet-network-facts` skill is the protocol-assumption checkpoint for Starknet work. Use it when contract or release logic depends on transaction versions, fee semantics, timing, inclusion behavior, or sequencer assumptions.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-network-facts
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:starknet-network-facts
+```
+
+## Use This Skill For
+
+- validating time-sensitive contract assumptions
+- checking tx-version and fee-token behavior before release
+- confirming protocol facts that influence security posture or testing strategy
+- turning network-level assumptions into explicit tests and guards
+
+## Recommended Pairings
+
+- [cairo-contract-authoring](/docs/skills/cairo-contract-authoring) when protocol facts affect contract design
+- [account-abstraction](/docs/skills/account-abstraction) when network behavior affects account semantics
+- [cairo-auditor](/docs/skills/cairo-auditor) when protocol assumptions create security risk
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/starknet-network-facts)
+- [Workflow](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/starknet-network-facts/workflows/default.md)
+- [References index](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/starknet-network-facts/references)

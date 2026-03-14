@@ -1,0 +1,39 @@
+---
+title: Starkzap SDK Skill
+description: Project-specific guide for StarkSDK onboarding, wallet lifecycle, sponsored transactions, ERC20 flows, and staking
+---
+
+# Starkzap SDK Skill
+
+The `starkzap-sdk` skill is a project-specific guide for working on applications built with `keep-starknet-strange/starkzap`. It focuses on StarkSDK setup, onboarding, wallet execution flows, sponsored transactions, ERC20 helpers, staking, and transaction-builder behavior.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/starkzap-sdk
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:starkzap-sdk
+```
+
+## Use This Skill For
+
+- Starkzap onboarding and wallet lifecycle fixes
+- sponsored-transaction behavior and paymaster integration
+- ERC20 helper semantics and staking operations inside Starkzap
+- tests, docs, and examples in the Starkzap repository
+
+## Main Surfaces
+
+- `src/sdk.ts` for top-level orchestration
+- `src/wallet/*` for wallet implementations
+- `src/signer/*` for signer boundaries and auth assumptions
+- `src/tx/*` for transaction builder logic
+- `src/erc20/*` and `src/staking/*` for product flows
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/starkzap-sdk)
+- [SKILL.md](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/starkzap-sdk/SKILL.md)
+- [Starkzap repository](https://github.com/keep-starknet-strange/starkzap)

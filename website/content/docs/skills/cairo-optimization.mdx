@@ -1,0 +1,45 @@
+---
+title: Cairo Optimization
+description: Profile-driven Cairo optimization with BoundedInt guidance, benchmarking, and storage-packing rules
+---
+
+# Cairo Optimization
+
+The `cairo-optimization` skill is the post-correctness pass for Cairo code. It starts from profiling, maps hotspots to a constrained set of optimization rules, and verifies that no behavioral regression was introduced while reducing steps or gas.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-optimization
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:cairo-optimization
+```
+
+## Use This Skill For
+
+- profiling hot paths before changing code
+- applying DivRem, loop, storage-packing, and integer-width optimizations
+- BoundedInt refactors for modular arithmetic and limb assembly
+- benchmarking before/after changes with the bundled tooling
+
+## Optimization Discipline
+
+1. tests must pass before optimization starts
+2. profile first and use the profile as the ranking source of truth
+3. apply one optimization class at a time
+4. re-test and re-profile after each change
+5. send the final result to [cairo-auditor](/docs/skills/cairo-auditor) before merge
+
+## Key Resources
+
+- `profile.py` for profiling and hotspot ranking
+- `bounded_int_calc.py` for safe BoundedInt bounds calculations
+- rule set covering arithmetic, loops, storage packing, and Poseidon fast paths
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-optimization)
+- [README](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/cairo-optimization/README.md)
+- [Profiling reference](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-optimization/references/profiling.md)

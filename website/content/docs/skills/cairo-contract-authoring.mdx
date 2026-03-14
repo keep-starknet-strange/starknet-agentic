@@ -1,0 +1,56 @@
+---
+title: Cairo Contract Authoring
+description: Workflow-first Starknet contract authoring with secure defaults, component wiring, and audit handoff
+---
+
+# Cairo Contract Authoring
+
+The `cairo-contract-authoring` skill is the primary writing surface for Cairo contracts in Starknet Agentic. It guides interface design, storage layout, OpenZeppelin component composition, and mandatory security posture before code is handed off to testing and audit.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-contract-authoring
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:cairo-contract-authoring
+```
+
+## Use This Skill For
+
+- writing a new Starknet contract from scratch
+- modifying storage, events, or interfaces on an existing contract
+- composing OpenZeppelin Cairo components such as Ownable, ERC20, ERC721, AccessControl, and Upgradeable
+- planning security posture before implementation starts
+
+## Modes
+
+| Mode | Use it when |
+|------|-------------|
+| `new` | building a contract from zero |
+| `modify` | changing an existing contract safely |
+| `component` | wiring or extending component-based contracts |
+
+## Non-Negotiable Authoring Rules
+
+1. every storage-mutating external has explicit access posture
+2. constructors validate critical addresses
+3. upgrade flows reject zero class hashes
+4. timelock logic reads chain time, never user-provided time
+5. anti-pattern/secure-pattern pairs are resolved before handoff
+
+## Recommended Flow
+
+```text
+cairo-contract-authoring -> cairo-testing -> cairo-auditor
+```
+
+Add [cairo-optimization](/docs/skills/cairo-optimization) only after tests pass and behavior is stable.
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-contract-authoring)
+- [README](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/cairo-contract-authoring/README.md)
+- [Language reference](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-contract-authoring/references/language.md)
+- [Contract patterns](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-contract-authoring/references/legacy-full.md)

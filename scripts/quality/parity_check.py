@@ -16,6 +16,7 @@ import re
 ROOT = Path(__file__).resolve().parents[2]
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+\.md)\)")
 SEMVER_RE = re.compile(r"\b(\d+\.\d+\.\d+)\b")
+NON_SKILL_DOC_PAGES = {"overview", "writing-skills", "publishing", "cairo-coding"}
 
 
 @dataclass
@@ -72,6 +73,73 @@ def require_exists(path: Path) -> bool:
 
 def contains_any(text: str, needles: list[str]) -> list[str]:
     return [needle for needle in needles if needle in text]
+
+
+def repo_skill_slugs(root: Path = ROOT) -> set[str]:
+    return {path.parent.name for path in (root / "skills").glob("*/SKILL.md")}
+
+
+def website_skill_doc_slugs(root: Path = ROOT) -> set[str]:
+    docs_dir = root / "website" / "content" / "docs" / "skills"
+    return {path.stem for path in docs_dir.glob("*.mdx")} - NON_SKILL_DOC_PAGES
+
+
+def docs_category_page_slugs(docs_ts_path: Path, category_title: str) -> set[str]:
+    lines = docs_ts_path.read_text(encoding="utf-8").splitlines()
+    in_category = False
+    in_pages = False
+    bracket_depth = 0
+    slugs: set[str] = set()
+
+    for line in lines:
+        if not in_category and f'title: "{category_title}"' in line:
+            in_category = True
+            continue
+
+        if not in_category:
+            continue
+
+        if not in_pages and "pages: [" in line:
+            in_pages = True
+            bracket_depth = line.count("[") - line.count("]")
+            continue
+
+        if not in_pages:
+            continue
+
+        bracket_depth += line.count("[") - line.count("]")
+        match = re.search(r'slug: "([^"]+)"', line)
+        if match:
+            slugs.add(match.group(1))
+
+        if bracket_depth <= 0:
+            break
+
+    return slugs
+
+
+def website_skill_registry_errors(root: Path = ROOT) -> list[str]:
+    skill_slugs = repo_skill_slugs(root)
+    docs_slugs = website_skill_doc_slugs(root)
+    docs_ts_slugs = docs_category_page_slugs(root / "website" / "app" / "data" / "docs.ts", "Skills")
+    docs_ts_skill_slugs = docs_ts_slugs - NON_SKILL_DOC_PAGES
+
+    errors: list[str] = []
+    missing_docs = sorted(skill_slugs - docs_slugs)
+    missing_registry = sorted(skill_slugs - docs_ts_skill_slugs)
+    orphan_docs = sorted(docs_slugs - skill_slugs)
+    orphan_registry = sorted(docs_ts_skill_slugs - skill_slugs)
+
+    if missing_docs:
+        errors.append(f"missing skill docs pages: {', '.join(missing_docs)}")
+    if missing_registry:
+        errors.append(f"missing skills in docs registry: {', '.join(missing_registry)}")
+    if orphan_docs:
+        errors.append(f"orphan skill docs pages: {', '.join(orphan_docs)}")
+    if orphan_registry:
+        errors.append(f"orphan skills in docs registry: {', '.join(orphan_registry)}")
+
+    return errors
 
 
 def plugin_identifier() -> str:
@@ -367,6 +435,25 @@ def main() -> int:
                 "website-cairo-skill-taxonomy",
                 "FAIL",
                 "; ".join(website_taxonomy_errors),
+            )
+        )
+
+    # 9) Website registry/search/sidebar coverage should match the full live skill catalog.
+    skill_registry_errors = website_skill_registry_errors()
+    if not skill_registry_errors:
+        results.append(
+            CheckResult(
+                "website-skill-registry-coverage",
+                "PASS",
+                "website docs registry and skill pages cover the full live skill catalog",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "website-skill-registry-coverage",
+                "FAIL",
+                "; ".join(skill_registry_errors),
             )
         )
 

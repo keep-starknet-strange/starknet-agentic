@@ -400,6 +400,7 @@ jobs:
       - name: Validate skill validator regression tests
         run: |
           python3 -m unittest scripts/quality/test_validate_skills.py
+          python3 -m unittest scripts/quality/test_parity_check.py
 
       - name: Validate skill contracts
         run: |

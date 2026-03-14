@@ -1,0 +1,47 @@
+---
+title: Cairo Testing
+description: snforge testing patterns for unit, integration, fuzz, fork, and regression coverage on Starknet
+---
+
+# Cairo Testing
+
+The `cairo-testing` skill is the testing surface for Cairo contracts in Starknet Agentic. It turns contract behavior into unit, integration, fuzz, fork, and regression tests using `snforge`, with strong emphasis on auth failures, event assertions, and fixed-seed reproducibility.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-testing
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:cairo-testing
+```
+
+## Use This Skill For
+
+- writing first-pass unit or integration tests for a contract
+- converting audit findings into permanent regression cases
+- adding fuzz tests for arithmetic, bounds, or invariants
+- validating event emission and access-control failures
+
+## Coverage Rules
+
+1. every storage-mutating external gets both success and failure coverage
+2. every access-controlled function is tested with authorized and unauthorized callers
+3. expected panics match exact messages
+4. event assertions use `spy_events` and `assert_emitted`
+5. fuzz tests use fixed seeds for reproducibility
+
+## Recommended Flow
+
+```text
+cairo-contract-authoring -> cairo-testing -> cairo-auditor
+```
+
+Add [cairo-optimization](/docs/skills/cairo-optimization) only after this stage is stable.
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-testing)
+- [README](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/cairo-testing/README.md)
+- [snforge reference](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-testing/references/legacy-full.md)

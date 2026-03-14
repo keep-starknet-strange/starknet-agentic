@@ -1,0 +1,40 @@
+---
+title: Starknet Tongo Skill
+description: Confidential ERC20 payments with encrypted balances, zero-knowledge proofs, and optional auditor visibility
+---
+
+# Starknet Tongo Skill
+
+The `starknet-tongo` skill documents confidential ERC20 workflows on Starknet using Tongo. It covers funding encrypted balances, private transfers, rollover mechanics, withdrawals back to public ERC20 state, and optional auditor/compliance visibility.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-tongo
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:starknet-tongo
+```
+
+## Core Concepts
+
+| Concept | Description |
+|---------|-------------|
+| Fund | Convert public ERC20 into encrypted Tongo balance |
+| Transfer | Send encrypted value with zero-knowledge proof |
+| Rollover | Merge pending received balance into spendable state |
+| Withdraw | Return funds from Tongo to public ERC20 state |
+| Auditor | Optional role that can inspect confidential transfers |
+
+## Use This Skill For
+
+- privacy-preserving payment flows on Starknet
+- encrypted balance operations that still need auditable controls
+- integrating Tongo into applications that need confidential ERC20 behavior
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/starknet-tongo)
+- [SKILL.md](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/starknet-tongo/SKILL.md)
+- [Tongo protocol repository](https://github.com/fatlabsxyz/tongo)

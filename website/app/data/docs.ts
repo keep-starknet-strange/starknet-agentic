@@ -86,22 +86,22 @@ export const DOC_CATEGORIES: DocCategory[] = [
       {
         slug: "overview",
         title: "Skills Overview",
-        description: "Introduction to agent skills and installation guide",
+        description: "Official Starknet Agentic skill catalog and installation paths",
       },
       {
         slug: "starknet-wallet",
         title: "Wallet Skill",
-        description: "Manage wallets, transfers, and balances",
+        description: "Wallet management, transfers, session keys, and gasless transactions",
       },
       {
         slug: "starknet-defi",
         title: "DeFi Skill",
-        description: "Token swaps, staking, and DeFi operations",
+        description: "Token swaps, DCA, staking, and lending operations via AVNU",
       },
       {
         slug: "starknet-identity",
         title: "Identity Skill",
-        description: "On-chain agent identity with ERC-8004",
+        description: "ERC-8004 on-chain identity, reputation, and validation",
       },
       {
         slug: "starknet-mini-pay",
@@ -121,7 +121,57 @@ export const DOC_CATEGORIES: DocCategory[] = [
       {
         slug: "cairo-coding",
         title: "Cairo Development Skills",
-        description: "Contracts, testing, security, optimization, and deployment",
+        description: "Workflow map for contract authoring, testing, audit, optimization, and deployment",
+      },
+      {
+        slug: "cairo-contract-authoring",
+        title: "Cairo Contract Authoring",
+        description: "Workflow-first Starknet contract authoring with secure defaults and component wiring",
+      },
+      {
+        slug: "cairo-testing",
+        title: "Cairo Testing",
+        description: "snforge unit, integration, fuzz, fork, and regression coverage",
+      },
+      {
+        slug: "cairo-auditor",
+        title: "Cairo Auditor",
+        description: "Multi-step Cairo security review with deterministic preflight and false-positive gating",
+      },
+      {
+        slug: "cairo-optimization",
+        title: "Cairo Optimization",
+        description: "Profile-driven optimization, BoundedInt guidance, and benchmarking",
+      },
+      {
+        slug: "cairo-deploy",
+        title: "Cairo Deploy",
+        description: "sncast account setup, declare, deploy, verify, and rollout checks",
+      },
+      {
+        slug: "account-abstraction",
+        title: "Account Abstraction Skill",
+        description: "Validate execute paths, nonces, signatures, and session-key policy boundaries",
+      },
+      {
+        slug: "starknet-network-facts",
+        title: "Starknet Network Facts",
+        description: "Protocol-level Starknet constraints that affect contract and release safety",
+      },
+      {
+        slug: "controller-cli",
+        title: "Controller CLI Skill",
+        description: "Cartridge Controller sessions with explicit network, JSON output, and least-privilege policies",
+      },
+      {
+        slug: "starknet-tongo",
+        title: "Starknet Tongo Skill",
+        description: "Confidential ERC20 payments with encrypted balances and zero-knowledge proofs",
+      },
+      {
+        slug: "starkzap-sdk",
+        title: "Starkzap SDK Skill",
+        description: "Project-focused guide for StarkSDK onboarding, wallets, paymaster flows, and staking",
       },
       {
         slug: "starknet-js",
