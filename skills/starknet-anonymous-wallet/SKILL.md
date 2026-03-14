@@ -28,6 +28,7 @@ This skill provides **agent-facing scripts** for:
 - Cairo contract authoring, deployment operations, or security audits.
 
 ## Quick Start
+
 - Deep dives: `references/` (ABI discovery, Typhoon account flow, preflight/fee simulation notes)
 - Adjacent modules: [skills catalog](../README.md)
 - Account flow examples: `scripts/create-account.js`, `scripts/parse-smart.js`, `scripts/resolve-smart.js`

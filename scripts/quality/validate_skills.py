@@ -8,7 +8,7 @@ standards for the starknet-agentic repository.
 from __future__ import annotations
 
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,8 +60,12 @@ def _normalized_target(target: str) -> str:
     return target.split("#", 1)[0].split("?", 1)[0].strip()
 
 
+def _posix_parts(target: str) -> tuple[str, ...]:
+    return tuple(part for part in PurePosixPath(target.replace("\\", "/")).parts if part != "/")
+
+
 def _path_depth(target: str) -> int:
-    parts = [part for part in Path(target).parts if part not in ("/", ".", "..")]
+    parts = [part for part in _posix_parts(target) if part not in (".", "..")]
     return max(len(parts) - 1, 0)
 
 
@@ -69,8 +73,16 @@ def _allow_root_router_link(current_skill: Path, target: str) -> bool:
     if current_skill.parent != ROOT:
         return False
 
-    parts = [part for part in Path(target).parts if part not in ("/", ".")]
-    return len(parts) == 3 and parts[0] == "skills" and parts[2] == "SKILL.md"
+    raw_segments = [segment for segment in target.replace("\\", "/").split("/") if segment]
+    if target.startswith("/") or any(segment in (".", "..") for segment in raw_segments):
+        return False
+
+    parts = _posix_parts(target)
+    if len(parts) != 3 or parts[0] != "skills" or parts[2] != "SKILL.md":
+        return False
+
+    resolved = (ROOT / parts[0] / parts[1] / parts[2]).resolve()
+    return resolved.is_relative_to(ROOT.resolve())
 
 
 def _resolve_link_path(current_skill: Path, target: str) -> Path:

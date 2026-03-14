@@ -44,7 +44,34 @@ class ValidateSkillsTests(unittest.TestCase):
             with mock.patch.object(VALIDATE_SKILLS, "ROOT", root):
                 errors = VALIDATE_SKILLS.check_skill(router)
 
-            self.assertFalse(errors, errors)
+            self.assertEqual(errors, [], f"Expected no validation errors, got: {errors}")
+
+    def test_root_router_rejects_dot_segments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            target = root / "skills" / "cairo-auditor"
+            target.mkdir(parents=True)
+            (target / "SKILL.md").write_text(
+                "---\nname: cairo-auditor\ndescription: Security review router.\n---\n\n"
+                "## When to Use\n- Audit Cairo code.\n\n"
+                "## When NOT to Use\n- Deployment tasks.\n\n"
+                "## Rationalizations to Reject\n- Tests passed.\n",
+                encoding="utf-8",
+            )
+            router = root / "SKILL.md"
+            router.write_text(
+                "---\nname: starknet-agentic-skills\ndescription: Routes skill selection.\n---\n\n"
+                "[cairo-auditor](skills/./cairo-auditor/SKILL.md)\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(VALIDATE_SKILLS, "ROOT", root):
+                errors = VALIDATE_SKILLS.check_skill(router)
+
+            self.assertTrue(
+                any("deeper than one level" in error for error in errors),
+                f"Expected an error mentioning 'deeper than one level', got: {errors}",
+            )
 
     def test_nested_skill_links_still_reject_deeper_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -67,7 +94,7 @@ class ValidateSkillsTests(unittest.TestCase):
 
             self.assertTrue(
                 any("deeper than one level" in error for error in errors),
-                errors,
+                f"Expected an error mentioning 'deeper than one level', got: {errors}",
             )
 
 
