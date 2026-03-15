@@ -492,7 +492,7 @@ Interacting with Starknet contracts from JavaScript/TypeScript:
 ### Setup Provider and Account
 
 ```typescript
-import { Account, Provider, RpcProvider, Account (with ECDSA signer) } from 'starknet';
+import { Account, RpcProvider } from 'starknet';
 
 // Connect to Starknet mainnet/testnet
 const provider = new RpcProvider({
