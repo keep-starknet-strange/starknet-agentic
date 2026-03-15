@@ -1,23 +1,5 @@
 ---
 
-## JavaScript Interop (starknet.js)
-
-```javascript
-import { Account, Contract, RpcProvider } from 'starknet';
-
-// Connect to provider
-const provider = new RpcProvider({ nodeUrl: 'https://rpc.starknet.lava.build' });
-
-// Create account instance
-const account = new Account(provider, YOUR_ADDRESS, privateKey);
-
-// Call contract
-const result = await account.execute({
-  contractAddress: CONTRACT_ADDRESS,
-  entrypoint: 'get_balance',
-  calldata: []
-});
-```
 
 name: cairo-language
 description: Use when writing Cairo code — type system, ownership, traits, generics, collections, error handling, and module system. Language fundamentals before contract-specific patterns.
@@ -45,6 +27,25 @@ What you need to know before writing contracts.
 **Not for:** Contract storage/events (use cairo-contracts), components (use cairo-components), testing (use cairo-testing)
 
 ## Scarb Project Setup
+
+## JavaScript Interop (starknet.js)
+
+```javascript
+import { Account, Contract, RpcProvider } from 'starknet';
+
+// Connect to provider
+const provider = new RpcProvider({ nodeUrl: 'https://rpc.starknet.lava.build' });
+
+// Create account instance
+const account = new Account(provider, YOUR_ADDRESS, privateKey);
+
+// Call contract
+const result = await account.execute({
+  contractAddress: CONTRACT_ADDRESS,
+  entrypoint: 'get_balance',
+  calldata: []
+});
+```
 
 ```bash
 # Create a new project
