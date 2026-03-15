@@ -1,0 +1,6 @@
+interface:
+  display_name: "Cairo Testing"
+  short_description: "snforge testing strategy for unit, integration, fuzz, and regression coverage."
+  default_prompt: "Write and run snforge tests for these Cairo contracts with positive/negative auth cases and regression checks."
+policy:
+  allow_implicit_invocation: true

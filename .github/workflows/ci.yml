@@ -60,6 +60,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
             skills:
+              - '.agents/**'
               - 'SKILL.md'
               - 'requirements.txt'
               - 'README.md'
@@ -71,6 +72,8 @@ jobs:
               - 'scripts/quality/README.md'
               - 'scripts/quality/validate_marketplace.py'
               - 'scripts/quality/parity_check.py'
+              - 'scripts/quality/check_codex_distribution.py'
+              - 'scripts/quality/test_codex_distribution.py'
               - 'scripts/quality/validate_skills.py'
               - 'scripts/quality/test_validate_skills.py'
               - 'scripts/quick_validate_skill.py'
@@ -401,6 +404,7 @@ jobs:
         run: |
           python3 -m unittest scripts/quality/test_validate_skills.py
           python3 -m unittest scripts/quality/test_parity_check.py
+          python3 -m unittest scripts/quality/test_codex_distribution.py
 
       - name: Validate skill contracts
         run: |
@@ -423,6 +427,10 @@ jobs:
       - name: Run skill parity checks
         run: |
           python3 scripts/quality/parity_check.py
+
+      - name: Validate Codex skill distribution surface
+        run: |
+          python3 scripts/quality/check_codex_distribution.py
 
   onboarding-smoke:
     name: Onboarding Smoke

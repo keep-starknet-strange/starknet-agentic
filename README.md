@@ -40,26 +40,40 @@ Use the path that matches your runtime:
 ```bash
 # Full project scaffold
 npx create-starknet-agent@latest
-
-# Codex (local skill folder)
-git clone https://github.com/keep-starknet-strange/starknet-agentic.git && cd starknet-agentic
-# Skills auto-discover via .agents/skills
-# Start Codex in this repo root
-
-# Claude Code marketplace
-/plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
-/reload-plugins
-
-# Invoke cairo audit workflow
-/cairo-auditor
-/cairo-auditor deep
-
-# Individual skill install via Agent Skills CLI
-npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 ```
 
-For the full skill catalog, 2-minute install guides, and Cairo migration notes, see [skills/README.md](./skills/README.md), [docs/SKILLS_QUICKSTART.md](./docs/SKILLS_QUICKSTART.md), and [docs/CAIRO_SKILLS_MIGRATION.md](./docs/CAIRO_SKILLS_MIGRATION.md).
+```bash
+# Codex (public GitHub install, cairo-auditor)
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+# Restart Codex, then run /skills and invoke cairo-auditor
+```
+
+```bash
+# Codex (reproducible install pinned to a released tag)
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
+```
+
+```bash
+# Claude Code marketplace
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
+/reload-plugins
+/plugin menu
+/starknet-agentic-skills:cairo-auditor
+```
+
+```bash
+# Individual skill install via Agent Skills CLI
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
+```
+
+For deterministic install/usage guidance, see:
+
+- [skills/QUICKSTART_2MIN.md](./skills/QUICKSTART_2MIN.md)
+- [skills/TROUBLESHOOTING.md](./skills/TROUBLESHOOTING.md)
+- [docs/CLAUDE_MARKETPLACE_SUBMISSION.md](./docs/CLAUDE_MARKETPLACE_SUBMISSION.md)
+
+For the full skill catalog and Cairo migration notes, see [skills/README.md](./skills/README.md) and [docs/CAIRO_SKILLS_MIGRATION.md](./docs/CAIRO_SKILLS_MIGRATION.md).
 
 ## System Requirements
 
@@ -221,6 +235,7 @@ gh attestation verify <artifact-file> --repo keep-starknet-strange/starknet-agen
 
 ```text
 starknet-agentic/
+├── .agents/          # Codex discovery entrypoints (symlinks to skills/*)
 ├── contracts/        # Cairo contracts (account, ERC-8004, session-account)
 ├── packages/         # MCP/A2A/CLI and supporting libraries
 ├── skills/           # Agent skill packs

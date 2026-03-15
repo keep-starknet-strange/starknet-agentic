@@ -1,0 +1,6 @@
+interface:
+  display_name: "Starknet Network Facts"
+  short_description: "Protocol-level Starknet constraints that affect contract safety decisions."
+  default_prompt: "Apply Starknet network constraints to validate whether this contract behavior is protocol-safe."
+policy:
+  allow_implicit_invocation: false

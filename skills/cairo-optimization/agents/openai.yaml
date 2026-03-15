@@ -1,0 +1,6 @@
+interface:
+  display_name: "Cairo Optimization"
+  short_description: "Profile-driven Cairo optimization after correctness is locked."
+  default_prompt: "Profile this Cairo code, identify hotspots, and propose measurable optimizations with benchmark deltas."
+policy:
+  allow_implicit_invocation: false
