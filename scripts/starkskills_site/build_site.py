@@ -249,6 +249,17 @@ def build_manifest_index(manifest_skills: list[object]) -> dict[str, dict]:
     return manifest_by_repo_path
 
 
+def validate_skill_md_path(root: Path, repo_path: str, skill_md_path: str) -> str:
+    path = skill_md_path.strip()
+    if path.startswith("./"):
+        path = path[2:]
+    path_obj = Path(path)
+    if path_obj.is_absolute() or ".." in path_obj.parts or not path.startswith(f"{repo_path}/"):
+        raise SystemExit(f"[build_site] Invalid skill_md_path for {repo_path}: {skill_md_path!r}")
+    require_file(root / path)
+    return path
+
+
 def normalize_skill_repo_path(entry: str) -> str:
     path = entry.strip()
     if path.startswith("./"):
@@ -312,7 +323,12 @@ def load_skill_modules(root: Path, repo_raw: str, repo_github: str, repo_ref: st
 
         name = optional_nonempty_string_field(manifest_item, "name", Path(repo_path).name)
         description = optional_nonempty_string_field(manifest_item, "description", "Skill module")
-        skill_md_path = optional_nonempty_string_field(manifest_item, "skill_md_path", f"{repo_path}/SKILL.md")
+        raw_skill_md_path = optional_nonempty_string_field(
+            manifest_item,
+            "skill_md_path",
+            f"{repo_path}/SKILL.md",
+        )
+        skill_md_path = validate_skill_md_path(root, repo_path, raw_skill_md_path)
 
         module = {
             "name": name,
@@ -350,7 +366,7 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
     quality_workflow = resolve_workflow_name(root, QUALITY_WORKFLOW_CANDIDATES)
     full_evals_workflow = resolve_workflow_name(root, FULL_EVALS_WORKFLOW_CANDIDATES)
 
-    cairo_auditor_module = next((item for item in modules if item["name"] == "cairo-auditor"), modules[0])
+    cairo_auditor_module = next((item for item in modules if item["repo_path"] == "skills/cairo-auditor"), modules[0])
     cairo_auditor_readme_path = f"{cairo_auditor_module['repo_path']}/README.md"
 
     audits_manifest_path = require_file(root / "datasets/manifests/audits.jsonl")
@@ -471,6 +487,7 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
             "full_evals_workflow": f"{repo_github}/actions/workflows/{full_evals_workflow}",
             "heldout_policy": f"{repo_github}/blob/{repo_ref}/evals/heldout/README.md",
             "contributing": f"{repo_github}/blob/{repo_ref}/CONTRIBUTING.md",
+            "cairo_auditor_name": cairo_auditor_module["name"],
             "cairo_auditor": cairo_auditor_module["github_url"],
             "cairo_auditor_readme": f"{repo_github}/blob/{repo_ref}/{cairo_auditor_readme_path}",
             "pipeline_readme": f"{repo_github}/blob/{repo_ref}/datasets/README.md",
@@ -753,6 +770,7 @@ def build_index_html(data: dict, domain: str | None) -> str:
     counts = data["counts"]
     links = data["links"]
     scorecard = data["latest_scorecards"].get("realworld") or data["latest_scorecards"].get("deterministic")
+    showcase_name = links.get("cairo_auditor_name", "cairo-auditor")
 
     stats_bar = "\n".join(
         [
@@ -857,7 +875,7 @@ def build_index_html(data: dict, domain: str | None) -> str:
       <div class="section-head">
         <div>
           <p class="section-kicker">Example</p>
-          <h2>cairo-auditor</h2>
+          <h2>{e(showcase_name)}</h2>
         </div>
         <div class="section-links">
           <a href="{e(links['cairo_auditor'])}" target="_blank" rel="noreferrer">skill</a>
@@ -1095,11 +1113,11 @@ def main() -> None:
     root = Path(args.repo_root).resolve()
     output_arg = Path(args.output_dir)
     output_dir = output_arg if output_arg.is_absolute() else root / output_arg
-    assets_dir = (
-        Path(args.assets_dir).resolve()
-        if args.assets_dir
-        else Path(__file__).resolve().parent / "assets"
-    )
+    if args.assets_dir:
+        assets_arg = Path(args.assets_dir)
+        assets_dir = assets_arg if assets_arg.is_absolute() else root / assets_arg
+    else:
+        assets_dir = Path(__file__).resolve().parent / "assets"
     cname_path = output_dir / "CNAME"
 
     try:
@@ -1110,8 +1128,6 @@ def main() -> None:
     try:
         domain = normalize_domain(args.domain)
     except ValueError as exc:
-        if cname_path.exists():
-            cname_path.unlink()
         raise SystemExit(f"[build_site] {exc}") from exc
 
     data = build_dataset(root, repo_slug=repo_slug, repo_ref=repo_ref)
