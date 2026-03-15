@@ -57,7 +57,14 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 # Install all skills
 /plugin install starknet-agentic-skills@starknet-agentic-skills
 
-# Invoke a specific bundled skill (after installing the plugin)
+# Refresh plugin registry in the current session
+/reload-plugins
+
+# Invoke Cairo auditor (recommended alias command)
+/cairo-auditor
+/cairo-auditor deep
+
+# Optional: namespaced skill invocation
 /starknet-agentic-skills:cairo-auditor
 ```
 
@@ -88,6 +95,17 @@ npx skills add keep-starknet-strange/starknet-agentic --force
 
 # Git clone - pull latest
 git pull origin main
+```
+
+If you see `Unknown skill: starknet-agentic-skills:cairo-auditor`:
+
+```bash
+# Remove stale project-scope installs
+/plugin uninstall starknet-agentic-skills@starknet-agentic-skills -s project
+
+# Ensure one clean user-scope install
+/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
+/reload-plugins
 ```
 
 ## Prerequisites

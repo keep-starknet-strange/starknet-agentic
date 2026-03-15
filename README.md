@@ -44,7 +44,11 @@ npx create-starknet-agent@latest
 # Claude Code marketplace
 /plugin marketplace add keep-starknet-strange/starknet-agentic
 /plugin install starknet-agentic-skills@starknet-agentic-skills
-/plugin menu
+/reload-plugins
+
+# Invoke cairo audit workflow
+/cairo-auditor
+/cairo-auditor deep
 
 # Individual skill install via Agent Skills CLI
 npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
