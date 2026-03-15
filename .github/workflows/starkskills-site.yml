@@ -24,7 +24,7 @@ on:
       - ".github/workflows/starkskills-site.yml"
 
 concurrency:
-  group: starkskills-pages
+  group: starkskills-pages-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -55,8 +55,8 @@ jobs:
           test -f starkskills-site/vuln-cards/index.html
           test -f starkskills-site/data/site-data.json
           test -f starkskills-site/CNAME
-          rg -q "keep-starknet-strange/starknet-agentic" starkskills-site/index.html
-          ! rg -q "keep-starknet-strange/starknet-skills" starkskills-site/index.html
+          grep -q "keep-starknet-strange/starknet-agentic" starkskills-site/index.html
+          ! grep -q "keep-starknet-strange/starknet-skills" starkskills-site/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
