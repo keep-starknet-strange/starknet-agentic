@@ -12,21 +12,6 @@ user-invocable: true
 
 Register and manage AI agent identities on Starknet using the ERC-8004 standard.
 
-## When to Use
-
-- Registering agents on-chain, updating agent metadata, or managing reputation and validation flows.
-- Building features that depend on ERC-8004 identity, feedback, or validator attestations.
-
-## When NOT to Use
-
-- Simple wallet, payment, or DeFi flows that do not depend on ERC-8004 registries.
-- Cairo contract authoring, deployment-only tasks, or security auditing.
-
-## Quick Start
-
-1. Install `starknet` and connect a funded account to the target ERC-8004 registry deployment.
-2. Use [skills catalog](../README.md) if the flow also needs wallet setup, deployment, or contract auditing.
-
 ## Overview
 
 ERC-8004 defines three interconnected on-chain registries for AI agents:
@@ -303,16 +288,6 @@ Serve at `/.well-known/agent.json` for A2A discovery.
 - Self-validation is prevented (agent owner cannot validate own agent)
 - Signatures include chain ID and expiry to prevent replay attacks
 - Agent identity (NFT) is transferable -- new owner inherits reputation
-
-## Error Codes
-
-| Code | Meaning | Likely causes | Recovery | User-facing message |
-|-----|---------|---------------|----------|---------------------|
-| `REGISTRATION_FAILED` | Initial ERC-8004 registration or metadata write reverted. | Missing fees, duplicate registration, invalid calldata, or stale contract state. | Retry after checking wallet balance, contract state, and constructor/registration inputs. | "Registration failed. Check wallet state and retry." |
-| `AUTHORIZATION_DENIED` | Ownership or feedback authorization proof was rejected. | Wrong signer, bad nonce, missing permission, or outdated owner state. | Re-fetch owner/nonce state, verify permissions, and re-sign with the current account. | "Authorization denied. Verify signer permissions and retry." |
-| `VALIDATION_TIMEOUT` | Off-chain validation or watcher flow did not complete before the deadline. | Slow relayer, RPC degradation, or downstream A2A service lag. | Retry with a longer timeout after checking chain health, relayer status, and RPC latency. | "Validation timed out. Retry after checking network health." |
-| `SIGNATURE_EXPIRED` | Signed payload expired before submission. | Expiry window too short or user approval arrived too late. | Generate a fresh signature with a new expiry and resubmit immediately. | "Signature expired. Re-sign and submit again." |
-| `OWNER_TRANSFERRED` | Agent NFT ownership changed while a write or feedback flow was in flight. | NFT transfer, marketplace sale, or custodial wallet rotation. | Refresh ownership state, re-authorize with the new owner, and explain that reputation follows the NFT. | "Ownership changed. Refresh owner state and retry with the new owner." |
 
 ## References
 
