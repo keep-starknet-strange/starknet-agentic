@@ -145,7 +145,6 @@ mod QuantumVault {
     // ── Errors ──
 
     const ERR_ZERO_AMOUNT: felt252 = 'ZERO_AMOUNT';
-    const ERR_ZERO_TOKEN: felt252 = 'ZERO_TOKEN';
     const ERR_ZERO_TIMELOCK: felt252 = 'ZERO_TIMELOCK';
     const ERR_INVALID_DEPOSIT_ID: felt252 = 'INVALID_DEPOSIT_ID';
     const ERR_NOT_OWNER: felt252 = 'NOT_OWNER';
