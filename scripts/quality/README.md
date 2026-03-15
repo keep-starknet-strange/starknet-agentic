@@ -4,7 +4,7 @@
 - `test_validate_skills.py`: regression tests for validator edge cases such as the root SKILL router.
 - `validate_marketplace.py`: enforces `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` parity (name/version/source/description/author and skill path validity).
 - `parity_check.py`: required repository parity and local tool checks.
-- `check_codex_distribution.py`: validates Codex-facing install/discovery surface (`.agents/skills` symlinks, Cairo `openai.yaml`, and install docs markers).
+- `check_codex_distribution.py`: validates Codex-facing install/discovery surface (`.agents/skills` symlinks, public-skill `openai.yaml`, and install docs markers).
 - `test_codex_distribution.py`: regression tests for Codex distribution validation.
 - `check_vulndb_parity.py`: enforces benchmark/detector class parity with `skills/cairo-auditor/references/vulnerability-db/`.
 - `check_attack_vector_coverage.py`: enforces minimum attack-vector corpus size and unique vector IDs.

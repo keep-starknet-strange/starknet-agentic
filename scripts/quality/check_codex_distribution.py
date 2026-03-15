@@ -10,32 +10,55 @@ from typing import Any
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-CAIRO_SKILLS = [
-    "cairo-contract-authoring",
-    "cairo-testing",
+PUBLIC_SKILLS = [
+    "account-abstraction",
     "cairo-auditor",
-    "cairo-optimization",
+    "cairo-contract-authoring",
     "cairo-deploy",
+    "cairo-optimization",
+    "cairo-testing",
+    "controller-cli",
+    "huginn-onboard",
+    "starknet-anonymous-wallet",
+    "starknet-defi",
+    "starknet-identity",
+    "starknet-js",
+    "starknet-mini-pay",
+    "starknet-network-facts",
+    "starknet-tongo",
+    "starknet-wallet",
+    "starkzap-sdk",
 ]
+PINNED_REF = "v0.1.0-beta.1"
 INSTALL_MARKERS = {
     Path("README.md"): [
         "$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor",
+        f"$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/{PINNED_REF}/skills/cairo-auditor",
         "/plugin marketplace add keep-starknet-strange/starknet-agentic",
+        "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
         "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
     ],
     Path("skills/README.md"): [
         "$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor",
-        "/plugin install starknet-agentic-skills@starknet-agentic-skills",
+        f"$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/{PINNED_REF}/skills/cairo-auditor",
+        "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
         "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
-        "<ref>",
+        "./QUICKSTART_2MIN.md",
+        "./TROUBLESHOOTING.md",
     ],
     Path("skills/cairo-auditor/README.md"): [
         "$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor",
-        "/plugin install starknet-agentic-skills@starknet-agentic-skills",
+        f"$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/{PINNED_REF}/skills/cairo-auditor",
+        "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
         "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
-        "`<ref>` can be a commit SHA or release tag.",
+        "../QUICKSTART_2MIN.md",
+        "../TROUBLESHOOTING.md",
     ],
 }
+FORBIDDEN_INSTALL_MARKERS = [
+    "tree/<ref>/skills/cairo-auditor",
+    "`<ref>` can be a commit SHA or release tag.",
+]
 
 
 def repo_skill_slugs(root: Path = ROOT) -> set[str]:
@@ -82,8 +105,19 @@ def _load_yaml(path: Path) -> dict[str, Any] | None:
 def metadata_errors(root: Path = ROOT) -> list[str]:
     errors: list[str] = []
     required_interface_keys = ["display_name", "short_description", "default_prompt"]
+    public_skills_set = set(PUBLIC_SKILLS)
+    discovered_skills = repo_skill_slugs(root)
 
-    for slug in CAIRO_SKILLS:
+    missing_from_constant = sorted(discovered_skills - public_skills_set)
+    if missing_from_constant:
+        errors.append(
+            "PUBLIC_SKILLS is missing discovered skills: " + ", ".join(missing_from_constant)
+        )
+    missing_from_repo = sorted(public_skills_set - discovered_skills)
+    if missing_from_repo:
+        errors.append("PUBLIC_SKILLS has entries with no skills/*/SKILL.md: " + ", ".join(missing_from_repo))
+
+    for slug in PUBLIC_SKILLS:
         path = root / "skills" / slug / "agents" / "openai.yaml"
         if not path.exists():
             errors.append(f"missing Codex metadata: {path}")
@@ -127,6 +161,9 @@ def install_doc_errors(root: Path = ROOT) -> list[str]:
         missing = [marker for marker in markers if marker not in content]
         if missing:
             errors.append(f"{path}: missing install markers: {', '.join(missing)}")
+        forbidden = [marker for marker in FORBIDDEN_INSTALL_MARKERS if marker in content]
+        if forbidden:
+            errors.append(f"{path}: contains placeholder install markers: {', '.join(forbidden)}")
 
     return errors
 

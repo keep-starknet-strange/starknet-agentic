@@ -1,0 +1,6 @@
+interface:
+  display_name: "Starknet Mini-Pay"
+  short_description: "P2P payments, QR links, and invoice-style transfer flows on Starknet."
+  default_prompt: "Build a Starknet mini-pay flow with address validation, amount sanity checks, and transfer confirmation handling."
+policy:
+  allow_implicit_invocation: false

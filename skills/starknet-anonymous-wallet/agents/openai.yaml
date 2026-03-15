@@ -1,0 +1,6 @@
+interface:
+  display_name: "Starknet Anonymous Wallet"
+  short_description: "Privacy-focused Starknet wallet creation and usage workflows via Typhoon."
+  default_prompt: "Set up an anonymous Starknet wallet workflow with Typhoon and explicit key/privacy safety checks."
+policy:
+  allow_implicit_invocation: false

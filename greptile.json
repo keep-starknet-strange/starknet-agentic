@@ -41,8 +41,8 @@
     ],
     "files": [
       {
-        "path": "AGENT.md",
-        "description": "Agent architecture spec and behavioral contract"
+        "path": "AGENTS.md",
+        "description": "Canonical agent architecture spec and behavioral contract"
       },
       {
         "path": "CONTRIBUTING.md",

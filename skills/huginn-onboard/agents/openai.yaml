@@ -1,0 +1,6 @@
+interface:
+  display_name: "Huginn Onboard"
+  short_description: "Cross-chain onboarding from EVM into Starknet and Huginn agent registration."
+  default_prompt: "Create a safe cross-chain onboarding plan to bridge to Starknet and register this agent in Huginn."
+policy:
+  allow_implicit_invocation: false

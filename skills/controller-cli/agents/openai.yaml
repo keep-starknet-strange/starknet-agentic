@@ -1,0 +1,6 @@
+interface:
+  display_name: "Controller CLI"
+  short_description: "Cartridge Controller CLI sessions with scoped Starknet execution and JSON-safe outputs."
+  default_prompt: "Plan and execute Controller CLI commands with explicit network selection, scoped session policy, and machine-readable outputs."
+policy:
+  allow_implicit_invocation: false
