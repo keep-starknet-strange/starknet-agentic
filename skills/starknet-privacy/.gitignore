@@ -1,26 +1,19 @@
-# ZK Circuit Build Artifacts
-*.r1cs
-*.wasm
-*.wtns
+# Circom build artifacts (specific patterns — NOT *.json)
+circuit/build/*.r1cs
+circuit/build/*.sym
+circuit/build/*.wasm
+circuit/build/*_js/
+circuit/build/*.ptau
+circuit/build/*.zkey
+circuit/build/witness.wtns
+circuit/build/proof.json
+circuit/build/public.json
+circuit/build/verification_key.json
+circuit/build/Verifier.sol
 
-# Generated proof artifacts
-**/proof.json
-**/public.json
-**/verification_key.json
-**/calldata.json
-**/witness.json
-
-# Python cache
-__pycache__/
-*.pyc
-
-# Node modules
-node_modules/
+# Inputs (generated)
+inputs/
 
 # IDE
-.idea/
 .vscode/
-
-# OS
-.DS_Store
-Thumbs.db
+.idea/
