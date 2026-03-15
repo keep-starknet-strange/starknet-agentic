@@ -14,6 +14,7 @@ function MobileNavLink({
   onClick: () => void;
 }) {
   const isInternal = href.startsWith("/");
+  const isExternalAbsolute = /^https?:\/\//.test(href);
 
   if (isInternal) {
     return (
@@ -28,8 +29,15 @@ function MobileNavLink({
   }
 
   return (
-    <a href={href} onClick={onClick} className="font-heading font-medium py-2">
+    <a
+      href={href}
+      onClick={onClick}
+      target={isExternalAbsolute ? "_blank" : undefined}
+      rel={isExternalAbsolute ? "noopener noreferrer" : undefined}
+      className="font-heading font-medium py-2"
+    >
       {label}
+      {isExternalAbsolute ? <span className="sr-only"> (opens in new tab)</span> : null}
     </a>
   );
 }

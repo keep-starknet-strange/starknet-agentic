@@ -4,6 +4,7 @@ import { NavbarMobile } from "./NavbarMobile";
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const isInternal = href.startsWith("/");
+  const isExternalAbsolute = /^https?:\/\//.test(href);
 
   if (isInternal) {
     return (
@@ -19,9 +20,12 @@ function NavLink({ href, label }: { href: string; label: string }) {
   return (
     <a
       href={href}
+      target={isExternalAbsolute ? "_blank" : undefined}
+      rel={isExternalAbsolute ? "noopener noreferrer" : undefined}
       className="font-heading font-medium hover:text-neo-purple transition-colors"
     >
       {label}
+      {isExternalAbsolute ? <span className="sr-only"> (opens in new tab)</span> : null}
     </a>
   );
 }

@@ -167,5 +167,8 @@ examples/**/TWEET_EVIDENCE.md
 # Stale worktrees / ad-hoc clones (local only)
 starknet-agentic-*/
 
+# Generated static site output
+starkskills-site/
+
 # macOS
 .DS_Store

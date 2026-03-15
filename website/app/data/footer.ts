@@ -5,7 +5,7 @@ export const INFRASTRUCTURE_LINKS: FooterLink[] = [
   { name: "A2A Adapter" },
   { name: "Agent Account" },
   { name: "Agent Registry" },
-  { name: "Skills Marketplace" },
+  { name: "Skills Marketplace", url: "https://starkskills.org" },
 ];
 
 export const ECOSYSTEM_LINKS: FooterLink[] = [
@@ -20,6 +20,10 @@ export const COMMUNITY_LINKS: FooterLink[] = [
   {
     name: "GitHub",
     url: "https://github.com/keep-starknet-strange/starknet-agentic",
+  },
+  {
+    name: "Skills Catalog",
+    url: "https://starkskills.org",
   },
   {
     name: "Specification",
