@@ -936,22 +936,21 @@ def build_index_html(data: dict, domain: str | None) -> str:
 
 def build_vuln_cards_html(data: dict, domain: str | None) -> str:
     repo_github = data["links"]["repo"]
-    rows = []
-    for card in data["vuln_cards"]:
-        rows.append(
-            '<article class="vuln-card reveal">'
-            '<div class="vuln-head">'
-            f"<h3><a href=\"{e(card['github_url'])}\" target=\"_blank\" rel=\"noreferrer\">{e(card['name'])}</a></h3>"
-            f"<div>{severity_badges(card['severity_distribution'])}</div>"
-            "</div>"
-            '<p class="meta-label">Trigger</p>'
-            f"<p>{e(card['trigger'])}</p>"
-            '<p class="meta-label">Detection</p>'
-            f"<p>{e(card['detection_rule'])}</p>"
-            '<p class="meta-label">Findings</p>'
-            f"<div>{source_finding_links(card['source_findings'], repo_github)}</div>"
-            "</article>"
-        )
+    rows = [
+        '<article class="vuln-card reveal">'
+        '<div class="vuln-head">'
+        f"<h3><a href=\"{e(card['github_url'])}\" target=\"_blank\" rel=\"noreferrer\">{e(card['name'])}</a></h3>"
+        f"<div>{severity_badges(card['severity_distribution'])}</div>"
+        "</div>"
+        '<p class="meta-label">Trigger</p>'
+        f"<p>{e(card['trigger'])}</p>"
+        '<p class="meta-label">Detection</p>'
+        f"<p>{e(card['detection_rule'])}</p>"
+        '<p class="meta-label">Findings</p>'
+        f"<div>{source_finding_links(card['source_findings'], repo_github)}</div>"
+        "</article>"
+        for card in data["vuln_cards"]
+    ]
 
     row_markup = "\n".join(rows) if rows else '<article class="vuln-card"><p>No vuln cards published yet.</p></article>'
     counts = data["counts"]
