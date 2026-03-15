@@ -9,10 +9,10 @@ import html
 import json
 import re
 import shutil
+from collections.abc import Iterable
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 from urllib.parse import quote
 
 DEFAULT_REPO_SLUG = "keep-starknet-strange/starknet-agentic"
@@ -57,11 +57,11 @@ class VulnCard:
 
 def read_jsonl(path: Path) -> list[dict]:
     rows: list[dict] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
             continue
-        rows.append(json.loads(line))
+        rows.append(json.loads(stripped))
     return rows
 
 
@@ -73,7 +73,7 @@ def parse_version(path: Path) -> tuple[int, int, int]:
     match = re.match(r"^v(\d+)\.(\d+)\.(\d+)", path.name)
     if not match:
         return (0, 0, 0)
-    return tuple(int(match.group(i)) for i in (1, 2, 3))
+    return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
 
 
 def parse_scorecard(path: Path) -> ScorecardMetrics:
@@ -217,6 +217,38 @@ def load_json_object(path: Path) -> dict:
     return parsed
 
 
+def required_nonempty_string_field(data: dict, key: str, source_path: Path) -> str:
+    value = data.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise SystemExit(f"[build_site] Missing {key} in {source_path}")
+    return value
+
+
+def required_nonempty_list_field(data: dict, key: str, source_path: Path) -> list[object]:
+    value = data.get(key)
+    if not isinstance(value, list) or not value:
+        raise SystemExit(f"[build_site] Missing {key} list in {source_path}")
+    return value
+
+
+def optional_nonempty_string_field(data: dict, key: str, default: str) -> str:
+    value = data.get(key)
+    if isinstance(value, str) and value.strip():
+        return value
+    return default
+
+
+def build_manifest_index(manifest_skills: list[object]) -> dict[str, dict]:
+    manifest_by_repo_path: dict[str, dict] = {}
+    for item in manifest_skills:
+        if not isinstance(item, dict):
+            continue
+        repo_path = item.get("repo_path")
+        if isinstance(repo_path, str) and repo_path:
+            manifest_by_repo_path[repo_path] = item
+    return manifest_by_repo_path
+
+
 def normalize_skill_repo_path(entry: str) -> str:
     path = entry.strip()
     if path.startswith("./"):
@@ -262,25 +294,10 @@ def load_skill_modules(root: Path, repo_raw: str, repo_github: str, repo_ref: st
     plugin = load_json_object(plugin_path)
     manifest = load_json_object(skills_manifest_path)
 
-    plugin_name = plugin.get("name")
-    if not isinstance(plugin_name, str) or not plugin_name.strip():
-        raise SystemExit(f"[build_site] Missing plugin name in {plugin_path}")
-
-    plugin_skills = plugin.get("skills")
-    if not isinstance(plugin_skills, list) or not plugin_skills:
-        raise SystemExit(f"[build_site] Missing plugin skills list in {plugin_path}")
-
-    manifest_skills = manifest.get("skills")
-    if not isinstance(manifest_skills, list) or not manifest_skills:
-        raise SystemExit(f"[build_site] Missing skills list in {skills_manifest_path}")
-
-    manifest_by_repo_path: dict[str, dict] = {}
-    for item in manifest_skills:
-        if not isinstance(item, dict):
-            continue
-        repo_path = item.get("repo_path")
-        if isinstance(repo_path, str) and repo_path:
-            manifest_by_repo_path[repo_path] = item
+    plugin_name = required_nonempty_string_field(plugin, "name", plugin_path)
+    plugin_skills = required_nonempty_list_field(plugin, "skills", plugin_path)
+    manifest_skills = required_nonempty_list_field(manifest, "skills", skills_manifest_path)
+    manifest_by_repo_path = build_manifest_index(manifest_skills)
 
     modules: list[dict] = []
     for entry in plugin_skills:
@@ -293,16 +310,9 @@ def load_skill_modules(root: Path, repo_raw: str, repo_github: str, repo_ref: st
                 f"[build_site] Skill from plugin not found in skills manifest: {repo_path}"
             )
 
-        name = manifest_item.get("name")
-        if not isinstance(name, str) or not name.strip():
-            name = Path(repo_path).name
-        description = manifest_item.get("description")
-        if not isinstance(description, str) or not description.strip():
-            description = "Skill module"
-
-        skill_md_path = manifest_item.get("skill_md_path")
-        if not isinstance(skill_md_path, str) or not skill_md_path.strip():
-            skill_md_path = f"{repo_path}/SKILL.md"
+        name = optional_nonempty_string_field(manifest_item, "name", Path(repo_path).name)
+        description = optional_nonempty_string_field(manifest_item, "description", "Skill module")
+        skill_md_path = optional_nonempty_string_field(manifest_item, "skill_md_path", f"{repo_path}/SKILL.md")
 
         module = {
             "name": name,
