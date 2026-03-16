@@ -1,0 +1,50 @@
+# Qodo PR-Agent configuration for starknet-agentic
+# Docs: https://qodo-merge-docs.qodo.ai/usage-guide/automations_and_usage/
+
+[pr_description]
+enable_pr_type = true
+publish_labels = true
+add_original_user_description = true
+generate_ai_title = false
+enable_semantic_files_types = true
+
+[pr_reviewer]
+extra_instructions = """Focus on security-critical patterns for this Starknet agentic framework:
+- Cairo smart contract safety (felt252 overflow, access control, reentrancy)
+- ERC-8004 compliance for identity contracts
+- Session key scope validation and private key hygiene
+- Cross-repo boundary awareness (starkclaw, SISNA)
+- TypeScript type safety and input validation on public APIs
+- No floating promises or unhandled async errors
+- CI workflow security (pinned SHAs, least-privilege permissions)
+"""
+num_code_suggestions = 4
+ask_and_reflect = true
+persistent_comment = true
+enable_review_labels_effort = true
+enable_review_labels_security = true
+
+[pr_code_suggestions]
+num_code_suggestions = 4
+extra_instructions = "Prioritize security fixes, then correctness, then performance. For Cairo code, check felt252 bounds and access control. For TypeScript, check type safety and error boundaries."
+
+[pr_improve]
+extra_instructions = "Focus on security improvements and type safety. Flag any code that could compromise agent security."
+
+[github_action_config]
+auto_review = true
+auto_describe = true
+auto_improve = true
+
+[ignore]
+glob = [
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/.next/**",
+  "**/coverage/**",
+  "pnpm-lock.yaml",
+  "**/Scarb.lock",
+  "**/*.generated.*",
+  "datasets/**",
+  "references/**"
+]
