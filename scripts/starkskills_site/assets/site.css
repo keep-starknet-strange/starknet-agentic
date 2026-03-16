@@ -421,7 +421,6 @@ code {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);
-  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
 .quickstart-card:hover,

@@ -367,7 +367,6 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
     quality_workflow = resolve_workflow_name(root, QUALITY_WORKFLOW_CANDIDATES)
     full_evals_workflow = resolve_workflow_name(root, FULL_EVALS_WORKFLOW_CANDIDATES)
     skills_quickstart_path = require_file(root / "docs/SKILLS_QUICKSTART.md")
-    troubleshooting_path = require_file(root / "docs/TROUBLESHOOTING.md")
 
     cairo_auditor_module = next((item for item in modules if item["repo_path"] == "skills/cairo-auditor"), modules[0])
     cairo_auditor_readme_path = f"{cairo_auditor_module['repo_path']}/README.md"
@@ -439,7 +438,6 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
             require_file(root / DEFAULT_SKILLS_MANIFEST_PATH),
             require_file(root / router_skill_path),
             skills_quickstart_path,
-            troubleshooting_path,
             *normalized_findings_files,
             *normalized_audits_files,
             *segment_files,
@@ -496,7 +494,7 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
             "contributing": f"{repo_github}/blob/{repo_ref}/CONTRIBUTING.md",
             "skills_readme": f"{repo_github}/blob/{repo_ref}/skills/README.md",
             "skills_quickstart": f"{repo_github}/blob/{repo_ref}/{skills_quickstart_path.relative_to(root).as_posix()}",
-            "troubleshooting": f"{repo_github}/blob/{repo_ref}/{troubleshooting_path.relative_to(root).as_posix()}",
+            "troubleshooting": f"{repo_github}/blob/{repo_ref}/{skills_quickstart_path.relative_to(root).as_posix()}#troubleshooting-matrix",
             "cairo_auditor_name": cairo_auditor_module["name"],
             "cairo_auditor": cairo_auditor_module["github_url"],
             "cairo_auditor_readme": f"{repo_github}/blob/{repo_ref}/{cairo_auditor_readme_path}",

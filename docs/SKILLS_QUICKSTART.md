@@ -13,6 +13,10 @@ git clone https://github.com/keep-starknet-strange/starknet-agentic.git && cd st
 
 Open Codex from this repo root (`starknet-agentic`) so discovery picks up `.agents/skills`.
 
+Windows prerequisite:
+- Enable symlink checkout before cloning: `git config --global core.symlinks true`
+- Ensure Windows Developer Mode (or elevated privileges) is enabled, then clone/re-clone the repo.
+
 Run prompt:
 
 ```text
