@@ -27,15 +27,37 @@ Not a substitute for a formal audit — but the check you should never skip.
 
 ## Install
 
-**Claude Code CLI:**
+### Codex
 
 ```bash
-git clone https://github.com/keep-starknet-strange/starknet-agentic.git \
-  && mkdir -p ~/.claude/commands/cairo-auditor \
-  && cp -R starknet-agentic/skills/cairo-auditor/. ~/.claude/commands/cairo-auditor/
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git && cd starknet-agentic
+# Skills are auto-discovered from .agents/skills in this repo.
 ```
 
-**Cursor (manual guidance only):**
+First useful prompt:
+
+```text
+Use $cairo-auditor to audit ./contracts and return only concrete exploitable findings with file:line, impact, and secure patch diff.
+```
+
+### Claude Code (Plugin Marketplace)
+
+```bash
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
+/reload-plugins
+/cairo-auditor
+```
+
+### Agent Skills CLI (Cursor/Copilot/Roo/Windsurf/Goose)
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
+```
+
+### Cursor (manual reference mode)
+
+Cursor can consume these docs as guidance but does not execute `/cairo-auditor` as a native slash command package by default.
 
 ```bash
 git clone https://github.com/keep-starknet-strange/starknet-agentic.git \
@@ -43,26 +65,16 @@ git clone https://github.com/keep-starknet-strange/starknet-agentic.git \
   && cp -R starknet-agentic/skills/cairo-auditor/references/. docs/cairo-auditor/
 ```
 
-Cursor does not execute this package as a runnable `/cairo-auditor` command. Use Claude Code CLI or Plugin Marketplace for the executable orchestrator flow. In Cursor, treat these files as reference guidance only.
-There is no official global `~/.cursor/skills` install path for this package.
-
-**Claude Code Plugin Marketplace:**
-
-```bash
-/plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills
-/starknet-agentic-skills:cairo-auditor
-```
-
-**Update to latest:**
+### Update to latest
 
 ```bash
 cd starknet-agentic && git pull
-# Claude Code CLI:
-cp -R skills/cairo-auditor/. ~/.claude/commands/cairo-auditor/
-# Cursor docs refresh (manual guidance only):
-cp -R skills/cairo-auditor/references/. docs/cairo-auditor/
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor --force
+/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
+/reload-plugins
 ```
+
+More installation and troubleshooting flows: [../../docs/SKILLS_QUICKSTART.md](../../docs/SKILLS_QUICKSTART.md)
 
 ## Usage
 

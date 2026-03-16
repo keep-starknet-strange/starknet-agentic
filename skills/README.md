@@ -26,15 +26,32 @@ Production-ready skills for AI agents operating on Starknet. Built for the Agent
 
 ## Installation
 
+Fast path: [2-minute quickstart](../docs/SKILLS_QUICKSTART.md)
+
 ## Machine-Readable Index
 
 For agent platforms (including OpenClaw/MoltBook) and tooling that want to index skills programmatically, see:
 - `skills/manifest.json` (generated, stable format)
 - Cairo cutover and legacy mapping: `../docs/CAIRO_SKILLS_MIGRATION.md`
 
-### Option 1: GitHub (Recommended)
+### Option 1: Codex
 
-Install all skills or specific ones using the skills CLI:
+```bash
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git && cd starknet-agentic
+# Skills are auto-discovered from .agents/skills in this repo.
+```
+
+Run Codex from this repo root so `.agents/skills` is indexed in-session.
+
+Example first run prompt:
+
+```text
+Use $cairo-auditor to audit ./contracts and output concrete exploitable findings only (file:line, impact, exploit path, fix diff).
+```
+
+### Option 2: GitHub / Agent Skills CLI (Recommended for most tools)
+
+Install all skills or specific ones:
 
 ```bash
 # Install all Starknet skills
@@ -48,14 +65,14 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-optimization
 npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 ```
 
-### Option 2: Claude Code Plugin Marketplace
+### Option 3: Claude Code Plugin Marketplace
 
 ```bash
 # Register the marketplace
 /plugin marketplace add keep-starknet-strange/starknet-agentic
 
-# Install all skills
-/plugin install starknet-agentic-skills@starknet-agentic-skills
+# Install all skills (user scope recommended)
+/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
 
 # Refresh plugin registry in the current session
 /reload-plugins
@@ -68,15 +85,12 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 /starknet-agentic-skills:cairo-auditor
 ```
 
-### Option 3: Direct Git Clone
+Install scope guidance:
 
-```bash
-git clone https://github.com/keep-starknet-strange/starknet-agentic.git
-cd starknet-agentic/skills
-
-# Skills are in individual directories
-ls -la
-```
+| Scope | Command | When to use |
+|---|---|---|
+| User (recommended) | `/plugin install starknet-agentic-skills@starknet-agentic-skills -s user` | One install for all repos |
+| Project | `/plugin install starknet-agentic-skills@starknet-agentic-skills -s project` | Pin one repository to a dedicated install |
 
 ### Option 4: ClawHub (Coming Soon)
 
@@ -107,6 +121,17 @@ If you see `Unknown skill: starknet-agentic-skills:cairo-auditor`:
 /plugin install starknet-agentic-skills@starknet-agentic-skills -s user
 /reload-plugins
 ```
+
+## Troubleshooting Matrix
+
+| Problem | Why it happens | Fix |
+|---|---|---|
+| `Unknown skill: ...cairo-auditor` in Claude | Stale project-scope install shadows user scope | `/plugin uninstall starknet-agentic-skills@starknet-agentic-skills -s project` then reinstall with `-s user` and `/reload-plugins` |
+| Skill missing in Codex | Session started outside repo root or stale discovery cache | Open Codex from `starknet-agentic` root so `.agents/skills` is indexed, then restart session |
+| Tool shows old skill content | Cached older copy | `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor --force` |
+| Slash command not available after install | Plugin registry not refreshed | `/reload-plugins` |
+
+See full quickstart and recovery commands in [`docs/SKILLS_QUICKSTART.md`](../docs/SKILLS_QUICKSTART.md).
 
 ## Prerequisites
 
@@ -191,13 +216,17 @@ Skill instructions and documentation...
 
 ## Platform Compatibility
 
-These skills work with:
-- **Claude Code** - Full support via plugin marketplace
-- **Cursor** - Via skills CLI
-- **GitHub Copilot** - Via skills integration
-- **OpenClaw / MoltBook** - Via ClawHub
-- **Goose, Roo Code, Windsurf** - Via Agent Skills format
-- **Custom agents** - Any agent supporting the Agent Skills spec
+Last verified: **2026-03-17**
+
+| Surface | Support | Install mode |
+|---|---|---|
+| Codex | Supported | `.agents/skills` (repo auto-discovery) |
+| Claude Code | Supported | Plugin marketplace bundle |
+| Cursor | Supported | Agent Skills CLI (`npx skills add ...`) |
+| GitHub Copilot | Supported | Agent Skills import flow |
+| Goose / Roo Code / Windsurf | Supported | Agent Skills format |
+| OpenClaw / MoltBook | Planned | ClawHub publish flow |
+| Custom agents | Supported | Any runtime implementing Agent Skills spec |
 
 ## Contributing
 
