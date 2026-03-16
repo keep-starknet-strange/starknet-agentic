@@ -1,0 +1,20 @@
+{
+  "strictness": 2,
+  "commentTypes": ["logic", "syntax", "style", "info"],
+  "triggerOnUpdates": true,
+  "statusCheck": true,
+  "statusCommentsEnabled": true,
+  "shouldUpdateDescription": false,
+  "updateExistingSummaryComment": true,
+  "fixWithAI": true,
+  "excludeAuthors": ["dependabot[bot]", "github-actions[bot]"],
+  "ignorePatterns": "**/*.generated.*\n**/node_modules/**\n**/dist/**\n**/.next/**\n**/coverage/**\n**/Scarb.lock\npnpm-lock.yaml",
+  "instructions": "Prioritize correctness, security, and production risk. Focus on Cairo/ERC-8004 compliance, cross-repo boundary awareness (starkclaw, SISNA), input validation, type safety, deterministic behavior, and secret handling.",
+  "reviewProfile": "security-focused",
+  "focus": ["security", "cross-repo-compatibility", "architecture"],
+  "patternRepositories": ["keep-starknet-strange/starkclaw", "omarespejel/SISNA"],
+  "fileChangeLimit": 200,
+  "paths": {
+    "include": ["contracts/**", "packages/**", "skills/**", "commands/**", "evals/**", ".github/workflows/**", "docs/**", "scripts/**", "security/**", "spec/**"]
+  }
+}
