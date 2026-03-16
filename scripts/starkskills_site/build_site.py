@@ -692,17 +692,6 @@ def quickstart_card(sigil: str, surface: str, install: str, run: str, expected: 
     )
 
 
-def compatibility_card(surface: str, install_scope: str, status: str, last_verified: str) -> str:
-    return (
-        '<article class="compat-card reveal">'
-        f"<h3>{e(surface)}</h3>"
-        f'<p>{e(status)}</p>'
-        f'<p class="compat-meta"><span>scope</span><code>{e(install_scope)}</code></p>'
-        f'<p class="compat-meta"><span>last verified</span><code>{e(last_verified)}</code></p>'
-        "</article>"
-    )
-
-
 def module_card(item: dict) -> str:
     readiness = re.sub(r"[^a-z0-9-]", "", str(item.get("readiness", "experimental")).lower())
     if not readiness:
@@ -883,8 +872,6 @@ def build_index_html(data: dict, domain: str | None) -> str:
     counts = data["counts"]
     links = data["links"]
     scorecard = data["latest_scorecards"].get("realworld") or data["latest_scorecards"].get("deterministic")
-    showcase_name = links.get("cairo_auditor_name", "cairo-auditor")
-    verified_date = str(data.get("generated_at_utc", ""))[:10] or "n/a"
     repo_dir = links["repo_slug"].split("/")[-1]
 
     stats_bar = "\n".join(
@@ -956,31 +943,11 @@ def build_index_html(data: dict, domain: str | None) -> str:
     )
 
     primary_command = command_block("Raw URL", "Use the router skill directly.", links["router_skill_raw"], "primary")
-    secondary_commands = "\n".join(
+    onboarding_links = "\n".join(
         [
-            command_block(
-                "Codex",
-                "Clone and auto-discover from .agents/skills.",
-                (
-                    f"git clone {links['repo']}.git && cd {repo_dir}\n"
-                    "# Skills auto-discover from .agents/skills\n"
-                    "# Start Codex from this repo root"
-                ),
-            ),
-            command_block(
-                "Claude",
-                "Install in Claude.",
-                (
-                    f"/plugin marketplace add {links['repo_slug']}\n"
-                    f"/plugin install {links['plugin_name']}@{links['plugin_name']} -s user\n"
-                    "/reload-plugins"
-                ),
-            ),
-            command_block(
-                "Skills CLI",
-                "Install one skill from GitHub.",
-                f"npx skills add {links['repo_slug']}/skills/cairo-auditor",
-            ),
+            f'<a class="tool-pill tool-pill--primary" href="#quickstart">Start quickstart</a>',
+            f'<a class="tool-pill" href="{e(links["cairo_auditor"])}" target="_blank" rel="noreferrer">Open cairo-auditor</a>',
+            f'<a class="tool-pill" href="{e(links["skills_quickstart"])}" target="_blank" rel="noreferrer">Read full setup</a>',
         ]
     )
     quickstart_cards = "\n".join(
@@ -1016,28 +983,6 @@ def build_index_html(data: dict, domain: str | None) -> str:
             ),
         ]
     )
-    compatibility_cards = "\n".join(
-        [
-            compatibility_card(
-                "Codex",
-                ".agents/skills",
-                "Best path for explicit skill invocation and local-repo auditing.",
-                verified_date,
-            ),
-            compatibility_card(
-                "Claude Code",
-                "plugin scope: user",
-                "Full command support via marketplace bundle and slash commands.",
-                verified_date,
-            ),
-            compatibility_card(
-                "Agent Skills CLI",
-                "tool-managed",
-                "Works in Cursor/Copilot/Roo/Windsurf/Goose through Agent Skills format.",
-                verified_date,
-            ),
-        ]
-    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1050,7 +995,6 @@ def build_index_html(data: dict, domain: str | None) -> str:
     <nav class="site-nav" aria-label="Primary navigation">
       <a href="#quickstart">quickstart</a>
       <a href="#skills">skills</a>
-      <a href="#compatibility">compatibility</a>
       <a href="#data">pipeline</a>
       {scorecard_nav}
       <a href="#verify">verify</a>
@@ -1068,9 +1012,9 @@ def build_index_html(data: dict, domain: str | None) -> str:
       </div>
       <div class="hero-install">
         {primary_command}
-        <div class="command-stack">
-          {secondary_commands}
-        </div>
+      </div>
+      <div class="tools-grid hero-tools">
+        {onboarding_links}
       </div>
     </section>
 
@@ -1085,40 +1029,7 @@ def build_index_html(data: dict, domain: str | None) -> str:
       <div class="quickstart-grid">
         {quickstart_cards}
       </div>
-      <p class="section-note">Tip: run `cairo-contract-authoring` before `cairo-auditor` for higher signal and cleaner diffs.</p>
-    </section>
-
-    <section class="section reveal" id="compatibility">
-      <div class="section-head">
-        <div>
-          <p class="section-kicker">Compatibility</p>
-          <h2>Install surfaces</h2>
-        </div>
-        <a href="{e(links['skills_readme'])}" target="_blank" rel="noreferrer">skills README</a>
-      </div>
-      <div class="compat-grid">
-        {compatibility_cards}
-      </div>
-    </section>
-
-    <section class="section section-card reveal" id="showcase">
-      <div class="section-head">
-        <div>
-          <p class="section-kicker">Example</p>
-          <h2>{e(showcase_name)}</h2>
-        </div>
-        <div class="section-links">
-          <a href="{e(links['cairo_auditor'])}" target="_blank" rel="noreferrer">skill</a>
-          <a href="{e(links['cairo_auditor_readme'])}" target="_blank" rel="noreferrer">readme</a>
-        </div>
-      </div>
-      <p class="section-copy">One example module. Discover files, scan patterns, verify findings, write the report.</p>
-      <ul class="workflow" aria-label="Audit workflow">
-        <li><span>01</span> discover</li>
-        <li><span>02</span> scan</li>
-        <li><span>03</span> verify</li>
-        <li><span>04</span> report</li>
-      </ul>
+      <p class="section-note">This quickstart is the canonical install + run path for Codex, Claude, and Skills CLI.</p>
     </section>
 
     <section class="section reveal" id="skills">

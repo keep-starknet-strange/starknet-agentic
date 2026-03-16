@@ -57,7 +57,6 @@ code,
 .icon-button,
 .copy-button,
 .fingerprint,
-.workflow li,
 .score-metric strong,
 .ascii-logo,
 .step-index,
@@ -187,7 +186,6 @@ button:focus-visible {
 }
 
 .hero-copy,
-.section-copy,
 .section-note,
 .command-head p,
 .pipeline-step p,
@@ -220,9 +218,8 @@ button:focus-visible {
   gap: 16px;
 }
 
-.command-stack {
-  display: grid;
-  gap: 16px;
+.hero-tools {
+  margin-top: 2px;
 }
 
 .command-card,
@@ -230,8 +227,7 @@ button:focus-visible {
 .pipeline-step,
 .vuln-card,
 .verify-link,
-.score-metric,
-.workflow li {
+.score-metric {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);
@@ -366,28 +362,7 @@ code {
   gap: 12px;
 }
 
-.workflow {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding: 0;
-  list-style: none;
-}
-
-.workflow li {
-  display: grid;
-  gap: 8px;
-  padding: 16px;
-  color: var(--text);
-}
-
-.workflow li span {
-  color: var(--accent);
-  font-size: 0.78rem;
-}
-
 .quickstart-grid,
-.compat-grid,
 .module-grid,
 .vuln-grid,
 .verify-grid {
@@ -456,7 +431,6 @@ code {
 }
 
 .quickstart-card,
-.compat-card,
 .module-card,
 .vuln-card {
   position: relative;
@@ -477,15 +451,13 @@ code {
   background: #131313;
 }
 
-.quickstart-card,
-.compat-card {
+.quickstart-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);
 }
 
-.quickstart-card:hover,
-.compat-card:hover {
+.quickstart-card:hover {
   transform: translateY(-2px);
   border-color: var(--accent);
   background: #131313;
@@ -497,37 +469,13 @@ code {
   gap: 10px;
 }
 
-.quickstart-head h3,
-.compat-card h3 {
+.quickstart-head h3 {
   font-size: 1rem;
   font-family: "JetBrains Mono", "Fira Code", monospace;
 }
 
 .quickstart-card .inline-copy {
   width: fit-content;
-}
-
-.compat-card p {
-  color: var(--muted);
-}
-
-.compat-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.compat-meta span {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.7rem;
-  color: var(--accent);
-  font-family: "JetBrains Mono", "Fira Code", monospace;
-}
-
-.compat-meta code {
-  font-size: 0.74rem;
 }
 
 .module-sigil {
@@ -852,8 +800,7 @@ code {
 
 @media (max-width: 920px) {
   .pipeline-grid,
-  .score-grid,
-  .workflow {
+  .score-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -889,14 +836,12 @@ code {
     font-size: 8px;
   }
 
-  .workflow,
   .pipeline-grid,
   .score-grid,
   .module-grid,
   .vuln-grid,
   .verify-grid,
   .quickstart-grid,
-  .compat-grid,
   .prompt-grid {
     grid-template-columns: 1fr;
   }
