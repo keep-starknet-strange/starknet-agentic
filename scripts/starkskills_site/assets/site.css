@@ -444,7 +444,7 @@ code {
   cursor: pointer;
 }
 
-.module-card:hover,
+.module-card[data-href]:hover,
 .vuln-card:hover {
   transform: translateY(-2px);
   border-color: var(--accent);

@@ -1043,7 +1043,7 @@ def build_index_html(data: dict, domain: str | None) -> str:
           <button class="copy-button inline-copy" type="button" data-copy="{e_attr(links['router_skill_raw'])}">copy router url</button>
         </div>
       </div>
-      <p class="section-note">Use `production ready` for high-stakes audits. `Public beta` is recommended for active development workflows.</p>
+      <p class="section-note">Use <code>Production Ready</code> for high-stakes audits. <code>Public Beta</code> is recommended for active development workflows.</p>
       <div class="tier-stack">
         {modules_html}
       </div>
