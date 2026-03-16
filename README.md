@@ -41,9 +41,14 @@ Use the path that matches your runtime:
 # Full project scaffold
 npx create-starknet-agent@latest
 
+# Codex (local skill folder)
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git && cd starknet-agentic
+# Skills auto-discover via .agents/skills
+# Start Codex in this repo root
+
 # Claude Code marketplace
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills
+/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
 /reload-plugins
 
 # Invoke cairo audit workflow
@@ -54,7 +59,7 @@ npx create-starknet-agent@latest
 npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 ```
 
-For the full skill catalog and Cairo migration notes, see [skills/README.md](./skills/README.md) and [docs/CAIRO_SKILLS_MIGRATION.md](./docs/CAIRO_SKILLS_MIGRATION.md).
+For the full skill catalog, 2-minute install guides, and Cairo migration notes, see [skills/README.md](./skills/README.md), [docs/SKILLS_QUICKSTART.md](./docs/SKILLS_QUICKSTART.md), and [docs/CAIRO_SKILLS_MIGRATION.md](./docs/CAIRO_SKILLS_MIGRATION.md).
 
 ## System Requirements
 

@@ -12,6 +12,7 @@ import shutil
 from collections.abc import Iterable
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
@@ -365,6 +366,7 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
     router_skill_path = resolve_router_skill_path(root)
     quality_workflow = resolve_workflow_name(root, QUALITY_WORKFLOW_CANDIDATES)
     full_evals_workflow = resolve_workflow_name(root, FULL_EVALS_WORKFLOW_CANDIDATES)
+    skills_quickstart_path = require_file(root / "docs/SKILLS_QUICKSTART.md")
 
     cairo_auditor_module = next((item for item in modules if item["repo_path"] == "skills/cairo-auditor"), modules[0])
     cairo_auditor_readme_path = f"{cairo_auditor_module['repo_path']}/README.md"
@@ -435,6 +437,7 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
             require_file(root / DEFAULT_PLUGIN_PATH),
             require_file(root / DEFAULT_SKILLS_MANIFEST_PATH),
             require_file(root / router_skill_path),
+            skills_quickstart_path,
             *normalized_findings_files,
             *normalized_audits_files,
             *segment_files,
@@ -444,9 +447,11 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
             *scorecard_files,
         ],
     )
+    generated_at_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
     return {
         "source_fingerprint": source_fingerprint,
+        "generated_at_utc": generated_at_utc,
         "counts": {
             "cataloged_audits": len(manifests),
             "segmented_audits": segments_count,
@@ -487,6 +492,9 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
             "full_evals_workflow": f"{repo_github}/actions/workflows/{full_evals_workflow}",
             "heldout_policy": f"{repo_github}/blob/{repo_ref}/evals/heldout/README.md",
             "contributing": f"{repo_github}/blob/{repo_ref}/CONTRIBUTING.md",
+            "skills_readme": f"{repo_github}/blob/{repo_ref}/skills/README.md",
+            "skills_quickstart": f"{repo_github}/blob/{repo_ref}/{skills_quickstart_path.relative_to(root).as_posix()}",
+            "troubleshooting": f"{repo_github}/blob/{repo_ref}/{skills_quickstart_path.relative_to(root).as_posix()}#troubleshooting-matrix",
             "cairo_auditor_name": cairo_auditor_module["name"],
             "cairo_auditor": cairo_auditor_module["github_url"],
             "cairo_auditor_readme": f"{repo_github}/blob/{repo_ref}/{cairo_auditor_readme_path}",
@@ -515,6 +523,10 @@ def scorecard_to_dict(
 
 def e(value: object) -> str:
     return html.escape(str(value), quote=True)
+
+
+def e_attr(value: object) -> str:
+    return html.escape(str(value), quote=True).replace("\n", "&#10;").replace("\r", "&#13;")
 
 
 def fmt_int(value: int) -> str:
@@ -613,9 +625,39 @@ def command_block(title: str, description: str, code: str, accent: str = "") -> 
         f'<article class="command-card{modifier} reveal">'
         '<div class="command-head">'
         f"<div><h2>{e(title)}</h2><p>{e(description)}</p></div>"
-        f'<button class="copy-button" type="button" data-copy="{e(code)}" aria-label="Copy {e(title)}">copy</button>'
+        f'<button class="copy-button" type="button" data-copy="{e_attr(code)}" aria-label="Copy {e(title)}">copy</button>'
         "</div>"
         f'<pre><code>{e(code)}</code></pre>'
+        "</article>"
+    )
+
+
+def quickstart_card(sigil: str, surface: str, install: str, run: str, expected: str) -> str:
+    return (
+        '<article class="quickstart-card reveal">'
+        '<div class="quickstart-head">'
+        f'<span class="module-sigil">{e(sigil)}</span>'
+        f"<h3>{e(surface)}</h3>"
+        "</div>"
+        '<p class="meta-label">Install</p>'
+        f'<button class="copy-button inline-copy" type="button" data-copy="{e_attr(install)}" aria-label="Copy {e(surface)} install command">copy install</button>'
+        f'<pre><code>{e(install)}</code></pre>'
+        '<p class="meta-label">Run</p>'
+        f'<button class="copy-button inline-copy" type="button" data-copy="{e_attr(run)}" aria-label="Copy {e(surface)} run prompt">copy run</button>'
+        f'<pre><code>{e(run)}</code></pre>'
+        '<p class="meta-label">Expected result</p>'
+        f'<p class="section-note">{e(expected)}</p>'
+        "</article>"
+    )
+
+
+def compatibility_card(surface: str, install_scope: str, status: str, last_verified: str) -> str:
+    return (
+        '<article class="compat-card reveal">'
+        f"<h3>{e(surface)}</h3>"
+        f'<p>{e(status)}</p>'
+        f'<p class="compat-meta"><span>scope</span><code>{e(install_scope)}</code></p>'
+        f'<p class="compat-meta"><span>last verified</span><code>{e(last_verified)}</code></p>'
         "</article>"
     )
 
@@ -630,7 +672,7 @@ def module_card(item: dict) -> str:
         f'<h3><a href="{e(item["raw_skill_url"])}" target="_blank" rel="noreferrer">{e(item["name"])}</a></h3>'
         f'<p>{e(item["description"])}</p>'
         '<div class="module-actions">'
-        f'<button class="icon-button copy-button" type="button" data-copy="{e(item["raw_skill_url"])}" aria-label="Copy raw URL for {e(item["name"])}">cp</button>'
+        f'<button class="icon-button copy-button" type="button" data-copy="{e_attr(item["raw_skill_url"])}" aria-label="Copy raw URL for {e(item["name"])}">cp</button>'
         f'<a class="icon-button" href="{e(item["raw_skill_url"])}" target="_blank" rel="noreferrer" aria-label="Open raw SKILL.md for {e(item["name"])}">raw</a>'
         f'<a class="icon-button" href="{e(item["github_url"])}" target="_blank" rel="noreferrer" aria-label="Open GitHub page for {e(item["name"])}">gh</a>'
         "</div>"
@@ -681,11 +723,12 @@ def shared_script() -> str:
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const setCopied = (button) => {
-    const previous = button.textContent;
+    const original = button.getAttribute('data-label') || button.textContent || 'copy';
+    button.setAttribute('data-label', original);
     button.textContent = 'copied';
     button.classList.add('is-copied');
     window.setTimeout(() => {
-      button.textContent = previous;
+      button.textContent = original;
       button.classList.remove('is-copied');
     }, 2000);
   };
@@ -694,6 +737,8 @@ def shared_script() -> str:
     const copyButton = event.target.closest('.copy-button');
     if (copyButton) {
       const text = copyButton.getAttribute('data-copy');
+      const originalLabel = copyButton.getAttribute('data-label') || copyButton.textContent || 'copy';
+      copyButton.setAttribute('data-label', originalLabel);
       if (text) {
         try {
           await navigator.clipboard.writeText(text);
@@ -701,7 +746,7 @@ def shared_script() -> str:
         } catch (_error) {
           copyButton.textContent = 'failed';
           window.setTimeout(() => {
-            copyButton.textContent = copyButton.classList.contains('icon-button') ? 'cp' : 'copy';
+            copyButton.textContent = originalLabel;
           }, 1500);
         }
       }
@@ -771,6 +816,8 @@ def build_index_html(data: dict, domain: str | None) -> str:
     links = data["links"]
     scorecard = data["latest_scorecards"].get("realworld") or data["latest_scorecards"].get("deterministic")
     showcase_name = links.get("cairo_auditor_name", "cairo-auditor")
+    verified_date = str(data.get("generated_at_utc", ""))[:10] or "n/a"
+    repo_dir = links["repo_slug"].split("/")[-1]
 
     stats_bar = "\n".join(
         [
@@ -818,6 +865,8 @@ def build_index_html(data: dict, domain: str | None) -> str:
             verify_link("evals", links["full_evals_workflow"], "workflow"),
             verify_link("held-out", links["heldout_policy"], "policy"),
             verify_link("contributing", links["contributing"], "guide"),
+            verify_link("quickstart", links["skills_quickstart"], "2-minute"),
+            verify_link("troubleshooting", links["troubleshooting"], "matrix"),
             verify_link("vuln cards", "vuln-cards/", "index"),
             verify_link("site data", "data/site-data.json", "json"),
         ]
@@ -827,14 +876,83 @@ def build_index_html(data: dict, domain: str | None) -> str:
     secondary_commands = "\n".join(
         [
             command_block(
+                "Codex",
+                "Clone and auto-discover from .agents/skills.",
+                (
+                    f"git clone {links['repo']}.git && cd {repo_dir}\n"
+                    "# Skills auto-discover from .agents/skills\n"
+                    "# Start Codex from this repo root"
+                ),
+            ),
+            command_block(
                 "Claude",
                 "Install in Claude.",
                 (
                     f"/plugin marketplace add {links['repo_slug']}\n"
-                    f"/plugin install {links['plugin_name']}@{links['plugin_name']}"
+                    f"/plugin install {links['plugin_name']}@{links['plugin_name']} -s user\n"
+                    "/reload-plugins"
                 ),
             ),
-            command_block("Git clone", "Clone the repo locally.", f"git clone {links['repo']}.git"),
+            command_block(
+                "Skills CLI",
+                "Install one skill from GitHub.",
+                f"npx skills add {links['repo_slug']}/skills/cairo-auditor",
+            ),
+        ]
+    )
+    quickstart_cards = "\n".join(
+        [
+            quickstart_card(
+                "CDX",
+                "Codex",
+                (
+                    f"git clone {links['repo']}.git && cd {repo_dir}\n"
+                    "# Skills auto-discover from .agents/skills\n"
+                    "# Start Codex from this repo root"
+                ),
+                "Use $cairo-auditor to audit ./contracts and return only concrete exploitable findings.",
+                "Markdown report with file:line evidence, impact, exploit path, and secure fix diff.",
+            ),
+            quickstart_card(
+                "CLD",
+                "Claude Code",
+                (
+                    f"/plugin marketplace add {links['repo_slug']}\n"
+                    f"/plugin install {links['plugin_name']}@{links['plugin_name']} -s user\n"
+                    "/reload-plugins"
+                ),
+                "/cairo-auditor contracts/src/account.cairo",
+                "One focused finding list for the target file plus remediation guidance.",
+            ),
+            quickstart_card(
+                "CLI",
+                "Agent Skills CLI",
+                f"npx skills add {links['repo_slug']}/skills/cairo-auditor",
+                "Prompt your agent: Audit ./contracts with cairo-auditor and write findings.md",
+                "A reproducible `findings.md` artifact ready for PR review.",
+            ),
+        ]
+    )
+    compatibility_cards = "\n".join(
+        [
+            compatibility_card(
+                "Codex",
+                ".agents/skills",
+                "Best path for explicit skill invocation and local-repo auditing.",
+                verified_date,
+            ),
+            compatibility_card(
+                "Claude Code",
+                "plugin scope: user",
+                "Full command support via marketplace bundle and slash commands.",
+                verified_date,
+            ),
+            compatibility_card(
+                "Agent Skills CLI",
+                "tool-managed",
+                "Works in Cursor/Copilot/Roo/Windsurf/Goose through Agent Skills format.",
+                verified_date,
+            ),
         ]
     )
 
@@ -847,7 +965,9 @@ def build_index_html(data: dict, domain: str | None) -> str:
   <header class="topbar">
     <a class="brand" href="#top">starkskills</a>
     <nav class="site-nav" aria-label="Primary navigation">
+      <a href="#quickstart">quickstart</a>
       <a href="#skills">skills</a>
+      <a href="#compatibility">compatibility</a>
       <a href="#data">pipeline</a>
       {scorecard_nav}
       <a href="#verify">verify</a>
@@ -868,6 +988,33 @@ def build_index_html(data: dict, domain: str | None) -> str:
         <div class="command-stack">
           {secondary_commands}
         </div>
+      </div>
+    </section>
+
+    <section class="section reveal" id="quickstart">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Quickstart</p>
+          <h2>First useful result in 2 minutes</h2>
+        </div>
+        <a href="{e(links['skills_quickstart'])}" target="_blank" rel="noreferrer">full guide</a>
+      </div>
+      <div class="quickstart-grid">
+        {quickstart_cards}
+      </div>
+      <p class="section-note">Tip: run `cairo-contract-authoring` before `cairo-auditor` for higher signal and cleaner diffs.</p>
+    </section>
+
+    <section class="section reveal" id="compatibility">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Compatibility</p>
+          <h2>Install surfaces</h2>
+        </div>
+        <a href="{e(links['skills_readme'])}" target="_blank" rel="noreferrer">skills README</a>
+      </div>
+      <div class="compat-grid">
+        {compatibility_cards}
       </div>
     </section>
 
@@ -899,7 +1046,7 @@ def build_index_html(data: dict, domain: str | None) -> str:
         </div>
         <div class="section-links">
           <a href="{e(links['router_skill_github'])}" target="_blank" rel="noreferrer">router</a>
-          <button class="copy-button inline-copy" type="button" data-copy="{e(links['router_skill_raw'])}">copy router url</button>
+          <button class="copy-button inline-copy" type="button" data-copy="{e_attr(links['router_skill_raw'])}">copy router url</button>
         </div>
       </div>
       <div class="module-grid">

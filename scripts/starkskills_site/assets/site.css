@@ -384,6 +384,8 @@ code {
   font-size: 0.78rem;
 }
 
+.quickstart-grid,
+.compat-grid,
 .module-grid,
 .vuln-grid,
 .verify-grid {
@@ -392,6 +394,8 @@ code {
   gap: 16px;
 }
 
+.quickstart-card,
+.compat-card,
 .module-card,
 .vuln-card {
   position: relative;
@@ -410,6 +414,59 @@ code {
   transform: translateY(-2px);
   border-color: var(--accent);
   background: #131313;
+}
+
+.quickstart-card,
+.compat-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.quickstart-card:hover,
+.compat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  background: #131313;
+}
+
+.quickstart-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quickstart-head h3,
+.compat-card h3 {
+  font-size: 1rem;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+}
+
+.quickstart-card .inline-copy {
+  width: fit-content;
+}
+
+.compat-card p {
+  color: var(--muted);
+}
+
+.compat-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.compat-meta span {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+}
+
+.compat-meta code {
+  font-size: 0.74rem;
 }
 
 .module-sigil {
@@ -742,6 +799,8 @@ code {
   .module-grid,
   .vuln-grid,
   .verify-grid,
+  .quickstart-grid,
+  .compat-grid,
   .prompt-grid {
     grid-template-columns: 1fr;
   }
