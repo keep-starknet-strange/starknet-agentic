@@ -3,31 +3,15 @@
   "repo": "keep-starknet-strange/starknet-agentic",
   "skills": [
     {
-      "description": "Starknet account abstraction correctness and security guidance for validate/execute paths, nonces, signatures, and session policies.",
-      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/account-abstraction",
-      "name": "account-abstraction",
-      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/account-abstraction/SKILL.md",
-      "repo_path": "skills/account-abstraction",
-      "skill_md_path": "skills/account-abstraction/SKILL.md"
+      "description": "Use when writing Cairo smart contracts on Starknet \u2014 contract structure, storage, events, interfaces, components, OpenZeppelin v3 patterns, and common contract templates.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-contracts",
+      "name": "cairo-contracts",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-contracts/SKILL.md",
+      "repo_path": "skills/cairo-contracts",
+      "skill_md_path": "skills/cairo-contracts/SKILL.md"
     },
     {
-      "description": "Security audit of Cairo/Starknet code. Trigger on \"audit\", \"check this contract\", \"review for security\". Modes - default (full repo), deep (+ adversarial reasoning), or specific filenames.",
-      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
-      "name": "cairo-auditor",
-      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-auditor/SKILL.md",
-      "repo_path": "skills/cairo-auditor",
-      "skill_md_path": "skills/cairo-auditor/SKILL.md"
-    },
-    {
-      "description": "Cairo smart-contract authoring on Starknet. Trigger on \"write a contract\", \"create a contract\", \"implement this in Cairo\", \"add storage/events/interface\", \"compose components\". Guides structure, security patterns, and component wiring.",
-      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-contract-authoring",
-      "name": "cairo-contract-authoring",
-      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-contract-authoring/SKILL.md",
-      "repo_path": "skills/cairo-contract-authoring",
-      "skill_md_path": "skills/cairo-contract-authoring/SKILL.md"
-    },
-    {
-      "description": "Deployment guidance for Cairo contracts on Starknet covering sncast commands, account setup, declare/deploy workflow, network configuration, and contract verification.",
+      "description": "Use when deploying Cairo contracts to Starknet \u2014 sncast commands, account setup, declare/deploy workflow, network configuration, contract verification.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-deploy",
       "name": "cairo-deploy",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-deploy/SKILL.md",
@@ -35,7 +19,7 @@
       "skill_md_path": "skills/cairo-deploy/SKILL.md"
     },
     {
-      "description": "Improves Cairo performance after correctness is established. Trigger on \"optimize\", \"gas usage\", \"reduce steps\", \"profile\", \"BoundedInt\", \"storage packing\", \"benchmark\". Guides profiling, arithmetic optimization, and bounded-int hardening.",
+      "description": "Use as an explicit post-test optimization pass \u2014 fixing slow loops, expensive arithmetic, integer splitting or limb assembly, modular reduction, storage slot packing, or BoundedInt type bounds. Invoke after implementation and tests pass.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-optimization",
       "name": "cairo-optimization",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-optimization/SKILL.md",
@@ -43,7 +27,15 @@
       "skill_md_path": "skills/cairo-optimization/SKILL.md"
     },
     {
-      "description": "Cairo smart-contract testing with snforge. Trigger on \"write tests\", \"add unit tests\", \"fuzz test\", \"integration test\", \"test this contract\", \"regression test\". Guides test strategy, cheatcode usage, and coverage.",
+      "description": "Use when reviewing Cairo contracts for security \u2014 common vulnerabilities, audit patterns, production hardening, Cairo-specific pitfalls, L1/L2 bridging safety, session key security, precision/rounding bugs, static analysis tooling. Sourced from 50+ public audits and the Cairo Book.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-security",
+      "name": "cairo-security",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-security/SKILL.md",
+      "repo_path": "skills/cairo-security",
+      "skill_md_path": "skills/cairo-security/SKILL.md"
+    },
+    {
+      "description": "Use when writing tests for Cairo smart contracts \u2014 snforge test structure, contract deployment in tests, cheatcodes, event testing, fuzzing, fork testing.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-testing",
       "name": "cairo-testing",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-testing/SKILL.md",
@@ -51,7 +43,7 @@
       "skill_md_path": "skills/cairo-testing/SKILL.md"
     },
     {
-      "description": "Guidance for installing and operating the Cartridge Controller CLI (`controller`) to create human-approved sessions and execute Starknet transactions with JSON output, explicit network selection, scoped policies, paymaster control, and error recovery.",
+      "description": "Use when installing and operating the Cartridge Controller CLI (`controller`) to create human-approved sessions and execute Starknet transactions (JSON-only, explicit network selection, least-privilege policy scoping, paymaster control, and error recovery).",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/controller-cli",
       "name": "controller-cli",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/controller-cli/SKILL.md",
@@ -91,7 +83,7 @@
       "skill_md_path": "skills/starknet-identity/SKILL.md"
     },
     {
-      "description": "Reference for building Starknet applications using starknet.js v9.x SDK, including contract interaction, account management, transaction handling, fee estimation, wallet integration, and paymaster flows.",
+      "description": "Guide for building Starknet applications using starknet.js v9.x SDK. Use when developing Starknet dApps, interacting with smart contracts, managing accounts, handling transactions, estimating fees, integrating browser wallets, or working with Paymaster for sponsored/alternative gas token transactions.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-js",
       "name": "starknet-js",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-js/SKILL.md",
@@ -105,14 +97,6 @@
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-mini-pay/SKILL.md",
       "repo_path": "skills/starknet-mini-pay",
       "skill_md_path": "skills/starknet-mini-pay/SKILL.md"
-    },
-    {
-      "description": "Starknet network-level constraints and protocol facts that impact contract safety and agent reasoning.",
-      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-network-facts",
-      "name": "starknet-network-facts",
-      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-network-facts/SKILL.md",
-      "repo_path": "skills/starknet-network-facts",
-      "skill_md_path": "skills/starknet-network-facts/SKILL.md"
     },
     {
       "description": "Confidential ERC20 payments on Starknet using Tongo protocol. Fund, transfer, withdraw, and rollover encrypted token balances with zero-knowledge proofs. Use when the user needs privacy-preserving transactions, confidential payments, encrypted balances, or auditable private transfers on Starknet.",
@@ -131,7 +115,7 @@
       "skill_md_path": "skills/starknet-wallet/SKILL.md"
     },
     {
-      "description": "Reference for integrating or maintaining applications built with keep-starknet-strange/starkzap, including StarkSDK setup, onboarding, wallet lifecycle, sponsored transactions, ERC20 flows, staking, and transaction builder usage.",
+      "description": "Use when integrating or maintaining applications built with keep-starknet-strange/starkzap. Covers StarkSDK setup, onboarding (Signer/Privy/Cartridge), wallet lifecycle, sponsored transactions, ERC20 transfers, staking flows, tx builder batching, examples, tests, and generated presets.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starkzap-sdk",
       "name": "starkzap-sdk",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starkzap-sdk/SKILL.md",

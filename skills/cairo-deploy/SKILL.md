@@ -1,6 +1,6 @@
 ---
 name: cairo-deploy
-description: Deployment guidance for Cairo contracts on Starknet covering sncast commands, account setup, declare/deploy workflow, network configuration, and contract verification.
+description: Use when deploying Cairo contracts to Starknet — sncast commands, account setup, declare/deploy workflow, network configuration, contract verification.
 license: Apache-2.0
 metadata: {"author":"starknet-agentic","version":"1.0.0","org":"keep-starknet-strange"}
 keywords: [cairo, deploy, sncast, starknet, devnet, sepolia, mainnet, declare, verification]
@@ -21,17 +21,7 @@ Reference for deploying Cairo smart contracts to Starknet using sncast (Starknet
 - Verifying deployed contracts
 - Invoking/calling deployed contracts
 
-## When NOT to Use
-
-- Writing or refactoring contract logic (`cairo-contract-authoring`).
-- Unit, integration, or fuzz testing (`cairo-testing`).
-- Gas or performance optimization (`cairo-optimization`).
-- Security review of existing code (`cairo-auditor`).
-
-## Quick Start
-
-1. Build with `scarb build`, then declare and deploy with `sncast`.
-2. Use [skills catalog](../README.md) when the task moves back into authoring, testing, or auditing.
+**Not for:** Writing contracts (use cairo-contracts), testing (use cairo-testing), optimization (use cairo-optimization)
 
 ## Setup
 
@@ -91,7 +81,7 @@ sncast account deploy \
 ### Import Existing Account
 
 ```bash
-sncast account import \
+sncast account add \
     --url https://starknet-sepolia.g.alchemy.com/v2/YOUR_KEY \
     --name my-deployer \
     --address 0x123... \
@@ -178,29 +168,6 @@ sncast call \
     --calldata 0xACCOUNT
 ```
 
-## Programmatic Deployment (starknet.js)
-
-```ts
-import { Account, CallData, Contract, RpcProvider } from "starknet";
-
-const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
-const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
-
-const declareTx = await account.declare({ contract: compiledSierra, casm: compiledCasm });
-await provider.waitForTransaction(declareTx.transaction_hash);
-
-const deployTx = await account.deploy({
-  classHash: declareTx.class_hash,
-  constructorCalldata: CallData.compile({ owner: process.env.OWNER! }),
-});
-await provider.waitForTransaction(deployTx.transaction_hash);
-
-const contract = new Contract(abi, deployTx.contract_address[0], provider).connect(account);
-await contract.invoke("set_fee", [10]);
-const fee = await contract.call("get_fee", []);
-console.log({ fee });
-```
-
 ## Multicall
 
 Execute multiple calls in a single transaction:
@@ -238,18 +205,18 @@ echo "Building..."
 scarb build
 
 echo "Declaring MyToken..."
-TOKEN_CLASS=$(sncast --json declare --contract-name MyToken --url $RPC_URL --account $ACCOUNT | jq -r '.class_hash')
+TOKEN_CLASS=$(sncast declare --contract-name MyToken --url $RPC_URL --account $ACCOUNT | grep "class_hash" | awk '{print $2}')
 echo "Token class: $TOKEN_CLASS"
 
 echo "Deploying MyToken..."
-TOKEN_ADDR=$(sncast --json deploy --class-hash $TOKEN_CLASS --constructor-calldata 0xOWNER --url $RPC_URL --account $ACCOUNT | jq -r '.contract_address')
+TOKEN_ADDR=$(sncast deploy --class-hash $TOKEN_CLASS --constructor-calldata 0xOWNER --url $RPC_URL --account $ACCOUNT | grep "contract_address" | awk '{print $2}')
 echo "Token deployed at: $TOKEN_ADDR"
 
 echo "Declaring AMM..."
-AMM_CLASS=$(sncast --json declare --contract-name AMM --url $RPC_URL --account $ACCOUNT | jq -r '.class_hash')
+AMM_CLASS=$(sncast declare --contract-name AMM --url $RPC_URL --account $ACCOUNT | grep "class_hash" | awk '{print $2}')
 
 echo "Deploying AMM..."
-AMM_ADDR=$(sncast --json deploy --class-hash $AMM_CLASS --constructor-calldata $TOKEN_ADDR --url $RPC_URL --account $ACCOUNT | jq -r '.contract_address')
+AMM_ADDR=$(sncast deploy --class-hash $AMM_CLASS --constructor-calldata $TOKEN_ADDR --url $RPC_URL --account $ACCOUNT | grep "contract_address" | awk '{print $2}')
 echo "AMM deployed at: $AMM_ADDR"
 
 echo "Done. Addresses:"
@@ -289,7 +256,7 @@ Verify source code on Voyager or Starkscan:
 # https://app.walnut.dev
 ```
 
-> **Note:** `sncast verify` supports both Walnut and Voyager backends. Use `--verifier walnut` or `--verifier voyager` explicitly.
+> **Note:** `sncast verify` currently only supports the Walnut verification backend. Voyager and Starkscan verification must be done through their respective web UIs.
 
 ## Upgradeable Contracts
 
