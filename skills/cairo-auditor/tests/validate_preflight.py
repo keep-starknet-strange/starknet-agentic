@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = ROOT / "scripts" / "quality" / "audit_local_repo.py"
+FIXTURES = ROOT / "tests" / "fixtures"
+
+CASES = [
+    {
+        "name": "insecure_upgrade_controller",
+        "expected_classes": {
+            "NO_ACCESS_CONTROL_MUTATION",
+            "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+            "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD",
+        },
+        "expected_findings_min": 3,
+    },
+    {
+        "name": "secure_upgrade_controller",
+        "expected_classes": set(),
+        "expected_findings_exact": 0,
+    },
+    {
+        "name": "insecure_embed_upgrade_controller",
+        "expected_classes": {
+            "NO_ACCESS_CONTROL_MUTATION",
+            "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+            "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD",
+        },
+        "expected_findings_min": 3,
+    },
+    {
+        "name": "caller_read_without_auth",
+        "expected_classes": {"NO_ACCESS_CONTROL_MUTATION"},
+        "expected_findings_exact": 1,
+    },
+]
+
+
+def run_case(case: dict[str, object]) -> tuple[bool, str]:
+    fixture = FIXTURES / str(case["name"])
+    cmd = [
+        "python3",
+        str(SCRIPT),
+        "--repo-root",
+        str(fixture),
+        "--scan-id",
+        f"fixture-{case['name']}",
+        "--output-dir",
+        "/tmp",
+    ]
+    proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
+    if proc.returncode != 0:
+        return False, f"{case['name']}: scanner exited {proc.returncode}: {proc.stderr.strip()}"
+
+    raw_stdout = proc.stdout.strip()
+    if not raw_stdout:
+        return False, f"{case['name']}: scanner produced empty stdout"
+    if "\n" in raw_stdout:
+        return False, f"{case['name']}: unexpected multi-line stdout: {raw_stdout!r}"
+
+    try:
+        payload = json.loads(raw_stdout)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"{case['name']}: failed to parse scanner JSON output: {exc}"
+
+    findings = int(payload.get("findings", -1))
+    classes = set(payload.get("class_counts", {}).keys())
+
+    if "expected_findings_exact" in case and findings != int(case["expected_findings_exact"]):
+        return (
+            False,
+            f"{case['name']}: expected findings={case['expected_findings_exact']}, got {findings}",
+        )
+
+    if "expected_findings_min" in case and findings < int(case["expected_findings_min"]):
+        return (
+            False,
+            f"{case['name']}: expected findings>={case['expected_findings_min']}, got {findings}",
+        )
+
+    expected_classes = set(case.get("expected_classes", set()))
+    if not expected_classes.issubset(classes):
+        return (
+            False,
+            f"{case['name']}: missing classes {sorted(expected_classes - classes)}; got {sorted(classes)}",
+        )
+
+    return True, f"{case['name']}: ok (findings={findings}, classes={sorted(classes)})"
+
+
+def main() -> int:
+    if not SCRIPT.exists():
+        print(f"missing scanner script: {SCRIPT}", file=sys.stderr)
+        return 1
+
+    failures: list[str] = []
+    for case in CASES:
+        ok, msg = run_case(case)
+        print(msg)
+        if not ok:
+            failures.append(msg)
+
+    if failures:
+        print("\nfixture validation failed", file=sys.stderr)
+        return 1
+
+    print("\nall fixture checks passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
