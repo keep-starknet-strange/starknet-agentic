@@ -78,6 +78,8 @@ Audit src/contracts/account.cairo with cairo-auditor deep mode.
 
 ### Deterministic local scan (no AI)
 
+Run this from a clone of `keep-starknet-strange/starknet-agentic` at repository root, since this helper script ships with the repository.
+
 ```bash
 python3 scripts/quality/audit_local_repo.py \
   --repo-root /path/to/your/cairo-repo \
