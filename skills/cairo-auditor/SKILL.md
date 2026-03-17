@@ -244,15 +244,16 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 - In **deep** mode, if any required specialist agent (1-4 or 5) cannot be spawned or returns unavailable, treat the run as failed unless `--allow-degraded` is explicitly present.
 - On failure, stop before findings and print `CAUD-006` with a one-line reason plus host remediation hints.
 - If a specialist output is malformed (not `No findings.` and not valid finding blocks), rerun that specialist once; if still malformed, treat it as unavailable.
-**Turn 4 — Report.** Merge all agent results:
+**Turn 4 — Report.** Merge all agent results and emit the report in canonical order:
 
-1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details).
-2. Sort by confidence highest-first.
-3. Re-number sequentially.
-4. Insert the **Below Confidence Threshold** separator row at confidence < 75.
+1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence).
+2. Sort findings by priority (`P0` first); within each priority tier sort by confidence (highest first).
+3. Re-number findings sequentially starting at `1`.
+4. Insert one **Below Confidence Threshold** separator row in the findings index immediately before the first finding with confidence < 75.
 5. Print findings directly — do not re-draft or re-describe them.
-6. Add scope table and findings index table per report-formatting.md.
-7. Add the disclaimer.
+6. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Findings Index`.
+7. Add scope table and findings index table per report-formatting.md.
+8. Add the disclaimer.
 
 If `--file-output` is set, write the report to `{repo-root}/security-review-{timestamp}.md` and print the path.
 

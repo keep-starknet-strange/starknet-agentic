@@ -40,6 +40,7 @@ Use this structure for each surviving candidate in your reasoning:
 - Drop findings that cannot produce a concrete path to impact.
 - Drop findings that rely on hypothetical off-chain behavior without in-code trigger.
 - If two findings share one root cause, keep the higher-confidence finding and merge path details.
+- If confidence ties, keep higher priority; if priority also ties, keep the finding with more complete path evidence.
 
 ## Scope Constraints
 

@@ -123,6 +123,7 @@ If failed (required stages failed and degraded mode was not explicitly enabled),
 
 - Follow the template above exactly.
 - Always include `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, and `Findings Index` in that order.
+- In `Signal Summary`, `Total` must equal `Critical + High + Medium + Low`. If any input `Total` differs, recompute and overwrite it.
 - `Execution Trace` must include scope discovery and Agents 1-4 for every run.
 - In deep mode, `Execution Trace` must include Agent 5 with actual model label and status.
 - In non-deep modes, keep Agent 5 row with `Status: SKIPPED`.
@@ -157,5 +158,7 @@ Use this exact per-finding structure:
 When two findings share the same root cause, keep one:
 
 - keep higher confidence,
+- on confidence tie, keep higher priority (`P0` > `P1` > `P2` > `P3`),
+- if both tie, keep the finding with the more complete path/evidence,
 - merge broader attack path details,
 - keep a single fix/test block.
