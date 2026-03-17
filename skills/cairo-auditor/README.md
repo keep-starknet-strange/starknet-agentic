@@ -95,9 +95,11 @@ More installation and troubleshooting flows: [../../docs/SKILLS_QUICKSTART.md](.
 
 ## Deep mode reliability
 
-Deep mode needs 5 specialist agents (4 vector + 1 adversarial) and is fail-closed by default.
+Deep mode needs 5 specialist agents (4 vector + 1 adversarial).
 
-- If specialist agents are unavailable, it returns `CAUD-006`/`CAUD-007` and stops before findings.
+- On hosts with deep-mode enforcement enabled, specialist unavailability returns `CAUD-006` and stops before findings unless `--allow-degraded` is explicitly set.
+- On hosts with preflight enforcement enabled, failed capability preflight returns `CAUD-007` and stops before findings unless `--allow-degraded` is explicitly set.
+- On non-enforcing hosts, fail-closed is not guaranteed; degraded execution may proceed based on host behavior.
 - Use `--allow-degraded` only when you intentionally accept reduced coverage.
 - For Codex stability, keep CLI updated (`npm i -g @openai/codex`).
 
