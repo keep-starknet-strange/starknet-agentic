@@ -3,14 +3,14 @@
 Goal: get a concrete `audit-report.md` artifact from `cairo-auditor` in under
 2 minutes.
 
-Pinned reproducible ref used below: `v0.1.0-beta.1`.
+Pinned reproducible ref used for URL-based install examples below: `v0.1.0-beta.1`.
 
 ## 1) Codex
 
 Install:
 
 ```bash
-$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
 ```
 
 Prompt:
@@ -34,6 +34,8 @@ Install (project-local scope recommended):
 /reload-plugins
 ```
 
+Note: marketplace/plugin installs resolve published bundle metadata rather than a Git ref.
+
 Prompt:
 
 ```text
@@ -52,6 +54,8 @@ Install:
 ```bash
 npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 ```
+
+Note: this command is not Git-ref pinned as written.
 
 Prompt (in your host runtime after install):
 

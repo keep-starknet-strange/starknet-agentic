@@ -46,7 +46,7 @@ class CodexDistributionTests(unittest.TestCase):
 
             errors = MODULE.codex_symlink_errors(root)
 
-            assert errors == []
+            self.assertEqual(errors, [])
 
     def test_codex_symlink_errors_reports_missing_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -56,7 +56,7 @@ class CodexDistributionTests(unittest.TestCase):
 
             errors = MODULE.codex_symlink_errors(root)
 
-            assert any("missing Codex symlink" in error for error in errors), errors
+            self.assertTrue(any("missing Codex symlink" in error for error in errors), errors)
 
     def test_codex_symlink_errors_reports_non_symlink_entry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -66,14 +66,14 @@ class CodexDistributionTests(unittest.TestCase):
 
             errors = MODULE.codex_symlink_errors(root)
 
-            assert any("not a symlink" in error for error in errors), errors
+            self.assertTrue(any("not a symlink" in error for error in errors), errors)
 
     def test_metadata_errors_reports_missing_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             errors = MODULE.metadata_errors(root)
 
-            assert any("missing Codex metadata" in error for error in errors), errors
+            self.assertTrue(any("missing Codex metadata" in error for error in errors), errors)
 
     def test_metadata_errors_reports_invalid_policy_type(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -94,7 +94,7 @@ policy:
 
             errors = MODULE.metadata_errors(root)
 
-            assert any("policy.allow_implicit_invocation" in error for error in errors), errors
+            self.assertTrue(any("policy.allow_implicit_invocation" in error for error in errors), errors)
 
     def test_install_doc_errors_reports_placeholder_marker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -102,7 +102,7 @@ policy:
             write_file(
                 root / "README.md",
                 "\n".join(MODULE.INSTALL_MARKERS[Path("README.md")])
-                + "\n$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/<ref>/skills/cairo-auditor\n",
+                + "\nskill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/<ref>/skills/cairo-auditor\n",
             )
             write_file(root / "skills" / "README.md", "\n".join(MODULE.INSTALL_MARKERS[Path("skills/README.md")]))
             write_file(
@@ -112,7 +112,7 @@ policy:
 
             errors = MODULE.install_doc_errors(root)
 
-            assert any("placeholder install markers" in error for error in errors), errors
+            self.assertTrue(any("placeholder install markers" in error for error in errors), errors)
 
     def test_install_doc_errors_reports_missing_markers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -123,8 +123,8 @@ policy:
 
             errors = MODULE.install_doc_errors(root)
 
-            assert len(errors) == 3
-            assert all("missing install markers" in error for error in errors), errors
+            self.assertEqual(len(errors), 3)
+            self.assertTrue(all("missing install markers" in error for error in errors), errors)
 
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ This repository includes:
 
 `todo -> inprogress -> inreview -> done`
 
-`blocked` can be entered from any state when waiting on a dependency or decision.
+The `blocked` state can be entered from any state when waiting on a dependency or decision.
 
 ## Work Protocol
 

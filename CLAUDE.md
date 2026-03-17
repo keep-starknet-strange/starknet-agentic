@@ -68,6 +68,8 @@ starknet-agentic/
 │   ├── GOOD_FIRST_ISSUES.md              # Contributor starter issues
 │   └── TROUBLESHOOTING.md                # Common issues and solutions
 ├── website/                              # Next.js documentation site (Vercel)
+├── .agents/
+│   └── skills/                           # Codex discovery bridge symlinked to skills/*
 ├── AGENTS.md                             # Canonical agent mission and coordination
 ├── CLAUDE.md                             # This file
 └── package.json                          # Root monorepo (pnpm workspaces)

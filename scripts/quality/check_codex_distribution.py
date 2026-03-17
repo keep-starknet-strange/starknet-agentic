@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -10,6 +12,9 @@ from typing import Any
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_REPO_SLUG = "keep-starknet-strange/starknet-agentic"
+DEFAULT_PUBLIC_REF = "main"
+DEFAULT_PINNED_REF = "v0.1.0-beta.1"
 PUBLIC_SKILLS = [
     "account-abstraction",
     "cairo-auditor",
@@ -29,26 +34,57 @@ PUBLIC_SKILLS = [
     "starknet-wallet",
     "starkzap-sdk",
 ]
-PINNED_REF = "v0.1.0-beta.1"
+
+
+def _latest_release_ref(root: Path = ROOT) -> str:
+    changelog = root / "CHANGELOG.md"
+    try:
+        lines = changelog.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return DEFAULT_PINNED_REF
+
+    release_heading = re.compile(r"^## \[([^\]]+)\]\s+-\s+\d{4}-\d{2}-\d{2}$")
+    for raw_line in lines:
+        line = raw_line.strip()
+        match = release_heading.match(line)
+        if not match:
+            continue
+        version = match.group(1).strip()
+        if version.lower() == "unreleased":
+            continue
+        return version if version.startswith("v") else f"v{version}"
+    return DEFAULT_PINNED_REF
+
+
+REPO_SLUG = (os.getenv("PUBLIC_REPO_SLUG", DEFAULT_REPO_SLUG) or DEFAULT_REPO_SLUG).strip("/")
+PUBLIC_REF = (os.getenv("PUBLIC_SKILL_REF", DEFAULT_PUBLIC_REF) or DEFAULT_PUBLIC_REF).strip()
+DEFAULT_RELEASE_REF = _latest_release_ref()
+PINNED_REF = (os.getenv("PUBLIC_PINNED_REF", DEFAULT_RELEASE_REF) or DEFAULT_RELEASE_REF).strip()
+
+
+def _auditor_skill_url(ref: str) -> str:
+    return f"https://github.com/{REPO_SLUG}/tree/{ref}/skills/cairo-auditor"
+
+
 INSTALL_MARKERS = {
     Path("README.md"): [
-        "$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor",
-        f"$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/{PINNED_REF}/skills/cairo-auditor",
+        f"skill-installer install {_auditor_skill_url(PUBLIC_REF)}",
+        f"skill-installer install {_auditor_skill_url(PINNED_REF)}",
         "/plugin marketplace add keep-starknet-strange/starknet-agentic",
         "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
         "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
     ],
     Path("skills/README.md"): [
-        "$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor",
-        f"$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/{PINNED_REF}/skills/cairo-auditor",
+        f"skill-installer install {_auditor_skill_url(PUBLIC_REF)}",
+        f"skill-installer install {_auditor_skill_url(PINNED_REF)}",
         "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
         "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
         "./QUICKSTART_2MIN.md",
         "./TROUBLESHOOTING.md",
     ],
     Path("skills/cairo-auditor/README.md"): [
-        "$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor",
-        f"$skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/{PINNED_REF}/skills/cairo-auditor",
+        f"skill-installer install {_auditor_skill_url(PUBLIC_REF)}",
+        f"skill-installer install {_auditor_skill_url(PINNED_REF)}",
         "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
         "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
         "../QUICKSTART_2MIN.md",
@@ -95,7 +131,7 @@ def codex_symlink_errors(root: Path = ROOT) -> list[str]:
 def _load_yaml(path: Path) -> dict[str, Any] | None:
     try:
         parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except OSError:
+    except (OSError, yaml.YAMLError):
         return None
     if not isinstance(parsed, dict):
         return None
