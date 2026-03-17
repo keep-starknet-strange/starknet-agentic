@@ -39,6 +39,10 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 
 `Execution Integrity: <FULL|DEGRADED|FAILED>`
 
+When degraded:
+
+`WARNING: degraded execution (specialist agents unavailable or strict-model fallback)`
+
 ---
 
 ## Execution Trace
@@ -110,6 +114,20 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 
 ---
 
+## Dropped Candidates
+
+| Candidate | Class | Drop Reason |
+|-----------|-------|-------------|
+| `<candidate title>` | `CLASS_ID` | `false_positive` |
+| `<candidate title>` | `CLASS_ID` | `duplicate_root_cause` |
+| `none` | `n/a` | `n/a` |
+
+---
+
+`WARNING: degraded execution may omit exploitable paths`
+
+---
+
 ## Findings Index
 
 | # | Priority | Confidence | Severity | Title |
@@ -129,7 +147,7 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 ## Rules
 
 - Follow the template above exactly.
-- Always include `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, and `Findings Index` in that order.
+- Always include `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Dropped Candidates`, and `Findings Index` in that order.
 - In `Signal Summary`, `Total` must equal `Critical + High + Medium + Low`. If any input `Total` differs, recompute and overwrite it.
 - `Execution Trace` must include scope discovery and Agents 1-4 for every run.
 - In deep mode, `Execution Trace` must include Agent 5 with actual model label and status.
@@ -138,6 +156,7 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 - Keep the optional threat-intel row in the execution trace. Use `SKIPPED` when intel fetch is unavailable/offline.
 - If any specialist is unavailable and degraded mode is explicitly enabled, set `Execution Integrity: DEGRADED` and include the warning line under Scope.
 - If scope discovery or any required stage (Agents 1-4 and Agent 5 in deep mode) has `Status: FAILED` and degraded mode is not explicitly enabled, set `Execution Integrity: FAILED` and abort report generation (no findings output).
+- If degraded execution is used, repeat the warning again immediately before `Findings Index`.
 - Sort findings by priority (`P0` first); within each priority tier, sort by confidence (highest first).
 - Findings below threshold (confidence < 75) get a description but no **Fix** block and no **Required Tests** block.
 - After filtering/deduplication/sorting, renumber findings sequentially starting at `1`.
@@ -145,6 +164,8 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 - Threat-intel signals are prioritization hints only. Do not include intel-only findings; each reported finding must be proven from in-scope code and pass FP gate.
 - If any findings have confidence < 75, insert one **Below Confidence Threshold** separator row in the Findings Index immediately before the first below-threshold finding.
 - Findings that fail FP gate must be dropped entirely and not reported.
+- Track dropped candidates in `Dropped Candidates` with one of: `false_positive`, `duplicate_root_cause`, `below_confidence_threshold`, `insufficient_evidence`.
+- If no candidates are dropped, still emit `Dropped Candidates` with a single `none` row.
 
 ## Finding Template (per finding)
 

@@ -103,6 +103,38 @@ Optional threat-intel enrichment (deep mode):
 - helps prioritize vectors,
 - never creates findings by itself (local in-scope FP-gated proof is still required).
 
+### Full-power verification
+
+Use these checks after any deep run to confirm specialist fanout and report artifact quality.
+
+**Codex**
+
+```bash
+cat /tmp/cairo-audit-host-capabilities.json
+wc -l /tmp/cairo-audit-agent-*-bundle.md
+ls -lt security-review-*.md | head -n 1
+```
+
+Expected:
+
+- capability file exists and reports `agent_tool` available,
+- four bundle files exist with non-zero lines,
+- latest `security-review-*.md` has `Execution Integrity: FULL` and at least one finding on vulnerable fixtures.
+
+**Claude Code**
+
+```bash
+/plugin marketplace list
+/plugin list
+/reload-plugins
+```
+
+Then run deep mode and verify the generated report includes:
+
+- `Execution Trace` rows for Agents 1-4 and Agent 5 adversarial,
+- observed model labels (`sonnet` vectors, `opus` adversarial),
+- `Execution Integrity: FULL` (or explicit degraded warning if `--allow-degraded` was intentionally used).
+
 ### Deterministic local scan (no AI)
 
 Run this from a clone of `keep-starknet-strange/starknet-agentic` at repository root, since this helper script ships with the repository.
@@ -112,6 +144,21 @@ python3 scripts/quality/audit_local_repo.py \
   --repo-root /path/to/your/cairo-repo \
   --scan-id my-audit
 ```
+
+### Release sync (maintainers)
+
+```bash
+python3 scripts/quality/sync_cairo_auditor_release.py \
+  --skill-version 0.2.2 \
+  --plugin-version 1.0.4
+```
+
+This updates:
+
+- `skills/cairo-auditor/VERSION`
+- `skills/cairo-auditor/SKILL.md` metadata version
+- `.claude-plugin/plugin.json` version
+- `.claude-plugin/marketplace.json` metadata/plugin versions
 
 ## Example output
 

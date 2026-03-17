@@ -52,6 +52,7 @@ try {
 | `CAUD-006` | Deep mode requested but specialist agents unavailable | Re-run in an environment with Agent tool support. Where fail-closed enforcement is enabled, `--allow-degraded` explicitly permits fallback. |
 | `CAUD-007` | Deep mode host capability preflight failed | For hosts with preflight enforcement enabled, surface remediation and stop before findings unless `--allow-degraded` is explicitly present. |
 | `CAUD-008` | Agent transport instability or stalled specialist completion | Retry failed/stalled specialists once. In hosts with deep-mode enforcement enabled, unresolved specialist outages are treated as fail-closed unless explicitly degraded. |
+| `CAUD-009` | Strict-model requirement could not be satisfied | Re-run on a host that supports required models, or omit `--strict-models` to allow documented fallback. |
 
 ## When to Use
 
@@ -87,6 +88,7 @@ try {
 
 - `--file-output` (off by default): also write the report to a markdown file. Without this flag, output goes to the terminal only.
 - `--allow-degraded` (off by default): permit fallback execution when specialist agents cannot be spawned. On hosts with deep-mode enforcement enabled, this flag opts into degraded execution.
+- `--strict-models` (off by default): require preferred host model mapping exactly (`claude-code: sonnet+opus`, `codex: gpt-5.4`). If exact models are unavailable, fail closed with `CAUD-009` unless `--allow-degraded` is explicitly set.
 
 ## Host Capability Preflight (Deep Mode, Experimental)
 
@@ -119,12 +121,18 @@ Select specialist model labels from detected host before spawning:
 - `codex`
   - `VECTOR_MODEL=gpt-5.4`
   - `ADVERSARIAL_MODEL=gpt-5.4`
-  - If `gpt-5.4` is unavailable, fallback to `gpt-5-codex` for both.
+  - If `gpt-5.4` is unavailable and `--strict-models` is not set, fallback to `gpt-5-codex` for both.
 - `unknown`
   - `VECTOR_MODEL=sonnet`
   - `ADVERSARIAL_MODEL=opus`
 
 Persist the selected plan to `{workdir}/cairo-audit-model-plan.txt` and keep model labels in the execution trace as observed runtime values (not assumptions).
+
+Strict-model gate:
+
+- When `--strict-models` is set, do not silently fallback.
+- If preferred host mapping cannot be satisfied, emit `CAUD-009` and stop before findings unless `--allow-degraded` is explicitly present.
+- If degraded execution is explicitly permitted, continue with resolved fallback labels and mark `Execution Integrity: DEGRADED`.
 
 ## Orchestration
 
@@ -307,6 +315,7 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 - In **deep** mode, if any required specialist agent (1-4 or 5) cannot be spawned or returns unavailable, treat the run as failed unless `--allow-degraded` is explicitly present.
 - On failure, stop before findings and print `CAUD-006` with a one-line reason plus host remediation hints.
 - If a specialist output is malformed (not `No findings.` and not valid finding blocks), rerun that specialist once; if still malformed, treat it as unavailable.
+- When `--strict-models` is set, treat model fallback as unavailable capability and enforce the same fail-closed behavior (`CAUD-009`) unless `--allow-degraded` is explicitly present.
 **Turn 4 — Report.** Merge all agent results and emit the report in canonical order:
 
 1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence).
@@ -314,9 +323,15 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 3. Re-number findings sequentially starting at `1`.
 4. Insert one **Below Confidence Threshold** separator row in the findings index immediately before the first finding with confidence < 75.
 5. Print findings directly — do not re-draft or re-describe them.
-6. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Findings Index`.
+6. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Dropped Candidates`, `Findings Index`.
 7. Add scope table and findings index table per report-formatting.md.
 8. Add the disclaimer.
+
+Dropped-candidate handling:
+
+- If a candidate is discarded during FP gate or dedupe, add one row in `Dropped Candidates` with `candidate`, `class`, and `drop_reason`.
+- Accepted `drop_reason` values: `false_positive`, `duplicate_root_cause`, `below_confidence_threshold`, `insufficient_evidence`.
+- If none were dropped, still include the section with a single `none` row.
 
 If `--file-output` is set, write the report to `{repo-root}/security-review-{timestamp}.md` and print the path.
 
@@ -384,4 +399,5 @@ Each finding must include:
 - Do not report: style/naming issues, gas optimizations, missing events without security impact, generic centralization notes without exploit path, theoretical attacks requiring compromised sequencer.
 - On hosts where deep-mode enforcement is enabled, deep mode is fail-closed by default: if specialist agents are unavailable and `--allow-degraded` is not present, emit `CAUD-006` and do not publish a findings report.
 - If `--allow-degraded` is present and fallback is used, mark scope mode as `degraded-deep` and include an explicit warning line at top: `WARNING: degraded execution (specialist agents unavailable)`.
+- For degraded execution, repeat a second warning immediately before `Findings Index`: `WARNING: degraded execution may omit exploitable paths`.
 - Use dependency lockfiles and local workspace sources first when validating library behavior; avoid recursive global-cache grep sweeps unless the dependency path is unresolved.

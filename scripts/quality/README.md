@@ -3,6 +3,7 @@
 - `validate_skills.py`: skill contract/lint checks for SKILL.md structure and links.
 - `test_validate_skills.py`: regression tests for validator edge cases such as the root SKILL router.
 - `validate_marketplace.py`: enforces `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` parity (name/version/source/description/author and skill path validity).
+- `sync_cairo_auditor_release.py`: one-shot version sync for `skills/cairo-auditor` plus root plugin/marketplace metadata.
 - `parity_check.py`: required repository parity and local tool checks.
 - `check_codex_distribution.py`: validates Codex-facing install/discovery surface (`.agents/skills` symlinks, public-skill `openai.yaml`, and install docs markers).
 - `test_codex_distribution.py`: regression tests for Codex distribution validation.

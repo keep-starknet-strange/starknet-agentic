@@ -6,6 +6,7 @@ This directory holds deterministic fixtures for `skills/cairo-auditor/scripts/qu
 
 ```bash
 python3 skills/cairo-auditor/tests/validate_preflight.py
+python3 skills/cairo-auditor/tests/validate_deep_smoke.py
 ```
 
 The check runs deterministic fixture repos:
@@ -16,3 +17,9 @@ The check runs deterministic fixture repos:
 - `insecure_per_item_upgrade_controller` (same upgrade findings under `#[abi(per_item)]`)
 - `caller_read_without_auth` (ensures caller-read bookkeeping does not bypass auth checks)
 - `guarded_upgrade_without_timelock` (ensures owner-guarded single-step upgrades do not trigger timelock finding)
+
+`validate_deep_smoke.py` adds CI gating for deep-mode contract integrity by asserting:
+
+- vulnerable fixture scan still produces at least one deterministic finding,
+- report contract still exposes execution integrity + trace sections,
+- canonical ordering includes `Dropped Candidates`.
