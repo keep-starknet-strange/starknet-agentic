@@ -46,7 +46,7 @@ try {
 | --- | --- | --- |
 | `CAUD-001` | In-scope file discovery produced zero files | Re-run with explicit filenames and verify exclude rules did not hide target contracts. |
 | `CAUD-002` | Preflight scan failed or unavailable | Run `python3 "{skill_root}/scripts/quality/audit_local_repo.py"` manually and attach output to the audit context. |
-| `CAUD-003` | Agent bundle generation failed | Rebuild `/tmp/cairo-audit-agent-*-bundle.md` and confirm each bundle has non-zero line count. |
+| `CAUD-003` | Agent bundle generation failed | Rebuild `{workdir}/cairo-audit-agent-*-bundle.md` and confirm each bundle has non-zero line count. |
 | `CAUD-004` | Conflicting findings across agents | Keep the highest-confidence root cause, then request a focused re-run on the disputed file. |
 | `CAUD-005` | Report includes only low-confidence items | Run deep mode (`/cairo-auditor deep`) and add deterministic checks from Semgrep/audit findings. |
 | `CAUD-006` | Deep mode requested but specialist agents unavailable | Re-run in an environment with Agent tool support. Where fail-closed enforcement is enabled, `--allow-degraded` explicitly permits fallback. |
@@ -97,7 +97,7 @@ Before Turn 1 when mode is `deep`, run a lightweight capability preflight and em
 - Detect host family: `codex`, `claude-code`, or `unknown`.
 - Verify Agent tool availability and ability to spawn specialist agents.
 - Deep mode requires 5 specialist agents total (Agents 1-4 + Agent 5 adversarial).
-- Persist preflight evidence to `/tmp/cairo-audit-host-capabilities.json` when the probe is available.
+- Persist preflight evidence to `{workdir}/cairo-audit-host-capabilities.json` when the probe is available.
 
 If preflight fails (in hosts where preflight is enabled):
 
@@ -111,23 +111,35 @@ Remediation hints to print when preflight fails:
 
 ## Orchestration
 
-**Turn 1 — Discover.** Print the banner, then in the same message make parallel tool calls:
+**Turn 1 — Discover.** Print the banner, then in the same message make parallel tool calls.
 
-(a) Resolve and persist in-scope `.cairo` files to `/tmp/cairo-audit-files.txt` per mode selection:
+First, resolve a per-run private work directory:
+
+- If `CAIRO_AUDITOR_WORKDIR` is set, use it as `{workdir}`.
+- Otherwise create one with `mktemp -d "${TMPDIR:-/tmp}/cairo-auditor.XXXXXX"` and `chmod 700`.
+- Print `WORKDIR=<absolute-path>` in Turn 1 output and reuse that exact path as `{workdir}` for all later turns.
+
+(a) Resolve and persist in-scope `.cairo` files to `{workdir}/cairo-audit-files.txt` per mode selection:
 
 ```bash
+WORKDIR="${CAIRO_AUDITOR_WORKDIR:-$(mktemp -d "${TMPDIR:-/tmp}/cairo-auditor.XXXXXX")}"
+chmod 700 "$WORKDIR"
+echo "WORKDIR=$WORKDIR"
 find <repo-root> \
   \( -type d \( -name test -o -name tests -o -name mock -o -name mocks -o -name example -o -name examples -o -name fixture -o -name fixtures -o -name vendor -o -name vendors -o -name preset -o -name presets \) -prune \) \
   -o \( -type f -name "*.cairo" ! -name "*_test.cairo" ! -name "*Test*.cairo" -print \) \
-  | sort > /tmp/cairo-audit-files.txt
-cat /tmp/cairo-audit-files.txt
+  | sort > "$WORKDIR/cairo-audit-files.txt"
+cat "$WORKDIR/cairo-audit-files.txt"
 ```
 
 For **`$filename ...`** mode, do not run `find`. Instead, run:
 
 ```bash
+WORKDIR="${CAIRO_AUDITOR_WORKDIR:-$(mktemp -d "${TMPDIR:-/tmp}/cairo-auditor.XXXXXX")}"
+chmod 700 "$WORKDIR"
+echo "WORKDIR=$WORKDIR"
 REPO_ROOT=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "<repo-root>")
-> /tmp/cairo-audit-files.txt
+> "$WORKDIR/cairo-audit-files.txt"
 for f in "$@"; do
   [ -z "$f" ] && continue
   ABS_PATH=$(python3 - "$REPO_ROOT" "$f" <<'PY'
@@ -145,11 +157,11 @@ PY
   esac
   [ -f "$ABS_PATH" ] || continue
   case "$ABS_PATH" in
-    *.cairo) echo "$ABS_PATH" >> /tmp/cairo-audit-files.txt ;;
+    *.cairo) echo "$ABS_PATH" >> "$WORKDIR/cairo-audit-files.txt" ;;
   esac
 done
-sort -u -o /tmp/cairo-audit-files.txt /tmp/cairo-audit-files.txt
-cat /tmp/cairo-audit-files.txt
+sort -u -o "$WORKDIR/cairo-audit-files.txt" "$WORKDIR/cairo-audit-files.txt"
+cat "$WORKDIR/cairo-audit-files.txt"
 ```
 
 (b) Glob for `**/references/attack-vectors/attack-vectors-1.md` and resolve:
@@ -160,7 +172,7 @@ cat /tmp/cairo-audit-files.txt
 (c) If `{skill_root}/scripts/quality/audit_local_repo.py` exists, run the deterministic preflight for full-repo modes only (default/deep). In `$filename ...` mode, skip preflight so the context stays scoped to the targeted files:
 
 ```bash
-python3 "{skill_root}/scripts/quality/audit_local_repo.py" --repo-root <repo-root> --scan-id preflight --output-dir /tmp
+python3 "{skill_root}/scripts/quality/audit_local_repo.py" --repo-root <repo-root> --scan-id preflight --output-dir "{workdir}"
 ```
 
 Print the preflight results (class counts, severity counts) as context for specialists.
@@ -171,7 +183,7 @@ Print the preflight results (class counts, severity counts) as context for speci
 
 (b) Read `{refs_root}/report-formatting.md` — you will use this for the final report.
 
-(c) Bash: create four per-agent bundle files (`/tmp/cairo-audit-agent-{1,2,3,4}-bundle.md`) in a **single command**. Each bundle concatenates:
+(c) Bash: create four per-agent bundle files (`{workdir}/cairo-audit-agent-{1,2,3,4}-bundle.md`) in a **single command**. Each bundle concatenates:
   - **all** in-scope `.cairo` files (with `### path` headers and fenced code blocks),
   - `{refs_root}/judging.md`,
   - `{refs_root}/report-formatting.md`,
@@ -184,7 +196,8 @@ Before running this command, substitute placeholders (`{refs_root}`, `{repo-root
 ```bash
 REFS="{refs_root}"
 SRC="{repo-root}"
-IN_SCOPE="/tmp/cairo-audit-files.txt"
+WORKDIR="{workdir}"
+IN_SCOPE="$WORKDIR/cairo-audit-files.txt"
 set -euo pipefail
 
 build_code_block() {
@@ -210,8 +223,8 @@ for i in 1 2 3 4; do
     cat "$REFS/report-formatting.md"
     echo "---"
     cat "$REFS/attack-vectors/attack-vectors-$i.md"
-  } > "/tmp/cairo-audit-agent-$i-bundle.md"
-  echo "Bundle $i: $(wc -l < /tmp/cairo-audit-agent-$i-bundle.md) lines"
+  } > "$WORKDIR/cairo-audit-agent-$i-bundle.md"
+  echo "Bundle $i: $(wc -l < "$WORKDIR/cairo-audit-agent-$i-bundle.md") lines"
 done
 ```
 
@@ -219,21 +232,21 @@ Do NOT read or inline any file content into agent prompts — the bundle files r
 
 **Turn 3 — Spawn.** In a single message, spawn all agents as parallel foreground Agent tool calls (do NOT use `run_in_background`). Always spawn Agents 1–4. Only spawn Agent 5 when the mode is **deep**.
 
-- **Agents 1–4** (vector scanning) — spawn with `model: "sonnet"`. Each agent prompt must contain the full text of `vector-scan.md` (read in Turn 2, paste into every prompt). After the instructions, add: `Your bundle file is /tmp/cairo-audit-agent-N-bundle.md (XXXX lines).` (substitute the real line count). Include the deterministic preflight results if available so agents have extra context.
+- **Agents 1–4** (vector scanning) — spawn with `model: "sonnet"`. Each agent prompt must contain the full text of `vector-scan.md` (read in Turn 2, paste into every prompt). After the instructions, add: `Your bundle file is {workdir}/cairo-audit-agent-N-bundle.md (XXXX lines).` (substitute the real line count). Include the deterministic preflight results if available so agents have extra context.
 
 - **Agent 5** (adversarial reasoning, **deep** mode only) — spawn with `model: "opus"`. The prompt must instruct it to:
   1. Read `{skill_root}/agents/adversarial.md` for its full instructions.
   2. Read `{refs_root}/judging.md` and `{refs_root}/report-formatting.md`.
-  3. Read `/tmp/cairo-audit-files.txt` to obtain in-scope paths, then read only those `.cairo` files directly (not via bundle).
+  3. Read `{workdir}/cairo-audit-files.txt` to obtain in-scope paths, then read only those `.cairo` files directly (not via bundle).
   4. Reason freely — no attack vector reference. Look for logic errors, unsafe interactions, access control gaps, economic exploits, multi-step cross-function chains.
   5. Apply FP gate to each finding immediately.
   6. Format findings per report-formatting.md.
 
 After spawning, persist execution evidence that will be reused in the final report:
-- confirm `/tmp/cairo-audit-files.txt` exists and count in-scope files,
-- record line counts for `/tmp/cairo-audit-agent-{1,2,3,4}-bundle.md`,
+- confirm `{workdir}/cairo-audit-files.txt` exists and count in-scope files,
+- record line counts for `{workdir}/cairo-audit-agent-{1,2,3,4}-bundle.md`,
 - record whether Agent 5 was spawned (deep) or skipped (non-deep),
-- record each agent's observed runtime model label to `/tmp/cairo-audit-agent-models.txt` (use actual spawn metadata; if not exposed, use `default` or `unknown`).
+- record each agent's observed runtime model label to `{workdir}/cairo-audit-agent-models.txt` (use actual spawn metadata; if not exposed, use `default` or `unknown`).
 
 Transport resilience:
 - If the agent transport reports disconnect/fallback warnings or a specialist stalls with no completion, retry that specialist exactly once.
@@ -244,15 +257,16 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 - In **deep** mode, if any required specialist agent (1-4 or 5) cannot be spawned or returns unavailable, treat the run as failed unless `--allow-degraded` is explicitly present.
 - On failure, stop before findings and print `CAUD-006` with a one-line reason plus host remediation hints.
 - If a specialist output is malformed (not `No findings.` and not valid finding blocks), rerun that specialist once; if still malformed, treat it as unavailable.
-**Turn 4 — Report.** Merge all agent results:
+**Turn 4 — Report.** Merge all agent results and emit the report in canonical order:
 
-1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details).
-2. Sort by confidence highest-first.
-3. Re-number sequentially.
-4. Insert the **Below Confidence Threshold** separator row at confidence < 75.
+1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence).
+2. Sort findings by priority (`P0` first); within each priority tier sort by confidence (highest first).
+3. Re-number findings sequentially starting at `1`.
+4. Insert one **Below Confidence Threshold** separator row in the findings index immediately before the first finding with confidence < 75.
 5. Print findings directly — do not re-draft or re-describe them.
-6. Add scope table and findings index table per report-formatting.md.
-7. Add the disclaimer.
+6. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Findings Index`.
+7. Add scope table and findings index table per report-formatting.md.
+8. Add the disclaimer.
 
 If `--file-output` is set, write the report to `{repo-root}/security-review-{timestamp}.md` and print the path.
 
