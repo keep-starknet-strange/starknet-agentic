@@ -28,10 +28,7 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 | **Preflight findings**           | N deterministic hits                                   |
 | **Generated**                    | ISO8601 timestamp                                      |
 
-`Execution Integrity: FULL` or `Execution Integrity: DEGRADED` or `Execution Integrity: FAILED`
-If degraded, add:
-`WARNING: degraded execution (specialist agents unavailable)`
-If failed (required stages failed and degraded mode was not explicitly enabled), abort report generation and return no findings output.
+`Execution Integrity: <FULL|DEGRADED|FAILED>`
 
 ---
 
@@ -39,12 +36,12 @@ If failed (required stages failed and degraded mode was not explicitly enabled),
 
 | Stage | Model | Evidence | Status |
 |-------|-------|----------|--------|
-| Scope discovery | n/a | `/tmp/cairo-audit-files.txt` (N files) | OK |
-| Agent 1 vector scan | `<actual model label>` | `/tmp/cairo-audit-agent-1-bundle.md` (N lines) | OK |
-| Agent 2 vector scan | `<actual model label>` | `/tmp/cairo-audit-agent-2-bundle.md` (N lines) | OK |
-| Agent 3 vector scan | `<actual model label>` | `/tmp/cairo-audit-agent-3-bundle.md` (N lines) | OK |
-| Agent 4 vector scan | `<actual model label>` | `/tmp/cairo-audit-agent-4-bundle.md` (N lines) | OK |
-| Agent 5 adversarial (deep only) | `<actual model label>` | direct read from `/tmp/cairo-audit-files.txt` | OK / SKIPPED / FAILED |
+| Scope discovery | n/a | `{workdir}/cairo-audit-files.txt` (N files) | OK |
+| Agent 1 vector scan | `<actual model label>` | `{workdir}/cairo-audit-agent-1-bundle.md` (N lines) | OK |
+| Agent 2 vector scan | `<actual model label>` | `{workdir}/cairo-audit-agent-2-bundle.md` (N lines) | OK |
+| Agent 3 vector scan | `<actual model label>` | `{workdir}/cairo-audit-agent-3-bundle.md` (N lines) | OK |
+| Agent 4 vector scan | `<actual model label>` | `{workdir}/cairo-audit-agent-4-bundle.md` (N lines) | OK |
+| Agent 5 adversarial (deep only) | `<actual model label>` | direct read from `{workdir}/cairo-audit-files.txt` | OK / SKIPPED / FAILED |
 
 ---
 
@@ -127,8 +124,9 @@ If failed (required stages failed and degraded mode was not explicitly enabled),
 - `Execution Trace` must include scope discovery and Agents 1-4 for every run.
 - In deep mode, `Execution Trace` must include Agent 5 with actual model label and status.
 - In non-deep modes, keep Agent 5 row with `Status: SKIPPED`.
+- `Execution Trace` evidence paths must reference `{workdir}` (resolved from `CAIRO_AUDITOR_WORKDIR` or a per-run private temp directory).
 - If any specialist is unavailable and degraded mode is explicitly enabled, set `Execution Integrity: DEGRADED` and include the warning line under Scope.
-- If scope discovery or any required stage (Agents 1-4) has `Status: FAILED` and degraded mode is not explicitly enabled, set `Execution Integrity: FAILED` and abort report generation (no findings output).
+- If scope discovery or any required stage (Agents 1-4 and Agent 5 in deep mode) has `Status: FAILED` and degraded mode is not explicitly enabled, set `Execution Integrity: FAILED` and abort report generation (no findings output).
 - Sort findings by priority (`P0` first); within each priority tier, sort by confidence (highest first).
 - Findings below threshold (confidence < 75) get a description but no **Fix** block and no **Required Tests** block.
 - After filtering/deduplication/sorting, renumber findings sequentially starting at `1`.
