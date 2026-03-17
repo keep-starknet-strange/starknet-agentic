@@ -15,6 +15,7 @@ REPORT_FORMAT = ROOT / "references" / "report-formatting.md"
 SKILL_DOC = ROOT / "SKILL.md"
 
 REQUIRED_CLASS = "NO_ACCESS_CONTROL_MUTATION"
+SCANNER_TIMEOUT_SECONDS = 180
 REQUIRED_REPORT_MARKERS = (
     "Execution Integrity: <FULL|DEGRADED|FAILED>",
     "## Execution Trace",
@@ -40,7 +41,16 @@ def run_fixture_scan() -> tuple[bool, str]:
             "--output-dir",
             tmpdir,
         ]
-        proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
+        try:
+            proc = subprocess.run(
+                cmd,
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=SCANNER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"scanner timed out after {SCANNER_TIMEOUT_SECONDS}s"
         if proc.returncode != 0:
             return False, f"scanner exited {proc.returncode}: {proc.stderr.strip()}"
 
