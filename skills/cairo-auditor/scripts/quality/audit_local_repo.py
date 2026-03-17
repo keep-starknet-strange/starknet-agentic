@@ -60,55 +60,52 @@ def _iter_cairo_files(repo_root: Path, excluded_dirs: set[str]) -> tuple[list[Pa
     return all_files, prod_files
 
 
+def _skip_line_comment(text: str, idx: int) -> int:
+    while idx < len(text) and text[idx] != "\n":
+        idx += 1
+    return idx
+
+
+def _skip_block_comment(text: str, idx: int) -> int:
+    idx += 2
+    while idx + 1 < len(text):
+        if text[idx] == "*" and text[idx + 1] == "/":
+            return idx + 2
+        idx += 1
+    return len(text)
+
+
+def _skip_string_literal(text: str, idx: int) -> int:
+    quote = text[idx]
+    idx += 1
+    escaped = False
+    while idx < len(text):
+        ch = text[idx]
+        if escaped:
+            escaped = False
+        elif ch == "\\":
+            escaped = True
+        elif ch == quote:
+            return idx + 1
+        idx += 1
+    return len(text)
+
+
 def _find_matching_brace(text: str, open_idx: int) -> int:
     depth = 0
-    in_line_comment = False
-    in_block_comment = False
-    in_string = False
-    string_quote = ""
-    escaped = False
     idx = open_idx
     while idx < len(text):
         ch = text[idx]
         nxt = text[idx + 1] if idx + 1 < len(text) else ""
 
-        if in_line_comment:
-            if ch == "\n":
-                in_line_comment = False
-            idx += 1
-            continue
-
-        if in_block_comment:
-            if ch == "*" and nxt == "/":
-                in_block_comment = False
-                idx += 2
-                continue
-            idx += 1
-            continue
-
-        if in_string:
-            if escaped:
-                escaped = False
-            elif ch == "\\":
-                escaped = True
-            elif ch == string_quote:
-                in_string = False
-            idx += 1
-            continue
-
         if ch == "/" and nxt == "/":
-            in_line_comment = True
-            idx += 2
+            idx = _skip_line_comment(text, idx + 2)
             continue
         if ch == "/" and nxt == "*":
-            in_block_comment = True
-            idx += 2
+            idx = _skip_block_comment(text, idx)
             continue
         if ch in ('"', "'"):
-            in_string = True
-            string_quote = ch
-            escaped = False
-            idx += 1
+            idx = _skip_string_literal(text, idx)
             continue
 
         if ch == "{":
