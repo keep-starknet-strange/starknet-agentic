@@ -86,10 +86,54 @@ Deep mode needs 5 specialist agents (4 vector + 1 adversarial).
 - Use `--allow-degraded` only when you intentionally accept reduced coverage.
 - For Codex stability, keep CLI updated (`npm i -g @openai/codex`).
 
+Model routing is host-aware:
+
+- `claude-code`: vector specialists use `sonnet`, adversarial specialist uses `opus` (host runtime aliases).
+- `codex`: vector + adversarial specialists prefer `gpt-5.4` (fallback `gpt-5.2` when probe fails and strict mode is off).
+- execution trace always records observed runtime model labels.
+
 Large-file behavior:
 
 - If the largest in-scope file exceeds `1000` lines **or** any bundle exceeds `1400` lines, deep mode runs in two waves (Agents 1-4, then Agent 5) and uses longer stall timeouts.
 - This preserves full-power coverage while reducing transport drop risk.
+
+Optional threat-intel enrichment (deep mode):
+
+- pulls bounded primary-source security signals into `{workdir}/cairo-audit-threat-intel.md`,
+- is passed to specialists as prioritization hints (never as direct findings),
+- never creates findings by itself (local in-scope FP-gated proof is still required).
+
+### Full-power verification
+
+Use these checks after any deep run to confirm specialist fanout and report artifact quality.
+
+**Codex**
+
+```bash
+cat /tmp/cairo-audit-host-capabilities.json
+wc -l /tmp/cairo-audit-agent-*-bundle.md
+ls -lt security-review-*.md | head -n 1
+```
+
+Expected:
+
+- capability file exists and reports `agent_tool` available,
+- four bundle files exist with non-zero lines,
+- latest `security-review-*.md` has `Execution Integrity: FULL` and at least one finding on vulnerable fixtures.
+
+**Claude Code**
+
+```bash
+/plugin marketplace list
+/plugin list
+/reload-plugins
+```
+
+Then run deep mode and verify the generated report includes:
+
+- `Execution Trace` rows for Agents 1-4 and Agent 5 adversarial,
+- observed model labels (`sonnet` vectors, `opus` adversarial),
+- `Execution Integrity: FULL` (or explicit degraded warning if `--allow-degraded` was intentionally used).
 
 ### Deterministic local scan (no AI)
 
@@ -100,6 +144,21 @@ python3 scripts/quality/audit_local_repo.py \
   --repo-root /path/to/your/cairo-repo \
   --scan-id my-audit
 ```
+
+### Release sync (maintainers)
+
+```bash
+python3 scripts/quality/sync_cairo_auditor_release.py \
+  --skill-version 0.2.2 \
+  --plugin-version 1.0.4
+```
+
+This updates:
+
+- `skills/cairo-auditor/VERSION`
+- `skills/cairo-auditor/SKILL.md` metadata version
+- `.claude-plugin/plugin.json` version
+- `.claude-plugin/marketplace.json` metadata/plugin versions
 
 ## Example output
 
@@ -127,7 +186,7 @@ The skill orchestrates a **4-turn pipeline**:
 
 1. **Discover** — find in-scope `.cairo` files, run deterministic preflight
 2. **Prepare** — build 4 code bundles, each with a different attack-vector partition
-3. **Spawn** — 4 parallel vector specialists (`model: sonnet`), optionally + 1 adversarial (`model: opus` in deep mode)
+3. **Spawn** — 4 parallel vector specialists + optional adversarial specialist with host-aware model routing
 4. **Report** — merge, deduplicate by root cause, sort by confidence, emit findings
 
 Each agent scans the full codebase against 30 attack vectors from its partition (120 total), applies a strict false-positive gate, and formats findings with exploit paths and fix diffs.
@@ -162,9 +221,10 @@ cairo-auditor/
     adversarial.md             # adversarial specialist instructions
   references/
     attack-vectors/            # 120 vectors in 4 partitions
-    vulnerability-db/          # 13 canonical vulnerability classes
+    vulnerability-db/          # canonical vulnerability classes
     judging.md                 # FP gate + confidence scoring
     report-formatting.md       # finding template + priority mapping
+    threat-intel-sources.md    # source policy for optional web enrichment
     semgrep/                   # optional Semgrep auxiliary rules
   scripts/
     README.md                  # runnable helpers and script entrypoints

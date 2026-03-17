@@ -2,7 +2,7 @@
 name: cairo-auditor
 description: Security audit of Cairo/Starknet code. Trigger on "audit", "check this contract", "review for security". Modes - default (full repo), deep (+ adversarial reasoning), or specific filenames.
 license: Apache-2.0
-metadata: {"author":"starknet-agentic","version":"0.2.0","org":"keep-starknet-strange","source":"starknet-agentic"}
+metadata: {"author":"starknet-agentic","version":"0.2.2","org":"keep-starknet-strange","source":"starknet-agentic"}
 keywords: [cairo, starknet, security, audit, vulnerabilities, semgrep]
 allowed-tools: [Bash, Read, Glob, Grep, Task, Agent]
 user-invocable: true
@@ -52,6 +52,7 @@ try {
 | `CAUD-006` | Deep mode requested but specialist agents unavailable | Re-run in an environment with Agent tool support. Where fail-closed enforcement is enabled, `--allow-degraded` explicitly permits fallback. |
 | `CAUD-007` | Deep mode host capability preflight failed | For hosts with preflight enforcement enabled, surface remediation and stop before findings unless `--allow-degraded` is explicitly present. |
 | `CAUD-008` | Agent transport instability or stalled specialist completion | Retry failed/stalled specialists once. In hosts with deep-mode enforcement enabled, unresolved specialist outages are treated as fail-closed unless explicitly degraded. |
+| `CAUD-009` | Strict-model requirement could not be satisfied | Re-run on a host that supports required models, or omit `--strict-models` to allow documented fallback. |
 
 ## When to Use
 
@@ -87,6 +88,7 @@ try {
 
 - `--file-output` (off by default): also write the report to a markdown file. Without this flag, output goes to the terminal only.
 - `--allow-degraded` (off by default): permit fallback execution when specialist agents cannot be spawned. On hosts with deep-mode enforcement enabled, this flag opts into degraded execution.
+- `--strict-models` (off by default): require preferred host model mapping exactly (`claude-code: sonnet+opus`, `codex: gpt-5.4`). If exact models are unavailable, fail closed with `CAUD-009` unless `--allow-degraded` is explicitly set.
 
 ## Host Capability Preflight (Deep Mode, Experimental)
 
@@ -97,6 +99,12 @@ Before Turn 1 when mode is `deep`, run a lightweight capability preflight and em
 - Detect host family: `codex`, `claude-code`, or `unknown`.
 - Verify Agent tool availability and ability to spawn specialist agents.
 - Deep mode requires 5 specialist agents total (Agents 1-4 + Agent 5 adversarial).
+- Verify threat-intel fetch capability via Bash:
+  - `command -v curl` must succeed, and
+  - `curl -sfI --connect-timeout 5 --max-time 10 https://starknet.io` must succeed.
+- For `codex` hosts, probe preferred model availability before spawn:
+  - run one lightweight specialist probe using `model: gpt-5.4`,
+  - persist success/failure and fallback decision.
 - Persist preflight evidence to `{workdir}/cairo-audit-host-capabilities.json` when the probe is available.
 
 If preflight fails (in hosts where preflight is enabled):
@@ -108,6 +116,29 @@ Remediation hints to print when preflight fails:
 
 - `codex`: `codex features enable multi_agent`, then verify with `codex features list`, then restart the session.
 - `claude-code`: run `/reload-plugins`, update the installed plugin if needed, and retry deep mode.
+
+## Host-Aware Model Routing
+
+Select specialist model labels from detected host before spawning:
+
+- `claude-code`
+  - `VECTOR_MODEL=sonnet` (host alias for `claude-sonnet-4-6`)
+  - `ADVERSARIAL_MODEL=opus` (host alias for `claude-opus-4-6`)
+- `codex`
+  - `VECTOR_MODEL=gpt-5.4`
+  - `ADVERSARIAL_MODEL=gpt-5.4`
+  - If `gpt-5.4` probe fails and `--strict-models` is not set, fallback to `gpt-5.2` for both.
+- `unknown`
+  - `VECTOR_MODEL=sonnet` (host alias for `claude-sonnet-4-6`)
+  - `ADVERSARIAL_MODEL=opus` (host alias for `claude-opus-4-6`)
+
+Persist the selected plan to `{workdir}/cairo-audit-model-plan.txt` and keep model labels in the execution trace as observed runtime values (not assumptions).
+
+Strict-model gate:
+
+- When `--strict-models` is set, do not silently fallback.
+- If preferred host mapping cannot be satisfied, emit `CAUD-009` and stop before findings unless `--allow-degraded` is explicitly present.
+- If degraded execution is explicitly permitted, continue with resolved fallback labels and mark `Execution Integrity: DEGRADED`.
 
 ## Orchestration
 
@@ -228,7 +259,29 @@ for i in 1 2 3 4; do
 done
 ```
 
-Do NOT read or inline any file content into agent prompts — the bundle files replace that entirely.
+Do NOT inline source-code files into prompts. Bundles replace raw source in prompts. Non-code context blocks (deterministic preflight summary and optional threat-intel summary) may be appended.
+
+**Turn 2.5 — Threat Intel Enrichment (Deep Mode, Optional).**
+
+When network access is available, run a small enrichment pass and write `{workdir}/cairo-audit-threat-intel.md`:
+
+- Read `{refs_root}/threat-intel-sources.md` first and follow its source policy.
+- Use `curl` through Bash as the query mechanism for primary-source security material (official audit reports, incident postmortems, protocol docs, vendor writeups).
+- Execute pre-checks before querying:
+  - if `curl` is missing, mark this stage `SKIPPED: no curl`,
+  - if connectivity check fails, mark this stage `SKIPPED: offline`.
+- Keep it bounded: max 6 sources and max 12 extracted signals.
+- Normalize each signal into: `date`, `source`, `class hint`, `one-line exploit shape`.
+- Prefer Cairo/Starknet first; if sparse, include high-signal EVM analogs that map to listed vectors.
+- If a fetch command fails after pre-check, mark `FAILED: curl error <code>` in execution trace and continue.
+- If unavailable/offline, continue and mark this stage as `SKIPPED` in execution trace.
+- Keep query commands/examples aligned with `threat-intel-sources.md`.
+
+Threat-intel usage rules:
+
+- Intel is a prioritization aid only.
+- Never report a finding from intel alone.
+- Every reported finding must still pass the local FP gate with a concrete in-scope path.
 
 **Turn 3 — Spawn.** Use foreground Agent tool calls only (do NOT use `run_in_background`).
 
@@ -239,15 +292,21 @@ Do NOT read or inline any file content into agent prompts — the bundle files r
     1. Wave A: Agents 1–4 in parallel.
     2. Wave B: Agent 5 after Wave A completes.
 
-- **Agents 1–4** (vector scanning) — spawn with `model: "sonnet"`. Each agent prompt must contain the full text of `vector-scan.md` (read in Turn 2, paste into every prompt). After the instructions, add: `Your bundle file is {workdir}/cairo-audit-agent-N-bundle.md (XXXX lines).` (substitute the real line count). Include the deterministic preflight results if available so agents have extra context.
+- Resolve host-aware model labels first:
+  - write `{workdir}/cairo-audit-model-plan.txt` with `host`, `vector_model`, and `adversarial_model`.
+  - include preflight probe fields when available: `gpt_5_4_probe` and `fallback_reason`.
+  - use that resolved `vector_model` for Agents 1–4 and `adversarial_model` for Agent 5.
 
-- **Agent 5** (adversarial reasoning, **deep** mode only) — spawn with `model: "opus"`. The prompt must instruct it to:
+- **Agents 1–4** (vector scanning) — spawn with `model: "{vector_model}"`. Each agent prompt must contain the full text of `vector-scan.md` (read in Turn 2, paste into every prompt). After the instructions, add: `Your bundle file is {workdir}/cairo-audit-agent-N-bundle.md (XXXX lines).` (substitute the real line count). Include deterministic preflight results if available. If `{workdir}/cairo-audit-threat-intel.md` exists and has normalized signals, append a compact "Threat Intel (hints only)" block (max 12 lines) to each prompt.
+
+- **Agent 5** (adversarial reasoning, **deep** mode only) — spawn with `model: "{adversarial_model}"`. The prompt must instruct it to:
   1. Read `{skill_root}/agents/adversarial.md` for its full instructions.
   2. Read `{refs_root}/judging.md` and `{refs_root}/report-formatting.md`.
-  3. Read `{workdir}/cairo-audit-files.txt` to obtain in-scope paths, then read only those `.cairo` files directly (not via bundle).
-  4. Reason freely — no attack vector reference. Look for logic errors, unsafe interactions, access control gaps, economic exploits, multi-step cross-function chains.
-  5. Apply FP gate to each finding immediately.
-  6. Format findings per report-formatting.md.
+  3. If present, read `{workdir}/cairo-audit-threat-intel.md` as a prioritization hint only.
+  4. Read `{workdir}/cairo-audit-files.txt` to obtain in-scope paths, then read only those `.cairo` files directly (not via bundle).
+  5. Reason freely — no attack vector reference. Look for logic errors, unsafe interactions, access control gaps, economic exploits, multi-step cross-function chains.
+  6. Apply FP gate to each finding immediately.
+  7. Format findings per report-formatting.md.
 
 After spawning, persist execution evidence that will be reused in the final report:
 - confirm `{workdir}/cairo-audit-files.txt` exists and count in-scope files,
@@ -269,6 +328,7 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 - In **deep** mode, if any required specialist agent (1-4 or 5) cannot be spawned or returns unavailable, treat the run as failed unless `--allow-degraded` is explicitly present.
 - On failure, stop before findings and print `CAUD-006` with a one-line reason plus host remediation hints.
 - If a specialist output is malformed (not `No findings.` and not valid finding blocks), rerun that specialist once; if still malformed, treat it as unavailable.
+- When `--strict-models` is set, treat model fallback as unavailable capability and enforce the same fail-closed behavior (`CAUD-009`) unless `--allow-degraded` is explicitly present.
 **Turn 4 — Report.** Merge all agent results and emit the report in canonical order:
 
 1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence).
@@ -276,9 +336,15 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 3. Re-number findings sequentially starting at `1`.
 4. Insert one **Below Confidence Threshold** separator row in the findings index immediately before the first finding with confidence < 75.
 5. Print findings directly — do not re-draft or re-describe them.
-6. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Findings Index`.
+6. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Dropped Candidates`, `Findings Index`.
 7. Add scope table and findings index table per report-formatting.md.
 8. Add the disclaimer.
+
+Dropped-candidate handling:
+
+- If a candidate is discarded during FP gate or dedupe, add one row in `Dropped Candidates` with `candidate`, `class`, and `drop_reason`.
+- Accepted `drop_reason` values: `false_positive`, `duplicate_root_cause`, `below_confidence_threshold`, `insufficient_evidence`.
+- If none were dropped, still include the section with a single `none` row.
 
 If `--file-output` is set, write the report to `{repo-root}/security-review-{timestamp}.md` and print the path.
 
@@ -346,4 +412,5 @@ Each finding must include:
 - Do not report: style/naming issues, gas optimizations, missing events without security impact, generic centralization notes without exploit path, theoretical attacks requiring compromised sequencer.
 - On hosts where deep-mode enforcement is enabled, deep mode is fail-closed by default: if specialist agents are unavailable and `--allow-degraded` is not present, emit `CAUD-006` and do not publish a findings report.
 - If `--allow-degraded` is present and fallback is used, mark scope mode as `degraded-deep` and include an explicit warning line at top: `WARNING: degraded execution (specialist agents unavailable)`.
+- For degraded execution, repeat a second warning immediately before `Findings Index`: `WARNING: degraded execution may omit exploitable paths`.
 - Use dependency lockfiles and local workspace sources first when validating library behavior; avoid recursive global-cache grep sweeps unless the dependency path is unresolved.

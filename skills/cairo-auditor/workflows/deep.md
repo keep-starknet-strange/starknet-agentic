@@ -6,17 +6,21 @@ Extends default with adversarial reasoning. Orchestrated by [SKILL.md](../SKILL.
 
 1. **Discover** — same as default.
 2. **Prepare** — same as default, plus resolve adversarial agent instructions.
-3. **Spawn** — Adaptive deep fanout:
-   - small scopes (largest file <= 1000 lines **and** all bundles <= 1400 lines): 4 parallel vector specialists (`model: "sonnet"`) + 1 adversarial specialist (`model: "opus"`) in parallel.
+3. **Threat Intel (optional)** — run bounded `curl`-based enrichment and persist `{workdir}/cairo-audit-threat-intel.md`; include SKIPPED/FAILED reason in execution trace when unavailable.
+4. **Spawn** — Adaptive deep fanout:
+   - small scopes (largest file <= 1000 lines **and** all bundles <= 1400 lines): 4 parallel vector specialists + 1 adversarial specialist in parallel (host-aware model routing).
    - large scopes: two waves for reliability (Wave A: Agents 1-4, Wave B: Agent 5).
-4. **Report** — Merge all 5 agent outputs, deduplicate, sort, emit.
+5. **Report** — Merge all 5 agent outputs, deduplicate, sort, emit.
 
 ## Agent Configuration
 
 | Agent | Model | Input | Role |
 |-------|-------|-------|------|
-| 1–4 | sonnet | Bundle files | Vector scan (same as default) |
-| 5 | opus | Direct file reads + adversarial.md | Free-form adversarial reasoning |
+| 1–4 | host-aware (`claude-code: sonnet`, `codex: gpt-5.4`) | Bundle files (+ optional threat-intel hints) | Vector scan (same as default) |
+| 5 | host-aware (`claude-code: opus`, `codex: gpt-5.4`) | Direct file reads + adversarial.md (+ optional threat-intel hints) | Free-form adversarial reasoning |
+
+Codex fallback is `gpt-5.2` when `gpt-5.4` probe fails and `--strict-models` is not set.
+`--strict-models` disables fallback and fails closed if preferred host models are unavailable.
 
 ## Agent 5 — Adversarial Specialist
 

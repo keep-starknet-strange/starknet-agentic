@@ -1,6 +1,6 @@
 {
   "name": "starknet-agentic-skills",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Canonical Starknet skill bundle for AI agents: wallets, DeFi, identity, payments, privacy, and Cairo contract workflows.",
   "author": {
     "name": "keep-starknet-strange",

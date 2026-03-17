@@ -405,12 +405,18 @@ jobs:
           python3 -m unittest scripts/quality/test_validate_skills.py
           python3 -m unittest scripts/quality/test_parity_check.py
           python3 -m unittest scripts/quality/test_codex_distribution.py
+          python3 -m unittest scripts/quality/test_sync_cairo_auditor_release.py
 
       - name: Validate skill contracts
         run: |
           echo "Validating repository SKILL.md contracts..."
           python3 scripts/quality/validate_skills.py
           echo "All skills validated successfully!"
+
+      - name: Cairo-auditor fixture smoke gates
+        run: |
+          python3 skills/cairo-auditor/tests/validate_preflight.py
+          python3 skills/cairo-auditor/tests/validate_deep_smoke.py
 
       - name: Validate skills manifest
         run: |
