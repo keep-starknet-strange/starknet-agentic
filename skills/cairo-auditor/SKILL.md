@@ -230,7 +230,14 @@ done
 
 Do NOT read or inline any file content into agent prompts — the bundle files replace that entirely.
 
-**Turn 3 — Spawn.** In a single message, spawn all agents as parallel foreground Agent tool calls (do NOT use `run_in_background`). Always spawn Agents 1–4. Only spawn Agent 5 when the mode is **deep**.
+**Turn 3 — Spawn.** Use foreground Agent tool calls only (do NOT use `run_in_background`).
+
+- Always spawn Agents 1–4 in parallel.
+- In **deep** mode, use adaptive fanout:
+  - If the largest in-scope file is `<= 1000` lines and all bundles are `<= 1400` lines, spawn Agent 5 in parallel with Agents 1–4.
+  - Otherwise, run two waves for transport stability:
+    1. Wave A: Agents 1–4 in parallel.
+    2. Wave B: Agent 5 after Wave A completes.
 
 - **Agents 1–4** (vector scanning) — spawn with `model: "sonnet"`. Each agent prompt must contain the full text of `vector-scan.md` (read in Turn 2, paste into every prompt). After the instructions, add: `Your bundle file is {workdir}/cairo-audit-agent-N-bundle.md (XXXX lines).` (substitute the real line count). Include the deterministic preflight results if available so agents have extra context.
 
@@ -250,7 +257,11 @@ After spawning, persist execution evidence that will be reused in the final repo
 
 Transport resilience:
 - If the agent transport reports disconnect/fallback warnings or a specialist stalls with no completion, retry that specialist exactly once.
-- Use a 180-second no-progress timeout per specialist before retrying.
+- Use adaptive stall timeout by largest bundle size:
+  - `<=1200` lines: 180 seconds
+  - `1201-1800` lines: 360 seconds
+  - `>1800` lines: 600 seconds
+- Retry failed/stalled specialists serially (one at a time) to reduce transport saturation.
 - If retry still fails, treat the specialist as unavailable.
 
 Integrity gate (for hosts where deep-mode enforcement is enabled):
