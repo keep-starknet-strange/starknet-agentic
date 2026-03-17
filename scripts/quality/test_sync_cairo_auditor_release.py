@@ -32,7 +32,9 @@ class SyncCairoAuditorReleaseTests(unittest.TestCase):
 
     @staticmethod
     def bump_patch(version: str) -> str:
-        parts = version.split(".")
+        # Strip optional pre-release/build metadata before bumping.
+        base = version.split("-")[0].split("+")[0]
+        parts = base.split(".")
         if len(parts) < 3:
             raise AssertionError(f"expected semantic version with 3 parts, got {version}")
         major, minor, patch = parts[:3]
