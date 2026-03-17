@@ -85,7 +85,8 @@ def _update_plugin_json(version: str, *, dry_run: bool) -> bool:
         plugin["version"] = version
         changed = True
 
-    _dump_json(PLUGIN_JSON, plugin, dry_run=dry_run)
+    if changed:
+        _dump_json(PLUGIN_JSON, plugin, dry_run=dry_run)
     return changed
 
 
@@ -113,7 +114,8 @@ def _update_marketplace_json(version: str, *, dry_run: bool) -> bool:
             entry["version"] = version
             changed = True
 
-    _dump_json(MARKETPLACE_JSON, market, dry_run=dry_run)
+    if changed:
+        _dump_json(MARKETPLACE_JSON, market, dry_run=dry_run)
     return changed
 
 
