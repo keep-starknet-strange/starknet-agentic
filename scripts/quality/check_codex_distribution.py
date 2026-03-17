@@ -56,41 +56,63 @@ def _latest_release_ref(root: Path = ROOT) -> str:
     return DEFAULT_PINNED_REF
 
 
-REPO_SLUG = (os.getenv("PUBLIC_REPO_SLUG", DEFAULT_REPO_SLUG) or DEFAULT_REPO_SLUG).strip("/")
-PUBLIC_REF = (os.getenv("PUBLIC_SKILL_REF", DEFAULT_PUBLIC_REF) or DEFAULT_PUBLIC_REF).strip()
-DEFAULT_RELEASE_REF = _latest_release_ref()
-PINNED_REF = (os.getenv("PUBLIC_PINNED_REF", DEFAULT_RELEASE_REF) or DEFAULT_RELEASE_REF).strip()
+def _resolved_repo_slug() -> str:
+    return (os.getenv("PUBLIC_REPO_SLUG", DEFAULT_REPO_SLUG) or DEFAULT_REPO_SLUG).strip("/")
 
 
-def _auditor_skill_url(ref: str) -> str:
-    return f"https://github.com/{REPO_SLUG}/tree/{ref}/skills/cairo-auditor"
+def _resolved_public_ref() -> str:
+    return (os.getenv("PUBLIC_SKILL_REF", DEFAULT_PUBLIC_REF) or DEFAULT_PUBLIC_REF).strip()
 
 
-INSTALL_MARKERS = {
-    Path("README.md"): [
-        f"skill-installer install {_auditor_skill_url(PUBLIC_REF)}",
-        f"skill-installer install {_auditor_skill_url(PINNED_REF)}",
-        "/plugin marketplace add keep-starknet-strange/starknet-agentic",
-        "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
-        "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
-    ],
-    Path("skills/README.md"): [
-        f"skill-installer install {_auditor_skill_url(PUBLIC_REF)}",
-        f"skill-installer install {_auditor_skill_url(PINNED_REF)}",
-        "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
-        "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
-        "./QUICKSTART_2MIN.md",
-        "./TROUBLESHOOTING.md",
-    ],
-    Path("skills/cairo-auditor/README.md"): [
-        f"skill-installer install {_auditor_skill_url(PUBLIC_REF)}",
-        f"skill-installer install {_auditor_skill_url(PINNED_REF)}",
-        "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
-        "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
-        "../QUICKSTART_2MIN.md",
-        "../TROUBLESHOOTING.md",
-    ],
-}
+def _resolved_pinned_ref(root: Path = ROOT) -> str:
+    explicit = (os.getenv("PUBLIC_PINNED_REF") or "").strip()
+    if explicit:
+        return explicit
+    return _latest_release_ref(root)
+
+
+def _auditor_skill_url(repo_slug: str, ref: str) -> str:
+    return f"https://github.com/{repo_slug}/tree/{ref}/skills/cairo-auditor"
+
+
+def build_install_markers(
+    root: Path = ROOT,
+    *,
+    repo_slug: str | None = None,
+    public_ref: str | None = None,
+    pinned_ref: str | None = None,
+) -> dict[Path, list[str]]:
+    resolved_repo_slug = repo_slug or _resolved_repo_slug()
+    resolved_public_ref = public_ref or _resolved_public_ref()
+    resolved_pinned_ref = pinned_ref or _resolved_pinned_ref(root)
+
+    return {
+        Path("README.md"): [
+            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_public_ref)}",
+            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_pinned_ref)}",
+            "/plugin marketplace add keep-starknet-strange/starknet-agentic",
+            "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
+            "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
+        ],
+        Path("skills/README.md"): [
+            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_public_ref)}",
+            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_pinned_ref)}",
+            "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
+            "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
+            "./QUICKSTART_2MIN.md",
+            "./TROUBLESHOOTING.md",
+        ],
+        Path("skills/cairo-auditor/README.md"): [
+            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_public_ref)}",
+            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_pinned_ref)}",
+            "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local",
+            "npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor",
+            "../QUICKSTART_2MIN.md",
+            "../TROUBLESHOOTING.md",
+        ],
+    }
+
+
 FORBIDDEN_INSTALL_MARKERS = [
     "tree/<ref>/skills/cairo-auditor",
     "`<ref>` can be a commit SHA or release tag.",
@@ -184,9 +206,10 @@ def metadata_errors(root: Path = ROOT) -> list[str]:
     return errors
 
 
-def install_doc_errors(root: Path = ROOT) -> list[str]:
+def install_doc_errors(root: Path = ROOT, install_markers: dict[Path, list[str]] | None = None) -> list[str]:
     errors: list[str] = []
-    for relpath, markers in INSTALL_MARKERS.items():
+    markers_to_validate = install_markers if install_markers is not None else build_install_markers(root)
+    for relpath, markers in markers_to_validate.items():
         path = root / relpath
         try:
             content = path.read_text(encoding="utf-8")
