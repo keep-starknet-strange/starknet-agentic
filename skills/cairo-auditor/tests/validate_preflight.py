@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,38 +41,60 @@ CASES = [
         "expected_classes": {"NO_ACCESS_CONTROL_MUTATION"},
         "expected_findings_exact": 1,
     },
+    {
+        "name": "guarded_upgrade_without_timelock",
+        "expected_classes": set(),
+        "expected_findings_exact": 0,
+    },
 ]
 
 
 def run_case(case: dict[str, object]) -> tuple[bool, str]:
     fixture = FIXTURES / str(case["name"])
-    cmd = [
-        "python3",
-        str(SCRIPT),
-        "--repo-root",
-        str(fixture),
-        "--scan-id",
-        f"fixture-{case['name']}",
-        "--output-dir",
-        "/tmp",
-    ]
-    proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
-    if proc.returncode != 0:
-        return False, f"{case['name']}: scanner exited {proc.returncode}: {proc.stderr.strip()}"
+    with tempfile.TemporaryDirectory(prefix="cairo-auditor-fixture-") as tmpdir:
+        cmd = [
+            "python3",
+            str(SCRIPT),
+            "--repo-root",
+            str(fixture),
+            "--scan-id",
+            f"fixture-{case['name']}",
+            "--output-dir",
+            tmpdir,
+        ]
+        proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
+        if proc.returncode != 0:
+            return False, f"{case['name']}: scanner exited {proc.returncode}: {proc.stderr.strip()}"
 
-    raw_stdout = proc.stdout.strip()
-    if not raw_stdout:
-        return False, f"{case['name']}: scanner produced empty stdout"
-    if "\n" in raw_stdout:
-        return False, f"{case['name']}: unexpected multi-line stdout: {raw_stdout!r}"
+        raw_stdout = proc.stdout.strip()
+        if not raw_stdout:
+            return False, f"{case['name']}: scanner produced empty stdout"
+        if "\n" in raw_stdout:
+            return False, f"{case['name']}: unexpected multi-line stdout: {raw_stdout!r}"
 
-    try:
-        payload = json.loads(raw_stdout)
-    except Exception as exc:  # noqa: BLE001
-        return False, f"{case['name']}: failed to parse scanner JSON output: {exc}"
+        try:
+            payload = json.loads(raw_stdout)
+        except Exception as exc:  # noqa: BLE001
+            return False, f"{case['name']}: failed to parse scanner JSON output: {exc}"
 
-    findings = int(payload.get("findings", -1))
-    classes = set(payload.get("class_counts", {}).keys())
+        out_json = Path(str(payload.get("output_json", "")))
+        out_md = Path(str(payload.get("output_md", "")))
+        if not out_json.is_file() or not out_md.is_file():
+            return (
+                False,
+                f"{case['name']}: scanner did not emit expected report artifacts",
+            )
+        tmp_root = Path(tmpdir).resolve()
+        out_json_resolved = out_json.resolve()
+        out_md_resolved = out_md.resolve()
+        if tmp_root not in out_json_resolved.parents or tmp_root not in out_md_resolved.parents:
+            return (
+                False,
+                f"{case['name']}: scanner emitted reports outside case temp dir",
+            )
+
+        findings = int(payload.get("findings", -1))
+        classes = set(payload.get("class_counts", {}).keys())
 
     if "expected_findings_exact" in case and findings != int(case["expected_findings_exact"]):
         return (

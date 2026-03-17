@@ -14,3 +14,4 @@ The check runs deterministic fixture repos:
 - `secure_upgrade_controller` (expects zero findings)
 - `insecure_embed_upgrade_controller` (same upgrade findings under `#[abi(embed_v0)]`)
 - `caller_read_without_auth` (ensures caller-read bookkeeping does not bypass auth checks)
+- `guarded_upgrade_without_timelock` (ensures owner-guarded single-step upgrades do not trigger timelock finding)

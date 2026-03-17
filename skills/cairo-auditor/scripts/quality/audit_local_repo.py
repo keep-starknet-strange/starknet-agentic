@@ -143,15 +143,18 @@ def _parse_external_functions(code: str) -> list[ExternalFunction]:
 
         fn_match = fn_pattern.search(code, ext_match.end())
         if not fn_match:
-            break
+            pos = ext_match.end()
+            continue
 
         brace_idx = code.find("{", fn_match.end())
         if brace_idx == -1:
-            break
+            pos = fn_match.end()
+            continue
 
         close_idx = _find_matching_brace(code, brace_idx)
         if close_idx == -1:
-            break
+            pos = brace_idx + 1
+            continue
 
         name = fn_match.group(1)
         line = code.count("\n", 0, fn_match.start()) + 1
@@ -281,7 +284,7 @@ def _build_findings(repo_root: Path, prod_files: list[Path]) -> list[dict[str, o
                     "schedule_upgrade",
                 )
             )
-            if looks_like_upgrade and writes_class_hash and not has_timelock_guards:
+            if looks_like_upgrade and writes_class_hash and not has_timelock_guards and not guarded:
                 add(
                     rel,
                     fn.line,
