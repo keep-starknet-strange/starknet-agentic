@@ -6,8 +6,8 @@
     "name": "keep-starknet-strange",
     "url": "https://github.com/keep-starknet-strange"
   },
-  "homepage": "https://github.com/keep-starknet-strange/starknet-skills/tree/main/cairo-auditor",
-  "repository": "https://github.com/keep-starknet-strange/starknet-skills",
+  "homepage": "https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor",
+  "repository": "https://github.com/keep-starknet-strange/starknet-agentic",
   "license": "MIT",
   "keywords": [
     "starknet",

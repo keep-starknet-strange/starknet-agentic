@@ -9,6 +9,12 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 ````markdown
 # Security Review — <project name or repo basename>
 
+## Signal Summary
+
+| Critical | High | Medium | Low | Total |
+|----------|------|--------|-----|-------|
+| N        | N    | N      | N   | N     |
+
 ---
 
 ## Scope
@@ -20,6 +26,22 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 | **Total in-scope lines**         | N                                                      |
 | **Confidence threshold (0-100)** | 75                                                     |
 | **Preflight findings**           | N deterministic hits                                   |
+| **Generated**                    | ISO8601 timestamp                                      |
+
+`Execution Integrity: <FULL|DEGRADED|FAILED>`
+
+---
+
+## Execution Trace
+
+| Stage | Model | Evidence | Status |
+|-------|-------|----------|--------|
+| Scope discovery | n/a | `{workdir}/cairo-audit-files.txt` (N files) | OK |
+| Agent 1 vector scan | `<actual model label>` | `{workdir}/cairo-audit-agent-1-bundle.md` (N lines) | OK |
+| Agent 2 vector scan | `<actual model label>` | `{workdir}/cairo-audit-agent-2-bundle.md` (N lines) | OK |
+| Agent 3 vector scan | `<actual model label>` | `{workdir}/cairo-audit-agent-3-bundle.md` (N lines) | OK |
+| Agent 4 vector scan | `<actual model label>` | `{workdir}/cairo-audit-agent-4-bundle.md` (N lines) | OK |
+| Agent 5 adversarial (deep only) | `<actual model label>` | direct read from `{workdir}/cairo-audit-files.txt` | OK / SKIPPED / FAILED |
 
 ---
 
@@ -97,6 +119,14 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 ## Rules
 
 - Follow the template above exactly.
+- Always include `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, and `Findings Index` in that order.
+- In `Signal Summary`, `Total` must equal `Critical + High + Medium + Low`. If any input `Total` differs, recompute and overwrite it.
+- `Execution Trace` must include scope discovery and Agents 1-4 for every run.
+- In deep mode, `Execution Trace` must include Agent 5 with actual model label and status.
+- In non-deep modes, keep Agent 5 row with `Status: SKIPPED`.
+- `Execution Trace` evidence paths must reference `{workdir}` (resolved from `CAIRO_AUDITOR_WORKDIR` or a per-run private temp directory).
+- If any specialist is unavailable and degraded mode is explicitly enabled, set `Execution Integrity: DEGRADED` and include the warning line under Scope.
+- If scope discovery or any required stage (Agents 1-4 and Agent 5 in deep mode) has `Status: FAILED` and degraded mode is not explicitly enabled, set `Execution Integrity: FAILED` and abort report generation (no findings output).
 - Sort findings by priority (`P0` first); within each priority tier, sort by confidence (highest first).
 - Findings below threshold (confidence < 75) get a description but no **Fix** block and no **Required Tests** block.
 - After filtering/deduplication/sorting, renumber findings sequentially starting at `1`.
@@ -126,5 +156,7 @@ Use this exact per-finding structure:
 When two findings share the same root cause, keep one:
 
 - keep higher confidence,
+- on confidence tie, keep higher priority (`P0` > `P1` > `P2` > `P3`),
+- if both tie, keep the finding with the more complete path/evidence,
 - merge broader attack path details,
 - keep a single fix/test block.
