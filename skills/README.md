@@ -24,77 +24,81 @@ Production-ready skills for AI agents operating on Starknet. Built for the Agent
 | [starknet-js](./starknet-js/) | starknet.js v9.x SDK guide for dApps, accounts, transactions, paymaster | Complete |
 | [starknet-tongo](./starknet-tongo/) | Confidential ERC20 payments with encrypted balances and ZK-proven transfers | Complete |
 
-## Installation
+## Install and First Use
 
-Fast path: [2-minute quickstart](../docs/SKILLS_QUICKSTART.md)
+### First useful result in <= 2 minutes
+
+Use the deterministic quickstart page:
+
+- [`skills/QUICKSTART_2MIN.md`](./QUICKSTART_2MIN.md)
+
+### Fastest Path: `cairo-auditor`
+
+Use one command path, then run one audit.
+
+**Codex (public GitHub install):**
+
+```bash
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+# Restart Codex, open /skills, then invoke cairo-auditor
+```
+
+**Codex (reproducible pin):**
+
+```bash
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
+```
+
+Pinned ref policy: use released tags (or immutable commit SHAs) for reproducible installs.
+
+**Claude Code plugin marketplace:**
+
+```bash
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
+/reload-plugins
+/starknet-agentic-skills:cairo-auditor
+```
+
+Scope guidance:
+
+- `--scope local` (recommended): install for current project only.
+- `--scope user`: install globally across projects.
+
+**Agent Skills CLI:**
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
+```
+
+### Install All Skills
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic
+```
+
+### Clone-and-Use (Codex repository discovery)
+
+```bash
+git clone https://github.com/keep-starknet-strange/starknet-agentic.git
+cd starknet-agentic
+```
+
+Codex discovers repository skills from `.agents/skills/`, which symlink to canonical skill content under `skills/`.
+
+Install troubleshooting and recovery commands:
+
+- [`skills/TROUBLESHOOTING.md`](./TROUBLESHOOTING.md)
+
+Claude official marketplace submission runbook:
+
+- [`docs/CLAUDE_MARKETPLACE_SUBMISSION.md`](../docs/CLAUDE_MARKETPLACE_SUBMISSION.md)
 
 ## Machine-Readable Index
 
 For agent platforms (including OpenClaw/MoltBook) and tooling that want to index skills programmatically, see:
 - `skills/manifest.json` (generated, stable format)
 - Cairo cutover and legacy mapping: `../docs/CAIRO_SKILLS_MIGRATION.md`
-
-### Option 1: Codex
-
-```bash
-git clone https://github.com/keep-starknet-strange/starknet-agentic.git && cd starknet-agentic
-# Skills are auto-discovered from .agents/skills in this repo.
-```
-
-Run Codex from this repo root so `.agents/skills` is indexed in-session.
-
-Example first run prompt:
-
-```text
-Use $cairo-auditor to audit ./contracts and output concrete exploitable findings only (file:line, impact, exploit path, fix diff).
-```
-
-### Option 2: GitHub / Agent Skills CLI (Recommended for most tools)
-
-Install all skills or specific ones:
-
-```bash
-# Install all Starknet skills
-npx skills add keep-starknet-strange/starknet-agentic
-
-# Install specific skill
-npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
-npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-defi
-npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-contract-authoring
-npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-optimization
-npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
-```
-
-### Option 3: Claude Code Plugin Marketplace
-
-```bash
-# Register the marketplace
-/plugin marketplace add keep-starknet-strange/starknet-agentic
-
-# Install all skills (user scope recommended)
-/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
-
-# Refresh plugin registry in the current session
-/reload-plugins
-
-# Invoke Cairo auditor (recommended alias command)
-/cairo-auditor
-/cairo-auditor deep
-
-# Optional: namespaced skill invocation
-/starknet-agentic-skills:cairo-auditor
-```
-
-Install scope guidance:
-
-| Scope | Command | When to use |
-|---|---|---|
-| User (recommended) | `/plugin install starknet-agentic-skills@starknet-agentic-skills -s user` | One install for all repos |
-| Project | `/plugin install starknet-agentic-skills@starknet-agentic-skills -s project` | Pin one repository to a dedicated install |
-
-### Option 4: ClawHub (Coming Soon)
-
-ClawHub integration is planned for OpenClaw and MoltBook users. Publishing workflow is not yet publicly documented - check [clawhub.ai](https://clawhub.ai) for updates.
 
 ## Updating Skills
 
@@ -105,33 +109,13 @@ Installed skills don't auto-update. To get the latest version:
 npx skills add keep-starknet-strange/starknet-agentic --force
 
 # Claude Code - update plugin
+/plugin marketplace update keep-starknet-strange/starknet-agentic
 /plugin update starknet-agentic-skills@starknet-agentic-skills
+/reload-plugins
 
 # Git clone - pull latest
 git pull origin main
 ```
-
-If you see `Unknown skill: starknet-agentic-skills:cairo-auditor`:
-
-```bash
-# Remove stale project-scope installs
-/plugin uninstall starknet-agentic-skills@starknet-agentic-skills -s project
-
-# Ensure one clean user-scope install
-/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
-/reload-plugins
-```
-
-## Troubleshooting Matrix
-
-| Problem | Why it happens | Fix |
-|---|---|---|
-| `Unknown skill: ...cairo-auditor` in Claude | Stale project-scope install shadows user scope | `/plugin uninstall starknet-agentic-skills@starknet-agentic-skills -s project` then reinstall with `-s user` and `/reload-plugins` |
-| Skill missing in Codex | Session started outside repo root or stale discovery cache | Open Codex from `starknet-agentic` root so `.agents/skills` is indexed, then restart session |
-| Tool shows old skill content | Cached older copy | `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor --force` |
-| Slash command not available after install | Plugin registry not refreshed | `/reload-plugins` |
-
-See full quickstart and recovery commands in [`docs/SKILLS_QUICKSTART.md`](../docs/SKILLS_QUICKSTART.md).
 
 ## Prerequisites
 
@@ -216,17 +200,12 @@ Skill instructions and documentation...
 
 ## Platform Compatibility
 
-Verification recency is published on each site build in `starkskills.org/data/site-data.json` (`generated_at_utc`).
-
-| Surface | Support | Install mode |
-|---|---|---|
-| Codex | Supported | `.agents/skills` (repo auto-discovery) |
-| Claude Code | Supported | Plugin marketplace bundle |
-| Cursor | Supported | Agent Skills CLI (`npx skills add ...`) |
-| GitHub Copilot | Supported | Agent Skills import flow |
-| Goose / Roo Code / Windsurf | Supported | Agent Skills format |
-| OpenClaw / MoltBook | Planned | ClawHub publish flow |
-| Custom agents | Supported | Any runtime implementing Agent Skills spec |
+| Surface | Install Path | Status | Last Verified (UTC) |
+| --- | --- | --- | --- |
+| Codex | `skill-installer install .../tree/v0.1.0-beta.1/skills/cairo-auditor` | Supported | 2026-03-15 |
+| Claude Code | `/plugin marketplace add ...` + `/plugin install ... --scope local` | Supported | 2026-03-15 |
+| Agent Skills CLI | `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor` | Supported | 2026-03-15 |
+| Cursor / Copilot / OpenClaw / custom Agent Skills hosts | Agent Skills spec package import | Supported | 2026-03-15 |
 
 ## Contributing
 

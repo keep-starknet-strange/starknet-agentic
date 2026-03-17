@@ -1,0 +1,6 @@
+interface:
+  display_name: "Cairo Contract Authoring"
+  short_description: "Workflow-first Starknet contract authoring with secure defaults and component wiring guidance."
+  default_prompt: "Implement this Starknet contract in Cairo with explicit access posture, non-zero guards, and clear storage/events/interfaces."
+policy:
+  allow_implicit_invocation: false

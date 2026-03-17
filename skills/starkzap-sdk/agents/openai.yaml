@@ -1,0 +1,6 @@
+interface:
+  display_name: "Starkzap SDK"
+  short_description: "Project-focused Starkzap SDK integration and maintenance workflows."
+  default_prompt: "Implement this Starkzap SDK change with signer safety, sponsored-transaction correctness, and test coverage updates."
+policy:
+  allow_implicit_invocation: false

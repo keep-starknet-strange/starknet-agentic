@@ -1,0 +1,6 @@
+interface:
+  display_name: "Account Abstraction"
+  short_description: "Validation and risk checks for Starknet account abstraction and session-key flows."
+  default_prompt: "Review this Starknet account abstraction flow for nonce, signature, and policy enforcement correctness."
+policy:
+  allow_implicit_invocation: false

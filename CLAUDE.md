@@ -1,5 +1,8 @@
 # Starknet Agentic -- Development Context
 
+Canonical behavioral instructions live in `AGENTS.md`. This file provides
+repository implementation context and operational references.
+
 <identity>
 Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (ERC-8004 identity/reputation), MCP server, A2A adapter, and skills that enable any AI agent to hold wallets, transact, build reputation, and access DeFi on Starknet.
 </identity>
@@ -65,9 +68,10 @@ starknet-agentic/
 │   ├── GOOD_FIRST_ISSUES.md              # Contributor starter issues
 │   └── TROUBLESHOOTING.md                # Common issues and solutions
 ├── website/                              # Next.js documentation site (Vercel)
-├── AGENT.md                              # Agent mission & ecosystem context
+├── .agents/
+│   └── skills/                           # Codex discovery bridge symlinked to skills/*
+├── AGENTS.md                             # Canonical agent mission and coordination
 ├── CLAUDE.md                             # This file
-├── agents.md                             # Multi-agent coordination guide
 └── package.json                          # Root monorepo (pnpm workspaces)
 ```
 
@@ -197,7 +201,7 @@ Metadata schema keys: `agentName`, `agentType`, `version`, `model`, `status`, `f
 2. Implement handler using starknet.js or avnu SDK
 3. Register in the server's tool list
 4. Add Vitest tests
-5. Document in AGENT.md tool list
+5. Document in AGENTS.md skill/tool guidance if behavior changes
 
 ### Adding a new Cairo contract
 1. Create module in `contracts/<contract-name>/` or extend existing in `packages/`
@@ -248,8 +252,7 @@ Metadata schema keys: `agentName`, `agentType`, `version`, `model`, `status`, `f
 | ERC-8004 parity | `docs/ERC8004-PARITY.md` | Cross-chain compatibility, session keys, Starknet extensions |
 | Getting started | `docs/GETTING_STARTED.md` | New user onboarding, quick-start guide |
 | Troubleshooting | `docs/TROUBLESHOOTING.md` | Debugging common issues |
-| Agent mission | `AGENT.md` | Understanding project goals, existing assets, gaps |
-| Multi-agent coordination | `agents.md` | Delegating tasks across multiple agents |
+| Agent mission + coordination | `AGENTS.md` | Canonical goals, role boundaries, and multi-agent workflow |
 
 Always consult `references/` before relying on training data for Starknet-specific or AgentSkills-specific information.
 

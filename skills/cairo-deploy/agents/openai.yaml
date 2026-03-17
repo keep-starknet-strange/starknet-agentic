@@ -1,0 +1,6 @@
+interface:
+  display_name: "Cairo Deploy"
+  short_description: "Starknet deployment guidance with sncast declare/deploy/verify flows."
+  default_prompt: "Prepare and execute a safe Starknet deployment plan for these Cairo contracts."
+policy:
+  allow_implicit_invocation: false

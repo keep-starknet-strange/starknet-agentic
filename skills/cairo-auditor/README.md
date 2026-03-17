@@ -27,70 +27,53 @@ Not a substitute for a formal audit — but the check you should never skip.
 
 ## Install
 
-### Codex
+**Codex (public GitHub install):**
 
 ```bash
-git clone https://github.com/keep-starknet-strange/starknet-agentic.git && cd starknet-agentic
-# Skills are auto-discovered from .agents/skills in this repo.
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
 ```
 
-First useful prompt:
+Restart Codex, open `/skills`, then invoke `cairo-auditor`.
 
-```text
-Use $cairo-auditor to audit ./contracts and return only concrete exploitable findings with file:line, impact, and secure patch diff.
+**Codex (reproducible pin):**
+
+```bash
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
 ```
 
-### Claude Code (Plugin Marketplace)
+Pinned ref policy: use released tags (or immutable commit SHAs) for reproducible installs.
+
+**Claude Code plugin marketplace:**
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
 /reload-plugins
-/cairo-auditor
 ```
 
-### Agent Skills CLI (Cursor/Copilot/Roo/Windsurf/Goose)
+**Agent Skills CLI:**
 
 ```bash
 npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 ```
 
-### Cursor (manual reference mode)
+Related docs:
 
-Cursor can consume these docs as guidance but does not execute `/cairo-auditor` as a native slash command package by default.
-
-```bash
-git clone https://github.com/keep-starknet-strange/starknet-agentic.git \
-  && mkdir -p docs/cairo-auditor \
-  && cp -R starknet-agentic/skills/cairo-auditor/references/. docs/cairo-auditor/
-```
-
-### Update to latest
-
-```bash
-cd starknet-agentic && git pull
-npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor --force
-/plugin install starknet-agentic-skills@starknet-agentic-skills -s user
-/reload-plugins
-```
-
-More installation and troubleshooting flows: [../../docs/SKILLS_QUICKSTART.md](../../docs/SKILLS_QUICKSTART.md)
+- [2-minute quickstart](../QUICKSTART_2MIN.md)
+- [troubleshooting matrix](../TROUBLESHOOTING.md)
+- [Claude marketplace submission runbook](../../docs/CLAUDE_MARKETPLACE_SUBMISSION.md)
 
 ## Usage
 
 ```bash
-# Scan the full repo (default — 4 parallel agents)
-/cairo-auditor
+# Claude Code plugin invocation
+/starknet-agentic-skills:cairo-auditor
+```
 
-# Full repo + adversarial reasoning agent (slower, more thorough)
-/cairo-auditor deep
-
-# Review specific file(s)
-/cairo-auditor src/contracts/account.cairo
-/cairo-auditor src/contracts/account.cairo src/contracts/factory.cairo
-
-# Write report to a markdown file (terminal-only by default)
-/cairo-auditor --file-output
+```text
+# Codex invocation pattern
+Audit this repository with cairo-auditor in default mode.
+Audit src/contracts/account.cairo with cairo-auditor deep mode.
 ```
 
 ## Deep mode reliability
@@ -109,6 +92,8 @@ Large-file behavior:
 - This preserves full-power coverage while reducing transport drop risk.
 
 ### Deterministic local scan (no AI)
+
+Run this from a clone of `keep-starknet-strange/starknet-agentic` at repository root, since this helper script ships with the repository.
 
 ```bash
 python3 scripts/quality/audit_local_repo.py \

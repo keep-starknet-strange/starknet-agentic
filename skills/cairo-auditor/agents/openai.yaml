@@ -1,0 +1,6 @@
+interface:
+  display_name: "Cairo Auditor"
+  short_description: "Security audit for Cairo/Starknet contracts with strict false-positive gating."
+  default_prompt: "Audit these Cairo contracts for concrete exploitable vulnerabilities and report only defensible findings."
+policy:
+  allow_implicit_invocation: false

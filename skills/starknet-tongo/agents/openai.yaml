@@ -1,0 +1,6 @@
+interface:
+  display_name: "Starknet Tongo"
+  short_description: "Confidential ERC20 payment workflows using Tongo encrypted balances and proofs."
+  default_prompt: "Design this Tongo confidential-payment flow with correct fund, transfer, rollover, and withdraw sequencing."
+policy:
+  allow_implicit_invocation: false

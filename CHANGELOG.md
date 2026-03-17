@@ -17,7 +17,17 @@ follows SemVer with a pre-1.0 policy (see [`VERSIONING.md`](./VERSIONING.md)).
   - `qs`: `6.14.2` — existing security pin (unchanged)  
   PR: `#289`
 
-## [0.1.0] - 2026-02-14
+### Documentation
+
+- Canonicalized agent instructions to root `AGENTS.md` and removed legacy
+  duplicate root instruction files.
+- Hardened public skill install UX:
+  - pinned reproducible Codex install refs to `v0.1.0-beta.1`
+  - added 2-minute quickstart and troubleshooting matrix
+  - added Claude marketplace submission runbook
+  PR: `#360`
+
+## [0.1.0-beta.1] - 2026-02-14
 
 ### Security
 
@@ -44,5 +54,5 @@ follows SemVer with a pre-1.0 policy (see [`VERSIONING.md`](./VERSIONING.md)).
   PR: `#239`  
   Merge commit: `d913d065eb7ee30209f39ca9486df9c12f780f5b`
 
-[Unreleased]: https://github.com/keep-starknet-strange/starknet-agentic/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/keep-starknet-strange/starknet-agentic/releases/tag/v0.1.0
+[Unreleased]: https://github.com/keep-starknet-strange/starknet-agentic/compare/v0.1.0-beta.1...HEAD
+[0.1.0-beta.1]: https://github.com/keep-starknet-strange/starknet-agentic/releases/tag/v0.1.0-beta.1
