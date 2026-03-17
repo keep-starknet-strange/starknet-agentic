@@ -28,9 +28,10 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 | **Preflight findings**           | N deterministic hits                                   |
 | **Generated**                    | ISO8601 timestamp                                      |
 
-`Execution Integrity: FULL` or `Execution Integrity: DEGRADED`
+`Execution Integrity: FULL` or `Execution Integrity: DEGRADED` or `Execution Integrity: FAILED`
 If degraded, add:
 `WARNING: degraded execution (specialist agents unavailable)`
+If failed (required stages failed and degraded mode was not explicitly enabled), abort report generation and return no findings output.
 
 ---
 
@@ -126,6 +127,7 @@ If degraded, add:
 - In deep mode, `Execution Trace` must include Agent 5 with actual model label and status.
 - In non-deep modes, keep Agent 5 row with `Status: SKIPPED`.
 - If any specialist is unavailable and degraded mode is explicitly enabled, set `Execution Integrity: DEGRADED` and include the warning line under Scope.
+- If scope discovery or any required stage (Agents 1-4) has `Status: FAILED` and degraded mode is not explicitly enabled, set `Execution Integrity: FAILED` and abort report generation (no findings output).
 - Sort findings by priority (`P0` first); within each priority tier, sort by confidence (highest first).
 - Findings below threshold (confidence < 75) get a description but no **Fix** block and no **Required Tests** block.
 - After filtering/deduplication/sorting, renumber findings sequentially starting at `1`.
