@@ -143,7 +143,11 @@ def codex_symlink_errors(root: Path = ROOT) -> list[str]:
         if resolved != expected:
             errors.append(f"Codex symlink points to {resolved}, expected {expected}")
 
-    extra = sorted(p.name for p in agents_dir.iterdir() if p.name not in skill_slugs)
+    extra = sorted(
+        p.name
+        for p in agents_dir.iterdir()
+        if p.name not in skill_slugs and p.name != "README.md" and not p.name.startswith(".")
+    )
     if extra:
         errors.append(f"unexpected Codex entries without matching skills/*/SKILL.md: {', '.join(extra)}")
 
