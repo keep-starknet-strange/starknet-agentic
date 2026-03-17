@@ -117,12 +117,14 @@ First, resolve a per-run private work directory:
 
 - If `CAIRO_AUDITOR_WORKDIR` is set, use it as `{workdir}`.
 - Otherwise create one with `mktemp -d "${TMPDIR:-/tmp}/cairo-auditor.XXXXXX"` and `chmod 700`.
+- Print `WORKDIR=<absolute-path>` in Turn 1 output and reuse that exact path as `{workdir}` for all later turns.
 
 (a) Resolve and persist in-scope `.cairo` files to `{workdir}/cairo-audit-files.txt` per mode selection:
 
 ```bash
 WORKDIR="${CAIRO_AUDITOR_WORKDIR:-$(mktemp -d "${TMPDIR:-/tmp}/cairo-auditor.XXXXXX")}"
 chmod 700 "$WORKDIR"
+echo "WORKDIR=$WORKDIR"
 find <repo-root> \
   \( -type d \( -name test -o -name tests -o -name mock -o -name mocks -o -name example -o -name examples -o -name fixture -o -name fixtures -o -name vendor -o -name vendors -o -name preset -o -name presets \) -prune \) \
   -o \( -type f -name "*.cairo" ! -name "*_test.cairo" ! -name "*Test*.cairo" -print \) \
@@ -135,6 +137,7 @@ For **`$filename ...`** mode, do not run `find`. Instead, run:
 ```bash
 WORKDIR="${CAIRO_AUDITOR_WORKDIR:-$(mktemp -d "${TMPDIR:-/tmp}/cairo-auditor.XXXXXX")}"
 chmod 700 "$WORKDIR"
+echo "WORKDIR=$WORKDIR"
 REPO_ROOT=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "<repo-root>")
 > "$WORKDIR/cairo-audit-files.txt"
 for f in "$@"; do
