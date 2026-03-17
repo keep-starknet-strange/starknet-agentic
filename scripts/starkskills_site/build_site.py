@@ -25,6 +25,33 @@ ROUTER_PATH_CANDIDATES = (Path("SKILL.md"), Path("skills/SKILL.md"))
 QUALITY_WORKFLOW_CANDIDATES = ("ci.yml", "quality.yml")
 FULL_EVALS_WORKFLOW_CANDIDATES = ("cairo-skills-full-evals.yml", "full-evals.yml")
 LEGACY_REPO_SLUG = "keep-starknet-strange/starknet-skills"
+PRODUCTION_READY_SKILLS = frozenset({"cairo-auditor"})
+PUBLIC_BETA_SKILLS = frozenset(
+    {
+        "cairo-contract-authoring",
+        "cairo-testing",
+        "cairo-deploy",
+        "cairo-optimization",
+    }
+)
+READINESS_ORDER = ("production-ready", "public-beta", "experimental")
+READINESS_META = {
+    "production-ready": {
+        "badge": "production ready",
+        "title": "Production Ready",
+        "note": "Security-critical skill with hardened workflows and benchmark-backed quality tracking.",
+    },
+    "public-beta": {
+        "badge": "public beta",
+        "title": "Public Beta",
+        "note": "Recommended for real use, but still evolving quickly with active updates and tighter feedback loops.",
+    },
+    "experimental": {
+        "badge": "experimental",
+        "title": "Experimental",
+        "note": "Useful patterns, but behavior and guidance can change significantly between releases.",
+    },
+}
 DOMAIN_PATTERN = re.compile(r"(?=.{1,253}\Z)(?!-)(?:[A-Za-z0-9-]{1,63}\.)+[A-Za-z0-9-]{2,63}(?<!-)")
 REPO_SLUG_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
@@ -282,6 +309,14 @@ def skill_sigil(skill_name: str) -> str:
     return letters or "SKL"
 
 
+def classify_skill_readiness(skill_name: str) -> str:
+    if skill_name in PRODUCTION_READY_SKILLS:
+        return "production-ready"
+    if skill_name in PUBLIC_BETA_SKILLS:
+        return "public-beta"
+    return "experimental"
+
+
 def resolve_router_skill_path(root: Path) -> str:
     for candidate in ROUTER_PATH_CANDIDATES:
         path = root / candidate
@@ -330,11 +365,17 @@ def load_skill_modules(root: Path, repo_raw: str, repo_github: str, repo_ref: st
             f"{repo_path}/SKILL.md",
         )
         skill_md_path = validate_skill_md_path(root, repo_path, raw_skill_md_path)
+        skill_name = Path(repo_path).name
+        readiness = classify_skill_readiness(skill_name)
+        readiness_meta = READINESS_META.get(readiness, READINESS_META["experimental"])
 
         module = {
             "name": name,
             "description": compact_markdown_text(description, limit=120),
             "sigil": skill_sigil(name),
+            "skill_name": skill_name,
+            "readiness": readiness,
+            "readiness_label": readiness_meta["badge"],
             "repo_path": repo_path,
             "skill_path": skill_md_path,
             "raw_skill_url": raw_path_url(skill_md_path, repo_raw),
@@ -346,6 +387,41 @@ def load_skill_modules(root: Path, repo_raw: str, repo_github: str, repo_ref: st
         raise SystemExit("[build_site] No modules resolved from plugin + skills manifest")
 
     return modules, plugin_name
+
+
+def validate_readiness_configuration(modules: list[dict]) -> None:
+    skill_names = [str(item.get("skill_name", "")).strip() for item in modules]
+    unique_skill_names = {name for name in skill_names if name}
+
+    if len(unique_skill_names) != len(skill_names):
+        raise SystemExit(
+            "[build_site] Duplicate or missing skill_name values detected in module index; "
+            "readiness classification requires unique skill names."
+        )
+
+    overlapping = PRODUCTION_READY_SKILLS & PUBLIC_BETA_SKILLS
+    if overlapping:
+        overlap_list = ", ".join(sorted(overlapping))
+        raise SystemExit(
+            "[build_site] Skills cannot be both production-ready and public-beta: "
+            f"{overlap_list}"
+        )
+
+    missing_production = PRODUCTION_READY_SKILLS - unique_skill_names
+    if missing_production:
+        missing_list = ", ".join(sorted(missing_production))
+        raise SystemExit(
+            "[build_site] Production-ready skill set references unknown skills: "
+            f"{missing_list}"
+        )
+
+    missing_beta = PUBLIC_BETA_SKILLS - unique_skill_names
+    if missing_beta:
+        missing_list = ", ".join(sorted(missing_beta))
+        raise SystemExit(
+            "[build_site] Public-beta skill set references unknown skills: "
+            f"{missing_list}"
+        )
 
 
 def fingerprint_files(root: Path, files: list[Path]) -> str:
@@ -363,6 +439,7 @@ def build_dataset(root: Path, repo_slug: str, repo_ref: str) -> dict:
     repo_github = f"https://github.com/{repo_slug}"
     repo_raw = f"https://raw.githubusercontent.com/{repo_slug}/{repo_ref}"
     modules, plugin_name = load_skill_modules(root, repo_raw=repo_raw, repo_github=repo_github, repo_ref=repo_ref)
+    validate_readiness_configuration(modules)
     router_skill_path = resolve_router_skill_path(root)
     quality_workflow = resolve_workflow_name(root, QUALITY_WORKFLOW_CANDIDATES)
     full_evals_workflow = resolve_workflow_name(root, FULL_EVALS_WORKFLOW_CANDIDATES)
@@ -651,23 +728,17 @@ def quickstart_card(sigil: str, surface: str, install: str, run: str, expected: 
     )
 
 
-def compatibility_card(surface: str, install_scope: str, status: str, last_verified: str) -> str:
-    return (
-        '<article class="compat-card reveal">'
-        f"<h3>{e(surface)}</h3>"
-        f'<p>{e(status)}</p>'
-        f'<p class="compat-meta"><span>scope</span><code>{e(install_scope)}</code></p>'
-        f'<p class="compat-meta"><span>last verified</span><code>{e(last_verified)}</code></p>'
-        "</article>"
-    )
-
-
 def module_card(item: dict) -> str:
+    readiness = re.sub(r"[^a-z0-9-]", "", str(item.get("readiness", "experimental")).lower())
+    if not readiness:
+        readiness = "experimental"
+    readiness_label = item.get("readiness_label", "experimental")
+
     return (
-        f'<article class="module-card reveal" data-href="{e(item["raw_skill_url"])}">'
+        f'<article class="module-card module-card--{e(readiness)} reveal" data-href="{e(item["raw_skill_url"])}">'
         '<div class="module-head">'
         f'<span class="module-sigil">{e(item["sigil"])}</span>'
-        '<span class="status">stable</span>'
+        f'<span class="status status--{e(readiness)}">{e(readiness_label)}</span>'
         "</div>"
         f'<h3><a href="{e(item["raw_skill_url"])}" target="_blank" rel="noreferrer">{e(item["name"])}</a></h3>'
         f'<p>{e(item["description"])}</p>'
@@ -675,6 +746,32 @@ def module_card(item: dict) -> str:
         f'<button class="icon-button copy-button" type="button" data-copy="{e_attr(item["raw_skill_url"])}" aria-label="Copy raw URL for {e(item["name"])}">cp</button>'
         f'<a class="icon-button" href="{e(item["raw_skill_url"])}" target="_blank" rel="noreferrer" aria-label="Open raw SKILL.md for {e(item["name"])}">raw</a>'
         f'<a class="icon-button" href="{e(item["github_url"])}" target="_blank" rel="noreferrer" aria-label="Open GitHub page for {e(item["name"])}">gh</a>'
+        "</div>"
+        "</article>"
+    )
+
+
+def skill_tier_group(tier_key: str, title: str, note: str, modules: list[dict]) -> str:
+    count = len(modules)
+    count_label = f"{count} skill" if count == 1 else f"{count} skills"
+    count_badge = f'<span class="tier-count">{e(count_label)}</span>' if count > 0 else ""
+    tier_safe = re.sub(r"[^a-z0-9-]", "", tier_key.lower())
+    if not tier_safe:
+        tier_safe = "experimental"
+    module_markup = "\n".join(module_card(item) for item in modules)
+    if not module_markup:
+        module_markup = '<article class="module-card module-card--empty"><p class="muted">No skills in this tier.</p></article>'
+    return (
+        f'<article class="tier-group tier-group--{e(tier_safe)} reveal">'
+        '<div class="tier-head">'
+        "<div>"
+        f"<h3>{e(title)}</h3>"
+        f"<p>{e(note)}</p>"
+        "</div>"
+        f"{count_badge}"
+        "</div>"
+        '<div class="module-grid">'
+        f"{module_markup}"
         "</div>"
         "</article>"
     )
@@ -815,9 +912,9 @@ def build_index_html(data: dict, domain: str | None) -> str:
     counts = data["counts"]
     links = data["links"]
     scorecard = data["latest_scorecards"].get("realworld") or data["latest_scorecards"].get("deterministic")
-    showcase_name = links.get("cairo_auditor_name", "cairo-auditor")
-    verified_date = str(data.get("generated_at_utc", ""))[:10] or "n/a"
     repo_dir = links["repo_slug"].split("/")[-1]
+    production_ready_title = READINESS_META["production-ready"]["title"]
+    public_beta_title = READINESS_META["public-beta"]["title"]
 
     stats_bar = "\n".join(
         [
@@ -828,7 +925,22 @@ def build_index_html(data: dict, domain: str | None) -> str:
         ]
     )
 
-    modules_html = "\n".join(module_card(item) for item in data["modules"])
+    modules_by_tier: dict[str, list[dict]] = {key: [] for key in READINESS_ORDER}
+    for item in data["modules"]:
+        tier_key = item.get("readiness", "experimental")
+        if tier_key not in modules_by_tier:
+            tier_key = "experimental"
+        modules_by_tier[tier_key].append(item)
+
+    modules_html = "\n".join(
+        skill_tier_group(
+            tier_key=tier_key,
+            title=READINESS_META[tier_key]["title"],
+            note=READINESS_META[tier_key]["note"],
+            modules=modules_by_tier[tier_key],
+        )
+        for tier_key in READINESS_ORDER
+    )
 
     pipeline_html = "\n".join(
         [
@@ -873,31 +985,11 @@ def build_index_html(data: dict, domain: str | None) -> str:
     )
 
     primary_command = command_block("Raw URL", "Use the router skill directly.", links["router_skill_raw"], "primary")
-    secondary_commands = "\n".join(
+    onboarding_links = "\n".join(
         [
-            command_block(
-                "Codex",
-                "Clone and auto-discover from .agents/skills.",
-                (
-                    f"git clone {links['repo']}.git && cd {repo_dir}\n"
-                    "# Skills auto-discover from .agents/skills\n"
-                    "# Start Codex from this repo root"
-                ),
-            ),
-            command_block(
-                "Claude",
-                "Install in Claude.",
-                (
-                    f"/plugin marketplace add {links['repo_slug']}\n"
-                    f"/plugin install {links['plugin_name']}@{links['plugin_name']} -s user\n"
-                    "/reload-plugins"
-                ),
-            ),
-            command_block(
-                "Skills CLI",
-                "Install one skill from GitHub.",
-                f"npx skills add {links['repo_slug']}/skills/cairo-auditor",
-            ),
+            '<a class="tool-pill tool-pill--primary" href="#quickstart">Start quickstart</a>',
+            f'<a class="tool-pill" href="{e(links["cairo_auditor"])}" target="_blank" rel="noreferrer">Open cairo-auditor</a>',
+            f'<a class="tool-pill" href="{e(links["skills_quickstart"])}" target="_blank" rel="noreferrer">Read full setup</a>',
         ]
     )
     quickstart_cards = "\n".join(
@@ -933,28 +1025,6 @@ def build_index_html(data: dict, domain: str | None) -> str:
             ),
         ]
     )
-    compatibility_cards = "\n".join(
-        [
-            compatibility_card(
-                "Codex",
-                ".agents/skills",
-                "Best path for explicit skill invocation and local-repo auditing.",
-                verified_date,
-            ),
-            compatibility_card(
-                "Claude Code",
-                "plugin scope: user",
-                "Full command support via marketplace bundle and slash commands.",
-                verified_date,
-            ),
-            compatibility_card(
-                "Agent Skills CLI",
-                "tool-managed",
-                "Works in Cursor/Copilot/Roo/Windsurf/Goose through Agent Skills format.",
-                verified_date,
-            ),
-        ]
-    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -967,7 +1037,6 @@ def build_index_html(data: dict, domain: str | None) -> str:
     <nav class="site-nav" aria-label="Primary navigation">
       <a href="#quickstart">quickstart</a>
       <a href="#skills">skills</a>
-      <a href="#compatibility">compatibility</a>
       <a href="#data">pipeline</a>
       {scorecard_nav}
       <a href="#verify">verify</a>
@@ -985,9 +1054,9 @@ def build_index_html(data: dict, domain: str | None) -> str:
       </div>
       <div class="hero-install">
         {primary_command}
-        <div class="command-stack">
-          {secondary_commands}
-        </div>
+      </div>
+      <div class="tools-grid hero-tools">
+        {onboarding_links}
       </div>
     </section>
 
@@ -1002,54 +1071,22 @@ def build_index_html(data: dict, domain: str | None) -> str:
       <div class="quickstart-grid">
         {quickstart_cards}
       </div>
-      <p class="section-note">Tip: run `cairo-contract-authoring` before `cairo-auditor` for higher signal and cleaner diffs.</p>
-    </section>
-
-    <section class="section reveal" id="compatibility">
-      <div class="section-head">
-        <div>
-          <p class="section-kicker">Compatibility</p>
-          <h2>Install surfaces</h2>
-        </div>
-        <a href="{e(links['skills_readme'])}" target="_blank" rel="noreferrer">skills README</a>
-      </div>
-      <div class="compat-grid">
-        {compatibility_cards}
-      </div>
-    </section>
-
-    <section class="section section-card reveal" id="showcase">
-      <div class="section-head">
-        <div>
-          <p class="section-kicker">Example</p>
-          <h2>{e(showcase_name)}</h2>
-        </div>
-        <div class="section-links">
-          <a href="{e(links['cairo_auditor'])}" target="_blank" rel="noreferrer">skill</a>
-          <a href="{e(links['cairo_auditor_readme'])}" target="_blank" rel="noreferrer">readme</a>
-        </div>
-      </div>
-      <p class="section-copy">One example module. Discover files, scan patterns, verify findings, write the report.</p>
-      <ul class="workflow" aria-label="Audit workflow">
-        <li><span>01</span> discover</li>
-        <li><span>02</span> scan</li>
-        <li><span>03</span> verify</li>
-        <li><span>04</span> report</li>
-      </ul>
+      <p class="section-note">This quickstart is the canonical install + run path for Codex, Claude, and Skills CLI.</p>
     </section>
 
     <section class="section reveal" id="skills">
       <div class="section-head">
         <div>
           <p class="section-kicker">Skills</p>
-          <h2>Index</h2>
+          <h2>Readiness tiers</h2>
         </div>
         <div class="section-links">
           <a href="{e(links['router_skill_github'])}" target="_blank" rel="noreferrer">router</a>
           <button class="copy-button inline-copy" type="button" data-copy="{e_attr(links['router_skill_raw'])}">copy router url</button>
         </div>
       </div>
-      <div class="module-grid">
+      <p class="section-note">Use <code>{e(production_ready_title)}</code> for high-stakes audits. <code>{e(public_beta_title)}</code> is recommended for active development workflows.</p>
+      <div class="tier-stack">
         {modules_html}
       </div>
     </section>
