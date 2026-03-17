@@ -380,6 +380,10 @@ def main() -> int:
     )
     parser.add_argument("--fail-on-findings", action="store_true")
     args = parser.parse_args()
+    safe_scan_id = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(args.scan_id)).strip("._-")
+    if not safe_scan_id:
+        parser.error("--scan-id must contain at least one safe filename character")
+    safe_scan_id = safe_scan_id[:64]
 
     repo_root = Path(args.repo_root).resolve()
     output_dir = Path(args.output_dir).resolve()
@@ -391,7 +395,7 @@ def main() -> int:
 
     generated_at = datetime.now(UTC).replace(microsecond=0)
     ts = generated_at.strftime("%Y%m%d-%H%M%SZ")
-    stem = f"{args.scan_id}-{ts}"
+    stem = f"{safe_scan_id}-{ts}"
     out_json = output_dir / f"{stem}.json"
     out_md = output_dir / f"{stem}.md"
 
@@ -399,7 +403,7 @@ def main() -> int:
     severity_counts = Counter(str(row["severity"]) for row in findings)
 
     payload = {
-        "scan_id": args.scan_id,
+        "scan_id": safe_scan_id,
         "generated_at": generated_at.isoformat(),
         "repo_root": repo_root.as_posix(),
         "ref": _git_head(repo_root),
@@ -428,7 +432,7 @@ def main() -> int:
     print(
         json.dumps(
             {
-                "scan_id": args.scan_id,
+                "scan_id": safe_scan_id,
                 "findings": len(findings),
                 "class_counts": dict(class_counts),
                 "severity_counts": dict(severity_counts),

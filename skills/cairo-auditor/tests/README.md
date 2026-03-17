@@ -1,6 +1,6 @@
 # Preflight Fixtures
 
-This directory holds deterministic fixtures for `scripts/quality/audit_local_repo.py`.
+This directory holds deterministic fixtures for `skills/cairo-auditor/scripts/quality/audit_local_repo.py`.
 
 ## Run
 

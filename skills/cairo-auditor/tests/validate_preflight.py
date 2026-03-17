@@ -19,7 +19,7 @@ CASES = [
             "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
             "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD",
         },
-        "expected_findings_min": 3,
+        "expected_findings_exact": 3,
     },
     {
         "name": "secure_upgrade_controller",
@@ -33,7 +33,7 @@ CASES = [
             "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
             "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD",
         },
-        "expected_findings_min": 3,
+        "expected_findings_exact": 3,
     },
     {
         "name": "caller_read_without_auth",
@@ -86,7 +86,13 @@ def run_case(case: dict[str, object]) -> tuple[bool, str]:
         )
 
     expected_classes = set(case.get("expected_classes", set()))
-    if not expected_classes.issubset(classes):
+    if "expected_findings_exact" in case and classes != expected_classes:
+        return (
+            False,
+            f"{case['name']}: expected classes {sorted(expected_classes)}, got {sorted(classes)}",
+        )
+
+    if "expected_findings_exact" not in case and not expected_classes.issubset(classes):
         return (
             False,
             f"{case['name']}: missing classes {sorted(expected_classes - classes)}; got {sorted(classes)}",

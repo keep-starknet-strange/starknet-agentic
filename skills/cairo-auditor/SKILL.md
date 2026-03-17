@@ -49,6 +49,9 @@ try {
 | `CAUD-003` | Agent bundle generation failed | Rebuild `/tmp/cairo-audit-agent-*-bundle.md` and confirm each bundle has non-zero line count. |
 | `CAUD-004` | Conflicting findings across agents | Keep the highest-confidence root cause, then request a focused re-run on the disputed file. |
 | `CAUD-005` | Report includes only low-confidence items | Run deep mode (`/cairo-auditor deep`) and add deterministic checks from Semgrep/audit findings. |
+| `CAUD-006` | Deep mode requested but specialist agents unavailable | Re-run in an environment with Agent tool support. Where fail-closed enforcement is enabled, `--allow-degraded` explicitly permits fallback. |
+| `CAUD-007` | Deep mode host capability preflight failed | For hosts with preflight enforcement enabled, surface remediation and stop before findings unless `--allow-degraded` is explicitly present. |
+| `CAUD-008` | Agent transport instability or stalled specialist completion | Retry failed/stalled specialists once. In hosts with deep-mode enforcement enabled, unresolved specialist outages are treated as fail-closed unless explicitly degraded. |
 
 ## When to Use
 
@@ -83,6 +86,28 @@ try {
 **Flags:**
 
 - `--file-output` (off by default): also write the report to a markdown file. Without this flag, output goes to the terminal only.
+- `--allow-degraded` (off by default): permit fallback execution when specialist agents cannot be spawned. On hosts with deep-mode enforcement enabled, this flag opts into degraded execution.
+
+## Host Capability Preflight (Deep Mode, Experimental)
+
+The host-capability preflight below is an experimental hardening path. Use it when your host exposes specialist-agent capability checks.
+
+Before Turn 1 when mode is `deep`, run a lightweight capability preflight and emit a one-line status:
+
+- Detect host family: `codex`, `claude-code`, or `unknown`.
+- Verify Agent tool availability and ability to spawn specialist agents.
+- Deep mode requires 5 specialist agents total (Agents 1-4 + Agent 5 adversarial).
+- Persist preflight evidence to `/tmp/cairo-audit-host-capabilities.json` when the probe is available.
+
+If preflight fails (in hosts where preflight is enabled):
+
+- Without `--allow-degraded`: emit `CAUD-007`, print remediation, and stop before findings.
+- With `--allow-degraded`: continue in `degraded-deep` mode and keep explicit warning lines in scope and execution trace.
+
+Remediation hints to print when preflight fails:
+
+- `codex`: `codex features enable multi_agent`, then verify with `codex features list`, then restart the session.
+- `claude-code`: run `/reload-plugins`, update the installed plugin if needed, and retry deep mode.
 
 ## Orchestration
 
@@ -204,6 +229,21 @@ Do NOT read or inline any file content into agent prompts — the bundle files r
   5. Apply FP gate to each finding immediately.
   6. Format findings per report-formatting.md.
 
+After spawning, persist execution evidence that will be reused in the final report:
+- confirm `/tmp/cairo-audit-files.txt` exists and count in-scope files,
+- record line counts for `/tmp/cairo-audit-agent-{1,2,3,4}-bundle.md`,
+- record whether Agent 5 was spawned (deep) or skipped (non-deep),
+- record each agent's observed runtime model label to `/tmp/cairo-audit-agent-models.txt` (use actual spawn metadata; if not exposed, use `default` or `unknown`).
+
+Transport resilience:
+- If the agent transport reports disconnect/fallback warnings or a specialist stalls with no completion, retry that specialist exactly once.
+- Use a 180-second no-progress timeout per specialist before retrying.
+- If retry still fails, treat the specialist as unavailable.
+
+Integrity gate (for hosts where deep-mode enforcement is enabled):
+- In **deep** mode, if any required specialist agent (1-4 or 5) cannot be spawned or returns unavailable, treat the run as failed unless `--allow-degraded` is explicitly present.
+- On failure, stop before findings and print `CAUD-006` with a one-line reason plus host remediation hints.
+- If a specialist output is malformed (not `No findings.` and not valid finding blocks), rerun that specialist once; if still malformed, treat it as unavailable.
 **Turn 4 — Report.** Merge all agent results:
 
 1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details).
@@ -278,3 +318,6 @@ Each finding must include:
 - Report only findings that pass FP gate.
 - Findings with confidence `<75` may be listed as low-confidence notes without a fix block.
 - Do not report: style/naming issues, gas optimizations, missing events without security impact, generic centralization notes without exploit path, theoretical attacks requiring compromised sequencer.
+- On hosts where deep-mode enforcement is enabled, deep mode is fail-closed by default: if specialist agents are unavailable and `--allow-degraded` is not present, emit `CAUD-006` and do not publish a findings report.
+- If `--allow-degraded` is present and fallback is used, mark scope mode as `degraded-deep` and include an explicit warning line at top: `WARNING: degraded execution (specialist agents unavailable)`.
+- Use dependency lockfiles and local workspace sources first when validating library behavior; avoid recursive global-cache grep sweeps unless the dependency path is unresolved.
