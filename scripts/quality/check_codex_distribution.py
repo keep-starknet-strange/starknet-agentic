@@ -57,11 +57,18 @@ def _latest_release_ref(root: Path = ROOT) -> str:
 
 
 def _resolved_repo_slug() -> str:
-    return (os.getenv("PUBLIC_REPO_SLUG", DEFAULT_REPO_SLUG) or DEFAULT_REPO_SLUG).strip("/")
+    value = os.getenv("PUBLIC_REPO_SLUG")
+    if value is None:
+        return DEFAULT_REPO_SLUG
+    normalized = value.strip().strip("/")
+    if not normalized:
+        return DEFAULT_REPO_SLUG
+    return normalized
 
 
 def _resolved_public_ref() -> str:
-    return (os.getenv("PUBLIC_SKILL_REF", DEFAULT_PUBLIC_REF) or DEFAULT_PUBLIC_REF).strip()
+    raw = (os.getenv("PUBLIC_SKILL_REF") or "").strip()
+    return raw or DEFAULT_PUBLIC_REF
 
 
 def _resolved_pinned_ref(root: Path = ROOT) -> str:
