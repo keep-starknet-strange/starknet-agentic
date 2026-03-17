@@ -139,7 +139,11 @@ def codex_symlink_errors(root: Path = ROOT) -> list[str]:
         if not link.is_symlink():
             errors.append(f"Codex entry is not a symlink: {link}")
             continue
-        resolved = link.resolve()
+        try:
+            resolved = link.resolve()
+        except (OSError, RuntimeError) as exc:
+            errors.append(f"unable to resolve Codex symlink: {link}: {exc}")
+            continue
         if resolved != expected:
             errors.append(f"Codex symlink points to {resolved}, expected {expected}")
 
