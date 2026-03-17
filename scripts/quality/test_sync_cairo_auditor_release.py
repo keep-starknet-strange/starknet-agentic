@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -14,7 +15,7 @@ class SyncCairoAuditorReleaseTests(unittest.TestCase):
 
     def run_script(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["python3", str(self.script), *args],
+            [sys.executable, str(self.script), *args],
             cwd=self.root,
             text=True,
             capture_output=True,

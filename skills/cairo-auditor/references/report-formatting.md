@@ -120,6 +120,11 @@ When degraded:
 |-----------|-------|-------------|
 | `<candidate title>` | `CLASS_ID` | `false_positive` |
 | `<candidate title>` | `CLASS_ID` | `duplicate_root_cause` |
+
+When no candidates are dropped:
+
+| Candidate | Class | Drop Reason |
+|-----------|-------|-------------|
 | `none` | `n/a` | `n/a` |
 
 ---
