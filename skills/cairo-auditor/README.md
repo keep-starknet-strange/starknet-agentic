@@ -103,7 +103,7 @@ Deep mode needs 5 specialist agents (4 vector + 1 adversarial) and is fail-close
 
 Large-file behavior:
 
-- If a target file is around `>1000` lines, deep mode may run in two waves (Agents 1-4, then Agent 5) and use longer stall timeouts.
+- If the largest in-scope file exceeds `1000` lines **or** any bundle exceeds `1400` lines, deep mode runs in two waves (Agents 1-4, then Agent 5) and uses longer stall timeouts.
 - This preserves full-power coverage while reducing transport drop risk.
 
 ### Deterministic local scan (no AI)

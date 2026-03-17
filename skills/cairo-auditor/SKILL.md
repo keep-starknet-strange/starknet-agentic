@@ -258,9 +258,10 @@ After spawning, persist execution evidence that will be reused in the final repo
 Transport resilience:
 - If the agent transport reports disconnect/fallback warnings or a specialist stalls with no completion, retry that specialist exactly once.
 - Use adaptive stall timeout by largest bundle size:
-  - `<=1200` lines: 180 seconds
-  - `1201-1800` lines: 360 seconds
-  - `>1800` lines: 600 seconds
+  - `<=1200` lines: 180 seconds (parallel-spawn baseline)
+  - `1201-1400` lines: 360 seconds (still parallel-spawn eligible; extra time for larger bundles)
+  - `1401-1800` lines: 360 seconds (Wave B regime)
+  - `>1800` lines: 600 seconds (Wave B regime, very large bundles)
 - Retry failed/stalled specialists serially (one at a time) to reduce transport saturation.
 - If retry still fails, treat the specialist as unavailable.
 
