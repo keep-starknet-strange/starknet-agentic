@@ -124,7 +124,9 @@ def _parse_external_functions(code: str) -> list[ExternalFunction]:
 
     fn_pattern = re.compile(r"\bfn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
     ext_pattern = re.compile(r"(?m)^\s*#\[\s*external(?:\(\s*v0\s*\))?\s*\]\s*$")
-    abi_embed_pattern = re.compile(r"(?m)^\s*#\[\s*abi\(\s*embed_v0\s*\)\s*\]\s*$")
+    abi_embed_pattern = re.compile(
+        r"(?m)^\s*#\[\s*abi\(\s*(?:embed_v0|per_item)\s*\)\s*\]\s*$"
+    )
     impl_pattern = re.compile(r"\bimpl\b[^{]*\{")
 
     def append_fn(name: str, line: int, body: str) -> None:
@@ -163,7 +165,7 @@ def _parse_external_functions(code: str) -> list[ExternalFunction]:
 
         pos = close_idx + 1
 
-    # Modern style: #[abi(embed_v0)] impl blocks expose external functions.
+    # Modern style: #[abi(embed_v0)] and #[abi(per_item)] impl blocks expose external functions.
     pos = 0
     while True:
         abi_match = abi_embed_pattern.search(code, pos)

@@ -37,6 +37,15 @@ CASES = [
         "expected_findings_exact": 3,
     },
     {
+        "name": "insecure_per_item_upgrade_controller",
+        "expected_classes": {
+            "NO_ACCESS_CONTROL_MUTATION",
+            "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
+            "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD",
+        },
+        "expected_findings_exact": 3,
+    },
+    {
         "name": "caller_read_without_auth",
         "expected_classes": {"NO_ACCESS_CONTROL_MUTATION"},
         "expected_findings_exact": 1,

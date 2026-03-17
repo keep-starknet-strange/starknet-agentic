@@ -45,7 +45,7 @@ try {
 | Code | Condition | Recovery |
 | --- | --- | --- |
 | `CAUD-001` | In-scope file discovery produced zero files | Re-run with explicit filenames and verify exclude rules did not hide target contracts. |
-| `CAUD-002` | Preflight scan failed or unavailable | Run `python3 scripts/quality/audit_local_repo.py` manually and attach output to the audit context. |
+| `CAUD-002` | Preflight scan failed or unavailable | Run `python3 "{skill_root}/scripts/quality/audit_local_repo.py"` manually and attach output to the audit context. |
 | `CAUD-003` | Agent bundle generation failed | Rebuild `/tmp/cairo-audit-agent-*-bundle.md` and confirm each bundle has non-zero line count. |
 | `CAUD-004` | Conflicting findings across agents | Keep the highest-confidence root cause, then request a focused re-run on the disputed file. |
 | `CAUD-005` | Report includes only low-confidence items | Run deep mode (`/cairo-auditor deep`) and add deterministic checks from Semgrep/audit findings. |
@@ -157,10 +157,10 @@ cat /tmp/cairo-audit-files.txt
 - `{refs_root}` = two levels up from the match (`.../references`)
 - `{skill_root}` = three levels up from the match (skill directory that contains `SKILL.md`, `agents/`, `references/`, `VERSION`)
 
-(c) If `scripts/quality/audit_local_repo.py` exists relative to the skill's repo root, run the deterministic preflight for full-repo modes only (default/deep). In `$filename ...` mode, skip preflight so the context stays scoped to the targeted files:
+(c) If `{skill_root}/scripts/quality/audit_local_repo.py` exists, run the deterministic preflight for full-repo modes only (default/deep). In `$filename ...` mode, skip preflight so the context stays scoped to the targeted files:
 
 ```bash
-python3 scripts/quality/audit_local_repo.py --repo-root <repo-root> --scan-id preflight --output-dir /tmp
+python3 "{skill_root}/scripts/quality/audit_local_repo.py" --repo-root <repo-root> --scan-id preflight --output-dir /tmp
 ```
 
 Print the preflight results (class counts, severity counts) as context for specialists.
