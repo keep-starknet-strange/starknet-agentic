@@ -93,6 +93,21 @@ More installation and troubleshooting flows: [../../docs/SKILLS_QUICKSTART.md](.
 /cairo-auditor --file-output
 ```
 
+## Deep mode reliability
+
+Deep mode needs 5 specialist agents (4 vector + 1 adversarial).
+
+- On hosts with deep-mode enforcement enabled, specialist unavailability returns `CAUD-006` and stops before findings unless `--allow-degraded` is explicitly set.
+- On hosts with preflight enforcement enabled, failed capability preflight returns `CAUD-007` and stops before findings unless `--allow-degraded` is explicitly set.
+- On non-enforcing hosts, fail-closed is not guaranteed; degraded execution may proceed based on host behavior.
+- Use `--allow-degraded` only when you intentionally accept reduced coverage.
+- For Codex stability, keep CLI updated (`npm i -g @openai/codex`).
+
+Large-file behavior:
+
+- If the largest in-scope file exceeds `1000` lines **or** any bundle exceeds `1400` lines, deep mode runs in two waves (Agents 1-4, then Agent 5) and uses longer stall timeouts.
+- This preserves full-power coverage while reducing transport drop risk.
+
 ### Deterministic local scan (no AI)
 
 ```bash

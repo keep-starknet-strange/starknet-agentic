@@ -6,7 +6,9 @@ Extends default with adversarial reasoning. Orchestrated by [SKILL.md](../SKILL.
 
 1. **Discover** — same as default.
 2. **Prepare** — same as default, plus resolve adversarial agent instructions.
-3. **Spawn** — 4 parallel vector specialists (`model: "sonnet"`) + 1 adversarial specialist (`model: "opus"`), all in parallel.
+3. **Spawn** — Adaptive deep fanout:
+   - small scopes (largest file <= 1000 lines **and** all bundles <= 1400 lines): 4 parallel vector specialists (`model: "sonnet"`) + 1 adversarial specialist (`model: "opus"`) in parallel.
+   - large scopes: two waves for reliability (Wave A: Agents 1-4, Wave B: Agent 5).
 4. **Report** — Merge all 5 agent outputs, deduplicate, sort, emit.
 
 ## Agent Configuration
