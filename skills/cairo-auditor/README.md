@@ -34,10 +34,18 @@ Claude Code: /starknet-agentic-skills:cairo-auditor deep src/lib.cairo --file-ou
 
 ```bash
 # 3) Verify full-power execution markers
-bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
+cat /tmp/cairo-audit-host-capabilities.json
+wc -l /tmp/cairo-audit-agent-*-bundle.md
+ls -lt security-review-*.md | head -n 1
 ```
 
 Expected markers: `Execution Integrity: FULL`, `## Execution Trace`, Agent 1-4 vector rows, and Agent 5 adversarial row.
+
+If you are running from a local clone of this repository, you can also use:
+
+```bash
+bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
+```
 
 ## Example output
 
