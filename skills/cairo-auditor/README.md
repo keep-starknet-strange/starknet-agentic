@@ -84,13 +84,13 @@ More tags = stronger signal. Findings with only `[CODE-TRACE]` are valid but low
 
 ## Modes
 
-| | Default | Deep | Local (no AI) |
-|---|---|---|---|
-| **Agents** | 4 vector scan | 4 vector + 1 adversarial | 0 (deterministic rules) |
-| **Vectors checked** | 170 across 4 partitions | 170 + free-form exploit reasoning | Pattern-match only |
-| **Time** | ~2 min | ~5-7 min | <30s |
-| **Best for** | Pre-commit check | Pre-deployment review | CI gate, offline envs |
-| **Invocation** | `/starknet-agentic-skills:cairo-auditor` | `/starknet-agentic-skills:cairo-auditor deep` | `python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py` |
+| | Default | Deep | Targeted | Local (no AI) |
+|---|---|---|---|---|
+| **Agents** | 4 vector scan | 4 vector + 1 adversarial | 4 vector scan | 0 (deterministic rules) |
+| **Vectors checked** | 170 across 4 partitions | 170 + free-form exploit reasoning | 170 across 4 partitions | Pattern-match only |
+| **Time** | ~2 min | ~5-7 min | ~1-2 min | <30s |
+| **Best for** | Pre-commit check | Pre-deployment review | Reviewing specific files | CI gate, offline envs |
+| **Invocation** | `/starknet-agentic-skills:cairo-auditor` | `/starknet-agentic-skills:cairo-auditor deep` | `/starknet-agentic-skills:cairo-auditor src/vault.cairo` | `python3 .../audit_local_repo.py` |
 
 **Default** scans the full codebase with 4 parallel agents, each covering a different attack-vector partition (access control, external calls, math/economics, storage/trust). Good for fast iteration.
 
@@ -252,6 +252,10 @@ Fix: run `/reload-plugins` and retry. If still failing, use `--allow-degraded` t
 **CAUD-007: Preflight capability check failed.**
 The host reported a required capability as unavailable before scanning started.
 Fix: use `--allow-degraded` to accept reduced coverage, or switch to a host with full capability support.
+
+**CAUD-008: Agent transport instability.**
+A specialist agent disconnected or stalled during execution. The orchestrator retries once automatically. If this persists, your host may be under load.
+Fix: retry the audit. If it keeps failing, use `--allow-degraded` to skip the stalled agent, or try again later.
 
 **CAUD-009: Model requirement not satisfied.**
 The requested model isn't available on your host. Remove `--strict-models` to allow documented fallback, or switch to a host that supports the required models.
