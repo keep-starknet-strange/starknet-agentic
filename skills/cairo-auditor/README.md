@@ -76,10 +76,10 @@ Findings above the confidence threshold (default 75) include a fix diff and requ
 | | Default | Deep | Local (no AI) |
 |---|---|---|---|
 | **Agents** | 4 vector scan | 4 vector + 1 adversarial | 0 (deterministic rules) |
-| **Vectors checked** | 120 across 4 partitions | 120 + free-form exploit reasoning | Pattern-match only |
+| **Vectors checked** | 170 across 4 partitions | 170 + free-form exploit reasoning | Pattern-match only |
 | **Time** | ~2 min | ~5-7 min | <30s |
 | **Best for** | Pre-commit check | Pre-deployment review | CI gate, offline envs |
-| **Invocation** | `/cairo-auditor` | `/cairo-auditor deep` | `python3 scripts/quality/audit_local_repo.py` |
+| **Invocation** | `/starknet-agentic-skills:cairo-auditor` | `/starknet-agentic-skills:cairo-auditor deep` | `python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py` |
 
 **Default** scans the full codebase with 4 parallel agents, each covering a different attack-vector partition (access control, external calls, math/economics, storage/trust). Good for fast iteration.
 
@@ -163,10 +163,12 @@ Run cairo-auditor deep with --file-output on this repo.
 
 ```bash
 # Local deterministic scan (no AI, no cost)
-python3 scripts/quality/audit_local_repo.py \
+python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py \
   --repo-root /path/to/your/cairo-repo \
   --scan-id my-audit
 ```
+
+Run this from the installed cairo-auditor skill directory, or keep using an absolute script path as shown above.
 
 ## Known limitations
 
@@ -211,19 +213,23 @@ If you believe a finding is a false positive, check whether the FP gate missed a
 
 **CAUD-001: No Cairo files found.**
 The skill couldn't find any `.cairo` files to audit. Check your path and try with explicit filenames:
-`/cairo-auditor src/contracts/my_contract.cairo`
+`/starknet-agentic-skills:cairo-auditor src/contracts/my_contract.cairo`
 
 **CAUD-002: Preflight scan failed.**
 The deterministic scanner couldn't run. Run it manually:
-`python3 scripts/quality/audit_local_repo.py --repo-root . --scan-id manual`
+`python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py --repo-root . --scan-id manual`
 
 **CAUD-005: Only low-confidence findings.**
 Default mode didn't find high-confidence issues. Try deep mode for adversarial reasoning:
-`/cairo-auditor deep`
+`/starknet-agentic-skills:cairo-auditor deep`
 
 **CAUD-006: Deep mode unavailable.**
 Your host can't spawn the 5 specialist agents deep mode needs.
 Fix: run `/reload-plugins` and retry. If still failing, use `--allow-degraded` to accept reduced coverage, or fall back to default mode.
+
+**CAUD-007: Preflight capability check failed.**
+The host reported a required capability as unavailable before scanning started.
+Fix: use `--allow-degraded` to accept reduced coverage, or switch to a host with full capability support.
 
 **CAUD-009: Model requirement not satisfied.**
 The requested model isn't available on your host. Remove `--strict-models` to allow documented fallback, or switch to a host that supports the required models.
@@ -279,7 +285,7 @@ cairo-auditor/
     vector-scan.md             # vector specialist instructions
     adversarial.md             # adversarial specialist instructions
   references/
-    attack-vectors/            # 120 vectors in 4 partitions
+    attack-vectors/            # 170 vectors in 4 partitions
     vulnerability-db/          # 28 canonical vulnerability classes
     judging.md                 # FP gate + confidence scoring
     report-formatting.md       # finding template + priority mapping
