@@ -17,6 +17,76 @@ Not a substitute for a formal audit — but the check you should never skip.
   <img alt="deterministic smoke" src="https://img.shields.io/badge/deterministic%20smoke-pass-2ea043" />
 </p>
 
+## Example output
+
+Every finding includes a vulnerability class, file location, confidence score, exploit description, fix diff, and required tests.
+
+```text
+Signal Summary
+
+| Critical | High | Medium | Low | Total |
+|----------|------|--------|-----|-------|
+| 1        | 0    | 1      | 0   | 2     |
+
+---
+
+[P0] 1. Ungated Upgrade Path
+
+  Class: NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42 · Confidence: 92 · Severity: Critical
+
+  Description
+  External upgrade() calls replace_class_syscall without caller gate.
+  Any account can replace the contract class, leading to full takeover.
+
+  Fix
+  - fn upgrade(ref self: ContractState, new_class: ClassHash) {
+  + fn upgrade(ref self: ContractState, new_class: ClassHash) {
+  +     self.ownable.assert_only_owner();
+
+  Required Tests
+  - Unauthorized caller reverts on upgrade
+  - Owner successfully upgrades and new class hash persists
+
+---
+                                        Below Confidence Threshold
+
+[P2] 2. Stale Snapshot in View Function
+
+  Class: STALE-SNAPSHOT-READ · src/contracts/registry.cairo:187 · Confidence: 62 · Severity: Medium
+
+  Description
+  get_metadata reads a snapshot that may lag behind the latest write in the
+  same block when called after set_metadata in a multicall.
+
+---
+
+Findings Index
+
+| # | Priority | Confidence | Severity | Title |
+|---|----------|------------|----------|-------|
+| 1 | P0       | 92         | Critical | Ungated Upgrade Path |
+|   |          |            |          | **Below Confidence Threshold** |
+| 2 | P2       | 62         | Medium   | Stale Snapshot in View Function |
+```
+
+Findings above the confidence threshold (default 75) include a fix diff and required tests. Findings below get a description only.
+
+## Modes
+
+| | Default | Deep | Local (no AI) |
+|---|---|---|---|
+| **Agents** | 4 vector scan | 4 vector + 1 adversarial | 0 (deterministic rules) |
+| **Vectors checked** | 120 across 4 partitions | 120 + free-form exploit reasoning | Pattern-match only |
+| **Time** | ~2 min | ~5-7 min | <30s |
+| **Best for** | Pre-commit check | Pre-deployment review | CI gate, offline envs |
+| **Invocation** | `/cairo-auditor` | `/cairo-auditor deep` | `python3 scripts/quality/audit_local_repo.py` |
+
+**Default** scans the full codebase with 4 parallel agents, each covering a different attack-vector partition (access control, external calls, math/economics, storage/trust). Good for fast iteration.
+
+**Deep** adds a 5th adversarial agent that reads all source files and constructs multi-step exploit chains across function and contract boundaries. Use this before deployments or when default mode returns only low-confidence results.
+
+**Local** runs a deterministic preflight scanner with no AI calls. Catches obvious patterns (ungated upgrades, missing non-zero guards, commented-out access control). Useful as a CI gate or when offline.
+
 ## Install
 
 Pick **one** path that matches your host:
@@ -76,49 +146,103 @@ Related docs:
 
 ## Usage
 
-```bash
-# Claude Code plugin invocation
-/starknet-agentic-skills:cairo-auditor
+```text
+# Claude Code
+/starknet-agentic-skills:cairo-auditor              # default mode, full repo
+/starknet-agentic-skills:cairo-auditor deep          # deep mode, full repo
+/starknet-agentic-skills:cairo-auditor src/vault.cairo  # targeted file(s)
+/starknet-agentic-skills:cairo-auditor deep --file-output  # deep + write report to file
 ```
 
 ```text
-# Codex invocation pattern
+# Codex
 Audit this repository with cairo-auditor in default mode.
 Audit src/contracts/account.cairo with cairo-auditor deep mode.
+Run cairo-auditor deep with --file-output on this repo.
 ```
 
-## Deep mode reliability
+```bash
+# Local deterministic scan (no AI, no cost)
+python3 scripts/quality/audit_local_repo.py \
+  --repo-root /path/to/your/cairo-repo \
+  --scan-id my-audit
+```
 
-Deep mode needs 5 specialist agents (4 vector + 1 adversarial).
+## Known limitations
 
-- On hosts with deep-mode enforcement enabled, specialist unavailability returns `CAUD-006` and stops before findings unless `--allow-degraded` is explicitly set.
-- On hosts with preflight enforcement enabled, failed capability preflight returns `CAUD-007` and stops before findings unless `--allow-degraded` is explicitly set.
-- On non-enforcing hosts, fail-closed is not guaranteed; degraded execution may proceed based on host behavior.
-- Use `--allow-degraded` only when you intentionally accept reduced coverage.
-- For Codex stability, keep CLI updated (`npm i -g @openai/codex`).
+**Codebase size.** Works best under ~5,000 lines of Cairo. Past that, triage accuracy and mid-bundle recall degrade. For large codebases, audit per-module:
 
-Model routing is host-aware:
+```text
+/starknet-agentic-skills:cairo-auditor src/vault.cairo src/token.cairo
+```
 
-- `claude-code`: vector specialists use `sonnet`, adversarial specialist uses `opus` (host runtime aliases).
-- `codex`: vector + adversarial specialists prefer `gpt-5.4` (fallback `gpt-5.2` when probe fails and strict mode is off).
-- execution trace always records observed runtime model labels.
+**What AI catches well.** Missing access controls, CEI violations, unsafe upgrades, zero-address initialization, unbounded loops, stale reads, type confusion.
 
-Large-file behavior:
+**What AI misses.** Multi-transaction state setups, specification/invariant bugs, cross-protocol composability, game-theoretic attacks, off-chain oracle assumptions.
 
-- If the largest in-scope file exceeds `1000` lines **or** any bundle exceeds `1400` lines, deep mode runs in two waves (Agents 1-4, then Agent 5) and uses longer stall timeouts.
-- This preserves full-power coverage while reducing transport drop risk.
+AI catches what humans forget to check. Humans catch what AI cannot reason about. You need both.
 
-Optional threat-intel enrichment (deep mode):
+## How it works
 
-- pulls bounded primary-source security signals into `{workdir}/cairo-audit-threat-intel.md`,
-- is passed to specialists as prioritization hints (never as direct findings),
-- never creates findings by itself (local in-scope FP-gated proof is still required).
+The skill orchestrates a **4-turn pipeline**:
 
-### Full-power verification
+1. **Discover** — find in-scope `.cairo` files, run deterministic preflight scan
+2. **Prepare** — build 4 code bundles, each paired with a different attack-vector partition
+3. **Spawn** — launch 4 parallel vector specialists (+ optional adversarial in deep mode)
+4. **Report** — merge findings, deduplicate by root cause, sort by confidence, apply formatting
 
-Use these checks after any deep run to confirm specialist fanout and report artifact quality.
+Each vector agent scans the full codebase against ~30 attack vectors from its assigned partition (access control, external calls, math/economics, storage/trust). Every candidate finding goes through a strict false-positive gate requiring: (1) a concrete attack path, (2) a reachable entry point, and (3) confirmation that no existing guard blocks the exploit.
 
-**Codex**
+Confidence starts at 100 and is reduced by: privileged caller requirement (-25), partial attack path (-20), self-contained impact (-15), narrow preconditions (-10). Only findings passing the FP gate are reported.
+
+## After the audit
+
+1. **Triage by priority.** Fix P0 (Critical) findings first — these represent direct loss, permanent lock, or upgrade takeover.
+2. **Apply the diffs.** Each above-threshold finding includes a fix diff. Apply it and review for side effects.
+3. **Write the tests.** Each finding includes required test descriptions. Implement them before merging.
+4. **Re-run to verify.** Run the auditor again after fixes to confirm findings are resolved.
+5. **Supplement with manual review.** The auditor catches pattern-based issues. For specification bugs, economic attacks, and cross-protocol risks, pair with a human auditor.
+
+If you believe a finding is a false positive, check whether the FP gate missed an existing guard. The confidence score reflects how certain the tool is that the finding is real — not how severe the impact is.
+
+## Troubleshooting
+
+### Common errors
+
+**CAUD-001: No Cairo files found.**
+The skill couldn't find any `.cairo` files to audit. Check your path and try with explicit filenames:
+`/cairo-auditor src/contracts/my_contract.cairo`
+
+**CAUD-002: Preflight scan failed.**
+The deterministic scanner couldn't run. Run it manually:
+`python3 scripts/quality/audit_local_repo.py --repo-root . --scan-id manual`
+
+**CAUD-005: Only low-confidence findings.**
+Default mode didn't find high-confidence issues. Try deep mode for adversarial reasoning:
+`/cairo-auditor deep`
+
+**CAUD-006: Deep mode unavailable.**
+Your host can't spawn the 5 specialist agents deep mode needs.
+Fix: run `/reload-plugins` and retry. If still failing, use `--allow-degraded` to accept reduced coverage, or fall back to default mode.
+
+**CAUD-009: Model requirement not satisfied.**
+The requested model isn't available on your host. Remove `--strict-models` to allow documented fallback, or switch to a host that supports the required models.
+
+### Deep mode details
+
+Deep mode uses host-aware model routing:
+
+- **Claude Code**: vector specialists use `sonnet`, adversarial uses `opus`
+- **Codex**: all specialists prefer `gpt-5.4` (fallback `gpt-5.2` if probe fails)
+- The execution trace in the report records the actual models used
+
+For large codebases (largest file >1000 lines or any bundle >1400 lines), deep mode splits into two waves (Agents 1-4, then Agent 5) to preserve transport stability.
+
+Optional threat-intel enrichment (deep mode only) pulls bounded security signals as prioritization hints for specialists. It never creates findings by itself — all findings require in-scope FP-gated proof.
+
+### Verifying a deep run
+
+**Codex:**
 
 ```bash
 cat /tmp/cairo-audit-host-capabilities.json
@@ -126,87 +250,11 @@ wc -l /tmp/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 
-Expected:
+Expect: capability file exists, four bundles with non-zero lines, latest report has `Execution Integrity: FULL`.
 
-- capability file exists and reports `agent_tool` available,
-- four bundle files exist with non-zero lines,
-- latest `security-review-*.md` has `Execution Integrity: FULL` and at least one finding on vulnerable fixtures.
+**Claude Code:**
 
-**Claude Code**
-
-Verify the plugin is loaded by running inside Claude Code:
-
-```text
-/starknet-agentic-skills:cairo-auditor deep
-```
-
-Then verify the generated report includes:
-
-- `Execution Trace` rows for Agents 1-4 and Agent 5 adversarial,
-- observed model labels (`sonnet` vectors, `opus` adversarial),
-- `Execution Integrity: FULL` (or explicit degraded warning if `--allow-degraded` was intentionally used).
-
-### Deterministic local scan (no AI)
-
-Run this from a clone of `keep-starknet-strange/starknet-agentic` at repository root, since this helper script ships with the repository.
-
-```bash
-python3 scripts/quality/audit_local_repo.py \
-  --repo-root /path/to/your/cairo-repo \
-  --scan-id my-audit
-```
-
-### Release sync (maintainers)
-
-```bash
-python3 scripts/quality/sync_cairo_auditor_release.py \
-  --skill-version 0.2.2 \
-  --plugin-version 1.0.4
-```
-
-This updates:
-
-- `skills/cairo-auditor/VERSION`
-- `skills/cairo-auditor/SKILL.md` metadata version
-- `.claude-plugin/plugin.json` version
-- `.claude-plugin/marketplace.json` metadata/plugin versions
-
-## Example output
-
-```text
-[P0] 1. Ungated Upgrade Path
-  NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42 · Confidence: 92
-
-  Description
-  External upgrade() calls replace_class_syscall without caller gate.
-  Any account can replace the contract class, leading to full takeover.
-
-  Fix
-  - fn upgrade(ref self: ContractState, new_class: ClassHash) {
-  + fn upgrade(ref self: ContractState, new_class: ClassHash) {
-  +     self.ownable.assert_only_owner();
-
-  Required Tests
-  - Unauthorized caller reverts on upgrade
-  - Owner successfully upgrades and new class hash persists
-```
-
-## How it works
-
-The skill orchestrates a **4-turn pipeline**:
-
-1. **Discover** — find in-scope `.cairo` files, run deterministic preflight
-2. **Prepare** — build 4 code bundles, each with a different attack-vector partition
-3. **Spawn** — 4 parallel vector specialists + optional adversarial specialist with host-aware model routing
-4. **Report** — merge, deduplicate by root cause, sort by confidence, emit findings
-
-Each agent scans the full codebase against 30 attack vectors from its partition (120 total), applies a strict false-positive gate, and formats findings with exploit paths and fix diffs.
-
-## Known limitations
-
-**Codebase size.** Works best under ~5,000 lines of Cairo. Past that, triage accuracy and mid-bundle recall degrade. For large codebases, run per-module rather than everything at once.
-
-**What AI misses.** AI catches pattern-based vulnerabilities reliably: missing access controls, CEI violations, unsafe upgrades, zero-address initialization. It struggles with: multi-transaction state setups, specification/invariant bugs, cross-protocol composability, game-theoretic attacks, and off-chain oracle assumptions. AI catches what humans forget to check. Humans catch what AI cannot reason about. You need both.
+Run `/starknet-agentic-skills:cairo-auditor deep` and verify the report includes `Execution Trace` rows for all 5 agents with `Execution Integrity: FULL`.
 
 ## Benchmarks
 
@@ -232,7 +280,7 @@ cairo-auditor/
     adversarial.md             # adversarial specialist instructions
   references/
     attack-vectors/            # 120 vectors in 4 partitions
-    vulnerability-db/          # canonical vulnerability classes
+    vulnerability-db/          # 28 canonical vulnerability classes
     judging.md                 # FP gate + confidence scoring
     report-formatting.md       # finding template + priority mapping
     threat-intel-sources.md    # source policy for optional web enrichment
@@ -243,3 +291,30 @@ cairo-auditor/
     default.md                 # 4-agent pipeline reference
     deep.md                    # + adversarial agent details
 ```
+
+## Maintainer reference
+
+<details>
+<summary>Release sync, full-power verification, and related tooling</summary>
+
+### Release sync
+
+```bash
+python3 scripts/quality/sync_cairo_auditor_release.py \
+  --skill-version 0.2.2 \
+  --plugin-version 1.0.4
+```
+
+Updates: `VERSION`, `SKILL.md` metadata, `plugin.json`, `marketplace.json`.
+
+### Full-power verification (Codex)
+
+```bash
+cat /tmp/cairo-audit-host-capabilities.json
+wc -l /tmp/cairo-audit-agent-*-bundle.md
+ls -lt security-review-*.md | head -n 1
+```
+
+Expected: capability file reports `agent_tool` available, four bundles exist with non-zero lines, latest report has `Execution Integrity: FULL` and at least one finding on vulnerable fixtures.
+
+</details>

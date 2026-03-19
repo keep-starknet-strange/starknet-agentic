@@ -1,5 +1,8 @@
 # Cairo Attack Vectors (3/4): Math + Pricing + Economic Logic
 
+> **D:** Detection pattern — what makes this vector dangerous.
+> **FP:** False-positive caveat — when this pattern is actually safe.
+
 **41. Unchecked fee bound**
 - **D:** external/config fee parameter stored or forwarded without explicit max bound.
 - **FP:** same-path assertion enforces max fee.
