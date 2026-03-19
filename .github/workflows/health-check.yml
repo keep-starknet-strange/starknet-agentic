@@ -23,7 +23,7 @@ jobs:
           submodules: recursive
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@53751a9789c7351e4924f01fe68370252a4f1f18 # v2
+        uses: pnpm/action-setup@2e223e0f0d2b8fd9872cbadb8b7428e5f8b5556d # v2
         with:
           version: 10
 
