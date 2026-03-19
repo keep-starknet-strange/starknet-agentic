@@ -32,8 +32,7 @@ Signal Summary
 
 [P0] 1. Ungated Upgrade Path
 
-  Class: NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42
-  Confidence: 92 · Severity: Critical · [CODE-TRACE] [PREFLIGHT-HIT]
+  Class: NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42 · Confidence: 92 · Severity: Critical · [CODE-TRACE] [PREFLIGHT-HIT]
 
   Description
   External upgrade() calls replace_class_syscall without caller gate.
@@ -53,8 +52,7 @@ Signal Summary
 
 [P2] 2. Stale Snapshot in View Function
 
-  Class: STALE-SNAPSHOT-READ · src/contracts/registry.cairo:187
-  Confidence: 62 · Severity: Medium · [CODE-TRACE]
+  Class: STALE-SNAPSHOT-READ · src/contracts/registry.cairo:187 · Confidence: 62 · Severity: Medium · [CODE-TRACE]
 
   Description
   get_metadata reads a snapshot that may lag behind the latest write in the
@@ -349,10 +347,11 @@ cairo-auditor/
 ```bash
 python3 scripts/quality/sync_cairo_auditor_release.py \
   --skill-version 0.2.2 \
-  --plugin-version 0.2.2
+  --plugin-version 1.0.4
 ```
 
 Updates: `VERSION`, `SKILL.md` metadata, `plugin.json`, `marketplace.json`.
+`--skill-version` and `--plugin-version` are intentionally separate because skill and plugin lifecycle versions are decoupled.
 
 Release hygiene gate: when `skills/cairo-auditor/VERSION` changes in CI, you must have either:
 
