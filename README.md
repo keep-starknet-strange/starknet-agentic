@@ -50,7 +50,7 @@ skill-installer install https://github.com/keep-starknet-strange/starknet-agenti
 
 ```bash
 # Codex (reproducible install pinned to a released tag)
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
 ```
 
 ```bash

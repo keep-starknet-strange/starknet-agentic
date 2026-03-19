@@ -17,6 +17,28 @@ Not a substitute for a formal audit — but the check you should never skip.
   <img alt="deterministic smoke" src="https://img.shields.io/badge/deterministic%20smoke-pass-2ea043" />
 </p>
 
+## 30-Second Happy Path
+
+Install one skill, run one deep audit, verify execution integrity.
+
+```bash
+# 1) Install (Codex)
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+```
+
+```text
+# 2) Prompt
+Codex: Run cairo-auditor deep on src/lib.cairo with --file-output. Output only the final report.
+Claude Code: /starknet-agentic-skills:cairo-auditor deep src/lib.cairo --file-output
+```
+
+```bash
+# 3) Verify full-power execution markers
+bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
+```
+
+Expected markers: `Execution Integrity: FULL`, `## Execution Trace`, Agent 1-4 vector rows, and Agent 5 adversarial row.
+
 ## Example output
 
 Every finding includes a vulnerability class, file location, confidence score, exploit description, fix diff, and required tests.
@@ -32,7 +54,7 @@ Signal Summary
 
 [P0] 1. Ungated Upgrade Path
 
-  Class: NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42 · Confidence: 92 · Severity: Critical · [CODE-TRACE] [PREFLIGHT-HIT]
+  Class: NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42 · Confidence: 92 · Severity: Critical · `[CODE-TRACE] [PREFLIGHT-HIT]`
 
   Description
   External upgrade() calls replace_class_syscall without caller gate.
@@ -52,7 +74,7 @@ Signal Summary
 
 [P2] 2. Stale Snapshot in View Function
 
-  Class: STALE-SNAPSHOT-READ · src/contracts/registry.cairo:187 · Confidence: 62 · Severity: Medium · [CODE-TRACE]
+  Class: STALE-SNAPSHOT-READ · src/contracts/registry.cairo:187 · Confidence: 62 · Severity: Medium · `[CODE-TRACE]`
 
   Description
   get_metadata reads a snapshot that may lag behind the latest write in the
@@ -84,17 +106,19 @@ More tags = stronger signal. Findings with only `[CODE-TRACE]` are valid but low
 
 ## Modes
 
-| | Default | Deep | Local (no AI) |
-|---|---|---|---|
-| **Agents** | 4 vector scan | 4 vector + 1 adversarial | 0 (deterministic rules) |
-| **Vectors checked** | 170 across 4 partitions | 170 + free-form exploit reasoning | Pattern-match only |
-| **Time** | ~2 min | ~5-7 min | <30s |
-| **Best for** | Pre-commit check | Pre-deployment review | CI gate, offline envs |
-| **Invocation** | `/starknet-agentic-skills:cairo-auditor` | `/starknet-agentic-skills:cairo-auditor deep` | `python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py` |
+| | Default | Deep | Targeted | Local (no AI) |
+|---|---|---|---|---|
+| **Agents** | 4 vector scan | 4 vector + 1 adversarial | 4 vector scan | 0 (deterministic rules) |
+| **Vectors checked** | 170 across 4 partitions | 170 + free-form exploit reasoning | 170 across 4 partitions | Pattern-match only |
+| **Time** | ~2 min | ~5-7 min | ~1-2 min | <30s |
+| **Best for** | Pre-commit check | Pre-deployment review | Reviewing specific files | CI gate, offline envs |
+| **Invocation** | `/starknet-agentic-skills:cairo-auditor` | `/starknet-agentic-skills:cairo-auditor deep` | `/starknet-agentic-skills:cairo-auditor src/vault.cairo` | `python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py` |
 
 **Default** scans the full codebase with 4 parallel agents, each covering a different attack-vector partition (access control, external calls, math/economics, storage/trust). Good for fast iteration.
 
 **Deep** adds a 5th adversarial agent that reads all source files and constructs multi-step exploit chains across function and contract boundaries. Use this before deployments or when default mode returns only low-confidence results.
+
+**Targeted** scans one or more specific files instead of the full repo. It runs the same 4 vector specialists on only the paths you provide and skips deterministic preflight to keep context scoped. Use this for fast, focused review of a single contract or module.
 
 **Local** runs a deterministic preflight scanner with no AI calls. Catches obvious patterns (ungated upgrades, missing non-zero guards, commented-out access control). Useful as a CI gate or when offline.
 
@@ -112,6 +136,8 @@ Inside Claude Code, run:
 ```
 
 Then restart Claude Code or run `/reload-plugins`.
+
+Note: Claude plugin bundle versions (for example `starknet-agentic-skills 1.0.4`) are intentionally separate from this skill's internal version (`cairo-auditor 0.2.2`).
 
 ### Codex
 
@@ -132,8 +158,10 @@ Restart Codex, open `/skills`, then invoke `cairo-auditor`.
 For reproducible installs, pin to a release tag or commit SHA:
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
 ```
+
+If your mirror does not yet expose `v0.2.2`, use `tree/main` temporarily.
 
 ### Agent Skills CLI
 
@@ -241,6 +269,14 @@ The skill couldn't find any `.cairo` files to audit. Check your path and try wit
 The deterministic scanner couldn't run. Run it manually:
 `python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py --repo-root . --scan-id manual`
 
+**CAUD-003: Agent bundle generation failed.**
+The skill couldn't build one or more specialist bundles.
+Fix: rebuild `{workdir}/cairo-audit-agent-*-bundle.md` and confirm each bundle has non-zero line count before rerunning.
+
+**CAUD-004: Conflicting findings across agents.**
+Two or more specialists disagreed on the same root cause.
+Fix: keep the highest-confidence root cause and re-run targeted mode on the disputed file for a focused second pass.
+
 **CAUD-005: Only low-confidence findings.**
 Default mode didn't find high-confidence issues. Try deep mode for adversarial reasoning:
 `/starknet-agentic-skills:cairo-auditor deep`
@@ -252,6 +288,10 @@ Fix: run `/reload-plugins` and retry. If still failing, use `--allow-degraded` t
 **CAUD-007: Preflight capability check failed.**
 The host reported a required capability as unavailable before scanning started.
 Fix: use `--allow-degraded` to accept reduced coverage, or switch to a host with full capability support.
+
+**CAUD-008: Agent transport instability.**
+A specialist disconnected or stalled during execution. The orchestrator retries once automatically.
+Fix: retry the audit. If failures persist, use `--allow-degraded` to accept reduced coverage or try again when host load is lower.
 
 **CAUD-009: Model requirement not satisfied.**
 The requested model isn't available on your host. Remove `--strict-models` to allow documented fallback, or switch to a host that supports the required models.

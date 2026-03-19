@@ -3,14 +3,14 @@
 Goal: get a concrete `audit-report.md` artifact from `cairo-auditor` in under
 2 minutes.
 
-Pinned reproducible ref used for URL-based install examples below: `v0.1.0-beta.1`.
+Pinned reproducible ref used for URL-based install examples below: `v0.2.2`.
 
 ## 1) Codex
 
 Install:
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
 ```
 
 Prompt:

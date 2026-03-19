@@ -46,7 +46,7 @@ skill-installer install https://github.com/keep-starknet-strange/starknet-agenti
 **Codex (reproducible pin):**
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
 ```
 
 Pinned ref policy: use released tags (or immutable commit SHAs) for reproducible installs.
@@ -202,7 +202,7 @@ Skill instructions and documentation...
 
 | Surface | Install Path | Status | Last Verified (UTC) |
 | --- | --- | --- | --- |
-| Codex | `skill-installer install .../tree/v0.1.0-beta.1/skills/cairo-auditor` | Supported | 2026-03-15 |
+| Codex | `skill-installer install .../tree/v0.2.2/skills/cairo-auditor` | Supported | 2026-03-19 |
 | Claude Code | `/plugin marketplace add ...` + `/plugin install ... --scope local` | Supported | 2026-03-15 |
 | Agent Skills CLI | `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor` | Supported | 2026-03-15 |
 | Cursor / Copilot / OpenClaw / custom Agent Skills hosts | Agent Skills spec package import | Supported | 2026-03-15 |

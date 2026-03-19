@@ -39,6 +39,24 @@ def build_minimal_repo(root: Path, install_markers: dict[Path, list[str]]) -> No
 
 
 class CodexDistributionTests(unittest.TestCase):
+    def test_version_pinned_ref_accepts_optional_v_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_file(root / "skills" / "cairo-auditor" / "VERSION", "v0.2.2\n")
+
+            value = MODULE._version_pinned_ref(root)
+
+            self.assertEqual(value, "v0.2.2")
+
+    def test_version_pinned_ref_rejects_build_metadata_suffix(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_file(root / "skills" / "cairo-auditor" / "VERSION", "0.2.2+build.7\n")
+
+            value = MODULE._version_pinned_ref(root)
+
+            self.assertEqual(value, MODULE.DEFAULT_PINNED_REF)
+
     def test_codex_symlink_errors_passes_for_valid_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
