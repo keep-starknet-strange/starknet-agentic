@@ -16,7 +16,7 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
  ╚═════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝     ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝
 ```
 
-# Security Review — <project name or repo basename>  🔐
+# Security Review — <project name or repo basename>
 
 ## Signal Summary
 
@@ -148,7 +148,7 @@ When degraded:
 
 ---
 
-> This review was performed by an AI assistant. AI analysis cannot verify the complete absence of vulnerabilities and no guarantee of security is given. Team security reviews, formal audits, bug bounty programs, and on-chain monitoring are strongly recommended.
+> **Disclaimer.** This review was performed by an automated AI tool. Automated analysis catches pattern-based vulnerabilities but cannot detect specification bugs, economic exploits, cross-protocol interactions, or game-theoretic attacks. This report does not guarantee the absence of vulnerabilities. Use it as a pre-commit and pre-deployment gate — not as a substitute for professional security audits, formal verification, or manual code review.
 
 ````
 
