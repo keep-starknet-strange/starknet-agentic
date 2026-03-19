@@ -33,3 +33,25 @@ The preflight parser currently inspects externally callable functions declared v
 
 Functions outside those patterns are not part of deterministic preflight coverage and should be
 reviewed by vector/deep-agent passes.
+
+## `doctor.sh`
+
+One-command post-run validation for deep audits.
+
+### Usage
+
+```bash
+bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
+```
+
+Optional flags:
+
+- `--workdir /path/to/workdir` (defaults to `$CAIRO_AUDITOR_WORKDIR` or `/tmp`)
+- `--report-dir /path/to/repo`
+- `--report /path/to/security-review-*.md`
+
+### What it validates
+
+- host capabilities artifact exists,
+- vector bundle artifacts `1..4` exist with non-zero lines,
+- report exists and includes `Execution Integrity` and `Execution Trace`.

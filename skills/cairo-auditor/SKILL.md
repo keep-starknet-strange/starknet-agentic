@@ -89,6 +89,7 @@ try {
 - `--file-output` (off by default): also write the report to a markdown file. Without this flag, output goes to the terminal only.
 - `--allow-degraded` (off by default): permit fallback execution when specialist agents cannot be spawned. On hosts with deep-mode enforcement enabled, this flag opts into degraded execution.
 - `--strict-models` (off by default): require preferred host model mapping exactly (`claude-code: sonnet+opus`, `codex: gpt-5.4`). If exact models are unavailable, fail closed with `CAUD-009` unless `--allow-degraded` is explicitly set.
+- `--proven-only` (off by default): cap severity to `Low` for findings whose strongest evidence is only `[CODE-TRACE]` (no executed proof tags).
 
 ## Host Capability Preflight (Deep Mode, Experimental)
 
@@ -332,13 +333,19 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 **Turn 4 — Report.** Merge all agent results and emit the report in canonical order:
 
 1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence).
-2. Sort findings by priority (`P0` first); within each priority tier sort by confidence (highest first).
-3. Re-number findings sequentially starting at `1`.
-4. Insert one **Below Confidence Threshold** separator row in the findings index immediately before the first finding with confidence < 75.
-5. Print findings directly — do not re-draft or re-describe them.
-6. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Dropped Candidates`, `Findings Index`.
-7. Add scope table and findings index table per report-formatting.md.
-8. Add the disclaimer.
+2. Apply evidence tags per `references/judging.md` Evidence Tags section:
+   - Validate every finding has `[CODE-TRACE]`; if a source agent omitted it, add `[CODE-TRACE]` during merge normalization.
+   - Add `[PREFLIGHT-HIT]` if the deterministic preflight flagged the same class or entry point.
+   - Add `[CROSS-AGENT]` if 2+ agents independently reported the same root cause before deduplication.
+   - Add `[ADVERSARIAL]` if Agent 5 discovered or confirmed the finding.
+3. Findings with only `[CODE-TRACE]` (no additional tags) are valid but lower-signal; reviewers use the Evidence column in Findings Index to prioritize review order.
+4. Sort findings by priority (`P0` first); within each priority tier sort by confidence (highest first).
+5. Re-number findings sequentially starting at `1`.
+6. Insert one **Below Confidence Threshold** separator row in the findings index immediately before the first finding with confidence < 75.
+7. Print findings directly — do not re-draft or re-describe them.
+8. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Dropped Candidates`, `Findings Index`.
+9. Add scope table and findings index table per report-formatting.md.
+10. Add the disclaimer.
 
 Dropped-candidate handling:
 
@@ -394,6 +401,7 @@ Each finding must include:
 - `guard_analysis` (what guards exist, why they fail)
 - `recommended_fix` (diff block for confidence >= 75)
 - `required_tests` (regression + guard tests)
+- `evidence_tags` (`[CODE-TRACE]` minimum; upgrade when stronger proof exists)
 
 ## Evidence Priority
 
@@ -407,6 +415,7 @@ Each finding must include:
 
 - Report only findings that pass FP gate.
 - Findings with confidence `<75` may be listed as low-confidence notes without a fix block.
+- If `--proven-only` is present, findings that only carry `[CODE-TRACE]` evidence must be emitted at `Low` severity.
 - Do not report: style/naming issues, gas optimizations, missing events without security impact, generic centralization notes without exploit path, theoretical attacks requiring compromised sequencer.
 - On hosts where deep-mode enforcement is enabled, deep mode is fail-closed by default: if specialist agents are unavailable and `--allow-degraded` is not present, emit `CAUD-006` and do not publish a findings report.
 - If `--allow-degraded` is present and fallback is used, mark scope mode as `degraded-deep` and include an explicit warning line at top: `WARNING: degraded execution (specialist agents unavailable)`.

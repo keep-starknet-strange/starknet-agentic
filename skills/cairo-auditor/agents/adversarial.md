@@ -32,6 +32,7 @@ Return findings only in your final response. Do not emit draft findings during a
    - `AX2 | path: set_*() -> write() | guard: assert_only_owner | verdict: DROP (FP gate 3: guarded)`
 5. Run one composability pass if 2+ findings survive (compound impact across functions/modules).
 6. Return only final finding blocks (or `No findings.`). Do not output verdict traces.
+7. Include evidence tags in every finding line per `../references/report-formatting.md`.
 
 ## Candidate Format
 
@@ -64,8 +65,13 @@ After deep pass + composability:
 - Do not expand scope beyond in-scope files.
 - Output final finding blocks or `No findings.` and stop.
 
+## Evidence Tags
+
+Tag every confirmed finding with `[CODE-TRACE] [ADVERSARIAL]` on its metadata line. `[CODE-TRACE]` means you traced a concrete path through in-scope source. `[ADVERSARIAL]` means you discovered or confirmed it via adversarial reasoning. The orchestrator may add additional tags during merge.
+
 ## Scope Constraints
 
 - Security findings only.
 - No style-only, naming-only, or gas-only notes.
 - No duplicate root causes.
+

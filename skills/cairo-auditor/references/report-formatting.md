@@ -34,6 +34,7 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
 | **Files reviewed**               | `file1.cairo` · `file2.cairo`<br>`file3.cairo` · `file4.cairo` |
 | **Total in-scope lines**         | N                                                      |
 | **Confidence threshold (0-100)** | 75                                                     |
+| **Proven-only mode**             | on / off                                               |
 | **Preflight findings**           | N deterministic hits                                   |
 | **Generated**                    | ISO8601 timestamp                                      |
 
@@ -63,7 +64,7 @@ When degraded:
 
 [P0] **1. <Title>**
 
-`Class: CLASS_ID` · `file.cairo:line` · Confidence: 92 · Severity: Critical
+`Class: CLASS_ID` · `file.cairo:line` · Confidence: 92 · Severity: Critical · `[CODE-TRACE] [PREFLIGHT-HIT]`
 
 **Description**
 <One paragraph: exploit path and impact.>
@@ -83,7 +84,7 @@ When degraded:
 
 [P1] **2. <Title>**
 
-`Class: CLASS_ID` · `file.cairo:line` · Confidence: 85 · Severity: High
+`Class: CLASS_ID` · `file.cairo:line` · Confidence: 85 · Severity: High · `[CODE-TRACE] [CROSS-AGENT]`
 
 **Description**
 <One paragraph: exploit path and impact.>
@@ -103,7 +104,7 @@ When degraded:
 
 [P2] **3. <Title (below threshold example)>**
 
-`Class: CLASS_ID` · `file.cairo:line` · Confidence: 68 · Severity: Medium
+`Class: CLASS_ID` · `file.cairo:line` · Confidence: 68 · Severity: Medium · `[CODE-TRACE]`
 
 **Description**
 <One paragraph: exploit path and impact.>
@@ -137,13 +138,13 @@ When degraded:
 
 ## Findings Index
 
-| # | Priority | Confidence | Severity | Title |
-|---|----------|------------|----------|-------|
-| 1 | P0       | 92         | Critical | <title> |
-| 2 | P1       | 85         | High     | <title> |
-|   |          |            |          | **Below Confidence Threshold** |
-| 3 | P2       | 68         | Medium   | <title> |
-| 4 | P3       | 55         | Low      | <title> |
+| # | Priority | Confidence | Severity | Evidence | Title |
+|---|----------|------------|----------|----------|-------|
+| 1 | P0       | 92         | Critical | `[CODE-TRACE] [PREFLIGHT-HIT]` | <title> |
+| 2 | P1       | 85         | High     | `[CODE-TRACE] [CROSS-AGENT]` | <title> |
+|   |          |            |          |  | **Below Confidence Threshold** |
+| 3 | P2       | 68         | Medium   | `[CODE-TRACE]` | <title> |
+| 4 | P3       | 55         | Low      | `[CODE-TRACE]` | <title> |
 
 ---
 
@@ -165,6 +166,9 @@ When degraded:
 - If any specialist is unavailable and degraded mode is explicitly enabled, set `Execution Integrity: DEGRADED` and include the warning line under Scope.
 - If scope discovery or any required stage (Agents 1-4 and Agent 5 in deep mode) has `Status: FAILED` and degraded mode is not explicitly enabled, set `Execution Integrity: FAILED` and stop after `Execution Trace` (do not emit `Findings`, `Dropped Candidates`, or `Findings Index`).
 - If degraded execution is used, repeat the warning again immediately before `Findings Index`.
+- Every finding must include `Evidence` tags in the finding line and in `Findings Index`.
+- Allowed evidence tags: `[CODE-TRACE]`, `[PREFLIGHT-HIT]`, `[CROSS-AGENT]`, `[ADVERSARIAL]`.
+- If `--proven-only` is enabled, cap severity to `Low` for findings whose strongest evidence is only `[CODE-TRACE]` (no `[PREFLIGHT-HIT]`, `[CROSS-AGENT]`, or `[ADVERSARIAL]`).
 - Sort findings by priority (`P0` first); within each priority tier, sort by confidence (highest first).
 - Findings below threshold (confidence < 75) get a description but no **Fix** block and no **Required Tests** block.
 - After filtering/deduplication/sorting, renumber findings sequentially starting at `1`.
@@ -172,6 +176,11 @@ When degraded:
 - Threat-intel signals are prioritization hints only. Do not include intel-only findings; each reported finding must be proven from in-scope code and pass FP gate.
 - If any findings have confidence < 75, insert one **Below Confidence Threshold** separator row in the Findings Index immediately before the first below-threshold finding.
 - Findings that fail FP gate must be dropped entirely and not reported.
+- Every finding must carry at least one evidence tag per `../references/judging.md` Evidence Tags section.
+- The orchestrator adds `[PREFLIGHT-HIT]` when deterministic preflight flagged the same class/entry.
+- The orchestrator adds `[CROSS-AGENT]` when 2+ agents independently reported the same root cause before deduplication.
+- The orchestrator adds `[ADVERSARIAL]` when Agent 5 discovered or confirmed the finding.
+- Evidence tags appear in the metadata line after severity and in the Findings Index `Evidence` column.
 - Track dropped candidates in `Dropped Candidates` with one of: `false_positive`, `duplicate_root_cause`, `below_confidence_threshold`, `insufficient_evidence`.
 - If no candidates are dropped, still emit `Dropped Candidates` with a single `none` row.
 
@@ -180,7 +189,7 @@ When degraded:
 Use this exact per-finding structure:
 
 - `[P{priority}] **{index}. {title}**`
-- `` `Class: {class_id}` · `{file}:{line}` · Confidence: {score} · Severity: {severity} ``
+- `` `Class: {class_id}` · `{file}:{line}` · Confidence: {score} · Severity: {severity} · `{evidence_tags}` ``
 - `**Description**` then one paragraph with concrete exploit path and impact.
 - `**Fix**` then a `diff` block (only for confidence >= 75).
 - `**Required Tests**` then bullet list (only for confidence >= 75).
