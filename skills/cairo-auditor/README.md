@@ -65,7 +65,7 @@ Findings Index
 | # | Priority | Confidence | Severity | Evidence | Title |
 |---|----------|------------|----------|----------|-------|
 | 1 | P0       | 92         | Critical | [CODE-TRACE] [PREFLIGHT-HIT] | Ungated Upgrade Path |
-|   |          |            |          | | **Below Confidence Threshold** |
+|   |          |            |          |          | **Below Confidence Threshold** |
 | 2 | P2       | 62         | Medium   | [CODE-TRACE] | Stale Snapshot in View Function |
 ```
 
