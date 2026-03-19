@@ -20,14 +20,29 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --workdir)
+      if [[ $# -lt 2 ]]; then
+        echo "--workdir requires a path" >&2
+        usage
+        exit 2
+      fi
       WORKDIR="$2"
       shift 2
       ;;
     --report-dir)
+      if [[ $# -lt 2 ]]; then
+        echo "--report-dir requires a path" >&2
+        usage
+        exit 2
+      fi
       REPORT_DIR="$2"
       shift 2
       ;;
     --report)
+      if [[ $# -lt 2 ]]; then
+        echo "--report requires a path" >&2
+        usage
+        exit 2
+      fi
       REPORT_PATH="$2"
       shift 2
       ;;
