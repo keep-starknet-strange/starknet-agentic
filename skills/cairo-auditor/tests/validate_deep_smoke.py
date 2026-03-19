@@ -19,11 +19,13 @@ SCANNER_TIMEOUT_SECONDS = 180
 REQUIRED_REPORT_MARKERS = (
     "Execution Integrity: <FULL|DEGRADED|FAILED>",
     "## Execution Trace",
+    "Allowed evidence tags:",
     "## Dropped Candidates",
 )
 REQUIRED_SKILL_MARKERS = (
     "Flags:",
     "--strict-models",
+    "--proven-only",
     "CAUD-009",
     "`Dropped Candidates`, `Findings Index`",
 )

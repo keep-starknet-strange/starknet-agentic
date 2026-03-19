@@ -16,7 +16,7 @@ Return findings only in your final response. Do not emit draft findings during a
 1. Read your assigned bundle in parallel 1000-line chunks on the first turn.
 2. Do triage for every vector: `Skip`, `Borderline`, `Survive`.
 3. Deep-check only surviving vectors and run the FP gate from `../references/judging.md`.
-4. Format all surviving findings using `../references/report-formatting.md`.
+4. Format all surviving findings using `../references/report-formatting.md` and include evidence tags.
 5. If multiple findings survive, run one composability pass before final output.
 
 ## Bundle Reading Rule
@@ -78,6 +78,10 @@ After deep pass + composability check:
 - Do not rescan dropped vectors.
 - Do not scan outside your assigned vector partition.
 - Return final formatted findings or `No findings.`
+
+## Evidence Tags
+
+Tag every confirmed finding with `[CODE-TRACE]` on its metadata line. This tag means you traced a concrete path through in-scope source code. The orchestrator may add additional tags (`[PREFLIGHT-HIT]`, `[CROSS-AGENT]`, `[ADVERSARIAL]`) during merge.
 
 ## Scope Constraints
 

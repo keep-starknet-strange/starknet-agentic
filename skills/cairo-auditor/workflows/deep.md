@@ -10,7 +10,7 @@ Extends default with adversarial reasoning. Orchestrated by [SKILL.md](../SKILL.
 4. **Spawn** — Adaptive deep fanout:
    - small scopes (largest file <= 1000 lines **and** all bundles <= 1400 lines): 4 parallel vector specialists + 1 adversarial specialist in parallel (host-aware model routing).
    - large scopes: two waves for reliability (Wave A: Agents 1-4, Wave B: Agent 5).
-5. **Report** — Merge all 5 agent outputs, deduplicate, sort, emit.
+5. **Report** — Merge all 5 agent outputs, deduplicate, apply optional `--proven-only` severity cap for `[CODE-TRACE]`-only findings, sort, emit.
 
 ## Agent Configuration
 
@@ -21,6 +21,7 @@ Extends default with adversarial reasoning. Orchestrated by [SKILL.md](../SKILL.
 
 Codex fallback is `gpt-5.2` when `gpt-5.4` probe fails and `--strict-models` is not set.
 `--strict-models` disables fallback and fails closed if preferred host models are unavailable.
+`--proven-only` caps `[CODE-TRACE]`-only findings at Low severity for conservative release gates.
 
 ## Agent 5 — Adversarial Specialist
 

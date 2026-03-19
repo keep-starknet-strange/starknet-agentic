@@ -152,6 +152,7 @@ Related docs:
 /starknet-agentic-skills:cairo-auditor deep          # deep mode, full repo
 /starknet-agentic-skills:cairo-auditor src/vault.cairo  # targeted file(s)
 /starknet-agentic-skills:cairo-auditor deep --file-output  # deep + write report to file
+/starknet-agentic-skills:cairo-auditor deep --proven-only  # deep + conservative severity cap
 ```
 
 ```text
@@ -159,6 +160,7 @@ Related docs:
 Audit this repository with cairo-auditor in default mode.
 Audit src/contracts/account.cairo with cairo-auditor deep mode.
 Run cairo-auditor deep with --file-output on this repo.
+Audit src/contracts/account.cairo with cairo-auditor deep mode and --proven-only.
 ```
 
 ```bash
@@ -169,6 +171,15 @@ python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py \
 ```
 
 Run this from the installed cairo-auditor skill directory, or keep using an absolute script path as shown above.
+
+### Proven-only mode
+
+Use `--proven-only` when you want severity to reflect executed proof strength:
+
+- findings with strong evidence tags (`[PREFLIGHT-HIT]`, `[CROSS-AGENT]`, `[ADVERSARIAL]`) keep normal severity,
+- findings backed only by `[CODE-TRACE]` are capped at `Low`.
+
+This is useful for conservative release gates and benchmark runs.
 
 ## Known limitations
 
@@ -257,10 +268,27 @@ ls -lt security-review-*.md | head -n 1
 ```
 
 Expect: capability file exists, four bundles with non-zero lines, latest report has `Execution Integrity: FULL`.
+Or run one command:
+
+```bash
+bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
+```
+
+Expected: capability file exists, four bundles with non-zero lines, latest report has `Execution Integrity: FULL`.
 
 **Claude Code:**
 
-Run `/starknet-agentic-skills:cairo-auditor deep` and verify the report includes `Execution Trace` rows for all 5 agents with `Execution Integrity: FULL`.
+Verify the plugin is loaded by running inside Claude Code:
+
+```text
+/starknet-agentic-skills:cairo-auditor deep
+```
+
+Then verify the generated report includes:
+
+- `Execution Trace` rows for Agents 1-4 and Agent 5 adversarial,
+- observed model labels (`sonnet` vectors, `opus` adversarial),
+- `Execution Integrity: FULL` (or explicit degraded warning if `--allow-degraded` was intentionally used).
 
 ## Benchmarks
 
@@ -293,6 +321,7 @@ cairo-auditor/
     semgrep/                   # optional Semgrep auxiliary rules
   scripts/
     README.md                  # runnable helpers and script entrypoints
+    doctor.sh                  # one-command deep-run integrity check
   workflows/
     default.md                 # 4-agent pipeline reference
     deep.md                    # + adversarial agent details
@@ -312,6 +341,11 @@ python3 scripts/quality/sync_cairo_auditor_release.py \
 ```
 
 Updates: `VERSION`, `SKILL.md` metadata, `plugin.json`, `marketplace.json`.
+
+Release hygiene gate: when `skills/cairo-auditor/VERSION` changes in CI, you must have either:
+
+- git tag `v<version>`, or
+- a GitHub release draft/published release for `v<version>`.
 
 ### Full-power verification (Codex)
 

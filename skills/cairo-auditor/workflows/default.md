@@ -7,7 +7,7 @@ Standard 4-agent parallel scan. Orchestrated by [SKILL.md](../SKILL.md).
 1. **Discover** — `find` in-scope `.cairo` files, run deterministic preflight.
 2. **Prepare** — Read `vector-scan.md`, build 4 bundle files (code + judging + formatting + one attack-vector partition each).
 3. **Spawn** — 4 parallel vector specialists with host-aware vector model (`claude-code: sonnet`, `codex: gpt-5.4` with fallback `gpt-5.2`), each triages vectors, deep-checks survivors, applies FP gate.
-4. **Report** — Merge, deduplicate by root cause, sort by confidence, emit with scope table and disclaimer.
+4. **Report** — Merge, deduplicate by root cause, apply optional `--proven-only` severity cap for `[CODE-TRACE]`-only findings, sort by confidence, emit with scope table and disclaimer.
 
 ## Agent Configuration
 
@@ -22,4 +22,5 @@ Standard 4-agent parallel scan. Orchestrated by [SKILL.md](../SKILL.md).
 
 - Findings >= 75: full report with fix diff and required tests.
 - If confidence is < 75: keep as low-confidence notes, no fix block.
+- If `--proven-only` is set and a finding is `[CODE-TRACE]` only: cap severity to Low.
 - If the FP gate fails: drop the item entirely.
