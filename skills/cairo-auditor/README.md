@@ -64,9 +64,9 @@ Findings Index
 
 | # | Priority | Confidence | Severity | Evidence | Title |
 |---|----------|------------|----------|----------|-------|
-| 1 | P0       | 92         | Critical | [CODE-TRACE] [PREFLIGHT-HIT] | Ungated Upgrade Path |
+| 1 | P0       | 92         | Critical | `[CODE-TRACE] [PREFLIGHT-HIT]` | Ungated Upgrade Path |
 |   |          |            |          |          | **Below Confidence Threshold** |
-| 2 | P2       | 62         | Medium   | [CODE-TRACE] | Stale Snapshot in View Function |
+| 2 | P2       | 62         | Medium   | `[CODE-TRACE]` | Stale Snapshot in View Function |
 ```
 
 Findings above the confidence threshold (default 75) include a fix diff and required tests. Findings below get a description only.
