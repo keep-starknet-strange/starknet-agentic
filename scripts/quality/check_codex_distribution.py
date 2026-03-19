@@ -50,9 +50,10 @@ def _version_pinned_ref(root: Path = ROOT) -> str:
                 stacklevel=2,
             )
         return DEFAULT_PINNED_REF
-    if not VERSION_PATTERN.match(version):
+    normalized = version[1:] if version.startswith("v") else version
+    if not VERSION_PATTERN.match(normalized):
         return DEFAULT_PINNED_REF
-    return version if version.startswith("v") else f"v{version}"
+    return f"v{normalized}"
 
 
 def _resolved_repo_slug() -> str:
