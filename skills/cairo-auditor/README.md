@@ -25,7 +25,8 @@ Pick **one** path that matches your host:
 
 Inside Claude Code, run:
 
-```
+```text
+/plugin marketplace add keep-starknet-strange/starknet-agentic
 /plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
 ```
 
@@ -135,7 +136,7 @@ Expected:
 
 Verify the plugin is loaded by running inside Claude Code:
 
-```
+```text
 /starknet-agentic-skills:cairo-auditor deep
 ```
 
