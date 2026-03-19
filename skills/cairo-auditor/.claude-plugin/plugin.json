@@ -1,6 +1,6 @@
 {
   "name": "cairo-auditor",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Flagship Cairo/Starknet audit skill for vulnerability discovery with strict FP gating and confidence scoring.",
   "author": {
     "name": "keep-starknet-strange",
@@ -17,6 +17,6 @@
     "smart-contracts"
   ],
   "skills": [
-    "./"
+    "../"
   ]
 }

@@ -16,7 +16,7 @@ When `--file-output` is set, save the report to `{repo-root}/security-review-{ti
  ╚═════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝     ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝
 ```
 
-# Security Review — <project name or repo basename>
+# Security Review — <project name or repo basename>  🔐
 
 ## Signal Summary
 
@@ -48,7 +48,7 @@ When degraded:
 ## Execution Trace
 
 | Stage | Model | Evidence | Status |
-|-------|-------|----------|--------|
+|---|---|---|---|
 | Scope discovery | n/a | `{workdir}/cairo-audit-files.txt` (N files) | OK |
 | Threat intel enrichment (optional) | n/a | `{workdir}/cairo-audit-threat-intel.md` | OK / `SKIPPED: <reason>` / `FAILED: <reason>` |
 | Agent 1 vector scan | `<actual model label>` | `{workdir}/cairo-audit-agent-1-bundle.md` (N lines) | OK |
@@ -139,11 +139,11 @@ When degraded:
 
 | # | Priority | Confidence | Severity | Title |
 |---|----------|------------|----------|-------|
-| 1 | P0       | [92]       | Critical | <title> |
-| 2 | P1       | [85]       | High     | <title> |
+| 1 | P0       | 92         | Critical | <title> |
+| 2 | P1       | 85         | High     | <title> |
 |   |          |            |          | **Below Confidence Threshold** |
-| 3 | P2       | [68]       | Medium   | <title> |
-| 4 | P3       | [55]       | Low      | <title> |
+| 3 | P2       | 68         | Medium   | <title> |
+| 4 | P3       | 55         | Low      | <title> |
 
 ---
 

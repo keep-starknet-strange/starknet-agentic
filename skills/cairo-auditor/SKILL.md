@@ -1,7 +1,7 @@
 ---
 name: cairo-auditor
 description: Security audit of Cairo/Starknet code. Trigger on "audit", "check this contract", "review for security". Modes - default (full repo), deep (+ adversarial reasoning), or specific filenames.
-license: Apache-2.0
+license: MIT
 metadata: {"author":"starknet-agentic","version":"0.2.2","org":"keep-starknet-strange","source":"starknet-agentic"}
 keywords: [cairo, starknet, security, audit, vulnerabilities, semgrep]
 allowed-tools: [Bash, Read, Glob, Grep, Task, Agent]
@@ -24,8 +24,8 @@ You are the orchestrator of a parallelized Cairo/Starknet security audit. Your j
 import { Account, Contract, RpcProvider } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
-const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
-const contract = new Contract(abi, process.env.CONTRACT_ADDRESS!, provider).connect(account);
+const account = new Account({ provider, address: process.env.ACCOUNT_ADDRESS!, signer: process.env.PRIVATE_KEY! });
+const contract = new Contract({ abi, address: process.env.CONTRACT_ADDRESS!, provider }).connect(account);
 
 try {
   // View call for quick sanity checks while triaging findings.
@@ -125,7 +125,7 @@ Select specialist model labels from detected host before spawning:
   - `VECTOR_MODEL=sonnet` (host alias for `claude-sonnet-4-6`)
   - `ADVERSARIAL_MODEL=opus` (host alias for `claude-opus-4-6`)
 - `codex`
-  - `VECTOR_MODEL=gpt-5.4`
+  - `VECTOR_MODEL=gpt-5.4` (Codex-specific label; may change across host versions)
   - `ADVERSARIAL_MODEL=gpt-5.4`
   - If `gpt-5.4` probe fails and `--strict-models` is not set, fallback to `gpt-5.2` for both.
 - `unknown`
@@ -353,21 +353,19 @@ If `--file-output` is set, write the report to `{repo-root}/security-review-{tim
 Before doing anything else, print this exactly:
 
 ```text
-
  ██████╗ █████╗ ██╗██████╗  ██████╗      █████╗ ██╗   ██╗██████╗ ██╗████████╗ ██████╗ ██████╗
 ██╔════╝██╔══██╗██║██╔══██╗██╔═══██╗    ██╔══██╗██║   ██║██╔══██╗██║╚══██╔══╝██╔═══██╗██╔══██╗
 ██║     ███████║██║██████╔╝██║   ██║    ███████║██║   ██║██║  ██║██║   ██║   ██║   ██║██████╔╝
 ██║     ██╔══██║██║██╔══██╗██║   ██║    ██╔══██║██║   ██║██║  ██║██║   ██║   ██║   ██║██╔══██╗
 ╚██████╗██║  ██║██║██║  ██║╚██████╔╝    ██║  ██║╚██████╔╝██████╔╝██║   ██║   ╚██████╔╝██║  ██║
  ╚═════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝     ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝
-
 ```
 
 ## Version Check
 
 After printing the banner, run two parallel tool calls: (a) Read the local `VERSION` file from the same directory as this skill, (b) Bash `curl -sf --connect-timeout 5 --max-time 10 https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-auditor/VERSION`. If the remote fetch succeeds and the versions differ, print:
 
-> You are not using the latest version. Run `/plugin marketplace update keep-starknet-strange/starknet-agentic` for best security coverage.
+> You are not using the latest version. Update via your install method (e.g. `git pull` or reinstall the plugin) for best security coverage.
 
 Then continue normally. If the fetch fails (offline, timeout), skip silently.
 
