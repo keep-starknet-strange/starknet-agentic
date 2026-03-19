@@ -32,7 +32,8 @@ Signal Summary
 
 [P0] 1. Ungated Upgrade Path
 
-  Class: NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42 · Confidence: 92 · Severity: Critical
+  Class: NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42
+  Confidence: 92 · Severity: Critical · [CODE-TRACE] [PREFLIGHT-HIT]
 
   Description
   External upgrade() calls replace_class_syscall without caller gate.
@@ -52,7 +53,8 @@ Signal Summary
 
 [P2] 2. Stale Snapshot in View Function
 
-  Class: STALE-SNAPSHOT-READ · src/contracts/registry.cairo:187 · Confidence: 62 · Severity: Medium
+  Class: STALE-SNAPSHOT-READ · src/contracts/registry.cairo:187
+  Confidence: 62 · Severity: Medium · [CODE-TRACE]
 
   Description
   get_metadata reads a snapshot that may lag behind the latest write in the
@@ -62,14 +64,25 @@ Signal Summary
 
 Findings Index
 
-| # | Priority | Confidence | Severity | Title |
-|---|----------|------------|----------|-------|
-| 1 | P0       | 92         | Critical | Ungated Upgrade Path |
-|   |          |            |          | **Below Confidence Threshold** |
-| 2 | P2       | 62         | Medium   | Stale Snapshot in View Function |
+| # | Priority | Confidence | Severity | Evidence | Title |
+|---|----------|------------|----------|----------|-------|
+| 1 | P0       | 92         | Critical | [CODE-TRACE] [PREFLIGHT-HIT] | Ungated Upgrade Path |
+|   |          |            |          | | **Below Confidence Threshold** |
+| 2 | P2       | 62         | Medium   | [CODE-TRACE] | Stale Snapshot in View Function |
 ```
 
 Findings above the confidence threshold (default 75) include a fix diff and required tests. Findings below get a description only.
+
+Evidence tags tell you _how_ each finding was validated:
+
+| Tag | Meaning |
+|-----|---------|
+| `[CODE-TRACE]` | Concrete path traced through in-scope source code |
+| `[PREFLIGHT-HIT]` | Deterministic scanner also flagged this pattern |
+| `[CROSS-AGENT]` | Independently confirmed by 2+ specialist agents |
+| `[ADVERSARIAL]` | Found or confirmed by the adversarial specialist (deep mode) |
+
+More tags = stronger signal. Findings with only `[CODE-TRACE]` are valid but lower priority for review.
 
 ## Modes
 
@@ -268,13 +281,12 @@ ls -lt security-review-*.md | head -n 1
 ```
 
 Expect: capability file exists, four bundles with non-zero lines, latest report has `Execution Integrity: FULL`.
-Or run one command:
+
+Or run the doctor script:
 
 ```bash
 bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
 ```
-
-Expected: capability file exists, four bundles with non-zero lines, latest report has `Execution Integrity: FULL`.
 
 **Claude Code:**
 
@@ -337,7 +349,7 @@ cairo-auditor/
 ```bash
 python3 scripts/quality/sync_cairo_auditor_release.py \
   --skill-version 0.2.2 \
-  --plugin-version 1.0.4
+  --plugin-version 0.2.2
 ```
 
 Updates: `VERSION`, `SKILL.md` metadata, `plugin.json`, `marketplace.json`.
