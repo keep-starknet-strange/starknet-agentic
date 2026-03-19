@@ -25,7 +25,7 @@ import { Account, Contract, RpcProvider } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
 const account = new Account({ provider, address: process.env.ACCOUNT_ADDRESS!, signer: process.env.PRIVATE_KEY! });
-const contract = new Contract({ abi, address: process.env.CONTRACT_ADDRESS!, provider }).connect(account);
+const contract = new Contract({ abi, address: process.env.CONTRACT_ADDRESS!, providerOrAccount: account });
 
 try {
   // View call for quick sanity checks while triaging findings.

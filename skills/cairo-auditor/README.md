@@ -23,14 +23,13 @@ Pick **one** path that matches your host:
 
 ### Claude Code (recommended)
 
-Install via the plugin marketplace inside Claude Code:
+Inside Claude Code, run:
 
 ```
-claude plugin marketplace add keep-starknet-strange/starknet-agentic
-claude plugin install starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
 ```
 
-After installing, restart Claude Code or run `/reload-plugins`.
+Then restart Claude Code or run `/reload-plugins`.
 
 ### Codex
 
@@ -54,6 +53,12 @@ For reproducible installs, pin to a release tag or commit SHA:
 skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
 ```
 
+### Agent Skills CLI
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
+```
+
 ### Manual (any host)
 
 Clone the repo and point your agent's skill config at the local path:
@@ -62,6 +67,11 @@ Clone the repo and point your agent's skill config at the local path:
 git clone https://github.com/keep-starknet-strange/starknet-agentic.git
 # Then configure your host to load skills/cairo-auditor/SKILL.md
 ```
+
+Related docs:
+
+- [2-minute quickstart](../QUICKSTART_2MIN.md)
+- [troubleshooting matrix](../TROUBLESHOOTING.md)
 
 ## Usage
 
