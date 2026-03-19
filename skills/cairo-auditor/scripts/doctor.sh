@@ -2,8 +2,10 @@
 set -euo pipefail
 
 WORKDIR="${CAIRO_AUDITOR_WORKDIR:-/tmp}"
+WORKDIR_EXPLICIT=0
 REPORT_DIR="."
 REPORT_PATH=""
+REPORT_EXPLICIT=0
 
 usage() {
   cat <<'EOF'
@@ -26,6 +28,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       WORKDIR="$2"
+      WORKDIR_EXPLICIT=1
       shift 2
       ;;
     --report-dir)
@@ -44,6 +47,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       REPORT_PATH="$2"
+      REPORT_EXPLICIT=1
       shift 2
       ;;
     -h|--help)
@@ -71,7 +75,12 @@ say_fail() {
 
 resolve_artifact_root() {
   local preferred="$1"
+  local explicit="$2"
   if [[ -f "$preferred/cairo-audit-host-capabilities.json" ]]; then
+    echo "$preferred"
+    return
+  fi
+  if [[ "$explicit" -eq 1 ]]; then
     echo "$preferred"
     return
   fi
@@ -82,7 +91,7 @@ resolve_artifact_root() {
   echo "$preferred"
 }
 
-ART_ROOT="$(resolve_artifact_root "$WORKDIR")"
+ART_ROOT="$(resolve_artifact_root "$WORKDIR" "$WORKDIR_EXPLICIT")"
 
 if [[ -f "$ART_ROOT/cairo-audit-host-capabilities.json" ]]; then
   say_ok "Host capabilities file: $ART_ROOT/cairo-audit-host-capabilities.json"
@@ -109,7 +118,11 @@ if [[ -z "$REPORT_PATH" ]]; then
 fi
 
 if [[ -z "$REPORT_PATH" || ! -f "$REPORT_PATH" ]]; then
-  say_fail "No security-review-*.md report found (report-dir: $REPORT_DIR)"
+  if [[ "$REPORT_EXPLICIT" -eq 1 ]]; then
+    say_fail "Requested report not found: $REPORT_PATH"
+  else
+    say_fail "No security-review-*.md report found (report-dir: $REPORT_DIR)"
+  fi
 else
   say_ok "Report file: $REPORT_PATH"
   if grep -q '^`Execution Integrity: ' "$REPORT_PATH" || grep -q '^Execution Integrity: ' "$REPORT_PATH"; then

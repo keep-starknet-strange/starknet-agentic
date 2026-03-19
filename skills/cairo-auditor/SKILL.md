@@ -334,7 +334,7 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 
 1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence).
 2. Apply evidence tags per `references/judging.md` Evidence Tags section:
-   - Every finding must already have `[CODE-TRACE]` from its source agent.
+   - Validate every finding has `[CODE-TRACE]`; if a source agent omitted it, add `[CODE-TRACE]` during merge normalization.
    - Add `[PREFLIGHT-HIT]` if the deterministic preflight flagged the same class or entry point.
    - Add `[CROSS-AGENT]` if 2+ agents independently reported the same root cause before deduplication.
    - Add `[ADVERSARIAL]` if Agent 5 discovered or confirmed the finding.
