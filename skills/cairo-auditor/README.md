@@ -147,6 +147,18 @@ Then restart Claude Code or run `/reload-plugins`.
 
 Note: Claude plugin bundle versions (for example `starknet-agentic-skills 1.0.4`) are intentionally separate from this skill's internal version (`cairo-auditor 0.2.2`).
 
+If your local install looks stale after a new release, force-refresh marketplace metadata and reinstall:
+
+```text
+/plugin marketplace update keep-starknet-strange/starknet-agentic
+/plugin uninstall starknet-agentic-skills@starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+/reload-plugins
+/plugin list
+```
+
+Expected: installed plugin shows the latest bundle version and `/starknet-agentic-skills:cairo-auditor` resolves.
+
 ### Codex
 
 `skill-installer` is a third-party CLI. Install it first if you don't have it:
@@ -303,6 +315,14 @@ Fix: retry the audit. If failures persist, use `--allow-degraded` to accept redu
 
 **CAUD-009: Model requirement not satisfied.**
 The requested model isn't available on your host. Remove `--strict-models` to allow documented fallback, or switch to a host that supports the required models.
+
+**Plugin says "already at latest" but behavior is old.**
+This is usually stale marketplace metadata or a project-scope override shadowing a user-scope install.
+Fix:
+`/plugin marketplace update keep-starknet-strange/starknet-agentic`
+`/plugin uninstall starknet-agentic-skills@starknet-agentic-skills --scope local`
+`/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user`
+`/reload-plugins`
 
 ### Deep mode details
 

@@ -39,6 +39,32 @@ Ensure these files are current:
    - `/reload-plugins`
    - invoke `/starknet-agentic-skills:cairo-auditor`
 
+## Propagation-Safe Rollout (Anti-Stale)
+
+Use this every time plugin metadata/version changes:
+
+1. Bump plugin version and metadata in one pass:
+
+```bash
+python3 scripts/quality/sync_cairo_auditor_release.py \
+  --skill-version <skill-version> \
+  --plugin-version <plugin-version>
+```
+
+2. Validate and merge:
+
+```bash
+python3 scripts/quality/validate_marketplace.py
+python3 scripts/quality/check_codex_distribution.py
+```
+
+3. Publish release notes and announce the user refresh sequence:
+   - `/plugin marketplace update keep-starknet-strange/starknet-agentic`
+   - `/plugin uninstall starknet-agentic-skills@starknet-agentic-skills --scope local`
+   - `/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user`
+   - `/reload-plugins`
+   - `/plugin list` (confirm latest plugin version)
+
 ## Maintenance Policy
 
 - Any change to `.claude-plugin/**` must pass `validate_marketplace.py`.

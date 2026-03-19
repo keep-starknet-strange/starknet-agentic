@@ -11,6 +11,7 @@ This matrix covers the common failure classes: auth, quota, install, and sync.
 | Quota | Claude run stops with usage limit message | `/usage` then retry with default mode (not deep) |
 | Install | Codex skill not visible after install | Re-run `skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor`, then restart Codex and open `/skills` |
 | Install | Claude plugin installed but commands unavailable | `/plugin list`, `/reload-plugins`, `/plugin update starknet-agentic-skills@starknet-agentic-skills` |
+| Install | Claude says "already at latest" but behavior is stale | `/plugin marketplace update keep-starknet-strange/starknet-agentic`, uninstall project/local scope, reinstall with `--scope user`, then `/reload-plugins` |
 | Install | Agent Skills CLI install appears stale | `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor --force` |
 | Sync | Marketplace metadata changed but local plugin stale | `/plugin marketplace update keep-starknet-strange/starknet-agentic`, `/plugin update starknet-agentic-skills@starknet-agentic-skills`, `/reload-plugins` |
 | Sync | Local clone missing latest skill refs/scripts | `git fetch origin && git checkout main && git pull --ff-only origin main` |
@@ -27,6 +28,16 @@ Global install (all projects):
 
 ```bash
 /plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+```
+
+Hard refresh sequence (when scope collisions or stale cache are suspected):
+
+```bash
+/plugin marketplace update keep-starknet-strange/starknet-agentic
+/plugin uninstall starknet-agentic-skills@starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+/reload-plugins
+/plugin list
 ```
 
 ## Reproducible Pin Policy
