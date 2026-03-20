@@ -243,27 +243,28 @@ mod QuantumVault {
             assert(!deposit.withdrawn, ERR_ALREADY_WITHDRAWN);
             assert(!deposit.cancelled, ERR_ALREADY_CANCELLED);
 
-            // Timelock check
-            let now = get_block_timestamp();
-            assert(
-                now >= deposit.deposit_time + deposit.timelock_seconds,
-                ERR_TIMELOCK_NOT_EXPIRED,
-            );
+            // Timelock check (overflow-safe: cast to u128 before addition)
+            let now: u128 = get_block_timestamp().into();
+            let deadline: u128 = deposit.deposit_time.into() + deposit.timelock_seconds.into();
+            assert(now >= deadline, ERR_TIMELOCK_NOT_EXPIRED);
 
             // Mark withdrawn before transfer (checks-effects-interactions)
+            // Extract fields before move (Deposit is not Copy)
+            let token = deposit.token;
+            let amount = deposit.amount;
             deposit.withdrawn = true;
             self.deposits.entry(deposit_id).write(deposit);
 
             // Transfer tokens back to owner
-            let erc20 = IERC20Dispatcher { contract_address: deposit.token };
-            let success = erc20.transfer(caller, deposit.amount);
+            let erc20 = IERC20Dispatcher { contract_address: token };
+            let success = erc20.transfer(caller, amount);
             assert(success, 'TRANSFER_FAILED');
 
             self.emit(Withdrawn {
                 owner: caller,
                 deposit_id,
-                token: deposit.token,
-                amount: deposit.amount,
+                token,
+                amount,
             });
 
             self._release_reentrancy_guard();
@@ -289,28 +290,29 @@ mod QuantumVault {
             assert(!deposit.withdrawn, ERR_ALREADY_WITHDRAWN);
             assert(!deposit.cancelled, ERR_ALREADY_CANCELLED);
 
-            // Cancel timelock = 2× deposit timelock
-            let cancel_timelock = deposit.timelock_seconds * 2;
-            let now = get_block_timestamp();
-            assert(
-                now >= deposit.deposit_time + cancel_timelock,
-                ERR_CANCEL_TIMELOCK_NOT_EXPIRED,
-            );
+            // Cancel timelock = 2× deposit timelock (overflow-safe)
+            let now: u128 = get_block_timestamp().into();
+            let deadline: u128 = deposit.deposit_time.into()
+                + (deposit.timelock_seconds * 2).into();
+            assert(now >= deadline, ERR_CANCEL_TIMELOCK_NOT_EXPIRED);
 
             // Mark cancelled before transfer
+            // Extract fields before move (Deposit is not Copy)
+            let token = deposit.token;
+            let amount = deposit.amount;
             deposit.cancelled = true;
             self.deposits.entry(deposit_id).write(deposit);
 
             // Return tokens to owner
-            let erc20 = IERC20Dispatcher { contract_address: deposit.token };
-            let success = erc20.transfer(caller, deposit.amount);
+            let erc20 = IERC20Dispatcher { contract_address: token };
+            let success = erc20.transfer(caller, amount);
             assert(success, 'TRANSFER_FAILED');
 
             self.emit(Cancelled {
                 owner: caller,
                 deposit_id,
-                token: deposit.token,
-                amount: deposit.amount,
+                token,
+                amount,
             });
 
             self._release_reentrancy_guard();
