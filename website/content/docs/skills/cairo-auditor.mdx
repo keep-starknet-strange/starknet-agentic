@@ -223,6 +223,15 @@ This path is primarily for manual maintainer regression. Repository CI runs sepa
 3. spawns vector-specialist audit passes in parallel
 4. deduplicates root causes and emits a single report with confidence gating
 
+## Audit pipeline
+
+```text
+discover -> preflight -> bundle -> spawn(4+1) -> merge -> report
+  files      rules       partitions    agents       dedup    findings
+```
+
+Deep mode adds the adversarial specialist on top of the four vector partitions. Default mode stops at the four vector scans.
+
 ## Deterministic Local Scan
 
 ```bash
