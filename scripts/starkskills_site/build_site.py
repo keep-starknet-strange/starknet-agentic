@@ -911,17 +911,16 @@ def shared_script() -> str:
 def build_index_html(data: dict, domain: str | None) -> str:
     counts = data["counts"]
     links = data["links"]
-    scorecard = data["latest_scorecards"].get("realworld") or data["latest_scorecards"].get("deterministic")
     repo_dir = links["repo_slug"].split("/")[-1]
     production_ready_title = READINESS_META["production-ready"]["title"]
     public_beta_title = READINESS_META["public-beta"]["title"]
 
     stats_bar = "\n".join(
         [
-            f'<span class="stat-pill">{fmt_int(counts["cataloged_audits"])} audits</span>',
-            f'<span class="stat-pill">{fmt_int(counts["normalized_findings"])} findings</span>',
             f'<span class="stat-pill">{fmt_int(counts["skill_modules"])} modules</span>',
-            '<span class="stat-pill">router</span>',
+            f'<span class="stat-pill">{e(links["cairo_auditor_name"])}</span>',
+            '<span class="stat-pill">Codex + Claude</span>',
+            '<span class="stat-pill">raw SKILL.md</span>',
         ]
     )
 
@@ -942,54 +941,56 @@ def build_index_html(data: dict, domain: str | None) -> str:
         for tier_key in READINESS_ORDER
     )
 
-    pipeline_html = "\n".join(
-        [
-            pipeline_step(1, "ingest", fmt_int(counts["cataloged_audits"]), "audit manifests"),
-            pipeline_step(2, "segment", fmt_int(counts["segmented_audits"]), "segmented corpora"),
-            pipeline_step(3, "normalize", fmt_int(counts["normalized_findings"]), "normalized findings"),
-            pipeline_step(4, "distill", fmt_int(counts["distilled_vuln_cards"]), "vuln cards"),
-            pipeline_step(5, "skillize", fmt_int(counts["skill_modules"]), "published modules"),
-        ]
+    auditor_pipeline = (
+        "discover -> preflight -> bundle -> spawn(4+1) -> merge -> report\n"
+        "  files      rules       partitions    agents       dedup    findings"
     )
 
-    scorecard_html = ""
-    scorecard_nav = ""
-    if scorecard:
-        scorecard_nav = '<a href="#scorecard">scorecard</a>'
-        scorecard_html = (
-            '<section class="section section-score reveal" id="scorecard">'
-            '<div class="section-head">'
-            '<div><p class="section-kicker">Scorecard</p><h2>Latest run</h2></div>'
-            f'<a href="{e(scorecard["github_url"])}" target="_blank" rel="noreferrer">open scorecard</a>'
-            '</div>'
-            '<div class="score-grid">'
-            f'{scorecard_metric("cases", scorecard.get("cases"))}'
-            f'{scorecard_metric("precision", scorecard.get("precision"))}'
-            f'{scorecard_metric("recall", scorecard.get("recall"))}'
-            '</div>'
-            '<p class="section-note">Benchmark snapshot from repo data. Informational only; not a security guarantee.</p>'
-            '</section>'
-        )
-
-    verify_html = "\n".join(
-        [
-            verify_link("quality", links["quality_workflow"], "ci"),
-            verify_link("evals", links["full_evals_workflow"], "workflow"),
-            verify_link("held-out", links["heldout_policy"], "policy"),
-            verify_link("contributing", links["contributing"], "guide"),
-            verify_link("quickstart", links["skills_quickstart"], "2-minute"),
-            verify_link("troubleshooting", links["troubleshooting"], "matrix"),
-            verify_link("vuln cards", "vuln-cards/", "index"),
-            verify_link("site data", "data/site-data.json", "json"),
-        ]
+    auditor_focus_html = (
+        '<section class="section reveal" id="auditor">'
+        '<div class="section-card">'
+        '<div class="section-head">'
+        '<div><p class="section-kicker">Start here</p><h2>cairo-auditor</h2></div>'
+        f'<a href="{e(links["cairo_auditor_readme"])}" target="_blank" rel="noreferrer">README</a>'
+        '</div>'
+        '<p class="section-note">LLMs miss Starknet-specific upgrade paths, dispatcher failures, and Cairo component edge cases. Start with cairo-auditor if you want the clearest first impression.</p>'
+        '<div class="tools-grid">'
+        f'<a class="tool-pill tool-pill--primary" href="{e(links["cairo_auditor"])}" target="_blank" rel="noreferrer">open skill</a>'
+        f'<a class="tool-pill" href="{e(links["skills_quickstart"])}" target="_blank" rel="noreferrer">full guide</a>'
+        '</div>'
+        f'<pre><code>{e(auditor_pipeline)}</code></pre>'
+        '</div>'
+        '</section>'
     )
 
-    primary_command = command_block("Raw URL", "Use the router skill directly.", links["router_skill_raw"], "primary")
+    report_preview_html = (
+        '<section class="section reveal" id="preview">'
+        '<div class="section-head">'
+        '<div><p class="section-kicker">Preview</p><h2>Report shape</h2></div>'
+        f'<a href="{e(links["cairo_auditor_readme"])}" target="_blank" rel="noreferrer">README</a>'
+        '</div>'
+        '<div class="preview-frame">'
+        '<img class="report-preview" src="assets/cairo-auditor-report-preview.svg" alt="Cairo auditor report preview" />'
+        '</div>'
+        '<p class="section-note">Expect one markdown report: signal summary, execution trace, prioritized findings, fix diffs, and required tests.</p>'
+        '</section>'
+    )
+
+    primary_command = command_block(
+        "Try cairo-auditor",
+        "Use the deterministic demo fixture first.",
+        (
+            "Use cairo-auditor in deep mode on "
+            "skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output.\n"
+            "Output only the final report."
+        ),
+        "primary",
+    )
     onboarding_links = "\n".join(
         [
-            '<a class="tool-pill tool-pill--primary" href="#quickstart">Start quickstart</a>',
-            f'<a class="tool-pill" href="{e(links["cairo_auditor"])}" target="_blank" rel="noreferrer">Open cairo-auditor</a>',
-            f'<a class="tool-pill" href="{e(links["skills_quickstart"])}" target="_blank" rel="noreferrer">Read full setup</a>',
+            '<a class="tool-pill tool-pill--primary" href="#auditor">start with cairo-auditor</a>',
+            '<a class="tool-pill" href="#quickstart">quickstart</a>',
+            f'<a class="tool-pill" href="{e(links["cairo_auditor_readme"])}" target="_blank" rel="noreferrer">README</a>',
         ]
     )
     quickstart_cards = "\n".join(
@@ -998,30 +999,33 @@ def build_index_html(data: dict, domain: str | None) -> str:
                 "CDX",
                 "Codex",
                 (
-                    f"git clone {links['repo']}.git && cd {repo_dir}\n"
-                    "# Skills auto-discover from .agents/skills\n"
-                    "# Start Codex from this repo root"
+                    "npm install -g skill-installer\n"
+                    f"skill-installer install https://github.com/{links['repo_slug']}/tree/{links['repo_ref']}/skills/cairo-auditor"
                 ),
-                "Use $cairo-auditor to audit ./contracts and return only concrete exploitable findings.",
-                "Markdown report with file:line evidence, impact, exploit path, and secure fix diff.",
+                (
+                    "Use cairo-auditor in deep mode on "
+                    "skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output.\n"
+                    "Output only the final report."
+                ),
+                "`security-review-*.md` plus `Execution Integrity: FULL` when the deep run completes cleanly.",
             ),
             quickstart_card(
                 "CLD",
                 "Claude Code",
                 (
                     f"/plugin marketplace add {links['repo_slug']}\n"
-                    f"/plugin install {links['plugin_name']}@{links['plugin_name']} -s user\n"
+                    f"/plugin install {links['plugin_name']}@{links['plugin_name']} --scope user\n"
                     "/reload-plugins"
                 ),
-                "/cairo-auditor contracts/src/account.cairo",
-                "One focused finding list for the target file plus remediation guidance.",
+                "/starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output",
+                "`security-review-*.md` plus a final markdown report in-session for the demo fixture.",
             ),
             quickstart_card(
                 "CLI",
                 "Agent Skills CLI",
                 f"npx skills add {links['repo_slug']}/skills/cairo-auditor",
-                "Prompt your agent: Audit ./contracts with cairo-auditor and write findings.md",
-                "A reproducible `findings.md` artifact ready for PR review.",
+                "Prompt your host: audit skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo with cairo-auditor and output only the final report.",
+                "Markdown findings in your host output; use Codex or Claude if you want the most predictable deep-run verification flow.",
             ),
         ]
     )
@@ -1029,17 +1033,16 @@ def build_index_html(data: dict, domain: str | None) -> str:
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-{head_meta('starkskills', 'Cairo and Starknet skills, audit data, and direct links.', 'assets/site.css', domain, '')}
+{head_meta('starkskills', 'Cairo and Starknet skills, direct install paths, and docs.', 'assets/site.css', domain, '')}
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#top">starkskills</a>
     <nav class="site-nav" aria-label="Primary navigation">
+      <a href="#auditor">auditor</a>
       <a href="#quickstart">quickstart</a>
+      <a href="#preview">preview</a>
       <a href="#skills">skills</a>
-      <a href="#data">pipeline</a>
-      {scorecard_nav}
-      <a href="#verify">verify</a>
     </nav>
     <a class="nav-icon" href="{e(links['repo'])}" target="_blank" rel="noreferrer" aria-label="Open GitHub repository">gh</a>
   </header>
@@ -1048,7 +1051,7 @@ def build_index_html(data: dict, domain: str | None) -> str:
     <section class="hero reveal">
       <pre class="ascii-logo" aria-label="STARKSKILLS">{e(ASCII_LOGO)}</pre>
       <h1>Cairo and Starknet skills for agents.</h1>
-      <p class="hero-copy">Plain markdown skills, audit data, and direct links.</p>
+      <p class="hero-copy">Plain markdown skills and direct links. Start with cairo-auditor for Cairo security review.</p>
       <div class="stats-bar">
         {stats_bar}
       </div>
@@ -1059,6 +1062,8 @@ def build_index_html(data: dict, domain: str | None) -> str:
         {onboarding_links}
       </div>
     </section>
+
+    {auditor_focus_html}
 
     <section class="section reveal" id="quickstart">
       <div class="section-head">
@@ -1071,8 +1076,10 @@ def build_index_html(data: dict, domain: str | None) -> str:
       <div class="quickstart-grid">
         {quickstart_cards}
       </div>
-      <p class="section-note">This quickstart is the canonical install + run path for Codex, Claude, and Skills CLI.</p>
+      <p class="section-note">Codex and Claude Code are the clearest first-run paths. Use the deterministic demo fixture before you point the skill at your own code.</p>
     </section>
+
+    {report_preview_html}
 
     <section class="section reveal" id="skills">
       <div class="section-head">
@@ -1088,35 +1095,6 @@ def build_index_html(data: dict, domain: str | None) -> str:
       <p class="section-note">Use <code>{e(production_ready_title)}</code> for high-stakes audits. <code>{e(public_beta_title)}</code> is recommended for active development workflows.</p>
       <div class="tier-stack">
         {modules_html}
-      </div>
-    </section>
-
-    <section class="section reveal" id="data">
-      <div class="section-head">
-        <div>
-          <p class="section-kicker">Pipeline</p>
-          <h2>Data flow</h2>
-        </div>
-        <a href="{e(links['pipeline_readme'])}" target="_blank" rel="noreferrer">datasets</a>
-      </div>
-      <div class="pipeline-grid">
-        {pipeline_html}
-      </div>
-      <p class="section-note">Counts are generated from repo data at build time.</p>
-    </section>
-
-    {scorecard_html}
-
-    <section class="section reveal" id="verify">
-      <div class="section-head">
-        <div>
-          <p class="section-kicker">Verify</p>
-          <h2>Repo links</h2>
-        </div>
-        <a href="vuln-cards/">vuln cards</a>
-      </div>
-      <div class="verify-grid">
-        {verify_html}
       </div>
     </section>
   </main>
@@ -1168,7 +1146,7 @@ def build_vuln_cards_html(data: dict, domain: str | None) -> str:
     <a class="brand" href="../">starkskills</a>
     <nav class="site-nav" aria-label="Secondary navigation">
       <a href="../#skills">skills</a>
-      <a href="../#verify">verify</a>
+      <a href="../#quickstart">quickstart</a>
       <a href="../">home</a>
     </nav>
     <a class="nav-icon" href="{e(links['vuln_cards_dir'])}" target="_blank" rel="noreferrer" aria-label="Open vulnerability cards directory">gh</a>
@@ -1204,7 +1182,6 @@ def build_vuln_cards_html(data: dict, domain: str | None) -> str:
     <div class="footer-links">
       <a href="../">Home</a>
       <a href="{e(links['repo'])}" target="_blank" rel="noreferrer">GitHub</a>
-      <a href="../data/site-data.json">site-data.json</a>
     </div>
     <div class="fingerprint">$ fingerprint {e(data['source_fingerprint'])}</div>
   </footer>
@@ -1223,7 +1200,7 @@ def build_og_card_svg(domain: str | None) -> str:
   <rect x="56" y="56" width="1088" height="518" rx="20" fill="#101010" stroke="#242424"/>
   <text x="88" y="140" font-family="monospace" font-size="26" fill="#00d4aa" xml:space="preserve">{logo_lines}</text>
   <text x="88" y="340" font-family="monospace" font-size="38" fill="#e0e0e0">Cairo and Starknet skills for agents.</text>
-  <text x="88" y="392" font-family="sans-serif" font-size="26" fill="#a0a0a0">Plain markdown skills, audit data, and direct links.</text>
+  <text x="88" y="392" font-family="sans-serif" font-size="26" fill="#a0a0a0">Plain markdown skills, direct install paths, and docs.</text>
   <text x="88" y="500" font-family="monospace" font-size="24" fill="#00d4aa">{html.escape(label)}</text>
 </svg>
 """
@@ -1232,7 +1209,7 @@ def build_og_card_svg(domain: str | None) -> str:
 def copy_static_assets(source_assets_dir: Path, output_assets_dir: Path) -> None:
     require_directory(source_assets_dir)
     output_assets_dir.mkdir(parents=True, exist_ok=True)
-    required_assets = ("site.css", "favicon.svg", "og-card.png")
+    required_assets = ("site.css", "favicon.svg", "og-card.png", "cairo-auditor-report-preview.svg")
     for asset_name in required_assets:
         source = require_file(source_assets_dir / asset_name)
         shutil.copy2(source, output_assets_dir / asset_name)
