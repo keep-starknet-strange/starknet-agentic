@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,10 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPO_SLUG = "keep-starknet-strange/starknet-agentic"
+# Public docs intentionally expose a latest-install path on `main`.
+# Reproducible guidance is enforced separately via frozen-install markers.
 DEFAULT_PUBLIC_REF = "main"
+FROZEN_PUBLIC_REF_PLACEHOLDER = "<commit-sha>"
 PUBLIC_SKILLS = [
     "account-abstraction",
     "cairo-auditor",
@@ -66,6 +70,7 @@ def build_install_markers(
             f"--repo {resolved_repo_slug}",
             "--path skills/cairo-auditor",
             f"--ref {resolved_public_ref}",
+            f"--ref {FROZEN_PUBLIC_REF_PLACEHOLDER}",
             f"/plugin marketplace add {resolved_repo_slug}",
             "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user",
             f"npx skills add {resolved_repo_slug}/skills/cairo-auditor",
@@ -75,6 +80,7 @@ def build_install_markers(
             f"--repo {resolved_repo_slug}",
             "--path skills/cairo-auditor",
             f"--ref {resolved_public_ref}",
+            f"--ref {FROZEN_PUBLIC_REF_PLACEHOLDER}",
             "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user",
             f"npx skills add {resolved_repo_slug}/skills/cairo-auditor",
             "./QUICKSTART_2MIN.md",
@@ -85,6 +91,7 @@ def build_install_markers(
             f"--repo {resolved_repo_slug}",
             "--path skills/cairo-auditor",
             f"--ref {resolved_public_ref}",
+            f"--ref {FROZEN_PUBLIC_REF_PLACEHOLDER}",
             "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user",
             f"npx skills add {resolved_repo_slug}/skills/cairo-auditor",
             "../QUICKSTART_2MIN.md",
@@ -96,7 +103,9 @@ def build_install_markers(
 FORBIDDEN_INSTALL_MARKERS = [
     "tree/<ref>/skills/cairo-auditor",
     "skill-installer install https://github.com/",
-    "tree/v0.2.2/skills/cairo-auditor",
+]
+FORBIDDEN_INSTALL_MARKER_PATTERNS = [
+    re.compile(r"tree/v[^/\s]+/skills/cairo-auditor"),
 ]
 
 
@@ -210,8 +219,12 @@ def install_doc_errors(root: Path = ROOT, install_markers: dict[Path, list[str]]
         if missing:
             errors.append(f"{path}: missing install markers: {', '.join(missing)}")
         forbidden = [marker for marker in FORBIDDEN_INSTALL_MARKERS if marker in content]
-        if forbidden:
-            errors.append(f"{path}: contains placeholder install markers: {', '.join(forbidden)}")
+        pattern_forbidden = [
+            pattern.pattern for pattern in FORBIDDEN_INSTALL_MARKER_PATTERNS if pattern.search(content)
+        ]
+        if forbidden or pattern_forbidden:
+            matched = forbidden + pattern_forbidden
+            errors.append(f"{path}: contains placeholder install markers: {', '.join(matched)}")
 
     return errors
 

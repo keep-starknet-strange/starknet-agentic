@@ -104,7 +104,7 @@ policy:
             write_file(
                 root / "README.md",
                 "\n".join(install_markers[Path("README.md")])
-                + '\npython3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py"\n'
+                + f"\n{MODULE._codex_install_script()}\n"
                 + "skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/<ref>/skills/cairo-auditor\n",
             )
             write_file(root / "skills" / "README.md", "\n".join(install_markers[Path("skills/README.md")]))
@@ -116,6 +116,25 @@ policy:
             errors = MODULE.install_doc_errors(root, install_markers)
 
             self.assertTrue(any("placeholder install markers" in error for error in errors), errors)
+
+    def test_install_doc_errors_reports_versioned_tree_marker_pattern(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            install_markers = MODULE.build_install_markers(root)
+            write_file(
+                root / "README.md",
+                "\n".join(install_markers[Path("README.md")])
+                + "\nhttps://github.com/keep-starknet-strange/starknet-agentic/tree/v9.9.9/skills/cairo-auditor\n",
+            )
+            write_file(root / "skills" / "README.md", "\n".join(install_markers[Path("skills/README.md")]))
+            write_file(
+                root / "skills" / "cairo-auditor" / "README.md",
+                "\n".join(install_markers[Path("skills/cairo-auditor/README.md")]),
+            )
+
+            errors = MODULE.install_doc_errors(root, install_markers)
+
+            self.assertTrue(any("tree/v[^/\\s]+/skills/cairo-auditor" in error for error in errors), errors)
 
     def test_install_doc_errors_reports_missing_markers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
