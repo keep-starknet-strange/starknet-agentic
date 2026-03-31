@@ -11,6 +11,13 @@ const CODEX_CAIRO_AUDITOR_COMMAND = [
   "  --ref main",
 ].join("\n");
 
+const CLAUDE_CAIRO_AUDITOR_COMMAND = [
+  "/plugin marketplace add keep-starknet-strange/starknet-agentic",
+  "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user",
+  "/reload-plugins",
+  "/starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output",
+].join("\n");
+
 export function GetStarted() {
   return (
     <section id="get-started" className="section-padding bg-neo-yellow bg-dots">
@@ -60,7 +67,7 @@ export function GetStarted() {
             <div className="border-2 border-neo-dark/10 rounded p-4">
               <p className="text-sm font-heading font-bold text-neo-dark mb-2">Claude Code</p>
               <code className="block whitespace-pre-wrap break-all text-xs md:text-sm bg-neo-dark text-white rounded px-3 py-3">
-                /starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
+                {CLAUDE_CAIRO_AUDITOR_COMMAND}
               </code>
             </div>
           </div>
