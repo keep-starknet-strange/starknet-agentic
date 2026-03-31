@@ -19,7 +19,7 @@ Use this handoff after implementing or modifying Cairo contracts.
 Deterministic pass:
 
 ```bash
-python3 skills/cairo-auditor/scripts/quality/audit_local_repo.py \
+python3 scripts/quality/audit_local_repo.py \
   --repo-root /path/to/repo \
   --scan-id handoff-audit \
   --write-findings-jsonl
@@ -28,7 +28,7 @@ python3 skills/cairo-auditor/scripts/quality/audit_local_repo.py \
 Deterministic + Sierra confirmation:
 
 ```bash
-python3 skills/cairo-auditor/scripts/quality/audit_local_repo.py \
+python3 scripts/quality/audit_local_repo.py \
   --repo-root /path/to/repo \
   --scan-id handoff-audit-sierra \
   --sierra-confirm \

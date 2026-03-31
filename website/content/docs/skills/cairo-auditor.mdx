@@ -41,6 +41,8 @@ Use <code>--scope user</code> as the default. Use <code>--scope local</code> onl
 
 Run one deep audit and verify that the full specialist pipeline executed.
 
+Copy the `WORKDIR=...` line from the auditor output first, then point the verification commands at that exact directory.
+
 ```text
 # Codex prompt
 Use cairo-auditor in deep mode on src/lib.cairo --file-output.
@@ -54,8 +56,8 @@ Output only the final report.
 
 ```bash
 # Verification
-cat /tmp/cairo-audit-host-capabilities.json
-wc -l /tmp/cairo-audit-agent-*-bundle.md
+cat "$WORKDIR/cairo-audit-host-capabilities.json"
+wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 

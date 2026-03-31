@@ -27,7 +27,7 @@ Expected artifact:
 
 ## 2) Claude Code
 
-Install (project-local scope recommended):
+Install (user scope recommended; local scope is an advanced repo-pinned path):
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
