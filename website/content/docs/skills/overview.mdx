@@ -9,6 +9,26 @@ import { Callout, Steps, Step } from "@/components/docs";
 
 Skills are reusable capability packages that extend what AI agents can do on Starknet. Each skill provides focused instructions, concrete install paths, and source-linked references for a specific job.
 
+## Start Here: `cairo-auditor`
+
+If you only try one skill first, use [`cairo-auditor`](/docs/skills/cairo-auditor). It is the fastest proof that the install path, host integration, and report artifact flow are all working.
+
+```bash
+# Codex
+npm install -g skill-installer
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+```
+
+```text
+# Claude Code
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+/reload-plugins
+/starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
+```
+
+Expected artifact: `security-review-*.md`
+
 ## What are Skills?
 
 A skill is a self-contained package defined by a `SKILL.md` file with:
@@ -48,9 +68,9 @@ Each catalog entry below now has a dedicated docs page, and every page links bac
 
 | Skill | Description |
 |-------|-------------|
+| [cairo-auditor](/docs/skills/cairo-auditor) | Multi-step Cairo security review with strict false-positive gating |
 | [cairo-contract-authoring](/docs/skills/cairo-contract-authoring) | Workflow-first Cairo contract authoring with language guidance and secure defaults |
 | [cairo-testing](/docs/skills/cairo-testing) | snforge unit, integration, fuzz, fork, and regression testing |
-| [cairo-auditor](/docs/skills/cairo-auditor) | Multi-step Cairo security review with strict false-positive gating |
 | [cairo-optimization](/docs/skills/cairo-optimization) | Profile-driven optimization, BoundedInt rules, and benchmarking |
 | [cairo-deploy](/docs/skills/cairo-deploy) | `sncast` deployment, account setup, network config, and verification |
 | [account-abstraction](/docs/skills/account-abstraction) | Validate/execute path correctness, session policies, nonces, and signatures |

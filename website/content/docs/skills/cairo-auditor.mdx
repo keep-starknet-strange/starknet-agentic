@@ -9,6 +9,69 @@ import { Callout, Steps, Step } from "@/components/docs";
 
 The `cairo-auditor` skill is the repo's security-review orchestrator for Cairo and Starknet code. It combines deterministic preflight checks with parallel audit passes and a strict merge/deduplication gate so the final report stays actionable.
 
+<p>
+  <img alt="tested Codex" src="https://img.shields.io/badge/tested-Codex-111827" />
+  <img alt="tested Claude Code" src="https://img.shields.io/badge/tested-Claude_Code-b45309" />
+  <img alt="tested Agent Skills CLI" src="https://img.shields.io/badge/tested-Agent_Skills_CLI-1d4ed8" />
+</p>
+
+<Callout type="success" title="Try it now">
+Audit the deterministic demo fixture first so you can verify the pipeline and get a real <code>security-review-*.md</code> artifact quickly.
+</Callout>
+
+```bash
+# Codex install
+npm install -g skill-installer
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+```
+
+```text
+# Codex prompt
+Run cairo-auditor deep on skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo with --file-output.
+Output only the final report.
+```
+
+```text
+# Claude Code command
+/starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
+```
+
+Expected artifact: `security-review-*.md`
+
+## Rendered report preview
+
+![Rendered cairo-auditor report preview](/images/skills/cairo-auditor-report-preview.png)
+
+## What LLMs miss
+
+`cairo-auditor` is strong on concrete exploitability. It is not your final authority for:
+
+- multi-transaction economic setups and incentive manipulation
+- unstated invariants or specification bugs
+- cross-protocol, oracle, or off-chain trust assumptions
+
+Use it to collapse obvious exploit paths early, then finish with tests and human review.
+
+## Audit pipeline
+
+```text
+repo / contract
+      |
+      v
+deterministic preflight
+      |
+      v
+4 vector specialists
+      |
+      +--> deep mode: +1 adversarial specialist
+      |
+      v
+dedupe + false-positive gate
+      |
+      v
+security-review-YYYYMMDD-HHMMSS.md
+```
+
 ## Installation
 
 ### Codex
@@ -41,23 +104,21 @@ Use <code>--scope user</code> as the default. Use <code>--scope local</code> onl
 
 Run one deep audit and verify that the full specialist pipeline executed.
 
-Copy the `WORKDIR=...` line from the auditor output first, then point the verification commands at that exact directory.
-
 ```text
 # Codex prompt
-Use cairo-auditor in deep mode on src/lib.cairo --file-output.
+Run cairo-auditor deep on skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo with --file-output.
 Output only the final report.
 ```
 
 ```text
 # Claude Code command
-/starknet-agentic-skills:cairo-auditor deep src/lib.cairo --file-output
+/starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
 ```
 
 ```bash
 # Verification
-cat "$WORKDIR/cairo-audit-host-capabilities.json"
-wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
+cat /tmp/cairo-audit-host-capabilities.json
+wc -l /tmp/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 

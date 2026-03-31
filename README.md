@@ -75,6 +75,15 @@ For deterministic install/usage guidance, see:
 
 For the full skill catalog and Cairo migration notes, see [skills/README.md](./skills/README.md) and [docs/CAIRO_SKILLS_MIGRATION.md](./docs/CAIRO_SKILLS_MIGRATION.md).
 
+## Flagship Skills
+
+| Skill | Best for | Fast path |
+|---|---|---|
+| [`cairo-auditor`](./skills/cairo-auditor/) | Pre-merge Cairo security review with deterministic preflight and false-positive gating | [30-second quickstart](./skills/QUICKSTART_2MIN.md) |
+| [`starknet-wallet`](./skills/starknet-wallet/) | Wallet ops, transfers, session keys, paymaster flows | [Skill docs](./skills/starknet-wallet/) |
+| [`starknet-defi`](./skills/starknet-defi/) | Swaps, DCA, staking, lending, AVNU routing | [Skill docs](./skills/starknet-defi/) |
+| [`starknet-identity`](./skills/starknet-identity/) | ERC-8004 registration, reputation, validation | [Skill docs](./skills/starknet-identity/) |
+
 ## System Requirements
 
 - CLI users (`npx create-starknet-agent@latest`): Node.js `>=18.0.0`

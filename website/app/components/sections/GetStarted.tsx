@@ -22,6 +22,42 @@ export function GetStarted() {
           <InstallCommand variant="large" />
         </div>
 
+        <div className="neo-card p-6 md:p-8 mb-12 bg-white text-left">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-5">
+            <div>
+              <h3 className="font-heading font-bold text-2xl text-neo-dark mb-2">
+                Try Cairo Auditor First
+              </h3>
+              <p className="text-neo-dark/70 max-w-2xl">
+                Fastest path to a concrete artifact: run the deterministic vulnerable fixture and generate a real{" "}
+                <code className="px-1.5 py-0.5 bg-neo-dark/5 rounded text-sm">security-review-*.md</code> report before
+                you wire the rest of the stack.
+              </p>
+            </div>
+            <Link
+              href="/docs/skills/cairo-auditor"
+              className="neo-btn-secondary text-sm py-2 px-4 whitespace-nowrap"
+            >
+              Open 30-second guide
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border-2 border-neo-dark/10 rounded p-4">
+              <p className="text-sm font-heading font-bold text-neo-dark mb-2">Codex</p>
+              <code className="block whitespace-pre-wrap break-all text-xs md:text-sm bg-neo-dark text-white rounded px-3 py-3">
+                skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+              </code>
+            </div>
+            <div className="border-2 border-neo-dark/10 rounded p-4">
+              <p className="text-sm font-heading font-bold text-neo-dark mb-2">Claude Code</p>
+              <code className="block whitespace-pre-wrap break-all text-xs md:text-sm bg-neo-dark text-white rounded px-3 py-3">
+                /starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
+              </code>
+            </div>
+          </div>
+        </div>
+
         {/* Three steps */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
           {STEPS.map((item) => (

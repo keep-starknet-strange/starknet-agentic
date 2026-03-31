@@ -11,25 +11,31 @@ Built for:
 Not a substitute for a formal audit — but the check you should never skip.
 
 <p>
+  <img alt="tested Codex" src="https://img.shields.io/badge/tested-Codex-111827" />
+  <img alt="tested Claude Code" src="https://img.shields.io/badge/tested-Claude_Code-b45309" />
+  <img alt="tested Agent Skills CLI" src="https://img.shields.io/badge/tested-Agent_Skills_CLI-1d4ed8" />
+</p>
+
+<p>
   <img alt="mode default" src="https://img.shields.io/badge/mode-default-0969da" />
   <img alt="mode deep" src="https://img.shields.io/badge/mode-deep-7c3aed" />
   <img alt="fp gate" src="https://img.shields.io/badge/false--positive-gated-2ea043" />
   <img alt="deterministic smoke" src="https://img.shields.io/badge/deterministic%20smoke-pass-2ea043" />
 </p>
 
-## 30-Second Happy Path
+## Try it now
 
-Install one skill, run one deep audit, verify execution integrity.
+Install one skill, run the deterministic demo contract, and verify execution integrity.
 
 ```bash
 # 1) Install (Codex)
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
 ```
 
 ```text
 # 2) Prompt
-Codex: Run cairo-auditor deep on src/lib.cairo with --file-output. Output only the final report.
-Claude Code: /starknet-agentic-skills:cairo-auditor deep src/lib.cairo --file-output
+Codex: Run cairo-auditor deep on skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo with --file-output. Output only the final report.
+Claude Code: /starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
 ```
 
 ```bash
@@ -40,12 +46,49 @@ ls -lt security-review-*.md | head -n 1
 ```
 
 Expected markers: `Execution Integrity: FULL`, `## Execution Trace`, Agent 1-4 vector rows, and Agent 5 adversarial row.
+Expected artifact: `security-review-*.md`
 
 If you are running from a local clone of this repository, you can also use:
 
 ```bash
 bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
 ```
+
+## Audit pipeline
+
+```text
+repo / contract
+      |
+      v
+deterministic preflight
+      |
+      v
+4 vector specialists
+      |
+      +--> deep mode: +1 adversarial specialist
+      |
+      v
+dedupe + false-positive gate
+      |
+      v
+security-review-YYYYMMDD-HHMMSS.md
+```
+
+## Rendered report preview
+
+![Rendered cairo-auditor report preview](../../website/public/images/skills/cairo-auditor-report-preview.png)
+
+## What LLMs miss
+
+`cairo-auditor` is strong on concrete exploit paths: missing access control, unsafe upgrade surfaces, stale reads, unchecked initialization, and policy gaps.
+
+Do not ask it to replace human review for:
+
+- multi-transaction economic attacks and griefing setups
+- specification or invariant mismatches the code never states explicitly
+- cross-protocol assumptions, off-chain trust boundaries, or oracle semantics
+
+Use it to collapse obvious exploitability fast, then finish with tests plus a manual audit pass.
 
 ## Example output
 
@@ -251,8 +294,6 @@ This is useful for conservative release gates and benchmark runs.
 ```
 
 **What AI catches well.** Missing access controls, CEI violations, unsafe upgrades, zero-address initialization, unbounded loops, stale reads, type confusion.
-
-**What AI misses.** Multi-transaction state setups, specification/invariant bugs, cross-protocol composability, game-theoretic attacks, off-chain oracle assumptions.
 
 AI catches what humans forget to check. Humans catch what AI cannot reason about. You need both.
 
