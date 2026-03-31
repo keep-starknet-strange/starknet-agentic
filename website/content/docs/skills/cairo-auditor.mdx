@@ -11,19 +11,65 @@ The `cairo-auditor` skill is the repo's security-review orchestrator for Cairo a
 
 ## Installation
 
-### Agent Skills CLI
+### Codex
 
 ```bash
-npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
+npm install -g skill-installer
+skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
 ```
 
 ### Claude Code Marketplace Bundle
 
 ```text
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+/reload-plugins
 /starknet-agentic-skills:cairo-auditor
 ```
+
+### Agent Skills CLI
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
+```
+
+<Callout type="info" title="Claude Code scope">
+Use <code>--scope user</code> as the default. Use <code>--scope local</code> only when you intentionally want a repo-specific pinned plugin state.
+</Callout>
+
+## 30-Second Happy Path
+
+Run one deep audit and verify that the full specialist pipeline executed.
+
+```text
+# Codex prompt
+Use cairo-auditor in deep mode on src/lib.cairo --file-output.
+Output only the final report.
+```
+
+```text
+# Claude Code command
+/starknet-agentic-skills:cairo-auditor deep src/lib.cairo --file-output
+```
+
+```bash
+# Verification
+cat /tmp/cairo-audit-host-capabilities.json
+wc -l /tmp/cairo-audit-agent-*-bundle.md
+ls -lt security-review-*.md | head -n 1
+```
+
+Expected markers: `Execution Integrity: FULL`, `## Execution Trace`, Agent 1-4 vector rows, and Agent 5 adversarial row.
+
+## Deterministic Demo Target
+
+If you want a stable live-demo contract, clone this repository and audit:
+
+```text
+skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo
+```
+
+This fixture is intentionally vulnerable and should reliably produce three findings: missing access control on upgrade, missing timelock, and missing non-zero class-hash guard.
 
 ## Modes
 
@@ -43,7 +89,7 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
 ## Deterministic Local Scan
 
 ```bash
-python3 scripts/quality/audit_local_repo.py \
+python3 skills/cairo-auditor/scripts/quality/audit_local_repo.py \
   --repo-root /path/to/your/cairo-repo \
   --scan-id my-audit
 ```

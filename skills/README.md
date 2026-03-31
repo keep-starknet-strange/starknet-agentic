@@ -55,15 +55,15 @@ Pinned ref policy: use released tags (or immutable commit SHAs) for reproducible
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
 /reload-plugins
 /starknet-agentic-skills:cairo-auditor
 ```
 
 Scope guidance:
 
-- `--scope local` (recommended): install for current project only.
-- `--scope user`: install globally across projects.
+- `--scope user` (recommended): install once across projects and avoid local override drift.
+- `--scope local`: use only when you intentionally want a repo-pinned plugin state.
 
 **Agent Skills CLI:**
 
@@ -203,7 +203,7 @@ Skill instructions and documentation...
 | Surface | Install Path | Status | Last Verified (UTC) |
 | --- | --- | --- | --- |
 | Codex | `skill-installer install .../tree/v0.2.2/skills/cairo-auditor` | Supported | 2026-03-19 |
-| Claude Code | `/plugin marketplace add ...` + `/plugin install ... --scope local` | Supported | 2026-03-15 |
+| Claude Code | `/plugin marketplace add ...` + `/plugin install ... --scope user` | Supported | 2026-03-15 |
 | Agent Skills CLI | `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor` | Supported | 2026-03-15 |
 | Cursor / Copilot / OpenClaw / custom Agent Skills hosts | Agent Skills spec package import | Supported | 2026-03-15 |
 

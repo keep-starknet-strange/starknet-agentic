@@ -79,9 +79,14 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+/reload-plugins
 /starknet-agentic-skills:starknet-wallet
 ```
+
+<Callout type="info" title="Claude Code scope">
+Use <code>--scope user</code> as the default for public installs. Use <code>--scope local</code> only when you intentionally want a repo-specific pinned plugin state.
+</Callout>
 
 ### Method 3: Direct GitHub Clone
 

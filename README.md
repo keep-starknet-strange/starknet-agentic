@@ -56,7 +56,7 @@ skill-installer install https://github.com/keep-starknet-strange/starknet-agenti
 ```bash
 # Claude Code marketplace
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
 /reload-plugins
 /plugin menu
 /starknet-agentic-skills:cairo-auditor

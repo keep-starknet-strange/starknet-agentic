@@ -140,14 +140,14 @@ Inside Claude Code, run:
 
 ```text
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
 ```
 
 Then restart Claude Code or run `/reload-plugins`.
 
 Note: Claude plugin bundle versions (for example `starknet-agentic-skills 1.0.4`) are intentionally separate from this skill's internal version (`cairo-auditor 0.2.2`).
 
-If your local install looks stale after a new release, force-refresh marketplace metadata and reinstall:
+If your install looks stale after a new release, force-refresh marketplace metadata and reinstall:
 
 ```text
 /plugin marketplace update keep-starknet-strange/starknet-agentic
@@ -158,6 +158,8 @@ If your local install looks stale after a new release, force-refresh marketplace
 ```
 
 Expected: installed plugin shows the latest bundle version and `/starknet-agentic-skills:cairo-auditor` resolves.
+
+Use `--scope local` only when you intentionally want a repo-specific pinned plugin state.
 
 ### Codex
 

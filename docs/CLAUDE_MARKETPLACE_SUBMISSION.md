@@ -35,7 +35,7 @@ Ensure these files are current:
 3. Track review status and requested changes in a dedicated issue/PR.
 4. After approval, verify install from a clean environment:
    - `/plugin marketplace add keep-starknet-strange/starknet-agentic`
-   - `/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local`
+   - `/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user`
    - `/reload-plugins`
    - invoke `/starknet-agentic-skills:cairo-auditor`
 

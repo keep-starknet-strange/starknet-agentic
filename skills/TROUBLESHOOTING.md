@@ -21,13 +21,13 @@ This matrix covers the common failure classes: auth, quota, install, and sync.
 Recommended default:
 
 ```bash
-/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
 ```
 
-Global install (all projects):
+Repo-pinned install (advanced):
 
 ```bash
-/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
 ```
 
 Hard refresh sequence (when scope collisions or stale cache are suspected):
