@@ -23,9 +23,11 @@ Not a substitute for a formal audit — but the check you should never skip.
   <img alt="deterministic smoke" src="https://img.shields.io/badge/deterministic%20smoke-pass-2ea043" />
 </p>
 
+Only the badged surfaces above are currently verified in this repository.
+
 ## Try it now
 
-Install one skill, run the deterministic demo contract, and verify execution integrity.
+Install one skill, run the deterministic demo contract, and confirm that a `security-review-*.md` artifact was written.
 
 ```bash
 # 1) Install (Codex)
@@ -39,22 +41,20 @@ python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-g
 
 ```text
 # 2) Prompt
+# The demo fixture path below assumes you are inside a local clone of this repository.
+# If not, replace it with your own local .cairo file path.
 Codex: Run cairo-auditor deep on skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo with --file-output. Output only the final report.
 Claude Code: /starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
 ```
 
 ```bash
-# 3) Verify full-power execution markers
-# Copy WORKDIR=... from the first auditor turn before running these checks
-cat "$WORKDIR/cairo-audit-host-capabilities.json"
-wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
+# 3) Verify the output artifact
 ls -lt security-review-*.md | head -n 1
 ```
 
-Expected markers: `Execution Integrity: FULL`, `## Execution Trace`, Agent 1-4 vector rows, and Agent 5 adversarial row.
 Expected artifact: `security-review-*.md`
 
-If you are running from a local clone of this repository, you can also use:
+For full host-integrity checks (`Execution Integrity: FULL`, specialist bundles, capability file), use the advanced verification flow later in this README or run the helper below from a local clone:
 
 ```bash
 bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
@@ -82,7 +82,7 @@ security-review-YYYYMMDD-HHMMSS.md
 
 ## Rendered report preview
 
-![Rendered cairo-auditor report preview](../../website/public/images/skills/cairo-auditor-report-preview.png)
+![Rendered cairo-auditor report preview](./assets/cairo-auditor-report-preview.svg)
 
 ## What LLMs miss
 
@@ -283,6 +283,8 @@ python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py \
 ```
 
 Run this from the installed cairo-auditor skill directory, or keep using an absolute script path as shown above.
+
+This local preflight writes `<scan-id>-timestamp.md` and `<scan-id>-timestamp.json` artifacts. The `security-review-*.md` naming is used by the full hosted skill flow, not by the standalone deterministic scanner.
 
 ### Proven-only mode
 

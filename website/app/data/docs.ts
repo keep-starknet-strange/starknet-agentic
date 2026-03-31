@@ -114,11 +114,6 @@ export const DOC_CATEGORIES: DocCategory[] = [
         description: "Privacy-preserving wallets via Typhoon",
       },
       {
-        slug: "huginn-onboard",
-        title: "Huginn Onboard Skill",
-        description: "Bridge to Starknet and register with Huginn",
-      },
-      {
         slug: "cairo-coding",
         title: "Cairo Development Skills",
         description: "Workflow map for contract authoring, testing, audit, optimization, and deployment",
@@ -169,11 +164,6 @@ export const DOC_CATEGORIES: DocCategory[] = [
         description: "Confidential ERC20 payments with encrypted balances and zero-knowledge proofs",
       },
       {
-        slug: "starkzap-sdk",
-        title: "Starkzap SDK Skill",
-        description: "Project-focused guide for StarkSDK onboarding, wallets, paymaster flows, and staking",
-      },
-      {
         slug: "starknet-js",
         title: "starknet.js SDK Skill",
         description: "starknet.js v9.x SDK patterns and examples",
@@ -182,11 +172,6 @@ export const DOC_CATEGORIES: DocCategory[] = [
         slug: "writing-skills",
         title: "Writing Your Own Skill",
         description: "Guide to creating custom agent skills",
-      },
-      {
-        slug: "publishing",
-        title: "Publishing to ClawHub",
-        description: "Share your skills with the community",
       },
     ],
   },
