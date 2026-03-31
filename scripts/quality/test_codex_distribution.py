@@ -149,6 +149,8 @@ policy:
             self.assertTrue(all("missing install markers" in error for error in errors), errors)
 
     def test_install_doc_errors_ignores_unused_pinned_ref_variants(self) -> None:
+        # pinned_ref is no longer embedded in install markers, so different
+        # pinned_ref values passed to build_install_markers must not cause errors.
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             baseline_markers = MODULE.build_install_markers(root, pinned_ref="v1.2.3")

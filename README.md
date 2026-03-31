@@ -54,12 +54,12 @@ python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-g
 
 ```bash
 # Codex (frozen install)
-# Replace main with a commit SHA when you need an immutable revision.
+# Replace <commit-sha> with the exact immutable revision you want to pin.
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
   --repo keep-starknet-strange/starknet-agentic \
   --path skills/cairo-auditor \
-  --ref main
+  --ref <commit-sha>
 ```
 
 ```bash
