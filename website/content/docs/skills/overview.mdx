@@ -13,6 +13,8 @@ Skills are reusable capability packages that extend what AI agents can do on Sta
 
 If you only try one skill first, use [`cairo-auditor`](/docs/skills/cairo-auditor). It is the fastest proof that the install path, host integration, and report artifact flow are all working.
 
+The deterministic fixture path below assumes you are inside a local clone of this repository. If not, replace it with your own local `.cairo` file path.
+
 ```bash
 # Codex
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
@@ -42,36 +44,34 @@ A skill is a self-contained package defined by a `SKILL.md` file with:
 - optional scripts, examples, and setup notes
 
 <Callout type="info" title="Skill Format">
-Skills follow the [AgentSkills specification](/docs/skills/writing-skills) so the same catalog can be consumed by Claude Code, Cursor, Copilot, OpenClaw/MoltBook, and custom runtimes.
+Skills follow the [AgentSkills specification](/docs/skills/writing-skills), so the same catalog is portable across Agent Skills-compatible hosts. Public validation in this repo currently focuses on Codex, Claude Code, and Agent Skills CLI.
 </Callout>
 
-## Available Skills
+## Public Catalog
 
-Starknet Agentic currently ships **17 official skills**.
+Start with the skills that are cleanest to demo and easiest to adopt.
 
 <Callout type="info" title="Link Targets">
-Each catalog entry below now has a dedicated docs page, and every page links back to the canonical source skill in the repository.
+Flagship and additional entries below are part of the main public catalog. Incubating/project-specific entries stay directly routable, but are intentionally hidden from the main docs navigation.
 </Callout>
 
-### Runtime and Operations
+### Flagship First-Run Skills
 
 | Skill | Description |
 |-------|-------------|
 | [starknet-wallet](/docs/skills/starknet-wallet) | Wallet management, transfers, session keys, and gasless transactions |
 | [starknet-defi](/docs/skills/starknet-defi) | Token swaps, DCA, staking, and lending flows via AVNU |
 | [starknet-identity](/docs/skills/starknet-identity) | ERC-8004 on-chain identity, reputation, and validation |
-| [starknet-mini-pay](/docs/skills/starknet-mini-pay) | P2P payments, invoices, QR flows, and Telegram usage |
-| [starknet-anonymous-wallet](/docs/skills/starknet-anonymous-wallet) | Anonymous Starknet wallets via Typhoon |
-| [huginn-onboard](/docs/skills/huginn-onboard) | Cross-chain onboarding to Starknet plus Huginn registration |
-| [controller-cli](/docs/skills/controller-cli) | Cartridge Controller CLI sessions, scoped execution, and paymaster control |
-| [starkzap-sdk](/docs/skills/starkzap-sdk) | keep-starknet-strange/starkzap SDK, onboarding, wallet, ERC20, and staking flows |
-| [starknet-tongo](/docs/skills/starknet-tongo) | Confidential ERC20 payments with encrypted balances and ZK-proven transfers |
+| [cairo-auditor](/docs/skills/cairo-auditor) | Multi-step Cairo security review with strict false-positive gating |
 
-### Cairo and Protocol Skills
+### Additional Available Skills
 
 | Skill | Description |
 |-------|-------------|
-| [cairo-auditor](/docs/skills/cairo-auditor) | Multi-step Cairo security review with strict false-positive gating |
+| [starknet-mini-pay](/docs/skills/starknet-mini-pay) | P2P payments, invoices, QR flows, and Telegram usage |
+| [starknet-anonymous-wallet](/docs/skills/starknet-anonymous-wallet) | Anonymous Starknet wallets via Typhoon |
+| [controller-cli](/docs/skills/controller-cli) | Cartridge Controller CLI sessions, scoped execution, and paymaster control |
+| [starknet-tongo](/docs/skills/starknet-tongo) | Confidential ERC20 payments with encrypted balances and ZK-proven transfers |
 | [cairo-contract-authoring](/docs/skills/cairo-contract-authoring) | Workflow-first Cairo contract authoring with language guidance and secure defaults |
 | [cairo-testing](/docs/skills/cairo-testing) | snforge unit, integration, fuzz, fork, and regression testing |
 | [cairo-optimization](/docs/skills/cairo-optimization) | Profile-driven optimization, BoundedInt rules, and benchmarking |
@@ -81,6 +81,15 @@ Each catalog entry below now has a dedicated docs page, and every page links bac
 | [starknet-js](/docs/skills/starknet-js) | starknet.js v9.x SDK patterns, paymaster flows, and contract interaction |
 
 For a workflow-oriented view of the Cairo family, start with [Cairo Development Skills](/docs/skills/cairo-coding).
+
+### Incubating or Project-Specific
+
+These entries stay in the repository because they are useful to contributors, but they are not the recommended first-run demo path:
+
+| Skill | Description |
+|-------|-------------|
+| [huginn-onboard](/docs/skills/huginn-onboard) | Cross-chain onboarding to Starknet plus Huginn registration |
+| [starkzap-sdk](/docs/skills/starkzap-sdk) | keep-starknet-strange/starkzap SDK, onboarding, wallet, ERC20, and staking flows |
 
 ## Installing Skills
 
@@ -124,14 +133,11 @@ The agent will automatically discover skills in the `skills/` directory.
 
 The MCP server provides tools that implement skill functionality directly. See the [MCP Server Guide](/docs/guides/mcp-server) for setup.
 
-### Using ClawHub (Coming Soon)
+## Need Help?
 
-Browse and install community skills from [ClawHub](https://clawhub.com):
-
-```bash
-# Install a skill from ClawHub
-claw install starknet-wallet
-```
+- [GitHub Issues](https://github.com/keep-starknet-strange/starknet-agentic/issues) for bugs and docs fixes
+- [Starknet Discord](https://discord.gg/starknet) for ecosystem support
+- [Starknet on X](https://x.com/Starknet) for release updates
 
 ## Skill File Structure
 
@@ -215,4 +221,3 @@ The agent uses the skill references and scripts to accomplish the task while sta
 - **[Wallet Skill](/docs/skills/starknet-wallet)** - Start with wallet operations
 - **[Cairo Development Skills](/docs/skills/cairo-coding)** - Use the workflow map for contract authoring, testing, auditing, optimization, and deployment
 - **[Writing Your Own Skill](/docs/skills/writing-skills)** - Create custom skills
-- **[Publishing to ClawHub](/docs/skills/publishing)** - Share with the community

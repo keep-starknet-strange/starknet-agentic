@@ -71,6 +71,10 @@ export function GetStarted() {
               </code>
             </div>
           </div>
+
+          <p className="mt-4 text-sm text-neo-dark/70">
+            The demo fixture path in the command above assumes you are inside a local clone of this repository. If not, clone the repo first or replace the path with your own local Cairo contract.
+          </p>
         </div>
 
         {/* Three steps */}

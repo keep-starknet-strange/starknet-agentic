@@ -1,5 +1,12 @@
 # Starknet Agentic
 
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ starknet-agentic                                            │
+│ contracts • runtimes • skills for policy-enforced agents    │
+└──────────────────────────────────────────────────────────────┘
+```
+
 [![CI](https://github.com/keep-starknet-strange/starknet-agentic/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/keep-starknet-strange/starknet-agentic/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/keep-starknet-strange/starknet-agentic/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/keep-starknet-strange/starknet-agentic/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
@@ -153,7 +160,6 @@ For production environments, use MCP proxy signer mode rather than raw in-proces
 | `@starknet-agentic/a2a` | [`packages/starknet-a2a`](./packages/starknet-a2a/) | A2A protocol adapter |
 | `@starknet-agentic/agent-passport` | [`packages/starknet-agent-passport`](./packages/starknet-agent-passport/) | ERC-8004 capability metadata helpers |
 | `@starknet-agentic/prediction-arb-scanner` | [`packages/prediction-arb-scanner`](./packages/prediction-arb-scanner/) | Signals-only prediction market arb scanner output model |
-| `x402-starknet` (internal) | [`packages/x402-starknet`](./packages/x402-starknet/) | Internal workspace package for Starknet payment signing utilities |
 | `@starknet-agentic/onboarding-utils` | [`packages/starknet-onboarding-utils`](./packages/starknet-onboarding-utils/) | Shared onboarding helpers |
 
 ### Skills
@@ -248,6 +254,12 @@ Release artifact verification (recommended):
 ```bash
 gh attestation verify <artifact-file> --repo keep-starknet-strange/starknet-agentic
 ```
+
+## Community and Help
+
+- [GitHub Issues](https://github.com/keep-starknet-strange/starknet-agentic/issues) for bugs and docs fixes
+- [Starknet Discord](https://discord.gg/starknet) for ecosystem support
+- [Starknet on X](https://x.com/Starknet) for release updates
 
 ## Repository Layout
 

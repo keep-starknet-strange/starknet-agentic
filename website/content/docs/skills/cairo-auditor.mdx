@@ -15,8 +15,14 @@ The `cairo-auditor` skill is the repo's security-review orchestrator for Cairo a
   <img alt="tested Agent Skills CLI" src="https://img.shields.io/badge/tested-Agent_Skills_CLI-1d4ed8" />
 </p>
 
+Only the badged surfaces above are currently verified in this repository.
+
 <Callout type="success" title="Try it now">
 Audit the deterministic demo fixture first so you can verify the pipeline and get a real <code>security-review-*.md</code> artifact quickly.
+</Callout>
+
+<Callout type="info" title="Demo fixture path">
+The fixture path below assumes you are inside a local clone of <code>keep-starknet-strange/starknet-agentic</code>. If not, replace it with your own local <code>.cairo</code> file path.
 </Callout>
 
 ```bash
@@ -108,7 +114,7 @@ Use <code>--scope user</code> as the default. Use <code>--scope local</code> onl
 
 ## 30-Second Happy Path
 
-Run one deep audit and verify that the full specialist pipeline executed.
+Run one deep audit and confirm that a report artifact was written.
 
 ```text
 # Codex prompt
@@ -123,13 +129,10 @@ Output only the final report.
 
 ```bash
 # Verification
-# Copy WORKDIR=... from the first auditor turn before running these checks
-cat "$WORKDIR/cairo-audit-host-capabilities.json"
-wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 
-Expected markers: `Execution Integrity: FULL`, `## Execution Trace`, Agent 1-4 vector rows, and Agent 5 adversarial row.
+If you need full host-integrity markers (`Execution Integrity: FULL`, specialist bundles, capability file), use the advanced verification flow from the source README after the first report lands.
 
 ## Deterministic Demo Target
 
@@ -163,6 +166,8 @@ python3 skills/cairo-auditor/scripts/quality/audit_local_repo.py \
   --repo-root /path/to/your/cairo-repo \
   --scan-id my-audit
 ```
+
+This standalone preflight writes `<scan-id>-YYYYMMDD-HHMMSSZ.md` and `<scan-id>-YYYYMMDD-HHMMSSZ.json` artifacts. The `security-review-*.md` naming is used by the full hosted skill flow.
 
 <Callout type="warning" title="Deterministic scans are not full audits">
 Deterministic scorecards are regression gates, not proof of full audit sufficiency. Use them to catch drift, then run the full skill for release-critical work.

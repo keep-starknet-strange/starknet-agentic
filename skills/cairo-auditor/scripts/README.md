@@ -18,6 +18,7 @@ python3 skills/cairo-auditor/scripts/quality/audit_local_repo.py \
 ### Output
 
 - Writes JSON + Markdown preflight artifacts to `--output-dir`.
+- Artifact names follow `<scan-id>-YYYYMMDD-HHMMSSZ.json` and `<scan-id>-YYYYMMDD-HHMMSSZ.md`.
 - Prints a compact JSON summary to stdout with:
   - `findings`
   - `class_counts`
