@@ -15,7 +15,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPO_SLUG = "keep-starknet-strange/starknet-agentic"
 DEFAULT_PUBLIC_REF = "main"
-DEFAULT_PINNED_REF = "v0.2.2"
+DEFAULT_PINNED_REF = "<commit-sha>"
 SKILL_VERSION_FILE = Path("skills") / "cairo-auditor" / "VERSION"
 VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$")
 PUBLIC_SKILLS = [
@@ -82,6 +82,10 @@ def _auditor_skill_url(repo_slug: str, ref: str) -> str:
     return f"https://github.com/{repo_slug}/tree/{ref}/skills/cairo-auditor"
 
 
+def _codex_install_script() -> str:
+    return 'python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py"'
+
+
 def build_install_markers(
     root: Path = ROOT,
     *,
@@ -95,23 +99,29 @@ def build_install_markers(
 
     return {
         Path("README.md"): [
-            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_public_ref)}",
-            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_pinned_ref)}",
+            _codex_install_script(),
+            f"--repo {resolved_repo_slug}",
+            "--path skills/cairo-auditor",
+            f"--ref {resolved_public_ref}",
             f"/plugin marketplace add {resolved_repo_slug}",
             "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user",
             f"npx skills add {resolved_repo_slug}/skills/cairo-auditor",
         ],
         Path("skills/README.md"): [
-            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_public_ref)}",
-            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_pinned_ref)}",
+            _codex_install_script(),
+            f"--repo {resolved_repo_slug}",
+            "--path skills/cairo-auditor",
+            f"--ref {resolved_public_ref}",
             "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user",
             f"npx skills add {resolved_repo_slug}/skills/cairo-auditor",
             "./QUICKSTART_2MIN.md",
             "./TROUBLESHOOTING.md",
         ],
         Path("skills/cairo-auditor/README.md"): [
-            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_public_ref)}",
-            f"skill-installer install {_auditor_skill_url(resolved_repo_slug, resolved_pinned_ref)}",
+            _codex_install_script(),
+            f"--repo {resolved_repo_slug}",
+            "--path skills/cairo-auditor",
+            f"--ref {resolved_public_ref}",
             "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user",
             f"npx skills add {resolved_repo_slug}/skills/cairo-auditor",
             "../QUICKSTART_2MIN.md",
@@ -122,7 +132,8 @@ def build_install_markers(
 
 FORBIDDEN_INSTALL_MARKERS = [
     "tree/<ref>/skills/cairo-auditor",
-    "`<ref>` can be a commit SHA or release tag.",
+    "skill-installer install https://github.com/",
+    "tree/v0.2.2/skills/cairo-auditor",
 ]
 
 

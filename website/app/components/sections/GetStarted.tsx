@@ -3,6 +3,14 @@ import { STEPS, EXTERNAL_LINKS } from "@/data/get-started";
 import { InstallCommand } from "@/components/Hero/InstallCommand";
 import { StepCard } from "@/components/ui/StepCard";
 
+const CODEX_CAIRO_AUDITOR_COMMAND = [
+  'CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"',
+  'python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \\',
+  "  --repo keep-starknet-strange/starknet-agentic \\",
+  "  --path skills/cairo-auditor \\",
+  "  --ref main",
+].join("\n");
+
 export function GetStarted() {
   return (
     <section id="get-started" className="section-padding bg-neo-yellow bg-dots">
@@ -46,7 +54,7 @@ export function GetStarted() {
             <div className="border-2 border-neo-dark/10 rounded p-4">
               <p className="text-sm font-heading font-bold text-neo-dark mb-2">Codex</p>
               <code className="block whitespace-pre-wrap break-all text-xs md:text-sm bg-neo-dark text-white rounded px-3 py-3">
-                skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+                {CODEX_CAIRO_AUDITOR_COMMAND}
               </code>
             </div>
             <div className="border-2 border-neo-dark/10 rounded p-4">

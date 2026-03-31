@@ -43,14 +43,23 @@ npx create-starknet-agent@latest
 ```
 
 ```bash
-# Codex (public GitHub install, cairo-auditor)
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+# Codex (built-in installer, cairo-auditor)
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
 # Restart Codex, then run /skills and invoke cairo-auditor
 ```
 
 ```bash
-# Codex (reproducible install pinned to a released tag)
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+# Codex (frozen install)
+# Replace main with a commit SHA when you need an immutable revision.
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
 ```
 
 ```bash

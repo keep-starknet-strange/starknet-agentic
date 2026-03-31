@@ -21,8 +21,11 @@ Audit the deterministic demo fixture first so you can verify the pipeline and ge
 
 ```bash
 # Codex install
-npm install -g skill-installer
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
 ```
 
 ```text
@@ -77,8 +80,11 @@ security-review-YYYYMMDD-HHMMSS.md
 ### Codex
 
 ```bash
-npm install -g skill-installer
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
 ```
 
 ### Claude Code Marketplace Bundle
@@ -117,8 +123,9 @@ Output only the final report.
 
 ```bash
 # Verification
-cat /tmp/cairo-audit-host-capabilities.json
-wc -l /tmp/cairo-audit-agent-*-bundle.md
+# Copy WORKDIR=... from the first auditor turn before running these checks
+cat "$WORKDIR/cairo-audit-host-capabilities.json"
+wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 

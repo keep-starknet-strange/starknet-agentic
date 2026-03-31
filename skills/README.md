@@ -39,17 +39,25 @@ Use one command path, then run one audit.
 **Codex (public GitHub install):**
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
 # Restart Codex, open /skills, then invoke cairo-auditor
 ```
 
 **Codex (reproducible pin):**
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref <commit-sha>
 ```
 
-Pinned ref policy: use released tags (or immutable commit SHAs) for reproducible installs.
+Pinned ref policy: use immutable commit SHAs for reproducible installs until a release tag exists for the current auditor version.
 
 **Claude Code plugin marketplace:**
 
@@ -202,7 +210,7 @@ Skill instructions and documentation...
 
 | Surface | Install Path | Status | Last Verified (UTC) |
 | --- | --- | --- | --- |
-| Codex | `skill-installer install .../tree/v0.2.2/skills/cairo-auditor` | Supported | 2026-03-19 |
+| Codex | `python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" --repo ... --path skills/cairo-auditor --ref main` | Supported | 2026-03-31 |
 | Claude Code | `/plugin marketplace add ...` + `/plugin install ... --scope user` | Supported | 2026-03-15 |
 | Agent Skills CLI | `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor` | Supported | 2026-03-15 |
 | Cursor / Copilot / OpenClaw / custom Agent Skills hosts | Agent Skills spec package import | Supported | 2026-03-15 |

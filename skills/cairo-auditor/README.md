@@ -29,7 +29,12 @@ Install one skill, run the deterministic demo contract, and verify execution int
 
 ```bash
 # 1) Install (Codex)
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
+# Restart Codex so the skill is picked up
 ```
 
 ```text
@@ -40,8 +45,9 @@ Claude Code: /starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/te
 
 ```bash
 # 3) Verify full-power execution markers
-cat /tmp/cairo-audit-host-capabilities.json
-wc -l /tmp/cairo-audit-agent-*-bundle.md
+# Copy WORKDIR=... from the first auditor turn before running these checks
+cat "$WORKDIR/cairo-audit-host-capabilities.json"
+wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 
@@ -206,27 +212,29 @@ Use `--scope local` only when you intentionally want a repo-specific pinned plug
 
 ### Codex
 
-`skill-installer` is a third-party CLI. Install it first if you don't have it:
+Use Codex's built-in installer helper:
 
 ```bash
-npm install -g skill-installer
-```
-
-Then install the skill:
-
-```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
 ```
 
 Restart Codex, open `/skills`, then invoke `cairo-auditor`.
 
-For reproducible installs, pin to a release tag or commit SHA:
+For reproducible installs, pin to a commit SHA:
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref <commit-sha>
 ```
 
-If your mirror does not yet expose `v0.2.2`, use `tree/main` temporarily.
+If you just want the latest published docs and skill content, use `--ref main`.
 
 ### Agent Skills CLI
 
@@ -384,8 +392,9 @@ Optional threat-intel enrichment (deep mode only) pulls bounded security signals
 **Codex:**
 
 ```bash
-cat /tmp/cairo-audit-host-capabilities.json
-wc -l /tmp/cairo-audit-agent-*-bundle.md
+# Copy WORKDIR=... from Turn 1 output first
+cat "$WORKDIR/cairo-audit-host-capabilities.json"
+wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 
@@ -472,8 +481,9 @@ Release hygiene gate: when `skills/cairo-auditor/VERSION` changes in CI, you mus
 ### Full-power verification (Codex)
 
 ```bash
-cat /tmp/cairo-audit-host-capabilities.json
-wc -l /tmp/cairo-audit-agent-*-bundle.md
+# Set WORKDIR to the path printed by the auditor before running this check
+cat "$WORKDIR/cairo-audit-host-capabilities.json"
+wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 

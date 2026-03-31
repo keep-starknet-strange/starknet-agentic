@@ -71,7 +71,7 @@ Expected artifact:
 | User (recommended) | `/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user` | Daily workflow, one install for all repos |
 | Local | `/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local` | Pin a repo to a specific plugin state |
 
-If both scopes exist and skill resolution is inconsistent, remove project scope and keep user scope only.
+If both scopes exist and skill resolution is inconsistent, remove local scope and keep user scope only.
 
 ```bash
 /plugin uninstall starknet-agentic-skills@starknet-agentic-skills --scope local
@@ -86,7 +86,7 @@ Verification recency is published on each site build in `starkskills.org/data/si
 | Surface | Status | Install Path |
 |---|---|---|
 | Codex | Supported | `.agents/skills` auto-discovery from repo root |
-| Claude Code | Supported | Plugin marketplace bundle (`-s user` recommended) |
+| Claude Code | Supported | Plugin marketplace bundle (`--scope user` recommended) |
 | Agent Skills CLI | Supported | `npx skills add ...` |
 | Cursor / Copilot / Roo / Windsurf / Goose | Supported via Agent Skills format | Use Agent Skills CLI import flow |
 

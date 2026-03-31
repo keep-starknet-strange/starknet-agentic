@@ -3,15 +3,19 @@
 Goal: get a concrete `security-review-*.md` artifact from `cairo-auditor` in under
 2 minutes.
 
-Pinned reproducible ref used for URL-based install examples below: `v0.2.2`.
-
 ## 1) Codex
 
 Install:
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.2.2/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
 ```
+
+For an immutable install, replace `main` with a commit SHA you trust.
 
 Prompt:
 

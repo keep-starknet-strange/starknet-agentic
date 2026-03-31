@@ -122,7 +122,8 @@ policy:
             write_file(
                 root / "README.md",
                 "\n".join(install_markers[Path("README.md")])
-                + "\nskill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/<ref>/skills/cairo-auditor\n",
+                + '\npython3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py"\n'
+                + "skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/<ref>/skills/cairo-auditor\n",
             )
             write_file(root / "skills" / "README.md", "\n".join(install_markers[Path("skills/README.md")]))
             write_file(
@@ -147,7 +148,7 @@ policy:
             self.assertEqual(len(errors), 3)
             self.assertTrue(all("missing install markers" in error for error in errors), errors)
 
-    def test_install_doc_errors_supports_injected_marker_versions(self) -> None:
+    def test_install_doc_errors_ignores_unused_pinned_ref_variants(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             baseline_markers = MODULE.build_install_markers(root, pinned_ref="v1.2.3")
@@ -156,7 +157,7 @@ policy:
             mismatch_markers = MODULE.build_install_markers(root, pinned_ref="v9.9.9")
             errors = MODULE.install_doc_errors(root, mismatch_markers)
 
-            self.assertTrue(any("missing install markers" in error for error in errors), errors)
+            self.assertEqual(errors, [])
 
 
 if __name__ == "__main__":
