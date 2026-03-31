@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import os
-import re
 import sys
-import warnings
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +13,6 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPO_SLUG = "keep-starknet-strange/starknet-agentic"
 DEFAULT_PUBLIC_REF = "main"
-DEFAULT_PINNED_REF = "<commit-sha>"
-SKILL_VERSION_FILE = Path("skills") / "cairo-auditor" / "VERSION"
-VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$")
 PUBLIC_SKILLS = [
     "account-abstraction",
     "cairo-auditor",
@@ -37,25 +32,6 @@ PUBLIC_SKILLS = [
     "starknet-wallet",
     "starkzap-sdk",
 ]
-
-
-def _version_pinned_ref(root: Path = ROOT) -> str:
-    version_file = root / SKILL_VERSION_FILE
-    try:
-        version = version_file.read_text(encoding="utf-8").strip()
-    except OSError:
-        if root.resolve() == ROOT.resolve():
-            warnings.warn(
-                f"VERSION file not found at {version_file}; falling back to DEFAULT_PINNED_REF={DEFAULT_PINNED_REF!r}",
-                stacklevel=2,
-            )
-        return DEFAULT_PINNED_REF
-    normalized = version[1:] if version.startswith("v") else version
-    if not VERSION_PATTERN.match(normalized):
-        return DEFAULT_PINNED_REF
-    return f"v{normalized}"
-
-
 def _resolved_repo_slug() -> str:
     value = os.getenv("PUBLIC_REPO_SLUG")
     if value is None:
@@ -71,17 +47,6 @@ def _resolved_public_ref() -> str:
     return raw or DEFAULT_PUBLIC_REF
 
 
-def _resolved_pinned_ref(root: Path = ROOT) -> str:
-    explicit = (os.getenv("PUBLIC_PINNED_REF") or "").strip()
-    if explicit:
-        return explicit
-    return _version_pinned_ref(root)
-
-
-def _auditor_skill_url(repo_slug: str, ref: str) -> str:
-    return f"https://github.com/{repo_slug}/tree/{ref}/skills/cairo-auditor"
-
-
 def _codex_install_script() -> str:
     return 'python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py"'
 
@@ -91,11 +56,9 @@ def build_install_markers(
     *,
     repo_slug: str | None = None,
     public_ref: str | None = None,
-    pinned_ref: str | None = None,
 ) -> dict[Path, list[str]]:
     resolved_repo_slug = repo_slug or _resolved_repo_slug()
     resolved_public_ref = public_ref or _resolved_public_ref()
-    resolved_pinned_ref = pinned_ref or _resolved_pinned_ref(root)
 
     return {
         Path("README.md"): [

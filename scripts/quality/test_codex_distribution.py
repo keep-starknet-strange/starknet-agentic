@@ -39,24 +39,6 @@ def build_minimal_repo(root: Path, install_markers: dict[Path, list[str]]) -> No
 
 
 class CodexDistributionTests(unittest.TestCase):
-    def test_version_pinned_ref_accepts_optional_v_prefix(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            write_file(root / "skills" / "cairo-auditor" / "VERSION", "v0.2.2\n")
-
-            value = MODULE._version_pinned_ref(root)
-
-            self.assertEqual(value, "v0.2.2")
-
-    def test_version_pinned_ref_rejects_build_metadata_suffix(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            write_file(root / "skills" / "cairo-auditor" / "VERSION", "0.2.2+build.7\n")
-
-            value = MODULE._version_pinned_ref(root)
-
-            self.assertEqual(value, MODULE.DEFAULT_PINNED_REF)
-
     def test_codex_symlink_errors_passes_for_valid_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -147,20 +129,6 @@ policy:
 
             self.assertEqual(len(errors), 3)
             self.assertTrue(all("missing install markers" in error for error in errors), errors)
-
-    def test_install_doc_errors_ignores_unused_pinned_ref_variants(self) -> None:
-        # pinned_ref is no longer embedded in install markers, so different
-        # pinned_ref values passed to build_install_markers must not cause errors.
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            baseline_markers = MODULE.build_install_markers(root, pinned_ref="v1.2.3")
-            build_minimal_repo(root, baseline_markers)
-
-            mismatch_markers = MODULE.build_install_markers(root, pinned_ref="v9.9.9")
-            errors = MODULE.install_doc_errors(root, mismatch_markers)
-
-            self.assertEqual(errors, [])
-
 
 if __name__ == "__main__":
     unittest.main()
