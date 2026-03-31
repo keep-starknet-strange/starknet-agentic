@@ -75,6 +75,16 @@ For deterministic install/usage guidance, see:
 
 For the full skill catalog and Cairo migration notes, see [skills/README.md](./skills/README.md) and [docs/CAIRO_SKILLS_MIGRATION.md](./docs/CAIRO_SKILLS_MIGRATION.md).
 
+## Flagship Skills
+
+If you are evaluating the skills layer, start with one of these instead of browsing the full catalog first.
+
+| Skill | Why start here | Direct install |
+|---|---|---|
+| [`cairo-auditor`](./skills/cairo-auditor/) | Finds Starknet-specific auth, upgrade, dispatcher, and Cairo-component bugs before deploy | `skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor` |
+| [`starknet-wallet`](./skills/starknet-wallet/) | Fastest path to balances, transfers, and session-key flows on Starknet | `npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet` |
+| [`starknet-defi`](./skills/starknet-defi/) | Real swap, staking, and lending workflows with AVNU-backed routing | `npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-defi` |
+
 ## System Requirements
 
 - CLI users (`npx create-starknet-agent@latest`): Node.js `>=18.0.0`

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-label="Cairo auditor report preview">
+  <rect width="1280" height="760" fill="#0a0a0a"/>
+  <rect x="40" y="40" width="1200" height="680" rx="22" fill="#101010" stroke="#2a2a2a"/>
+  <rect x="72" y="72" width="1136" height="44" rx="10" fill="#151515" stroke="#242424"/>
+  <text x="92" y="100" fill="#00d4aa" font-family="'JetBrains Mono','Fira Code',monospace" font-size="24">CAIRO AUDITOR  /  deep mode  /  Execution Integrity: FULL</text>
+  <text x="80" y="164" fill="#f2f2f2" font-family="'JetBrains Mono','Fira Code',monospace" font-size="34"># Security Review — insecure_upgrade_controller</text>
+  <text x="80" y="204" fill="#a0a0a0" font-family="Inter, system-ui, sans-serif" font-size="22">Targeted Cairo audit with specialist vectors, adversarial pass, and a single merged report.</text>
+
+  <rect x="80" y="242" width="330" height="122" rx="16" fill="#141414" stroke="#2a2a2a"/>
+  <text x="104" y="276" fill="#00d4aa" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">Signal Summary</text>
+  <text x="104" y="318" fill="#e0e0e0" font-family="'JetBrains Mono','Fira Code',monospace" font-size="40">1</text>
+  <text x="148" y="318" fill="#a0a0a0" font-family="Inter, system-ui, sans-serif" font-size="18">critical</text>
+  <text x="244" y="318" fill="#e0e0e0" font-family="'JetBrains Mono','Fira Code',monospace" font-size="40">1</text>
+  <text x="288" y="318" fill="#a0a0a0" font-family="Inter, system-ui, sans-serif" font-size="18">high</text>
+  <text x="104" y="350" fill="#e0e0e0" font-family="'JetBrains Mono','Fira Code',monospace" font-size="22">1 medium  ·  3 total</text>
+
+  <rect x="432" y="242" width="776" height="122" rx="16" fill="#141414" stroke="#2a2a2a"/>
+  <text x="456" y="276" fill="#00d4aa" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">Execution Trace</text>
+  <text x="456" y="314" fill="#a0a0a0" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">Scope discovery            local                  OK</text>
+  <text x="456" y="340" fill="#a0a0a0" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">Agent 1-4 vector scan     specialists            OK</text>
+  <text x="456" y="366" fill="#a0a0a0" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">Agent 5 adversarial       deep reasoning         OK</text>
+
+  <rect x="80" y="390" width="1128" height="286" rx="18" fill="#121212" stroke="#2a2a2a"/>
+  <text x="104" y="430" fill="#00d4aa" font-family="'JetBrains Mono','Fira Code',monospace" font-size="20">[P1] Arbitrary caller can overwrite the active class hash</text>
+  <text x="104" y="466" fill="#e0e0e0" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">Class: NO_ACCESS_CONTROL_MUTATION  ·  Entry: src/lib.cairo:24  ·  Confidence: 96</text>
+  <text x="104" y="516" fill="#a0a0a0" font-family="Inter, system-ui, sans-serif" font-size="22">Attack path</text>
+  <text x="104" y="548" fill="#d6d6d6" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">any caller → upgrade_now(new_class_hash) → active_class_hash overwritten</text>
+  <text x="104" y="574" fill="#d6d6d6" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">→ downstream upgrade consumer reads attacker-chosen implementation</text>
+  <text x="104" y="618" fill="#a0a0a0" font-family="Inter, system-ui, sans-serif" font-size="22">Recommended fix</text>
+  <rect x="104" y="636" width="770" height="24" rx="8" fill="#1a1a1a"/>
+  <text x="118" y="654" fill="#35d07f" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">+ assert_only_owner(@self);</text>
+
+  <rect x="896" y="508" width="286" height="152" rx="14" fill="#151515" stroke="#242424"/>
+  <text x="920" y="540" fill="#00d4aa" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">Artifact</text>
+  <text x="920" y="576" fill="#e0e0e0" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">security-review-20260331-</text>
+  <text x="920" y="600" fill="#e0e0e0" font-family="'JetBrains Mono','Fira Code',monospace" font-size="18">114200.md</text>
+  <text x="920" y="638" fill="#a0a0a0" font-family="Inter, system-ui, sans-serif" font-size="18">This is the report shape you</text>
+  <text x="920" y="662" fill="#a0a0a0" font-family="Inter, system-ui, sans-serif" font-size="18">should expect from a clean</text>
+  <text x="920" y="686" fill="#a0a0a0" font-family="Inter, system-ui, sans-serif" font-size="18">deep run.</text>
+</svg>
