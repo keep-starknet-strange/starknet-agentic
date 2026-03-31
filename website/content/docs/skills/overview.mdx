@@ -13,7 +13,7 @@ Skills are reusable capability packages that extend what AI agents can do on Sta
 
 If you only try one skill first, use [`cairo-auditor`](/docs/skills/cairo-auditor). It is the fastest proof that the install path, host integration, and report artifact flow are all working.
 
-The deterministic fixture path below assumes you are inside a local clone of this repository. If not, replace it with your own local `.cairo` file path.
+Install it once, then run it on any local `.cairo` file in your own project. The repo fixture is still available, but it is no longer the first-run path.
 
 ```bash
 # Codex
@@ -25,11 +25,21 @@ python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-g
 ```
 
 ```text
-# Claude Code
+# Codex prompt
+Run cairo-auditor on path/to/your_contract.cairo with --file-output.
+Output only the final report.
+```
+
+```text
+# Claude Code install
 /plugin marketplace add keep-starknet-strange/starknet-agentic
 /plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
 /reload-plugins
-/starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
+```
+
+```text
+# Claude Code command
+/starknet-agentic-skills:cairo-auditor path/to/your_contract.cairo --file-output
 ```
 
 Expected artifact: `security-review-*.md`

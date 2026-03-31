@@ -4,18 +4,12 @@ import { InstallCommand } from "@/components/Hero/InstallCommand";
 import { StepCard } from "@/components/ui/StepCard";
 
 const CODEX_CAIRO_AUDITOR_COMMAND = [
-  'CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"',
-  'python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \\',
-  "  --repo keep-starknet-strange/starknet-agentic \\",
-  "  --path skills/cairo-auditor \\",
-  "  --ref main",
+  "Run cairo-auditor on path/to/your_contract.cairo with --file-output.",
+  "Output only the final report.",
 ].join("\n");
 
 const CLAUDE_CAIRO_AUDITOR_COMMAND = [
-  "/plugin marketplace add keep-starknet-strange/starknet-agentic",
-  "/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user",
-  "/reload-plugins",
-  "/starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output",
+  "/starknet-agentic-skills:cairo-auditor path/to/your_contract.cairo --file-output",
 ].join("\n");
 
 export function GetStarted() {
@@ -44,7 +38,7 @@ export function GetStarted() {
                 Try Cairo Auditor First
               </h3>
               <p className="text-neo-dark/70 max-w-2xl">
-                Fastest path to a concrete artifact: run the deterministic vulnerable fixture and generate a real{" "}
+                Install the skill once, then run it on any local Cairo contract in your own workspace to generate a real{" "}
                 <code className="px-1.5 py-0.5 bg-neo-dark/5 rounded text-sm">security-review-*.md</code> report before
                 you wire the rest of the stack.
               </p>
@@ -73,7 +67,7 @@ export function GetStarted() {
           </div>
 
           <p className="mt-4 text-sm text-neo-dark/70">
-            The demo fixture path in the command above assumes you are inside a local clone of this repository. If not, clone the repo first or replace the path with your own local Cairo contract.
+            Use your own local Cairo path first. If you do not have a project handy yet, the 30-second guide includes a self-contained vulnerable demo file and the maintainer regression fixture.
           </p>
         </div>
 

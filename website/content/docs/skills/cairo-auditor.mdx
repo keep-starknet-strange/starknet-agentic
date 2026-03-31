@@ -18,11 +18,11 @@ The `cairo-auditor` skill is the repo's security-review orchestrator for Cairo a
 Only the badged surfaces above are currently verified in this repository.
 
 <Callout type="success" title="Try it now">
-Audit the deterministic demo fixture first so you can verify the pipeline and get a real <code>security-review-*.md</code> artifact quickly.
+Install the skill, open any Cairo project, and audit one local <code>.cairo</code> file first. That is the real developer path and the fastest way to get a concrete <code>security-review-*.md</code> artifact.
 </Callout>
 
-<Callout type="info" title="Demo fixture path">
-The fixture path below assumes you are inside a local clone of <code>keep-starknet-strange/starknet-agentic</code>. If not, replace it with your own local <code>.cairo</code> file path.
+<Callout type="info" title="No Cairo project handy?">
+Use the self-contained demo file further below. The repo fixture is still available, but it now lives under maintainer verification instead of the first-run path.
 </Callout>
 
 ```bash
@@ -34,18 +34,64 @@ python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-g
   --ref main
 ```
 
+Claude Code users: use the marketplace install from the Installation section below, then run the same command against your local Cairo file.
+
 ```text
 # Codex prompt
-Run cairo-auditor deep on skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo with --file-output.
+Run cairo-auditor on path/to/your_contract.cairo with --file-output.
 Output only the final report.
 ```
 
 ```text
 # Claude Code command
-/starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
+/starknet-agentic-skills:cairo-auditor path/to/your_contract.cairo --file-output
 ```
 
 Expected artifact: `security-review-*.md`
+
+### Want deeper adversarial review?
+
+After the first successful run, rerun the same target in `deep` mode:
+
+```text
+# Codex prompt
+Run cairo-auditor deep on path/to/your_contract.cairo with --file-output.
+Output only the final report.
+```
+
+```text
+# Claude Code command
+/starknet-agentic-skills:cairo-auditor deep path/to/your_contract.cairo --file-output
+```
+
+### No Cairo project handy?
+
+Create a minimal vulnerable contract locally and audit that file instead:
+
+```bash
+cat > /tmp/test_vuln.cairo <<'EOF'
+#[starknet::contract]
+mod VulnerableUpgrade {
+    use starknet::ClassHash;
+    use starknet::syscalls::replace_class_syscall;
+
+    #[storage]
+    struct Storage {}
+
+    #[external(v0)]
+    fn upgrade(ref self: ContractState, new_class: ClassHash) {
+        replace_class_syscall(new_class).unwrap();
+    }
+}
+EOF
+```
+
+```text
+Run cairo-auditor on /tmp/test_vuln.cairo with --file-output.
+Output only the final report.
+```
+
+This should yield an upgrade-related finding against the ungated `replace_class_syscall` path.
 
 ## Rendered report preview
 
@@ -114,17 +160,17 @@ Use <code>--scope user</code> as the default. Use <code>--scope local</code> onl
 
 ## 30-Second Happy Path
 
-Run one deep audit and confirm that a report artifact was written.
+Run one default audit on your own contract and confirm that a report artifact was written.
 
 ```text
 # Codex prompt
-Run cairo-auditor deep on skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo with --file-output.
+Run cairo-auditor on path/to/your_contract.cairo with --file-output.
 Output only the final report.
 ```
 
 ```text
 # Claude Code command
-/starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
+/starknet-agentic-skills:cairo-auditor path/to/your_contract.cairo --file-output
 ```
 
 ```bash
@@ -134,9 +180,9 @@ ls -lt security-review-*.md | head -n 1
 
 If you need full host-integrity markers (`Execution Integrity: FULL`, specialist bundles, capability file), use the advanced verification flow from the source README after the first report lands.
 
-## Deterministic Demo Target
+## Deterministic Repo Fixture (Maintainers / CI)
 
-If you want a stable live-demo contract, clone this repository and audit:
+If you want the stable regression fixture used by this repository, clone `keep-starknet-strange/starknet-agentic` and audit:
 
 ```text
 skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo

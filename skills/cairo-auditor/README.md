@@ -41,7 +41,7 @@ Only the badged surfaces above are currently verified in this repository.
 
 ## Try it now
 
-Install one skill, run the deterministic demo contract, and confirm that a `security-review-*.md` artifact was written.
+Install one skill, open any Cairo project, and run `cairo-auditor` on your own contract file. If you do not have a project handy yet, use the self-contained demo file below.
 
 ```bash
 # 1) Install (Codex)
@@ -53,12 +53,12 @@ python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-g
 # Restart Codex so the skill is picked up
 ```
 
+Claude Code users: use the marketplace install under [Install](#install), then run the command below against your local Cairo file.
+
 ```text
 # 2) Prompt
-# The demo fixture path below assumes you are inside a local clone of this repository.
-# If not, replace it with your own local .cairo file path.
-Codex: Run cairo-auditor deep on skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo with --file-output. Output only the final report.
-Claude Code: /starknet-agentic-skills:cairo-auditor deep skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo --file-output
+Codex: Run cairo-auditor on path/to/your_contract.cairo with --file-output. Output only the final report.
+Claude Code: /starknet-agentic-skills:cairo-auditor path/to/your_contract.cairo --file-output
 ```
 
 ```bash
@@ -68,11 +68,41 @@ ls -lt security-review-*.md | head -n 1
 
 Expected artifact: `security-review-*.md`
 
-For full host-integrity checks (`Execution Integrity: FULL`, specialist bundles, capability file), use the advanced verification flow later in this README or run the helper below from a local clone:
+Want adversarial multi-agent review after the first successful run?
+
+```text
+Codex: Run cairo-auditor deep on path/to/your_contract.cairo with --file-output. Output only the final report.
+Claude Code: /starknet-agentic-skills:cairo-auditor deep path/to/your_contract.cairo --file-output
+```
+
+### No Cairo project handy?
+
+Create a minimal vulnerable contract locally and audit that file instead.
 
 ```bash
-bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
+cat > /tmp/test_vuln.cairo <<'EOF'
+#[starknet::contract]
+mod VulnerableUpgrade {
+    use starknet::ClassHash;
+    use starknet::syscalls::replace_class_syscall;
+
+    #[storage]
+    struct Storage {}
+
+    #[external(v0)]
+    fn upgrade(ref self: ContractState, new_class: ClassHash) {
+        replace_class_syscall(new_class).unwrap();
+    }
+}
+EOF
 ```
+
+```text
+Codex: Run cairo-auditor on /tmp/test_vuln.cairo with --file-output. Output only the final report.
+Claude Code: /starknet-agentic-skills:cairo-auditor /tmp/test_vuln.cairo --file-output
+```
+
+You should see an upgrade-related finding against the ungated `replace_class_syscall` path.
 
 ## Audit pipeline
 
@@ -320,6 +350,16 @@ This is useful for conservative release gates and benchmark runs.
 **What AI catches well.** Missing access controls, CEI violations, unsafe upgrades, zero-address initialization, unbounded loops, stale reads, type confusion.
 
 AI catches what humans forget to check. Humans catch what AI cannot reason about. You need both.
+
+## Deterministic repo fixture (maintainers / CI)
+
+If you want the stable regression target used by this repository, clone `keep-starknet-strange/starknet-agentic` and audit:
+
+```text
+skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo
+```
+
+That fixture is intentionally vulnerable and should reliably produce three findings: missing access control on upgrade, missing timelock, and missing non-zero class-hash guard.
 
 ## How it works
 

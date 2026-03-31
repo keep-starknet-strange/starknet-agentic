@@ -3,6 +3,8 @@
 Goal: get a concrete `security-review-*.md` artifact from `cairo-auditor` in under
 2 minutes.
 
+Use your own Cairo project first. If you do not have one handy, create a temporary `.cairo` file and run the same prompts against that path.
+
 ## 1) Codex
 
 Install:
@@ -20,7 +22,7 @@ For an immutable install, replace `main` with a commit SHA you trust.
 Prompt:
 
 ```text
-Use cairo-auditor default mode on this repo with --file-output.
+Run cairo-auditor on path/to/your_contract.cairo with --file-output.
 Output only the final report.
 Report only concrete exploitable issues with severity and file:line references.
 ```
@@ -44,7 +46,7 @@ Note: marketplace/plugin installs resolve published bundle metadata rather than 
 Prompt:
 
 ```text
-Use /starknet-agentic-skills:cairo-auditor --file-output to audit this repo in default mode.
+/starknet-agentic-skills:cairo-auditor path/to/your_contract.cairo --file-output
 Output only the final report with severity, exploit path, and patch guidance.
 ```
 
@@ -65,7 +67,7 @@ Note: this command is not Git-ref pinned as written.
 Prompt (in your host runtime after install):
 
 ```text
-Use cairo-auditor default mode on contracts/**/*.cairo with --file-output.
+Use cairo-auditor on path/to/your_contract.cairo with --file-output.
 Output only the final report.
 Only include defensible findings with file:line references.
 ```
