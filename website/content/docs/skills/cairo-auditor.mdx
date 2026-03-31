@@ -176,6 +176,8 @@ Use <code>--scope user</code> as the default. Use <code>--scope local</code> onl
 
 Run one default audit on your own contract and confirm that a report artifact was written.
 
+Copy the `WORKDIR=...` line from the auditor output first, then point the verification commands at that exact directory.
+
 ```text
 # Codex prompt
 Run cairo-auditor on path/to/your_contract.cairo with --file-output.
