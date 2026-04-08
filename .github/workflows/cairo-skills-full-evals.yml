@@ -49,7 +49,7 @@ jobs:
           python-version: "3.12"
 
       - name: Setup Scarb
-        uses: software-mansion/setup-scarb@95ba816a4383938e2338cb793773d4670011b65f # v1.6.0
+        uses: software-mansion/setup-scarb@2a96b748888e3329ee44ac9ac073d930e692b3cd # v1.6.2
         with:
           scarb-version: "2.14.0"
 
