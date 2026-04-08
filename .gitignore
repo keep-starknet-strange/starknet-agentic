@@ -176,3 +176,9 @@ starkskills-site/
 
 # macOS
 .DS_Store
+
+# Circom compiled binaries
+*.r1cs
+*.wasm
+*.sym
+# *.json removed — too broad
