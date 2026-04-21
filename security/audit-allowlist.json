@@ -8,13 +8,6 @@
       "expiresOn": "2026-04-30"
     },
     {
-      "id": "1114006",
-      "package": "hono",
-      "severity": "high",
-      "reason": "Temporary allowlist while upgrading hono stack to a patched release.",
-      "expiresOn": "2026-04-30"
-    },
-    {
       "id": "1114170",
       "package": "@hono/node-server",
       "severity": "high",
