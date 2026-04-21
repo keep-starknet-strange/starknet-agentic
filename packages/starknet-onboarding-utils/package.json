@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "test": "vitest run"
   },
   "dependencies": {

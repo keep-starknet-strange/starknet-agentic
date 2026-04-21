@@ -9,7 +9,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
     "test": "vitest run"
   },
