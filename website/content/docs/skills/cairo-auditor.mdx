@@ -175,6 +175,8 @@ Use <code>--scope user</code> as the default. Use <code>--scope local</code> onl
 
 Run one default audit on your own contract and confirm that a report artifact was written.
 
+Copy the `WORKDIR=...` line from the auditor output first, then point the verification commands at that exact directory.
+
 ```text
 # Codex prompt
 Run cairo-auditor on path/to/your_contract.cairo with --file-output.
@@ -219,6 +221,15 @@ This path is primarily for manual maintainer regression. Repository CI runs sepa
 2. runs deterministic preflight and local benchmark-backed checks
 3. spawns vector-specialist audit passes in parallel
 4. deduplicates root causes and emits a single report with confidence gating
+
+## Audit pipeline
+
+```text
+discover -> preflight -> bundle -> spawn(4+1) -> merge -> report
+  files      rules       partitions    agents       dedup    findings
+```
+
+Deep mode adds the adversarial specialist on top of the four vector partitions. Default mode stops at the four vector scans.
 
 ## Deterministic Local Scan
 
