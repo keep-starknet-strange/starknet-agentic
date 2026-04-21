@@ -1,0 +1,19 @@
+# Circom build artifacts (specific patterns — NOT *.json)
+circuit/build/*.r1cs
+circuit/build/*.sym
+circuit/build/*.wasm
+circuit/build/*_js/
+circuit/build/*.ptau
+circuit/build/*.zkey
+circuit/build/witness.wtns
+circuit/build/proof.json
+circuit/build/public.json
+circuit/build/verification_key.json
+circuit/build/Verifier.sol
+
+# Inputs (generated)
+inputs/
+
+# IDE
+.vscode/
+.idea/
