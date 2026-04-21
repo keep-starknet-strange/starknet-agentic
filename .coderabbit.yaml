@@ -2,6 +2,19 @@
 language: "en-US"
 early_access: false
 
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: "auto"
+  issues:
+    scope: "auto"
+  jira:
+    project_keys: []
+  linear:
+    team_keys: []
+  pull_requests:
+    scope: "auto"
+
 reviews:
   profile: "assertive"
   request_changes_workflow: true
@@ -19,21 +32,10 @@ reviews:
     auto_pause_after_reviewed_commits: 0
 
   finishing_touches:
-    docstrings: true
-    unit_tests: true
-
-  knowledge_base:
-    opt_out: false
-    learnings:
-      scope: "auto"
-    issues:
-      scope: "auto"
-    jira:
-      project_keys: []
-    linear:
-      team_keys: []
-    pull_requests:
-      scope: "auto"
+    docstrings:
+      enabled: true
+    unit_tests:
+      enabled: true
 
   path_instructions:
     - path: "contracts/session-account/**"
@@ -175,11 +177,6 @@ reviews:
         instructions: >
           For changes in .github/workflows/**, flag any new or expanded permissions,
           unpinned action versions, or secrets referenced without need-to-know scope.
-      - name: "Skill interface contract"
-        mode: "warning"
-        instructions: >
-          For changes in skills/**, verify that the skill exports a valid interface,
-          has matching metadata, and includes at least one test or example.
 
   path_filters:
     - "!**/*.generated.*"
@@ -191,17 +188,17 @@ reviews:
     - "!**/Scarb.lock"
     - "!**/*.lock"
 
-tools:
-  opengrep:
-    enabled: true
-  trufflehog:
-    enabled: true
-  biome:
-    enabled: true
-  eslint:
-    enabled: true
-  markdownlint:
-    enabled: true
+  tools:
+    opengrep:
+      enabled: true
+    trufflehog:
+      enabled: true
+    biome:
+      enabled: true
+    eslint:
+      enabled: true
+    markdownlint:
+      enabled: true
 
 chat:
   auto_reply: true

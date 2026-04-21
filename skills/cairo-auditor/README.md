@@ -1,5 +1,19 @@
 # cairo-auditor
 
+```text
+  ____      _                  _ _ _
+ / ___|__ _(_)_ __ ___    __ _| | | | ___
+| |   / _` | | '__/ _ \  / _` | | | |/ _ \
+| |__| (_| | | | | (_) || (_| | | | |  __/
+ \____\__,_|_|_|  \___/  \__,_|_|_|_|\___|
+
+    _   _  _   _  ____   ___  _____  ___   ____
+   / \ | || | | ||  _ \ |_ _||_   _|/ _ \ |  _ \
+  / _ \| || | | || | | | | |   | | | | | || |_) |
+ / ___ \__   _  || |_| | | |   | | | |_| ||  _ <
+/_/   \_\ |_| |_||____/ |___|  |_|  \___/ |_| \_\
+```
+
 A security agent for Cairo/Starknet — findings in minutes, not weeks.
 
 Built for:
@@ -11,11 +25,126 @@ Built for:
 Not a substitute for a formal audit — but the check you should never skip.
 
 <p>
+  <img alt="tested Codex" src="https://img.shields.io/badge/tested-Codex-111827" />
+  <img alt="tested Claude Code" src="https://img.shields.io/badge/tested-Claude_Code-b45309" />
+  <img alt="tested Agent Skills CLI" src="https://img.shields.io/badge/tested-Agent_Skills_CLI-1d4ed8" />
+</p>
+
+<p>
   <img alt="mode default" src="https://img.shields.io/badge/mode-default-0969da" />
   <img alt="mode deep" src="https://img.shields.io/badge/mode-deep-7c3aed" />
   <img alt="fp gate" src="https://img.shields.io/badge/false--positive-gated-2ea043" />
   <img alt="deterministic smoke" src="https://img.shields.io/badge/deterministic%20smoke-pass-2ea043" />
 </p>
+
+Only the badged surfaces above are currently verified in this repository.
+
+## Try it now
+
+Install one skill, open any Cairo project, and run `cairo-auditor` on your own contract file. If you do not have a project handy yet, use the self-contained demo file below.
+
+```bash
+# 1) Install (Codex)
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
+# Restart Codex so the skill is picked up
+```
+
+Claude Code users: use the marketplace install under [Install](#install), then run the command below against your local Cairo file.
+
+```text
+# 2) Prompt
+Codex: Run cairo-auditor on path/to/your_contract.cairo with --file-output. Output only the final report.
+Claude Code: /starknet-agentic-skills:cairo-auditor path/to/your_contract.cairo --file-output
+```
+
+```bash
+# 3) Verify the output artifact
+ls -lt security-review-*.md | head -n 1
+```
+
+Expected artifact: `security-review-*.md`
+
+Want adversarial multi-agent review after the first successful run?
+
+```text
+Codex: Run cairo-auditor deep on path/to/your_contract.cairo with --file-output. Output only the final report.
+Claude Code: /starknet-agentic-skills:cairo-auditor deep path/to/your_contract.cairo --file-output
+```
+
+### No Cairo project handy?
+
+Create a minimal vulnerable contract locally and audit that file instead.
+
+```bash
+TMP_CAIRO_FILE="$(mktemp "${TMPDIR:-/tmp}/cairo-auditor-demo.XXXXXX.cairo")"
+cat > "$TMP_CAIRO_FILE" <<'EOF'
+#[starknet::contract]
+mod VulnerableUpgrade {
+    use starknet::ClassHash;
+    use starknet::syscalls::replace_class_syscall;
+
+    #[storage]
+    struct Storage {}
+
+    #[external(v0)]
+    fn upgrade(ref self: ContractState, new_class: ClassHash) {
+        replace_class_syscall(new_class).unwrap();
+    }
+}
+EOF
+printf 'Demo contract written to %s\n' "$TMP_CAIRO_FILE"
+```
+
+Windows users: create the same contents in a local file such as `test_vuln.cairo` with your editor or PowerShell, then run the same prompt against that file path.
+
+```text
+macOS/Linux (Codex): Run cairo-auditor on the temp file path printed above with --file-output. Output only the final report.
+macOS/Linux (Claude Code): /starknet-agentic-skills:cairo-auditor <temp-file-path> --file-output
+Windows (Codex): Run cairo-auditor on .\test_vuln.cairo with --file-output. Output only the final report.
+Windows (Claude Code): /starknet-agentic-skills:cairo-auditor .\test_vuln.cairo --file-output
+```
+
+You should see an upgrade-related finding against the ungated `replace_class_syscall` path.
+
+## Audit pipeline
+
+```text
+repo / contract
+      |
+      v
+deterministic preflight
+      |
+      v
+4 vector specialists
+      |
+      +--> deep mode: +1 adversarial specialist
+      |
+      v
+dedupe + false-positive gate
+      |
+      v
+security-review-YYYYMMDD-HHMMSS.md
+```
+
+## Rendered report preview
+
+![Rendered cairo-auditor report preview](./assets/cairo-auditor-report-preview.svg)
+
+## What LLMs miss
+
+`cairo-auditor` is strong on concrete exploit paths: missing access control, unsafe upgrade surfaces, stale reads, unchecked initialization, and policy gaps.
+
+Do not ask it to replace human review for:
+
+- multi-transaction economic attacks and griefing setups
+- specification or invariant mismatches the code never states explicitly
+- cross-protocol assumptions, off-chain trust boundaries, or oracle semantics
+
+Use it to collapse obvious exploitability fast, then finish with tests plus a manual audit pass.
 
 ## Example output
 
@@ -32,7 +161,7 @@ Signal Summary
 
 [P0] 1. Ungated Upgrade Path
 
-  Class: NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42 · Confidence: 92 · Severity: Critical · [CODE-TRACE] [PREFLIGHT-HIT]
+  Class: NO_ACCESS_CONTROL_MUTATION · src/contracts/account.cairo:42 · Confidence: 92 · Severity: Critical · `[CODE-TRACE] [PREFLIGHT-HIT]`
 
   Description
   External upgrade() calls replace_class_syscall without caller gate.
@@ -52,7 +181,7 @@ Signal Summary
 
 [P2] 2. Stale Snapshot in View Function
 
-  Class: STALE-SNAPSHOT-READ · src/contracts/registry.cairo:187 · Confidence: 62 · Severity: Medium · [CODE-TRACE]
+  Class: STALE-SNAPSHOT-READ · src/contracts/registry.cairo:187 · Confidence: 62 · Severity: Medium · `[CODE-TRACE]`
 
   Description
   get_metadata reads a snapshot that may lag behind the latest write in the
@@ -90,11 +219,13 @@ More tags = stronger signal. Findings with only `[CODE-TRACE]` are valid but low
 | **Vectors checked** | 170 across 4 partitions | 170 + free-form exploit reasoning | 170 across 4 partitions | Pattern-match only |
 | **Time** | ~2 min | ~5-7 min | ~1-2 min | <30s |
 | **Best for** | Pre-commit check | Pre-deployment review | Reviewing specific files | CI gate, offline envs |
-| **Invocation** | `/starknet-agentic-skills:cairo-auditor` | `/starknet-agentic-skills:cairo-auditor deep` | `/starknet-agentic-skills:cairo-auditor src/vault.cairo` | `python3 .../audit_local_repo.py` |
+| **Invocation** | `/starknet-agentic-skills:cairo-auditor` | `/starknet-agentic-skills:cairo-auditor deep` | `/starknet-agentic-skills:cairo-auditor src/vault.cairo` | `python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py` |
 
 **Default** scans the full codebase with 4 parallel agents, each covering a different attack-vector partition (access control, external calls, math/economics, storage/trust). Good for fast iteration.
 
 **Deep** adds a 5th adversarial agent that reads all source files and constructs multi-step exploit chains across function and contract boundaries. Use this before deployments or when default mode returns only low-confidence results.
+
+**Targeted** scans one or more specific files instead of the full repo. It runs the same 4 vector specialists on only the paths you provide and skips deterministic preflight to keep context scoped. Use this for fast, focused review of a single contract or module.
 
 **Local** runs a deterministic preflight scanner with no AI calls. Catches obvious patterns (ungated upgrades, missing non-zero guards, commented-out access control). Useful as a CI gate or when offline.
 
@@ -108,32 +239,52 @@ Inside Claude Code, run:
 
 ```text
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
 ```
 
 Then restart Claude Code or run `/reload-plugins`.
 
-### Codex
+Note: Claude plugin bundle versions (for example `starknet-agentic-skills 1.0.4`) are intentionally separate from this skill's internal version (`cairo-auditor 0.2.2`).
 
-`skill-installer` is a third-party CLI. Install it first if you don't have it:
+If your install looks stale after a new release, force-refresh marketplace metadata and reinstall:
 
-```bash
-npm install -g skill-installer
+```text
+/plugin marketplace update keep-starknet-strange/starknet-agentic
+/plugin uninstall starknet-agentic-skills@starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+/reload-plugins
+/plugin list
 ```
 
-Then install the skill:
+Expected: installed plugin shows the latest bundle version and `/starknet-agentic-skills:cairo-auditor` resolves.
+
+Use `--scope local` only when you intentionally want a repo-specific pinned plugin state.
+
+### Codex
+
+Use Codex's built-in installer helper:
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
 ```
 
 Restart Codex, open `/skills`, then invoke `cairo-auditor`.
 
-For reproducible installs, pin to a release tag or commit SHA:
+For reproducible installs, pin to a commit SHA:
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref <commit-sha>
 ```
+
+If you just want the latest published docs and skill content, use `--ref main`.
 
 ### Agent Skills CLI
 
@@ -183,6 +334,8 @@ python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py \
 
 Run this from the installed cairo-auditor skill directory, or keep using an absolute script path as shown above.
 
+This local preflight writes `<scan-id>-YYYYMMDD-HHMMSSZ.md` and `<scan-id>-YYYYMMDD-HHMMSSZ.json` artifacts. The `security-review-*.md` naming is used by the full hosted skill flow, not by the standalone deterministic scanner.
+
 ### Proven-only mode
 
 Use `--proven-only` when you want severity to reflect executed proof strength:
@@ -202,9 +355,19 @@ This is useful for conservative release gates and benchmark runs.
 
 **What AI catches well.** Missing access controls, CEI violations, unsafe upgrades, zero-address initialization, unbounded loops, stale reads, type confusion.
 
-**What AI misses.** Multi-transaction state setups, specification/invariant bugs, cross-protocol composability, game-theoretic attacks, off-chain oracle assumptions.
-
 AI catches what humans forget to check. Humans catch what AI cannot reason about. You need both.
+
+## Deterministic repo fixture (maintainers / manual regression)
+
+If you want the stable regression target used by this repository, clone `keep-starknet-strange/starknet-agentic` and audit:
+
+```text
+skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo
+```
+
+That fixture is intentionally vulnerable and should reliably produce three findings: missing access control on upgrade, missing timelock, and missing non-zero class-hash guard.
+
+This path is primarily for manual maintainer regression. Repository CI runs separate validation checks for the skill and report contract rather than asking users to invoke this fixture path directly.
 
 ## How it works
 
@@ -241,6 +404,14 @@ The skill couldn't find any `.cairo` files to audit. Check your path and try wit
 The deterministic scanner couldn't run. Run it manually:
 `python3 /path/to/cairo-auditor/scripts/quality/audit_local_repo.py --repo-root . --scan-id manual`
 
+**CAUD-003: Agent bundle generation failed.**
+The skill couldn't build one or more specialist bundles.
+Fix: rebuild `{workdir}/cairo-audit-agent-*-bundle.md` and confirm each bundle has non-zero line count before rerunning.
+
+**CAUD-004: Conflicting findings across agents.**
+Two or more specialists disagreed on the same root cause.
+Fix: keep the highest-confidence root cause and re-run targeted mode on the disputed file for a focused second pass.
+
 **CAUD-005: Only low-confidence findings.**
 Default mode didn't find high-confidence issues. Try deep mode for adversarial reasoning:
 `/starknet-agentic-skills:cairo-auditor deep`
@@ -254,11 +425,19 @@ The host reported a required capability as unavailable before scanning started.
 Fix: use `--allow-degraded` to accept reduced coverage, or switch to a host with full capability support.
 
 **CAUD-008: Agent transport instability.**
-A specialist agent disconnected or stalled during execution. The orchestrator retries once automatically. If this persists, your host may be under load.
-Fix: retry the audit. If it keeps failing, use `--allow-degraded` to skip the stalled agent, or try again later.
+A specialist disconnected or stalled during execution. The orchestrator retries once automatically.
+Fix: retry the audit. If failures persist, use `--allow-degraded` to accept reduced coverage or try again when host load is lower.
 
 **CAUD-009: Model requirement not satisfied.**
 The requested model isn't available on your host. Remove `--strict-models` to allow documented fallback, or switch to a host that supports the required models.
+
+**Plugin says "already at latest" but behavior is old.**
+This is usually stale marketplace metadata or a project-scope override shadowing a user-scope install.
+Fix:
+`/plugin marketplace update keep-starknet-strange/starknet-agentic`
+`/plugin uninstall starknet-agentic-skills@starknet-agentic-skills --scope local`
+`/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user`
+`/reload-plugins`
 
 ### Deep mode details
 
@@ -277,8 +456,9 @@ Optional threat-intel enrichment (deep mode only) pulls bounded security signals
 **Codex:**
 
 ```bash
-cat /tmp/cairo-audit-host-capabilities.json
-wc -l /tmp/cairo-audit-agent-*-bundle.md
+# Copy WORKDIR=... from Turn 1 output first
+cat "$WORKDIR/cairo-audit-host-capabilities.json"
+wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 
@@ -365,8 +545,9 @@ Release hygiene gate: when `skills/cairo-auditor/VERSION` changes in CI, you mus
 ### Full-power verification (Codex)
 
 ```bash
-cat /tmp/cairo-audit-host-capabilities.json
-wc -l /tmp/cairo-audit-agent-*-bundle.md
+# Set WORKDIR to the path printed by the auditor before running this check
+cat "$WORKDIR/cairo-audit-host-capabilities.json"
+wc -l "$WORKDIR"/cairo-audit-agent-*-bundle.md
 ls -lt security-review-*.md | head -n 1
 ```
 

@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
     "pretest": "pnpm --filter @starknet-agentic/x402-starknet build",
     "test": "vitest run",
@@ -13,16 +13,16 @@
   },
   "dependencies": {
     "@avnu/avnu-sdk": "^4.0.1",
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@starknet-agentic/x402-starknet": "workspace:*",
     "starknet": "^9.4.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^25.3.5",
-    "@vitest/coverage-v8": "4.0.18",
+    "@types/node": "^25.6.0",
+    "@vitest/coverage-v8": "4.1.5",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.0",
-    "vitest": "^4.0.18"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   }
 }

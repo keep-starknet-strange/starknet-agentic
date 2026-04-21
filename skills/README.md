@@ -1,28 +1,44 @@
 # Starknet Agent Skills
 
-Production-ready skills for AI agents operating on Starknet. Built for the Agent Skills specification, compatible with 35+ agent platforms including Claude Code, Cursor, GitHub Copilot, and more.
+Official Starknet Agentic skill catalog for developer-facing agent hosts. Public install and usage flows in this repo are currently verified on Codex, Claude Code, and Agent Skills CLI.
 
-## Available Skills
+## Flagship Skills
 
-| Skill | Description | Status |
-|-------|-------------|--------|
-| [starknet-wallet](./starknet-wallet/) | Wallet management, transfers, session keys, gasless transactions | Complete |
-| [starknet-defi](./starknet-defi/) | Token swaps, DCA, staking, lending via avnu aggregator | Complete |
-| [starknet-identity](./starknet-identity/) | ERC-8004 on-chain identity and reputation | Complete |
-| [starknet-mini-pay](./starknet-mini-pay/) | P2P payments, QR codes, Telegram bot | Complete |
-| [starknet-anonymous-wallet](./starknet-anonymous-wallet/) | Anonymous wallet creation via Typhoon | Complete |
-| [starkzap-sdk](./starkzap-sdk/) | End-to-end workflows for keep-starknet-strange/starkzap (SDK, onboarding, wallets, ERC20, staking, tests) | Complete |
-| [huginn-onboard](./huginn-onboard/) | Bridge to Starknet and register with Huginn | Complete |
-| [controller-cli](./controller-cli/) | Cartridge Controller CLI sessions + scoped execution (JSON-only, explicit network, paymaster, error recovery) | Complete |
-| [cairo-contract-authoring](./cairo-contract-authoring/) | Workflow-first Cairo contract authoring with language guidance, anti-pattern pairs, and audit handoff | Complete |
-| [cairo-testing](./cairo-testing/) | snforge test patterns, cheatcodes, fuzzing, fork testing | Complete |
-| [cairo-deploy](./cairo-deploy/) | sncast deployment, account setup, network config, verification | Complete |
-| [cairo-optimization](./cairo-optimization/) | Profile-driven optimization with BoundedInt and benchmarking guidance (post-test pass) | Complete |
-| [cairo-auditor](./cairo-auditor/) | 4-turn Cairo audit orchestrator with vector specialists and strict FP gating | Complete |
-| [account-abstraction](./account-abstraction/) | Starknet account validation/session-key correctness and risk patterns | Complete |
-| [starknet-network-facts](./starknet-network-facts/) | Network-level protocol constraints that affect contract safety decisions | Complete |
-| [starknet-js](./starknet-js/) | starknet.js v9.x SDK guide for dApps, accounts, transactions, paymaster | Complete |
-| [starknet-tongo](./starknet-tongo/) | Confidential ERC20 payments with encrypted balances and ZK-proven transfers | Complete |
+If you are evaluating the repo for the first time, start with these:
+
+| Skill | Description | Public Status |
+|-------|-------------|---------------|
+| [cairo-auditor](./cairo-auditor/) | 4-turn Cairo audit orchestrator with vector specialists and strict FP gating | Demo-ready |
+| [starknet-wallet](./starknet-wallet/) | Wallet management, transfers, session keys, gasless transactions | Available |
+| [starknet-defi](./starknet-defi/) | Token swaps, DCA, staking, lending via AVNU aggregator | Available |
+| [starknet-identity](./starknet-identity/) | ERC-8004 on-chain identity and reputation | Available |
+
+## Additional Skills
+
+These skills are published in the repo and usable, but they are not the recommended first-run demo path.
+
+| Skill | Description | Public Status |
+|-------|-------------|---------------|
+| [starknet-mini-pay](./starknet-mini-pay/) | P2P payments, QR codes, Telegram bot | Available |
+| [starknet-anonymous-wallet](./starknet-anonymous-wallet/) | Anonymous wallet creation via Typhoon | Available |
+| [controller-cli](./controller-cli/) | Cartridge Controller CLI sessions + scoped execution (JSON-only, explicit network, paymaster, error recovery) | Available |
+| [cairo-contract-authoring](./cairo-contract-authoring/) | Workflow-first Cairo contract authoring with language guidance, anti-pattern pairs, and audit handoff | Available |
+| [cairo-testing](./cairo-testing/) | snforge test patterns, cheatcodes, fuzzing, fork testing | Available |
+| [cairo-deploy](./cairo-deploy/) | sncast deployment, account setup, network config, verification | Available |
+| [cairo-optimization](./cairo-optimization/) | Profile-driven optimization with BoundedInt and benchmarking guidance (post-test pass) | Available |
+| [account-abstraction](./account-abstraction/) | Starknet account validation/session-key correctness and risk patterns | Available |
+| [starknet-network-facts](./starknet-network-facts/) | Network-level protocol constraints that affect contract safety decisions | Available |
+| [starknet-js](./starknet-js/) | starknet.js v9.x SDK guide for dApps, accounts, transactions, paymaster | Available |
+| [starknet-tongo](./starknet-tongo/) | Confidential ERC20 payments with encrypted balances and ZK-proven transfers | Available |
+
+## Incubating or Project-Specific
+
+These entries stay in the repository because they are useful to contributors, but they are not the recommended public starting point today.
+
+| Skill | Description | Public Status |
+|-------|-------------|---------------|
+| [starkzap-sdk](./starkzap-sdk/) | End-to-end workflows for keep-starknet-strange/starkzap (SDK, onboarding, wallets, ERC20, staking, tests) | Project-specific |
+| [huginn-onboard](./huginn-onboard/) | Bridge to Starknet and register with Huginn | Incubating |
 
 ## Install and First Use
 
@@ -39,31 +55,39 @@ Use one command path, then run one audit.
 **Codex (public GitHub install):**
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
 # Restart Codex, open /skills, then invoke cairo-auditor
 ```
 
 **Codex (reproducible pin):**
 
 ```bash
-skill-installer install https://github.com/keep-starknet-strange/starknet-agentic/tree/v0.1.0-beta.1/skills/cairo-auditor
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref <commit-sha>
 ```
 
-Pinned ref policy: use released tags (or immutable commit SHAs) for reproducible installs.
+Pinned ref policy: use immutable commit SHAs for reproducible installs until a release tag exists for the current auditor version.
 
 **Claude Code plugin marketplace:**
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
 /reload-plugins
 /starknet-agentic-skills:cairo-auditor
 ```
 
 Scope guidance:
 
-- `--scope local` (recommended): install for current project only.
-- `--scope user`: install globally across projects.
+- `--scope user` (recommended): install once across projects and avoid local override drift.
+- `--scope local`: use only when you intentionally want a repo-pinned plugin state.
 
 **Agent Skills CLI:**
 
@@ -96,7 +120,7 @@ Claude official marketplace submission runbook:
 
 ## Machine-Readable Index
 
-For agent platforms (including OpenClaw/MoltBook) and tooling that want to index skills programmatically, see:
+For agent platforms and tooling that want to index skills programmatically, see:
 - `skills/manifest.json` (generated, stable format)
 - Cairo cutover and legacy mapping: `../docs/CAIRO_SKILLS_MIGRATION.md`
 
@@ -200,12 +224,14 @@ Skill instructions and documentation...
 
 ## Platform Compatibility
 
+Only surfaces explicitly tested in this repository are marked as supported.
+
 | Surface | Install Path | Status | Last Verified (UTC) |
 | --- | --- | --- | --- |
-| Codex | `skill-installer install .../tree/v0.1.0-beta.1/skills/cairo-auditor` | Supported | 2026-03-15 |
-| Claude Code | `/plugin marketplace add ...` + `/plugin install ... --scope local` | Supported | 2026-03-15 |
+| Codex | `python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" --repo ... --path skills/cairo-auditor --ref main` | Supported | 2026-03-31 |
+| Claude Code | `/plugin marketplace add ...` + `/plugin install ... --scope user` | Supported | 2026-03-15 |
 | Agent Skills CLI | `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor` | Supported | 2026-03-15 |
-| Cursor / Copilot / OpenClaw / custom Agent Skills hosts | Agent Skills spec package import | Supported | 2026-03-15 |
+| Other Agent Skills-compatible hosts | Host-specific skill import | Not yet verified here | - |
 
 ## Contributing
 
@@ -226,6 +252,9 @@ See the main [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 - [Starknet Documentation](https://docs.starknet.io/)
 - [avnu SDK](https://docs.avnu.fi/)
 - [ERC-8004 Standard](https://eips.ethereum.org/EIPS/eip-8004)
+- [GitHub Issues](https://github.com/keep-starknet-strange/starknet-agentic/issues)
+- [Starknet Discord](https://discord.gg/starknet)
+- [Starknet on X](https://x.com/Starknet)
 
 ## License
 

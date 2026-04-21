@@ -48,7 +48,7 @@ try {
 | `CAUD-002` | Preflight scan failed or unavailable | Run `python3 "{skill_root}/scripts/quality/audit_local_repo.py"` manually and attach output to the audit context. |
 | `CAUD-003` | Agent bundle generation failed | Rebuild `{workdir}/cairo-audit-agent-*-bundle.md` and confirm each bundle has non-zero line count. |
 | `CAUD-004` | Conflicting findings across agents | Keep the highest-confidence root cause, then request a focused re-run on the disputed file. |
-| `CAUD-005` | Report includes only low-confidence items | Run deep mode (`/cairo-auditor deep`) and add deterministic checks from Semgrep/audit findings. |
+| `CAUD-005` | Report includes only low-confidence items | Re-run deep mode with the host-specific cairo-auditor entrypoint (for example, `/starknet-agentic-skills:cairo-auditor deep` in Claude Code) and add deterministic checks from Semgrep/audit findings. |
 | `CAUD-006` | Deep mode requested but specialist agents unavailable | Re-run in an environment with Agent tool support. Where fail-closed enforcement is enabled, `--allow-degraded` explicitly permits fallback. |
 | `CAUD-007` | Deep mode host capability preflight failed | For hosts with preflight enforcement enabled, surface remediation and stop before findings unless `--allow-degraded` is explicitly present. |
 | `CAUD-008` | Agent transport instability or stalled specialist completion | Retry failed/stalled specialists once. In hosts with deep-mode enforcement enabled, unresolved specialist outages are treated as fail-closed unless explicitly degraded. |

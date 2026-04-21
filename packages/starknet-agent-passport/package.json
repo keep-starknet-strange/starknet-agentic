@@ -9,7 +9,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
     "test": "vitest run"
   },
@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "tsup": "^8.5.0",
-    "typescript": "^5.9.0",
-    "vitest": "^4.0.18"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   }
 }

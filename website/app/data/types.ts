@@ -72,6 +72,7 @@ export interface DocPage {
   slug: string;
   title: string;
   description?: string;
+  hidden?: boolean;
 }
 
 export interface DocCategory {
