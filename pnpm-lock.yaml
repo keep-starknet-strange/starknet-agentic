@@ -204,8 +204,8 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       starkzap:
-        specifier: ^2.0.0
-        version: 2.0.0(ethers@6.16.0)(typescript@6.0.3)
+        specifier: ^3.0.0
+        version: 3.0.0(ethers@6.16.0)(typescript@6.0.3)
     devDependencies:
       tsx:
         specifier: ^4.7.0
@@ -4122,8 +4122,8 @@ packages:
     resolution: {integrity: sha512-NFtg077DjddHUSh8sLZ5uB149LEF4NR90FuJ0oF7+zhce7l0oG9Ubqr3H4+jHm/ghHtV+yjlv1UhEoo4SBfILA==}
     engines: {node: '>=22'}
 
-  starkzap@2.0.0:
-    resolution: {integrity: sha512-U2REwOLCVUftw8SZZCqR2rxR3v1t+SvXXfWDI2PyU8PpmeN6oSahBqOUTgkNefEo1hXx8ZnU5BIsl7ArntWseg==}
+  starkzap@3.0.0:
+    resolution: {integrity: sha512-JFcURiuRE7002FAFjjm63OdRHePfbXamLEDIKldAUR64mnMoNMfI7o85UyoCW/e0kAl6yNxiEITv77q2BOi5eA==}
     peerDependencies:
       '@cartridge/controller': ^0.13.9
       '@ethersproject/shims': '*'
@@ -8850,7 +8850,7 @@ snapshots:
       - typescript
       - zod
 
-  starkzap@2.0.0(ethers@6.16.0)(typescript@6.0.3):
+  starkzap@3.0.0(ethers@6.16.0)(typescript@6.0.3):
     dependencies:
       '@avnu/avnu-sdk': 4.1.0-rc.0(ethers@6.16.0)(starknet@9.4.2(typescript@6.0.3))
       starknet: 9.4.2(typescript@6.0.3)(zod@4.3.6)
