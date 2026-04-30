@@ -2,6 +2,8 @@
   "name": "@starknetfoundation/starknet-agentic-mcp-server",
   "version": "0.1.0",
   "description": "MCP server exposing Starknet operations as tools for AI agents",
+  "author": "Starknet Agentic Contributors",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/keep-starknet-strange/starknet-agentic",
