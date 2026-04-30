@@ -1,6 +1,6 @@
 {
   "name": "@starknetfoundation/starknet-agentic-prediction-arb-scanner",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Signals-only prediction market arb scanner (Polymarket x Limitless x Raize), Starknet-native output model.",
   "author": "Starknet Agentic Contributors",
   "license": "MIT",

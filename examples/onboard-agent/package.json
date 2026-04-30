@@ -1,6 +1,6 @@
 {
   "name": "@starknetfoundation/starknet-agentic-onboard-agent-example",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "E2E agent onboarding flow: deploy account + register identity + verify",
   "type": "module",
