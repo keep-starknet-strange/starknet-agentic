@@ -2,6 +2,11 @@
   "name": "@starknetfoundation/starknet-agentic-onboarding-utils",
   "version": "0.1.0",
   "description": "Shared onboarding utilities for Starknet Agentic examples (preflight, deploy via factory, first action checks).",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keep-starknet-strange/starknet-agentic",
+    "directory": "packages/starknet-onboarding-utils"
+  },
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

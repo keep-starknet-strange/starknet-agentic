@@ -14,7 +14,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/keep-starknet-strange/starknet-agentic"
+    "url": "https://github.com/keep-starknet-strange/starknet-agentic",
+    "directory": "packages/create-starknet-agent"
   },
   "homepage": "https://starknet-agentic.vercel.app",
   "type": "module",

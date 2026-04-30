@@ -2,6 +2,11 @@
   "name": "@starknetfoundation/starknet-agentic-mcp-server",
   "version": "0.1.0",
   "description": "MCP server exposing Starknet operations as tools for AI agents",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keep-starknet-strange/starknet-agentic",
+    "directory": "packages/starknet-mcp-server"
+  },
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
