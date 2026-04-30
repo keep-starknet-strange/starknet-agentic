@@ -23,6 +23,9 @@ concurrency:
   group: publish-manual-${{ github.event.release.tag_name || github.event.inputs.release_tag || github.run_id }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   publish-npm:
     name: Publish to npm
