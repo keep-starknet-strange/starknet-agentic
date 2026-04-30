@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
-    "starkzap": "^2.0.0"
+    "starkzap": "^3.0.0"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
