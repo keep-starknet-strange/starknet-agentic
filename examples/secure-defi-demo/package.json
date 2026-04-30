@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/secure-defi-demo",
+  "name": "@starknetfoundation/starknet-agentic-secure-defi-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Deterministic Base->Starknet secure DeFi demo (session key evidence + Vesu + policy rejection)",

@@ -13,7 +13,7 @@ import {
   cairo,
 } from "starknet";
 import { Contract, Interface, JsonRpcProvider, Wallet, ZeroAddress } from "ethers";
-import { waitForTransactionWithTimeout } from "@starknet-agentic/onboarding-utils";
+import { waitForTransactionWithTimeout } from "@starknetfoundation/starknet-agentic-onboarding-utils";
 import { preflight } from "./steps/preflight.js";
 import { deployAccount } from "./steps/deploy-account.js";
 import { fundDeployer } from "./steps/fund-deployer.js";

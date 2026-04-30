@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/crosschain-demo",
+  "name": "@starknetfoundation/starknet-agentic-crosschain-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Cross-chain ERC-8004 demo: Base Sepolia registration + Starknet onboarding",
@@ -10,10 +10,10 @@
     "demo:verify": "npx tsx run.ts --gasfree --verify-tx",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "pretest": "pnpm --filter @starknet-agentic/onboarding-utils build"
+    "pretest": "pnpm --filter @starknetfoundation/starknet-agentic-onboarding-utils build"
   },
   "dependencies": {
-    "@starknet-agentic/onboarding-utils": "workspace:*",
+    "@starknetfoundation/starknet-agentic-onboarding-utils": "workspace:*",
     "dotenv": "^17.4.2",
     "ethers": "^6.16.0",
     "starknet": "^9.4.2"

@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/mcp-server",
+  "name": "@starknetfoundation/starknet-agentic-mcp-server",
   "version": "0.1.0",
   "description": "MCP server exposing Starknet operations as tools for AI agents",
   "type": "module",
@@ -7,14 +7,14 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
-    "pretest": "pnpm --filter @starknet-agentic/x402-starknet build",
+    "pretest": "pnpm --filter @starknetfoundation/starknet-agentic-x402-starknet build",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@avnu/avnu-sdk": "^4.0.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@starknet-agentic/x402-starknet": "workspace:*",
+    "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*",
     "starknet": "^9.4.2",
     "zod": "^4.4.1"
   },

@@ -32,7 +32,7 @@ npx create-starknet-agent@latest
 ```
 
 **What gets configured:**
-- MCP server pointing to `@starknet-agentic/mcp-server`
+- MCP server pointing to `@starknetfoundation/starknet-agentic-mcp-server`
 - Skills: `starknet-wallet`, `starknet-defi`
 - Environment template for credentials
 

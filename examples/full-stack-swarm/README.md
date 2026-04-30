@@ -4,7 +4,7 @@ This is an end-to-end demo that shows the “whole stack” working together:
 
 - **On-chain session keys + spending caps**: `contracts/session-account`
 - **Hardened signer boundary**: [SISNA](https://github.com/omarespejel/SISNA) (session keys never touch the agent runtime)
-- **Agent tool surface**: `@starknet-agentic/mcp-server` (MCP tools)
+- **Agent tool surface**: `@starknetfoundation/starknet-agentic-mcp-server` (MCP tools)
 - **Gasless execution**: AVNU Paymaster (sponsored)
 - **On-chain identity**: ERC-8004 (IdentityRegistry)
 
@@ -59,7 +59,7 @@ Signer provider options:
 ## Run
 
 ```bash
-pnpm --filter @starknet-agentic/full-stack-swarm-example run
+pnpm --filter @starknetfoundation/starknet-agentic-full-stack-swarm-example run
 ```
 
 The script writes a local `state.json` (contains keys; do not share) and prints a JSON report you can screenshot.

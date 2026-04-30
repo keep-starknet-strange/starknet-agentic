@@ -121,14 +121,14 @@ const DETECTION_RULES: DetectionRule[] = [
 
 ### MCP Server Configuration
 
-All platforms receive an MCP server configuration pointing to `@starknet-agentic/mcp-server`:
+All platforms receive an MCP server configuration pointing to `@starknetfoundation/starknet-agentic-mcp-server`:
 
 ```json
 {
   "mcpServers": {
     "starknet": {
       "command": "npx",
-      "args": ["@starknet-agentic/mcp-server@latest"],
+      "args": ["@starknetfoundation/starknet-agentic-mcp-server@latest"],
       "env": {
         "STARKNET_RPC_URL": "${STARKNET_RPC_URL:-https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY}",
         "STARKNET_ACCOUNT_ADDRESS": "${STARKNET_ACCOUNT_ADDRESS}",
@@ -179,7 +179,7 @@ npx create-starknet-agent verify
 
 Checks:
 1. MCP config exists and is valid JSON
-2. MCP server binary is available (`npx @starknet-agentic/mcp-server --version`)
+2. MCP server binary is available (`npx @starknetfoundation/starknet-agentic-mcp-server --version`)
 3. Required environment variables are set (not their values, just existence)
 4. Skills are installed
 5. (Optional) Can reach Starknet RPC and query a balance
@@ -854,7 +854,7 @@ export class MCPSidecar {
 
   async connect(): Promise<void> {
     // Spawn MCP server process
-    this.process = spawn('npx', ['@starknet-agentic/mcp-server'], {
+    this.process = spawn('npx', ['@starknetfoundation/starknet-agentic-mcp-server'], {
       env: {
         ...process.env,
         STARKNET_RPC_URL: this.config.rpcUrl,
@@ -867,7 +867,7 @@ export class MCPSidecar {
     // Create MCP client with stdio transport
     const transport = new StdioClientTransport({
       command: 'npx',
-      args: ['@starknet-agentic/mcp-server'],
+      args: ['@starknetfoundation/starknet-agentic-mcp-server'],
       env: { /* ... */ },
     });
 
@@ -922,7 +922,7 @@ export class MCPSidecar {
 
 ### Available Tools
 
-The MCP server exposes these tools (from `@starknet-agentic/mcp-server`):
+The MCP server exposes these tools (from `@starknetfoundation/starknet-agentic-mcp-server`):
 
 | Tool | Description | Arguments |
 |------|-------------|-----------|

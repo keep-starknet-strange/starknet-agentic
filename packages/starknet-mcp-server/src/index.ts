@@ -73,7 +73,7 @@ import {
   type QuoteRequest,
 } from "@avnu/avnu-sdk";
 import { z } from "zod";
-import { createStarknetPaymentSignatureHeader } from "@starknet-agentic/x402-starknet";
+import { createStarknetPaymentSignatureHeader } from "@starknetfoundation/starknet-agentic-x402-starknet";
 import { formatAmount, formatQuoteFields, formatErrorMessage } from "./utils/formatter.js";
 import { PolicyGuard, loadPolicyConfig } from "./middleware/policyGuard.js";
 import { KeyringProxySigner } from "./helpers/keyringProxySigner.js";

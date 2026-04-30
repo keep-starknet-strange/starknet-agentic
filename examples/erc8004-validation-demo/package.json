@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/erc8004-validation-demo",
+  "name": "@starknetfoundation/starknet-agentic-erc8004-validation-demo",
   "private": true,
   "version": "0.1.0",
   "type": "module",

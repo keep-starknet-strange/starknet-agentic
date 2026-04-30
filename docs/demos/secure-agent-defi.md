@@ -61,7 +61,7 @@ Schema source:
 Before execute mode:
 
 1. Build MCP server dist:
-   - `pnpm --filter @starknet-agentic/mcp-server build`
+   - `pnpm --filter @starknetfoundation/starknet-agentic-mcp-server build`
 2. Ensure funded test account:
    - `STARKNET_ACCOUNT_ADDRESS`
 3. Configure signer authentication mode:

@@ -43,13 +43,13 @@ pip install x10-python-trading-starknet==0.0.17
 From the repository root:
 
 ```bash
-pnpm --filter @starknet-agentic/carry-agent-demo run run
+pnpm --filter @starknetfoundation/starknet-agentic-carry-agent-demo run run
 ```
 
 Execute mode with safety rails:
 
 ```bash
-pnpm --filter @starknet-agentic/carry-agent-demo run run:execute
+pnpm --filter @starknetfoundation/starknet-agentic-carry-agent-demo run run:execute
 ```
 
 Spot execution through MCP (Starknet tool surface):
@@ -58,7 +58,7 @@ From the repository root:
 
 ```bash
 # build MCP server once
-pnpm --filter @starknet-agentic/mcp-server build
+pnpm --filter @starknetfoundation/starknet-agentic-mcp-server build
 
 # run carry agent with spot execution delegated to MCP starknet_swap
 CARRY_RUN_MODE=execute \
@@ -67,7 +67,7 @@ CARRY_EXTENDED_PYTHON_BIN=examples/carry-agent/.venv/bin/python \
 STARKNET_RPC_URL=https://starknet-sepolia-rpc.publicnode.com \
 STARKNET_ACCOUNT_ADDRESS=0x... \
 STARKNET_PRIVATE_KEY=0x... \
-pnpm --filter @starknet-agentic/carry-agent-demo run run
+pnpm --filter @starknetfoundation/starknet-agentic-carry-agent-demo run run
 ```
 
 Output:
@@ -80,8 +80,8 @@ Output:
 From the repository root:
 
 ```bash
-pnpm --filter @starknet-agentic/carry-agent-demo test
-pnpm --filter @starknet-agentic/carry-agent-demo typecheck
+pnpm --filter @starknetfoundation/starknet-agentic-carry-agent-demo test
+pnpm --filter @starknetfoundation/starknet-agentic-carry-agent-demo typecheck
 ```
 
 ## Safety notes

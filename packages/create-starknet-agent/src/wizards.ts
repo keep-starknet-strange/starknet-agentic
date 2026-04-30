@@ -208,7 +208,7 @@ function generateMcpConfig(network: Network, secretsEnvPath?: string): string {
     mcpServers: {
       starknet: {
         command: "npx",
-        args: ["-y", "@starknet-agentic/mcp-server@latest"],
+        args: ["-y", "@starknetfoundation/starknet-agentic-mcp-server@latest"],
         env: {
           STARKNET_RPC_URL: rpcUrl,
           STARKNET_PRIVATE_KEY: "${STARKNET_PRIVATE_KEY}",

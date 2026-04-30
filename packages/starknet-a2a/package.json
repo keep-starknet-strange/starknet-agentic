@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/a2a",
+  "name": "@starknetfoundation/starknet-agentic-a2a",
   "version": "0.1.0",
   "description": "A2A protocol adapter for Starknet-native AI agents",
   "type": "module",

@@ -71,7 +71,7 @@ function resolveMcpEntry(): string {
       [
         `MCP entry not found at: ${inferred}`,
         "Build it first from repo root:",
-        "pnpm --filter @starknet-agentic/mcp-server build",
+        "pnpm --filter @starknetfoundation/starknet-agentic-mcp-server build",
       ].join("\n"),
     );
   }

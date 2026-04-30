@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/carry-agent-demo",
+  "name": "@starknetfoundation/starknet-agentic-carry-agent-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Deterministic carry monitor example for Starknet-agentic using Extended market data.",

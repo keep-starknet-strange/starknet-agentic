@@ -157,7 +157,7 @@ my-agent/
 **Description**: Integrate starknet-mcp-server as a stdio subprocess (sidecar pattern) that the agent uses for Starknet operations.
 
 **Requirements**:
-- [ ] Create MCP client that spawns `@starknet-agentic/mcp-server` as child process
+- [ ] Create MCP client that spawns `@starknetfoundation/starknet-agentic-mcp-server` as child process
 - [ ] Implement stdio transport for MCP protocol communication
 - [ ] Add tool discovery (list available tools from MCP server)
 - [ ] Implement tool execution with timeout and error handling
@@ -475,7 +475,7 @@ Your agent will be available at http://localhost:3000
 **Configuration Schema**:
 ```typescript
 // agent.config.ts
-import { defineConfig } from '@starknet-agentic/agent';
+import { defineConfig } from '@starknetfoundation/starknet-agentic-agent';
 
 export default defineConfig({
   // Agent identity
@@ -1043,11 +1043,11 @@ Long-term features and community-driven enhancements.
 | Feature | Depends On |
 |---------|------------|
 | Platform Detection (0.1) | Knowledge of OpenClaw/Claude Code config file locations |
-| Agent Self-Install (0.3) | `@starknet-agentic/mcp-server` published to npm |
-| MCP Sidecar | `@starknet-agentic/mcp-server` published to npm |
+| Agent Self-Install (0.3) | `@starknetfoundation/starknet-agentic-mcp-server` published to npm |
+| MCP Sidecar | `@starknetfoundation/starknet-agentic-mcp-server` published to npm |
 | Skills Installation | `skills/manifest.json` or individual SKILL.md files in repo |
 | On-chain Identity | ERC-8004 contracts deployed (Sepolia done, Mainnet pending) |
-| A2A Discovery | `@starknet-agentic/a2a` package |
+| A2A Discovery | `@starknetfoundation/starknet-agentic-a2a` package |
 | Session Keys | Agent Account contract deployed |
 | Skill Marketplace | GitHub API access, skills manifest.json |
 

@@ -30,7 +30,7 @@ From repo root:
 
 ```bash
 pnpm install
-pnpm --filter @starknet-agentic/mcp-server build
+pnpm --filter @starknetfoundation/starknet-agentic-mcp-server build
 ```
 
 Setup env:
@@ -49,19 +49,19 @@ Note: the MCP sidecar initializes signing at startup, so even `dry-run` needs si
 Dry-run (no write tx required):
 
 ```bash
-pnpm --filter @starknet-agentic/secure-defi-demo run
+pnpm --filter @starknetfoundation/starknet-agentic-secure-defi-demo run
 ```
 
 Execute mode (real tx writes):
 
 ```bash
-pnpm --filter @starknet-agentic/secure-defi-demo run:execute
+pnpm --filter @starknetfoundation/starknet-agentic-secure-defi-demo run:execute
 ```
 
 Execute + withdraw path:
 
 ```bash
-pnpm --filter @starknet-agentic/secure-defi-demo run:withdraw
+pnpm --filter @starknetfoundation/starknet-agentic-secure-defi-demo run:withdraw
 ```
 
 v1.1 full-proof profile (execute + identity + Base anchor):
@@ -70,7 +70,7 @@ v1.1 full-proof profile (execute + identity + Base anchor):
 DEMO_AUTO_REGISTER_AGENT=1 \
 DEMO_ANCHOR_BASE_TO_ERC8004=1 \
 DEMO_BASE_ATTESTATION_PATH=./artifacts/base-attestation-demo.json \
-pnpm --filter @starknet-agentic/secure-defi-demo run:execute
+pnpm --filter @starknetfoundation/starknet-agentic-secure-defi-demo run:execute
 ```
 
 Strict security proof profile (issue #315):
@@ -83,7 +83,7 @@ DEMO_ANCHOR_BASE_TO_ERC8004=1 \
 STARKNET_SIGNER_MODE=proxy \
 DEMO_SESSION_ACCOUNT_ADDRESS=0x... \
 DEMO_SESSION_KEY_PUBLIC_KEY=0x... \
-pnpm --filter @starknet-agentic/secure-defi-demo run:execute
+pnpm --filter @starknetfoundation/starknet-agentic-secure-defi-demo run:execute
 ```
 
 Optional Starkzap claim input:
