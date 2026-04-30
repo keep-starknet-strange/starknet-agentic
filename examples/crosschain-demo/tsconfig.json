@@ -4,7 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "paths": {
-      "@starknet-agentic/onboarding-utils": [
+      "@starknetfoundation/starknet-agentic-onboarding-utils": [
         "../../packages/starknet-onboarding-utils/src/index.ts"
       ]
     },

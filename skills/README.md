@@ -182,7 +182,7 @@ These skills complement the Starknet MCP Server which provides direct tool acces
   "mcpServers": {
     "starknet": {
       "command": "npx",
-      "args": ["@starknet-agentic/mcp-server"],
+      "args": ["@starknetfoundation/starknet-agentic-mcp-server"],
       "env": {
         "STARKNET_RPC_URL": "https://...",
         "STARKNET_ACCOUNT_ADDRESS": "0x...",

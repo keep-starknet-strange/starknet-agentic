@@ -71,7 +71,7 @@ importers:
 
   examples/crosschain-demo:
     dependencies:
-      '@starknet-agentic/onboarding-utils':
+      '@starknetfoundation/starknet-agentic-onboarding-utils':
         specifier: workspace:*
         version: link:../../packages/starknet-onboarding-utils
       dotenv:
@@ -162,7 +162,7 @@ importers:
 
   examples/onboard-agent:
     dependencies:
-      '@starknet-agentic/onboarding-utils':
+      '@starknetfoundation/starknet-agentic-onboarding-utils':
         specifier: workspace:*
         version: link:../../packages/starknet-onboarding-utils
       dotenv:
@@ -316,7 +316,7 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.1)
-      '@starknet-agentic/x402-starknet':
+      '@starknetfoundation/starknet-agentic-x402-starknet':
         specifier: workspace:*
         version: link:../x402-starknet
       starknet:
@@ -344,7 +344,7 @@ importers:
 
   packages/starknet-onboarding-utils:
     dependencies:
-      '@starknet-agentic/shared':
+      '@starknetfoundation/starknet-agentic-shared':
         specifier: workspace:*
         version: link:../shared
       starknet:
@@ -366,7 +366,7 @@ importers:
 
   packages/x402-starknet:
     dependencies:
-      '@starknet-agentic/shared':
+      '@starknetfoundation/starknet-agentic-shared':
         specifier: workspace:*
         version: link:../shared
       starknet:

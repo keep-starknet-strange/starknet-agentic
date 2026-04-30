@@ -86,7 +86,7 @@ jobs:
 
       - name: Run auth conformance vectors (shows failing vector IDs)
         run: |
-          pnpm --filter @starknet-agentic/mcp-server test -- __tests__/helpers/keyringAuthVectors.test.ts
+          pnpm --filter @starknetfoundation/starknet-agentic-mcp-server test -- __tests__/helpers/keyringAuthVectors.test.ts
 
   parity_with_counterparts:
     runs-on: ubuntu-latest

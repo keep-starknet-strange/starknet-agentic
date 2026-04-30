@@ -1,4 +1,4 @@
-# @starknet-agentic/x402-starknet
+# @starknetfoundation/starknet-agentic-x402-starknet
 
 Small helpers for x402-on-Starknet header handling.
 

@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/prediction-arb-scanner",
+  "name": "@starknetfoundation/starknet-agentic-prediction-arb-scanner",
   "version": "0.1.0",
   "description": "Signals-only prediction market arb scanner (Polymarket x Limitless x Raize), Starknet-native output model.",
   "type": "module",

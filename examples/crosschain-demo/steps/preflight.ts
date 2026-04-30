@@ -1,4 +1,4 @@
-import { preflightStarknet } from "@starknet-agentic/onboarding-utils";
+import { preflightStarknet } from "@starknetfoundation/starknet-agentic-onboarding-utils";
 import type { Account, RpcProvider } from "starknet";
 import { STARKNET_NETWORKS, TOKENS, type StarknetNetworkConfig } from "../config.js";
 

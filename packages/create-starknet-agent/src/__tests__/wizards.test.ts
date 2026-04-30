@@ -113,7 +113,7 @@ describe("MCP config generation", () => {
       mcpServers: {
         starknet: {
           command: "npx",
-          args: ["-y", "@starknet-agentic/mcp-server@latest"],
+          args: ["-y", "@starknetfoundation/starknet-agentic-mcp-server@latest"],
           env: expect.objectContaining({
             STARKNET_RPC_URL: expectedRpcUrl,
           }),

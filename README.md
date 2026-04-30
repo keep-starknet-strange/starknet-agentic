@@ -156,11 +156,11 @@ For production environments, use MCP proxy signer mode rather than raw in-proces
 | Package | Path | Purpose |
 |---|---|---|
 | `create-starknet-agent` | [`packages/create-starknet-agent`](./packages/create-starknet-agent/) | Scaffolds/installs Starknet agent integration |
-| `@starknet-agentic/mcp-server` | [`packages/starknet-mcp-server`](./packages/starknet-mcp-server/) | Starknet operations over MCP |
-| `@starknet-agentic/a2a` | [`packages/starknet-a2a`](./packages/starknet-a2a/) | A2A protocol adapter |
-| `@starknet-agentic/agent-passport` | [`packages/starknet-agent-passport`](./packages/starknet-agent-passport/) | ERC-8004 capability metadata helpers |
-| `@starknet-agentic/prediction-arb-scanner` | [`packages/prediction-arb-scanner`](./packages/prediction-arb-scanner/) | Signals-only prediction market arb scanner output model |
-| `@starknet-agentic/onboarding-utils` | [`packages/starknet-onboarding-utils`](./packages/starknet-onboarding-utils/) | Shared onboarding helpers |
+| `@starknetfoundation/starknet-agentic-mcp-server` | [`packages/starknet-mcp-server`](./packages/starknet-mcp-server/) | Starknet operations over MCP |
+| `@starknetfoundation/starknet-agentic-a2a` | [`packages/starknet-a2a`](./packages/starknet-a2a/) | A2A protocol adapter |
+| `@starknetfoundation/starknet-agentic-agent-passport` | [`packages/starknet-agent-passport`](./packages/starknet-agent-passport/) | ERC-8004 capability metadata helpers |
+| `@starknetfoundation/starknet-agentic-prediction-arb-scanner` | [`packages/prediction-arb-scanner`](./packages/prediction-arb-scanner/) | Signals-only prediction market arb scanner output model |
+| `@starknetfoundation/starknet-agentic-onboarding-utils` | [`packages/starknet-onboarding-utils`](./packages/starknet-onboarding-utils/) | Shared onboarding helpers |
 
 ### Skills
 

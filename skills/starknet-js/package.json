@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/skill-starknet-js",
+  "name": "@starknetfoundation/starknet-agentic-skill-starknet-js",
   "private": true,
   "type": "module",
   "scripts": {

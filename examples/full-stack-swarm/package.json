@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/full-stack-swarm-example",
+  "name": "@starknetfoundation/starknet-agentic-full-stack-swarm-example",
   "version": "0.1.0",
   "private": true,
   "description": "Full stack swarm demo: SessionAccount + SISNA signer boundary + MCP tools + AVNU gasless + ERC-8004",

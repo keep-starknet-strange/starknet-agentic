@@ -142,7 +142,7 @@ jobs:
           EOF_JS
 
       - name: Run session vector conformance tests
-        run: pnpm --filter @starknet-agentic/mcp-server test -- __tests__/helpers/sessionSignatureVectors.test.ts
+        run: pnpm --filter @starknetfoundation/starknet-agentic-mcp-server test -- __tests__/helpers/sessionSignatureVectors.test.ts
 
   parity_with_external_repos:
     runs-on: ubuntu-latest

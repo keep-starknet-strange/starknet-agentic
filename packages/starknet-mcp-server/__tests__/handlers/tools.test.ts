@@ -115,7 +115,7 @@ vi.mock("@avnu/avnu-sdk", () => ({
 // Mock x402-starknet
 const mockCreateStarknetPaymentSignatureHeader = vi.fn();
 
-vi.mock("@starknet-agentic/x402-starknet", () => ({
+vi.mock("@starknetfoundation/starknet-agentic-x402-starknet", () => ({
   createStarknetPaymentSignatureHeader: mockCreateStarknetPaymentSignatureHeader,
 }));
 

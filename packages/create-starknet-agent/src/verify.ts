@@ -223,7 +223,7 @@ async function checkMcpServer(
 
         // Try to extract version from args
         const args = serverConfig.args || [];
-        const versionArg = args.find((a: string) => a.includes("@starknet-agentic/mcp-server"));
+        const versionArg = args.find((a: string) => a.includes("@starknetfoundation/starknet-agentic-mcp-server"));
         if (versionArg) {
           const versionMatch = versionArg.match(/@([\d.]+|latest)$/);
           if (versionMatch) {
@@ -262,7 +262,7 @@ async function pingMcpServer(
     const timeout = 10000; // 10 second timeout
 
     // Try to spawn the MCP server with a simple ping
-    const child = spawn("npx", ["-y", "@starknet-agentic/mcp-server@latest", "--help"], {
+    const child = spawn("npx", ["-y", "@starknetfoundation/starknet-agentic-mcp-server@latest", "--help"], {
       stdio: verbose ? "inherit" : "pipe",
       env: {
         ...process.env,
@@ -697,7 +697,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     }
 
     if (mcpResult.serverConfigured) {
-      console.log(`  ${pc.green("✓")} Server binary: @starknet-agentic/mcp-server${mcpResult.serverVersion ? `@${mcpResult.serverVersion}` : ""}`);
+      console.log(`  ${pc.green("✓")} Server binary: @starknetfoundation/starknet-agentic-mcp-server${mcpResult.serverVersion ? `@${mcpResult.serverVersion}` : ""}`);
     } else if (mcpResult.configExists) {
       console.log(`  ${pc.red("✗")} Starknet server not configured in MCP config`);
     }
