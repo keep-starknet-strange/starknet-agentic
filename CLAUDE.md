@@ -92,7 +92,7 @@ NOTE: The Agent Account contract at `contracts/agent-account/` (~570 lines main 
 | Build single TS package | `pnpm build` | `packages/<pkg>/` |
 | Dev mode (website) | `pnpm dev` | `website/` |
 | Deploy contracts (Sepolia) | `bash scripts/deploy_sepolia.sh` | `contracts/erc8004-cairo/` |
-| Scaffold new agent | `npx create-starknet-agent@latest` | any |
+| Scaffold new agent | `npx @starknetfoundation/create-starknet-agent@latest` | any |
 
 </commands>
 

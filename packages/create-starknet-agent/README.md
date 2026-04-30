@@ -7,7 +7,7 @@ Part of the [starknet-agentic](https://github.com/keep-starknet-strange/starknet
 ## Quick Start
 
 ```bash
-npx create-starknet-agent@latest
+npx @starknetfoundation/create-starknet-agent@latest
 ```
 
 The CLI detects your environment and sets up Starknet accordingly:
@@ -24,11 +24,11 @@ The CLI detects your environment and sets up Starknet accordingly:
 If you're already using OpenClaw, just run the CLI and it configures everything:
 
 ```bash
-npx create-starknet-agent@latest
+npx @starknetfoundation/create-starknet-agent@latest
 
 # Or let your agent do it:
 # "Hey, I want you to be able to use Starknet"
-# Agent runs: npx create-starknet-agent@latest --non-interactive
+# Agent runs: npx @starknetfoundation/create-starknet-agent@latest --non-interactive
 ```
 
 **What gets configured:**
@@ -46,7 +46,7 @@ npx create-starknet-agent@latest
 ## For Claude Code Users
 
 ```bash
-npx create-starknet-agent@latest
+npx @starknetfoundation/create-starknet-agent@latest
 ```
 
 **What gets configured:**
@@ -59,7 +59,7 @@ npx create-starknet-agent@latest
 For developers building custom agents from scratch:
 
 ```bash
-npx create-starknet-agent@latest my-agent
+npx @starknetfoundation/create-starknet-agent@latest my-agent
 cd my-agent
 cp .env.example .env
 # Edit .env with your credentials
@@ -123,27 +123,27 @@ my-agent/
 
 ```bash
 # Platform integration (auto-detect)
-npx create-starknet-agent@latest
+npx @starknetfoundation/create-starknet-agent@latest
 
 # Force specific platform
-npx create-starknet-agent@latest --platform openclaw
-npx create-starknet-agent@latest --platform claude-code
-npx create-starknet-agent@latest --platform standalone
+npx @starknetfoundation/create-starknet-agent@latest --platform openclaw
+npx @starknetfoundation/create-starknet-agent@latest --platform claude-code
+npx @starknetfoundation/create-starknet-agent@latest --platform standalone
 
 # Select skills
-npx create-starknet-agent@latest --skills starknet-wallet,starknet-defi
+npx @starknetfoundation/create-starknet-agent@latest --skills starknet-wallet,starknet-defi
 
 # Select network
-npx create-starknet-agent@latest --network sepolia
+npx @starknetfoundation/create-starknet-agent@latest --network sepolia
 
 # Non-interactive (for agent self-setup)
-npx create-starknet-agent@latest --non-interactive --json
+npx @starknetfoundation/create-starknet-agent@latest --non-interactive --json
 
 # Verify setup
-npx create-starknet-agent verify
+npx @starknetfoundation/create-starknet-agent verify
 
 # Setup credentials securely
-npx create-starknet-agent credentials
+npx @starknetfoundation/create-starknet-agent credentials
 ```
 
 | Option | Description |
@@ -192,7 +192,7 @@ Once configured, your agent can use these Starknet tools:
 Agents can configure themselves by running the CLI in non-interactive mode:
 
 ```bash
-npx create-starknet-agent@latest --non-interactive --json
+npx @starknetfoundation/create-starknet-agent@latest --non-interactive --json
 ```
 
 Returns:
@@ -219,7 +219,7 @@ Returns:
 Confirm your setup is working:
 
 ```bash
-npx create-starknet-agent verify
+npx @starknetfoundation/create-starknet-agent verify
 ```
 
 Checks:

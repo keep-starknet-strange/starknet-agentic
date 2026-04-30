@@ -18,7 +18,7 @@ export const STEPS: Step[] = [
   },
 ];
 
-export const INSTALL_COMMAND = "npx create-starknet-agent@latest";
+export const INSTALL_COMMAND = "npx @starknetfoundation/create-starknet-agent@latest";
 
 export const EXTERNAL_LINKS = {
   github: "https://github.com/keep-starknet-strange/starknet-agentic",
