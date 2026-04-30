@@ -1,0 +1,9 @@
+{
+  "name": "ajv-cli-locked",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hash-pinned ajv-cli for CI use (locked via package-lock.json with integrity hashes).",
+  "dependencies": {
+    "ajv-cli": "5.0.0"
+  }
+}

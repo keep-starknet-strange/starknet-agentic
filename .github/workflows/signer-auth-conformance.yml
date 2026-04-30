@@ -51,8 +51,10 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install AJV CLI
-        run: npm install --global ajv-cli@5.0.0
+      - name: Install AJV CLI (hash-pinned via tools/ajv-cli/package-lock.json)
+        run: |
+          npm ci --prefix tools/ajv-cli --ignore-scripts
+          echo "$GITHUB_WORKSPACE/tools/ajv-cli/node_modules/.bin" >> "$GITHUB_PATH"
 
       - name: Run parity checker unit tests
         run: node --test scripts/security/check-session-signature-parity.test.mjs

@@ -33,7 +33,7 @@ jobs:
 
       - name: Install Python deps
         run: |
-          python3 -m pip install -r requirements.txt
+          python3 -m pip install --require-hashes -r requirements-lock.txt
 
       - name: Run Codex distribution unit tests
         run: |
