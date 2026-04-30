@@ -2,6 +2,8 @@
   "name": "@starknetfoundation/starknet-agentic-agent-passport",
   "version": "0.1.0",
   "description": "Passport layer on top of ERC-8004 IdentityRegistry: capability metadata conventions + client helpers",
+  "author": "Starknet Agentic Contributors",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/keep-starknet-strange/starknet-agentic",

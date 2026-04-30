@@ -2,6 +2,8 @@
   "name": "@starknetfoundation/starknet-agentic-a2a",
   "version": "0.1.0",
   "description": "A2A protocol adapter for Starknet-native AI agents",
+  "author": "Starknet Agentic Contributors",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/keep-starknet-strange/starknet-agentic",
