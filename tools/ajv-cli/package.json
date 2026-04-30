@@ -5,5 +5,8 @@
   "description": "Hash-pinned ajv-cli for CI use (locked via package-lock.json with integrity hashes).",
   "dependencies": {
     "ajv-cli": "5.0.0"
+  },
+  "overrides": {
+    "fast-json-patch": "^3.1.1"
   }
 }
