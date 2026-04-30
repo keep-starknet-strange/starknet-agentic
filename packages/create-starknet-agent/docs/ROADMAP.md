@@ -27,7 +27,7 @@ Let's continue with implementing:
 │  ──────────────────────────────────────────────                     │
 │  → Lightweight integration: skills + MCP config                     │
 │  → No scaffolding needed, just config files                         │
-│  → Agent can self-install via npx create-starknet-agent             │
+│  → Agent can self-install via npx @starknetfoundation/create-starknet-agent             │
 │                                                                     │
 │  Building a new agent from scratch?  (SECONDARY PATH)               │
 │  ─────────────────────────────────────                              │
@@ -82,7 +82,7 @@ The CLI also scaffolds standalone TypeScript projects with 3 templates:
 
 Core infrastructure to get a basic agent with UI, MCP, and one skill working end-to-end.
 
-**Definition of Done**: User runs `npx create-starknet-agent@latest my-agent`, answers prompts, runs `pnpm start`, and can chat with an autonomous agent that executes Starknet transactions via MCP tools.
+**Definition of Done**: User runs `npx @starknetfoundation/create-starknet-agent@latest my-agent`, answers prompts, runs `pnpm start`, and can chat with an autonomous agent that executes Starknet transactions via MCP tools.
 
 ---
 
@@ -407,7 +407,7 @@ type AgentEvent =
 
 **CLI Flow**:
 ```
-$ npx create-starknet-agent@latest my-agent
+$ npx @starknetfoundation/create-starknet-agent@latest my-agent
 
 ? Project name: my-agent
 ? Select a preset:
@@ -1086,7 +1086,7 @@ This is the target user experience for agent-initiated Starknet setup:
 │  Agent: I'll set up Starknet capabilities now.                       │
 │                                                                      │
 │  *Agent executes:*                                                   │
-│  npx create-starknet-agent@latest \                                  │
+│  npx @starknetfoundation/create-starknet-agent@latest \                                  │
 │    --skills starknet-wallet,starknet-defi \                          │
 │    --network sepolia \                                               │
 │    --non-interactive --json                                          │
@@ -1110,7 +1110,7 @@ This is the target user experience for agent-initiated Starknet setup:
 │         1. Open Ready or Braavos wallet                           │
 │         2. Go to Settings → Export Private Key                       │
 │         3. Run this command and paste when prompted:                 │
-│            npx create-starknet-agent credentials                     │
+│            npx @starknetfoundation/create-starknet-agent credentials                     │
 │                                                                      │
 │         4. Restart me (or wait 30 seconds for auto-reload)           │
 │                                                                      │

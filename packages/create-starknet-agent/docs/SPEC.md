@@ -34,7 +34,7 @@ Technical architecture and implementation specification for adding Starknet capa
 | **Standalone** | Developers building custom agents | Full project scaffold | Heavy |
 
 ```
-npx create-starknet-agent@latest
+npx @starknetfoundation/create-starknet-agent@latest
          │
          ▼
 ┌─────────────────────┐
@@ -163,7 +163,7 @@ interface AgentSetupResult {
 **CLI Flags for Non-Interactive Mode:**
 
 ```bash
-npx create-starknet-agent@latest \
+npx @starknetfoundation/create-starknet-agent@latest \
   --non-interactive \           # Skip all prompts
   --json \                      # Output JSON result
   --platform openclaw \         # Override detection
@@ -174,7 +174,7 @@ npx create-starknet-agent@latest \
 ### Verification
 
 ```bash
-npx create-starknet-agent verify
+npx @starknetfoundation/create-starknet-agent verify
 ```
 
 Checks:

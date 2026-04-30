@@ -29,13 +29,13 @@ This repo gives you:
 If you just want Starknet agent capabilities now:
 
 ```bash
-npx create-starknet-agent@latest
+npx @starknetfoundation/create-starknet-agent@latest
 ```
 
 Sanity check (npm availability):
 
 ```bash
-npm view create-starknet-agent version
+npm view @starknetfoundation/create-starknet-agent version
 ```
 
 The scaffolder detects your environment (OpenClaw/MoltBook, Claude Code, Cursor, or standalone) and wires Starknet integration automatically.
@@ -46,7 +46,7 @@ Use the path that matches your runtime:
 
 ```bash
 # Full project scaffold
-npx create-starknet-agent@latest
+npx @starknetfoundation/create-starknet-agent@latest
 ```
 
 ```bash
@@ -102,7 +102,7 @@ For the full skill catalog and Cairo migration notes, see [skills/README.md](./s
 
 ## System Requirements
 
-- CLI users (`npx create-starknet-agent@latest`): Node.js `>=18.0.0`
+- CLI users (`npx @starknetfoundation/create-starknet-agent@latest`): Node.js `>=18.0.0`
 - Contributors from source (this monorepo):
   - Node.js `>=20.9.0`
   - `pnpm` `>=10.28.2` (workspace package manager)

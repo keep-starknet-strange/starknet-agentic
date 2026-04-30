@@ -112,7 +112,7 @@ export function parseCredentialsArgs(args: string[]): CredentialsArgs {
 export function printCredentialsHelp(): void {
   console.log(`
 ${pc.bold("Usage:")}
-  npx create-starknet-agent credentials [options]
+  npx @starknetfoundation/create-starknet-agent credentials [options]
 
 ${pc.bold("Description:")}
   Securely configure Starknet credentials for your agent platform.
@@ -134,10 +134,10 @@ ${pc.bold("Storage Locations by Platform:")}
   ${pc.cyan("generic-mcp")}    .env file
 
 ${pc.bold("Examples:")}
-  npx create-starknet-agent credentials
-  npx create-starknet-agent credentials --platform claude-code
-  npx create-starknet-agent credentials --from-env
-  npx create-starknet-agent credentials --from-ready
+  npx @starknetfoundation/create-starknet-agent credentials
+  npx @starknetfoundation/create-starknet-agent credentials --platform claude-code
+  npx @starknetfoundation/create-starknet-agent credentials --from-env
+  npx @starknetfoundation/create-starknet-agent credentials --from-ready
 `);
 }
 
