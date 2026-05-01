@@ -5,7 +5,7 @@ starknet-py>=0.6.0
 
 # QR Code generation
 qrcode[pil]>=7.4.2
-Pillow>=10.3.0
+Pillow>=12.2.0
 
 # Telegram Bot
 python-telegram-bot>=20.0
