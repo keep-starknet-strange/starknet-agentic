@@ -343,9 +343,6 @@ async function main() {
   fs.writeFileSync(outputPath, JSON.stringify(deploymentInfo, null, 2));
 
   const networkOutputPath = path.join(__dirname, "..", `deployed_addresses_${network.slug}.json`);
-  if (fs.existsSync(networkOutputPath)) {
-    console.warn(`⚠️  Overwriting existing ${path.basename(networkOutputPath)} (latest deployment pointer).`);
-  }
   fs.writeFileSync(networkOutputPath, JSON.stringify(deploymentInfo, null, 2));
   const timestampSuffix = deploymentInfo.deployedAt.replace(/[:.]/g, "-");
   const immutableOutputPath = path.join(

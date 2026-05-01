@@ -26,7 +26,7 @@
 import { RpcProvider, hash } from 'starknet';
 import { WebSocket } from 'ws';
 import { execSync, execFileSync } from 'child_process';
-import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, lstatSync, mkdtempSync, rmSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, mkdtempSync, rmSync, openSync, fstatSync, closeSync, constants as fsConstants } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
 
@@ -308,10 +308,20 @@ class SmartEventWatcher {
         for (const file of files) {
           if (!file.endsWith('.sh')) continue;
           const shellPath = join(cronDir, file);
-          const shellStat = lstatSync(shellPath, { throwIfNoEntry: false });
-          if (!shellStat || !shellStat.isFile() || shellStat.isSymbolicLink()) continue;
-
-          const content = readFileSync(shellPath, 'utf8');
+          // O_NOFOLLOW makes openSync throw ELOOP on symlinks, atomically
+          // ruling out the symlink-swap TOCTOU between stat and read.
+          let content;
+          try {
+            const fd = openSync(shellPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+            try {
+              if (!fstatSync(fd).isFile()) continue;
+              content = readFileSync(fd, 'utf8');
+            } finally {
+              closeSync(fd);
+            }
+          } catch {
+            continue;
+          }
           if (content.includes(knownConfigPath)) {
             const currentCrontab = execSync('crontab -l 2>/dev/null || echo ""').toString();
             const lines = currentCrontab.split('\n').filter(line => !line.includes(shellPath));
