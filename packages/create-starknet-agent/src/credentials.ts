@@ -330,8 +330,8 @@ function saveCredentialsEnv(
   let existing = "";
   try {
     existing = fs.readFileSync(filePath, "utf-8");
-  } catch {
-    existing = "";
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
   }
   if (existing) {
     const lines = existing.split("\n");
@@ -380,8 +380,8 @@ function ensureGitignore(dir: string): void {
   let content = "";
   try {
     content = fs.readFileSync(gitignorePath, "utf-8");
-  } catch {
-    content = "";
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
   }
 
   // Check if .env is already ignored
