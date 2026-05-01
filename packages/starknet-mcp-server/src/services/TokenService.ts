@@ -298,7 +298,7 @@ export class TokenService {
     try {
       // Unwrap { symbol: ... } or { name: ... } responses, unless it's a direct ByteArray
       let value = result;
-      if (typeof result === "object" && result !== null && !Array.isArray(result) && !this.isByteArray(result)) {
+      if (typeof result === "object" && !Array.isArray(result) && !this.isByteArray(result)) {
         const record = result as Record<string, unknown>;
         if ("symbol" in record) value = record.symbol;
         else if ("name" in record) value = record.name;
