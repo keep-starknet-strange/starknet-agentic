@@ -26,7 +26,7 @@
 import { RpcProvider, hash } from 'starknet';
 import { WebSocket } from 'ws';
 import { execSync, execFileSync } from 'child_process';
-import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, lstatSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, lstatSync, mkdtempSync, rmSync } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
 
@@ -121,10 +121,11 @@ exec flock -n "$LOCKFILE" node ${shellQuote(scriptPath)} ${shellQuote(`@${config
     lines.push(cronEntry);
     
     const newCrontab = lines.join('\n') + '\n';
-    const tmpCrontab = join(tmpdir(), `crontab-${process.pid}.tmp`);
-    writeFileSync(tmpCrontab, newCrontab);
+    const tmpDir = mkdtempSync(join(tmpdir(), 'starknet-crontab-'));
+    const tmpCrontab = join(tmpDir, 'crontab.tmp');
+    writeFileSync(tmpCrontab, newCrontab, { mode: 0o600 });
     execFileSync('crontab', [tmpCrontab]);
-    try { unlinkSync(tmpCrontab); } catch (e) { log(`Failed to remove temp crontab (${tmpCrontab}): ${e}`, 'warn'); }
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch (e) { log(`Failed to remove temp crontab dir (${tmpDir}): ${e}`, 'warn'); }
 
     return {
       success: true,
@@ -147,7 +148,7 @@ function deriveWebSocketUrl(httpUrl) {
   if (!value) return value;
 
   // Infura Starknet: https://starknet-mainnet.infura.io/v3/<KEY> -> wss://starknet-mainnet.infura.io/ws/v3/<KEY>
-  if (/\.infura\.io\/v3\//i.test(value)) {
+  if (/^https?:\/\/[^/]*\.infura\.io\/v3\//i.test(value)) {
     return value
       .replace(/^https:\/\//i, 'wss://')
       .replace(/^http:\/\//i, 'ws://')
@@ -287,10 +288,11 @@ class SmartEventWatcher {
         const currentCrontab = execSync('crontab -l 2>/dev/null || echo ""').toString();
         const lines = currentCrontab.split('\n').filter(line => !line.includes(shellPath));
         const newCrontab = lines.join('\n') + '\n';
-        const tmpCrontab = join(tmpdir(), `crontab-${process.pid}.tmp`);
-        writeFileSync(tmpCrontab, newCrontab);
+        const tmpDir = mkdtempSync(join(tmpdir(), 'starknet-crontab-'));
+        const tmpCrontab = join(tmpDir, 'crontab.tmp');
+        writeFileSync(tmpCrontab, newCrontab, { mode: 0o600 });
         execFileSync('crontab', [tmpCrontab]);
-        try { unlinkSync(tmpCrontab); } catch (e) { this.log(`Failed to remove temp crontab (${tmpCrontab}): ${e}`, 'warn'); }
+        try { rmSync(tmpDir, { recursive: true, force: true }); } catch (e) { this.log(`Failed to remove temp crontab dir (${tmpDir}): ${e}`, 'warn'); }
 
         // Delete files
         try { unlinkSync(shellPath); } catch (e) { this.log(`Failed to remove shellPath (${shellPath}): ${e}`, 'warn'); }
@@ -314,10 +316,11 @@ class SmartEventWatcher {
             const currentCrontab = execSync('crontab -l 2>/dev/null || echo ""').toString();
             const lines = currentCrontab.split('\n').filter(line => !line.includes(shellPath));
             const newCrontab = lines.join('\n') + '\n';
-            const tmpCrontab = join(tmpdir(), `crontab-${process.pid}-2.tmp`);
-            writeFileSync(tmpCrontab, newCrontab);
+            const tmpDir = mkdtempSync(join(tmpdir(), 'starknet-crontab-'));
+            const tmpCrontab = join(tmpDir, 'crontab.tmp');
+            writeFileSync(tmpCrontab, newCrontab, { mode: 0o600 });
             execFileSync('crontab', [tmpCrontab]);
-            try { unlinkSync(tmpCrontab); } catch (e) { this.log(`Failed to remove temp crontab (${tmpCrontab}): ${e}`, 'warn'); }
+            try { rmSync(tmpDir, { recursive: true, force: true }); } catch (e) { this.log(`Failed to remove temp crontab dir (${tmpDir}): ${e}`, 'warn'); }
 
             try { unlinkSync(shellPath); } catch (e) { this.log(`Failed to remove shellPath (${shellPath}): ${e}`, 'warn'); }
             const derivedConfigPath = shellPath.replace(/\.sh$/i, '.json');

@@ -304,14 +304,12 @@ function saveCredentialsJson(
     updatedAt: new Date().toISOString(),
   };
 
-  // Check if file exists to preserve createdAt
-  if (fs.existsSync(filePath)) {
-    try {
-      const existing = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-      credentials.createdAt = existing.createdAt || credentials.createdAt;
-    } catch {
-      // Ignore parse errors
-    }
+  // Preserve createdAt from any pre-existing file
+  try {
+    const existing = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    credentials.createdAt = existing.createdAt || credentials.createdAt;
+  } catch {
+    // File missing or unparsable — keep the new createdAt
   }
 
   fs.writeFileSync(filePath, JSON.stringify(credentials, null, 2), { mode: 0o600 });
@@ -328,9 +326,14 @@ function saveCredentialsEnv(
 ): void {
   const envContent: string[] = [];
 
-  // Read existing .env content if it exists
-  if (fs.existsSync(filePath)) {
-    const existing = fs.readFileSync(filePath, "utf-8");
+  // Read existing .env content if any (file may be absent on first save)
+  let existing = "";
+  try {
+    existing = fs.readFileSync(filePath, "utf-8");
+  } catch {
+    existing = "";
+  }
+  if (existing) {
     const lines = existing.split("\n");
 
     // Filter out existing Starknet vars
@@ -375,8 +378,10 @@ function ensureGitignore(dir: string): void {
   const gitignorePath = path.join(dir, ".gitignore");
 
   let content = "";
-  if (fs.existsSync(gitignorePath)) {
+  try {
     content = fs.readFileSync(gitignorePath, "utf-8");
+  } catch {
+    content = "";
   }
 
   // Check if .env is already ignored
