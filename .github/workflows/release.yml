@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Upgrade npm for trusted publishing (OIDC)
+        run: npm install -g npm@latest
+
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@6a0a831ff30acef54f2c6aa1cbbc1096b066edaf # v1.7.0 (tag object: e87c8ed249971350e47fab7515075f44eb134e5b)
@@ -50,5 +53,4 @@ jobs:
         env:
           # Prefer PAT (if configured) so version PRs can trigger downstream CI.
           GITHUB_TOKEN: "${{ secrets.RELEASE_BOT_PAT || secrets.GITHUB_TOKEN }}"
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
