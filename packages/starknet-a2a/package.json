@@ -17,7 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "starknet": "^9.4.2",
+    "starknet": "^10.0.2",
     "zod": "^4.4.1"
   },
   "devDependencies": {
