@@ -22,7 +22,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ['javascript-typescript', 'actions']
+        include:
+          - language: javascript-typescript
+            queries: security-and-quality
+          - language: actions
 
     steps:
       - name: Checkout
@@ -32,6 +35,7 @@ jobs:
         uses: github/codeql-action/init@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a
         with:
           languages: ${{ matrix.language }}
+          queries: ${{ matrix.queries }}
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a
