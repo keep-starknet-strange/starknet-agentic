@@ -11,7 +11,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^17.4.2",
-    "starknet": "^9.4.2"
+    "starknet": "^10.0.2"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
