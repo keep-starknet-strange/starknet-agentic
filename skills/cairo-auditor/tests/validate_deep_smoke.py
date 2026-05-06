@@ -256,6 +256,100 @@ def run_structured_deep_path() -> tuple[bool, str]:
     return True, "structured deep path renders Agent 5-only finding with integrity evidence"
 
 
+def run_schema_check_rejects_malformed() -> tuple[bool, str]:
+    with tempfile.TemporaryDirectory(prefix="cairo-auditor-schema-reject-") as tmpdir:
+        workdir = Path(tmpdir)
+        (workdir / "cairo-audit-files.txt").write_text("src/lib.cairo\n", encoding="utf-8")
+        for idx in range(1, 5):
+            (workdir / f"cairo-audit-agent-{idx}-bundle.md").write_text("non-empty\n", encoding="utf-8")
+
+        init_proc = subprocess.run(
+            [
+                "python3",
+                str(DEEP_INTEGRITY),
+                "init",
+                "--workdir",
+                str(workdir),
+                "--host",
+                "codex",
+                "--vector-model",
+                "gpt-5.4",
+                "--adversarial-model",
+                "gpt-5.4",
+                "--agent-tool-available",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if init_proc.returncode != 0:
+            return False, f"deep integrity init failed: {init_proc.stderr.strip()}"
+
+        agent5 = workdir / "cairo-audit-agent-5-findings.json"
+        agent5.write_text(
+            json.dumps(
+                {
+                    "agent_id": 5,
+                    "findings": [
+                        {
+                            "title": "Missing required fields finding",
+                            "class_id": "STALE_STATE_WRITE",
+                            "file": "src/lib.cairo",
+                            "priority": "P1",
+                            "severity": "High",
+                            "confidence": 88,
+                            "description": "missing root_cause/attack_path/guard_analysis/evidence_tags",
+                            "evidence_tags": [],
+                        }
+                    ],
+                    "dropped_candidates": [],
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        check_proc = subprocess.run(
+            [
+                "python3",
+                str(DEEP_INTEGRITY),
+                "check",
+                "--workdir",
+                str(workdir),
+                "--mode",
+                "deep",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if check_proc.returncode == 0:
+            return False, "schema check did not reject malformed agent output"
+        if "schema:" not in check_proc.stdout:
+            return False, f"schema check rejected without surfacing schema error: {check_proc.stdout.strip()}"
+
+        skip_proc = subprocess.run(
+            [
+                "python3",
+                str(DEEP_INTEGRITY),
+                "check",
+                "--workdir",
+                str(workdir),
+                "--mode",
+                "deep",
+                "--skip-schema",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if skip_proc.returncode != 0:
+            return False, f"--skip-schema should bypass schema check: {skip_proc.stdout.strip()}"
+
+    return True, "schema check rejects malformed agent output and --skip-schema bypasses it"
+
+
 def validate_markers(path: Path, markers: tuple[str, ...], label: str) -> tuple[bool, str]:
     try:
         content = path.read_text(encoding="utf-8")
@@ -278,6 +372,7 @@ def main() -> int:
         run_fixture_scan(),
         run_adversarial_fixture_preflight(),
         run_structured_deep_path(),
+        run_schema_check_rejects_malformed(),
         validate_markers(REPORT_FORMAT, REQUIRED_REPORT_MARKERS, "report format"),
         validate_markers(SKILL_DOC, REQUIRED_SKILL_MARKERS, "skill contract"),
     ]

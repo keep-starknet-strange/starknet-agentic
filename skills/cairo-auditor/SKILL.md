@@ -379,7 +379,7 @@ Dropped-candidate handling:
 
 If `--file-output` is set, write the report to `{repo-root}/security-review-{timestamp}.md` and print the path.
 
-After rendering, if `{skill_root}/scripts/quality/deep_integrity.py` exists, run its `check` command against `{workdir}` and the report path. If it fails in non-degraded deep mode, mark `Execution Integrity: FAILED` and stop before publishing findings.
+After rendering, if `{skill_root}/scripts/quality/deep_integrity.py` exists, run its `check` command against `{workdir}` and the report path. The check validates each `cairo-audit-agent-*-findings.json` against `references/finding.schema.json`; pass `--skip-schema` only when validating an out-of-tree skill install. If it fails in non-degraded deep mode, mark `Execution Integrity: FAILED` and stop before publishing findings.
 
 ## Banner
 

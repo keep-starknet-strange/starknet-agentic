@@ -294,6 +294,7 @@ def _read_scope(scope_file: Path | None, repo_root: Path, findings: list[dict[st
                 rel_paths.append(path.resolve().relative_to(repo_root.resolve()).as_posix())
                 continue
             except ValueError:
+                # path lives outside repo_root; keep the original absolute string in the scope table.
                 pass
         rel_paths.append(raw)
     return rel_paths, total_lines
