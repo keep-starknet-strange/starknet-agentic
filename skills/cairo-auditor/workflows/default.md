@@ -5,9 +5,9 @@ Standard 4-agent parallel scan. Orchestrated by [SKILL.md](../SKILL.md).
 ## Pipeline
 
 1. **Discover** — `find` in-scope `.cairo` files, run deterministic preflight.
-2. **Prepare** — Read `vector-scan.md`, build 4 bundle files (code + judging + formatting + one attack-vector partition each).
-3. **Spawn** — 4 parallel vector specialists with host-aware vector model (`claude-code: sonnet`, `codex: gpt-5.4` with fallback `gpt-5.2`), each triages vectors, deep-checks survivors, applies FP gate.
-4. **Report** — Merge, deduplicate by root cause, apply optional `--proven-only` severity cap for `[CODE-TRACE]`-only findings, sort by confidence, emit with scope table and disclaimer.
+2. **Prepare** — Read `vector-scan.md`, build a static surface map, then build 4 bundle files (code + judging + structured-output contract + formatting + one attack-vector partition each).
+3. **Spawn** — 4 parallel vector specialists with host-aware vector model (`claude-code: sonnet`, `codex: gpt-5.4` with fallback `gpt-5.2`), each triages vectors, deep-checks survivors, applies FP gate, and emits structured JSON.
+4. **Report** — Merge structured JSON, deduplicate by root cause, apply optional `--proven-only` severity cap for `[CODE-TRACE]`-only findings, sort by confidence, render Markdown with `structured_report.py`.
 
 ## Agent Configuration
 

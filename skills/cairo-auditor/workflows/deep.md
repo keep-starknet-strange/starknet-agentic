@@ -5,19 +5,19 @@ Extends default with adversarial reasoning. Orchestrated by [SKILL.md](../SKILL.
 ## Pipeline
 
 1. **Discover** — same as default.
-2. **Prepare** — same as default, plus resolve adversarial agent instructions.
+2. **Prepare** — same as default, plus generate `{workdir}/cairo-audit-surface-map.md` and resolve adversarial agent instructions.
 3. **Threat Intel (optional)** — run bounded `curl`-based enrichment and persist `{workdir}/cairo-audit-threat-intel.md`; include SKIPPED/FAILED reason in execution trace when unavailable.
 4. **Spawn** — Adaptive deep fanout:
    - small scopes (largest file <= 1000 lines **and** all bundles <= 1400 lines): 4 parallel vector specialists + 1 adversarial specialist in parallel (host-aware model routing).
    - large scopes: two waves for reliability (Wave A: Agents 1-4, Wave B: Agent 5).
-5. **Report** — Merge all 5 agent outputs, deduplicate, apply optional `--proven-only` severity cap for `[CODE-TRACE]`-only findings, sort, emit.
+5. **Report** — Merge all 5 structured JSON outputs, deduplicate, apply optional `--proven-only` severity cap for `[CODE-TRACE]`-only findings, sort, render Markdown, then run integrity validation.
 
 ## Agent Configuration
 
 | Agent | Model | Input | Role |
 |-------|-------|-------|------|
 | 1–4 | host-aware (`claude-code: sonnet`, `codex: gpt-5.4`) | Bundle files (+ optional threat-intel hints) | Vector scan (same as default) |
-| 5 | host-aware (`claude-code: opus`, `codex: gpt-5.4`) | Direct file reads + adversarial.md (+ optional threat-intel hints) | Free-form adversarial reasoning |
+| 5 | host-aware (`claude-code: opus`, `codex: gpt-5.4`) | Direct file reads + surface map + adversarial.md (+ optional threat-intel hints) | Free-form adversarial reasoning |
 
 Codex fallback is `gpt-5.2` when `gpt-5.4` probe fails and `--strict-models` is not set.
 `--strict-models` disables fallback and fails closed if preferred host models are unavailable.
@@ -26,9 +26,10 @@ Codex fallback is `gpt-5.2` when `gpt-5.4` probe fails and `--strict-models` is 
 ## Agent 5 — Adversarial Specialist
 
 - No attack vector reference — reasons freely about logic errors, unsafe interactions, multi-step chains.
-- Reads all in-scope files directly (not via bundle).
+- Reads the generated surface map first, then all in-scope files directly (not via bundle).
 - Focuses on: cross-function boundary reasoning, trust-chain composition, session/account interplay, upgrade failure modes.
 - Applies FP gate and confidence scoring per `judging.md`.
+- Emits structured JSON matching `structured-findings.md`.
 - Higher cost but catches findings that pattern-based scanning misses.
 
 ## When to Use Deep Mode

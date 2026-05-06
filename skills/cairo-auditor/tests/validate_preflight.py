@@ -16,11 +16,12 @@ CASES = [
     {
         "name": "insecure_upgrade_controller",
         "expected_classes": {
+            "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
             "NO_ACCESS_CONTROL_MUTATION",
             "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
             "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD",
         },
-        "expected_findings_exact": 3,
+        "expected_findings_exact": 4,
     },
     {
         "name": "secure_upgrade_controller",
@@ -30,11 +31,12 @@ CASES = [
     {
         "name": "insecure_embed_upgrade_controller",
         "expected_classes": {
+            "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
             "NO_ACCESS_CONTROL_MUTATION",
             "IMMEDIATE_UPGRADE_WITHOUT_TIMELOCK",
             "UPGRADE_CLASS_HASH_WITHOUT_NONZERO_GUARD",
         },
-        "expected_findings_exact": 3,
+        "expected_findings_exact": 4,
     },
     {
         "name": "insecure_per_item_upgrade_controller",
@@ -54,6 +56,11 @@ CASES = [
         "name": "guarded_upgrade_without_timelock",
         "expected_classes": set(),
         "expected_findings_exact": 0,
+    },
+    {
+        "name": "unchecked_fee_bound",
+        "expected_classes": {"UNCHECKED_FEE_BOUND"},
+        "expected_findings_exact": 1,
     },
 ]
 
@@ -104,6 +111,14 @@ def run_case(case: dict[str, object]) -> tuple[bool, str]:
 
         findings = int(payload.get("findings", -1))
         classes = set(payload.get("class_counts", {}).keys())
+        if case["name"] == "unchecked_fee_bound":
+            detector_source = payload.get("detector_source", {})
+            benchmark_count = int(detector_source.get("benchmark_detector_count", 0))
+            if benchmark_count <= 0:
+                return (
+                    False,
+                    f"{case['name']}: benchmark detector bridge did not load",
+                )
 
     if "expected_findings_exact" in case and findings != int(case["expected_findings_exact"]):
         return (

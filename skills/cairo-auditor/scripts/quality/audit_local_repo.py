@@ -11,6 +11,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+try:
+    from detector_bridge import DETECTOR_METADATA, load_benchmark_detectors, relevant_line
+except ImportError:  # pragma: no cover - supports package-style execution
+    from .detector_bridge import DETECTOR_METADATA, load_benchmark_detectors, relevant_line
+
 EXCLUDED_FILE_PATTERNS = ("_test.cairo",)
 
 
@@ -238,7 +243,11 @@ def _guard_present(body: str) -> bool:
     return any(re.search(pattern, body) for pattern in guard_patterns)
 
 
-def _build_findings(repo_root: Path, prod_files: list[Path]) -> list[dict[str, object]]:
+def _build_findings(
+    repo_root: Path,
+    prod_files: list[Path],
+    benchmark_detectors: dict[str, object],
+) -> list[dict[str, object]]:
     findings: list[dict[str, object]] = []
     seen: set[tuple[str, int, str]] = set()
 
@@ -308,6 +317,26 @@ def _build_findings(repo_root: Path, prod_files: list[Path]) -> list[dict[str, o
                     "Medium",
                     "Class hash mutation lacks explicit non-zero validation",
                 )
+
+        for class_id, detector in benchmark_detectors.items():
+            if not callable(detector):
+                continue
+            if any(row["file"] == rel and row["class_id"] == class_id for row in findings):
+                continue
+            try:
+                detected = bool(detector(code))
+            except Exception:
+                detected = False
+            if not detected:
+                continue
+            metadata = DETECTOR_METADATA.get(class_id, {})
+            add(
+                rel,
+                relevant_line(code, class_id) or 1,
+                class_id,
+                str(metadata.get("severity", "Medium")),
+                str(metadata.get("title", class_id)),
+            )
 
     findings.sort(key=lambda row: (str(row["file"]), int(row["line"]), str(row["class_id"])))
     return findings
@@ -393,7 +422,8 @@ def main() -> int:
 
     excluded_dirs = {token.strip().lower() for token in args.exclude.split(",") if token.strip()}
     all_files, prod_files = _iter_cairo_files(repo_root, excluded_dirs)
-    findings = _build_findings(repo_root, prod_files)
+    benchmark_detectors, detector_source = load_benchmark_detectors()
+    findings = _build_findings(repo_root, prod_files, benchmark_detectors)
 
     generated_at = datetime.now(UTC).replace(microsecond=0)
     ts = generated_at.strftime("%Y%m%d-%H%M%SZ")
@@ -414,6 +444,11 @@ def main() -> int:
         "findings": findings,
         "class_counts": dict(class_counts),
         "severity_counts": dict(severity_counts),
+        "detector_source": {
+            "local_parser": True,
+            "benchmark_detector_source": detector_source,
+            "benchmark_detector_count": len(benchmark_detectors),
+        },
         "output_json": out_json.as_posix(),
         "output_md": out_md.as_posix(),
     }
@@ -438,6 +473,7 @@ def main() -> int:
                 "findings": len(findings),
                 "class_counts": dict(class_counts),
                 "severity_counts": dict(severity_counts),
+                "detector_source": payload["detector_source"],
                 "output_json": out_json.as_posix(),
                 "output_md": out_md.as_posix(),
             },

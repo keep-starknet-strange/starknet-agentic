@@ -16,6 +16,15 @@ ROOT = Path(__file__).resolve().parents[2]
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+\.md)\)")
 DISALLOWED_DESCRIPTION_PREFIXES = ("use ", "use when ", "use for ", "use this ")
+EXCLUDED_PATH_PARTS = {
+    ".git",
+    ".next",
+    ".pnpm-store",
+    ".venv",
+    "dist",
+    "node_modules",
+    "tmp",
+}
 
 try:
     import yaml
@@ -89,6 +98,14 @@ def _resolve_link_path(current_skill: Path, target: str) -> Path:
     if target.startswith("/"):
         return (ROOT / target.lstrip("/")).resolve()
     return (current_skill.parent / target).resolve()
+
+
+def _is_repo_skill_path(path: Path) -> bool:
+    try:
+        rel = path.resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        return False
+    return not any(part in EXCLUDED_PATH_PARTS for part in rel.parts)
 
 
 def check_skill(path: Path) -> list[str]:
@@ -179,7 +196,7 @@ def main() -> int:
     skill_files = sorted(
         p
         for p in ROOT.rglob("SKILL.md")
-        if ".venv" not in p.as_posix() and "/tmp/" not in p.as_posix()
+        if _is_repo_skill_path(p)
     )
 
     all_errors: list[str] = []
