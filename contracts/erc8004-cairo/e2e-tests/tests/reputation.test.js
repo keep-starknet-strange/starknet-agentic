@@ -1,4 +1,4 @@
-import { Account, Contract, RpcProvider, cairo, CallData, hash, byteArray } from 'starknet';
+import { Account, Contract, RpcProvider, cairo, CallData, byteArray } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -508,10 +508,7 @@ export default async function runTests() {
     
     // Returns: (clients[], indices[], values[], decimals[], tag1s[], tag2s[], revoked[])
     // Access using flattened structure
-    const clientsArr = allFeedback['0'] ?? allFeedback[0] ?? [];
-    const indicesArr = allFeedback['1'] ?? allFeedback[1] ?? [];
     const valuesArr = allFeedback['2'] ?? allFeedback[2] ?? [];
-    const decimalsArr = allFeedback['3'] ?? allFeedback[3] ?? [];
     const revokedArr = allFeedback['6'] ?? allFeedback[6] ?? [];
     
     console.log(`   Total feedback count: ${valuesArr.length}`);

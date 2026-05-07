@@ -826,10 +826,6 @@ export async function cursorWizard(
           : await promptSkills();
   const network = skipPrompts ? defaultNetwork : await promptNetwork();
 
-  // For Cursor, config scope doesn't change much (always project-local .cursor/)
-  // but we accept the parameter for API consistency
-  const configScope = defaultConfigScope;
-
   if (!jsonOutput) {
     console.log();
     console.log(pc.cyan("Configuring Starknet..."));

@@ -19,7 +19,7 @@ vi.mock("starknet", async (importOriginal) => {
 });
 
 import { fetchTokenByAddress, fetchVerifiedTokenBySymbol } from "@avnu/avnu-sdk";
-import { Contract, byteArray } from "starknet";
+import { Contract } from "starknet";
 
 const MOCK_LORDS_TOKEN = {
   address: "0x0124aeb495b947201f5fac96fd1138e326ad86195b98df6dec9009158a533b49",

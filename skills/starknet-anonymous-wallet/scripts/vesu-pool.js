@@ -17,7 +17,7 @@
  * }
  */
 
-import { RpcProvider as Provider, Contract } from 'starknet';
+import { RpcProvider as Provider } from 'starknet';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -77,12 +77,6 @@ function parseAmountToBaseUnits(amount, decimals) {
   const fracPadded = (fracRaw + '0'.repeat(dec)).slice(0, dec);
   const fracBI = BigInt(fracPadded || '0');
   return intBI * base + fracBI;
-}
-
-function toUint256(n) {
-  const low = (n & ((1n << 128n) - 1n));
-  const high = (n >> 128n);
-  return { low: low.toString(), high: high.toString() };
 }
 
 function u256ToBigInt(v) {
@@ -505,27 +499,6 @@ async function main() {
   const collateralBase = parseAmountToBaseUnits(collateralAmountHuman, collateralInfo.decimals);
   const debtBase = parseAmountToBaseUnits(debtAmountHuman, debtInfo.decimals);
 
-  // Build ModifyPositionParams
-  // We try to build in a shape that starknet.js CallData can compile.
-  // Because enum encoding differs, we include a primary + fallback key.
-  const collateralAmount = {
-    denomination: { Assets: {} },
-    value: collateralBase.toString()
-  };
-  const debtAmount = {
-    denomination: { Assets: {} },
-    value: debtBase.toString()
-  };
-
-  const params = {
-    collateral_asset: collateralInfo.address,
-    debt_asset: debtInfo.address,
-    user,
-    collateral: collateralAmount,
-    debt: debtAmount
-  };
-
-  // Compile calldata for modify_position
   // For Vesu Pool, we use manual calldata construction since we know the exact structure
   const toFelt = (hex) => String(hex);
   const toU256 = (n) => {
