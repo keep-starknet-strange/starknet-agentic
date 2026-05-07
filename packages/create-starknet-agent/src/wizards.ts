@@ -806,7 +806,7 @@ export async function cursorWizard(
   defaultNetwork: Network = "sepolia",
   jsonOutput = false,
   customSkills?: string[],
-  defaultConfigScope: ConfigScope = "local"
+  _defaultConfigScope: ConfigScope = "local" // Cursor uses project-local .cursor/ regardless of scope
 ): Promise<WizardResult> {
   if (!jsonOutput) {
     console.log();
