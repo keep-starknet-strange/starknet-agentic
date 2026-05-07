@@ -9,7 +9,7 @@ overrides:
   ajv@^8.0.0: 8.18.0
   express-rate-limit: 8.3.0
   hono: ^4.12.14
-  postcss: ^8.5.14
+  postcss: ^8.5.12
   qs: 6.14.2
   minimatch: 10.2.3
   rollup: 4.59.0
@@ -455,7 +455,7 @@ importers:
         specifier: ^16.2.5
         version: 16.2.5(@typescript-eslint/parser@8.59.2(eslint@10.3.0(jiti@1.21.7))(typescript@6.0.3))(eslint@10.3.0(jiti@1.21.7))(typescript@6.0.3)
       postcss:
-        specifier: ^8.5.14
+        specifier: ^8.5.12
         version: 8.5.14
       tailwindcss:
         specifier: ^3.4.19
@@ -2123,7 +2123,7 @@ packages:
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
     peerDependencies:
-      postcss: ^8.5.14
+      postcss: ^8.5.12
 
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
@@ -3776,20 +3776,20 @@ packages:
     resolution: {integrity: sha512-hpr+J05B2FVYUAXHeK1YyI267J/dDDhMU6B6civm8hSY1jYJnBXxzKDKDswzJmtLHryrjhnDjqqp/49t8FALew==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
-      postcss: ^8.5.14
+      postcss: ^8.5.12
 
   postcss-js@4.1.0:
     resolution: {integrity: sha512-oIAOTqgIo7q2EOwbhb8UalYePMvYoIeRY2YKntdpFQXNosSu3vLrniGgmH9OKs/qAkfoj5oB3le/7mINW1LCfw==}
     engines: {node: ^12 || ^14 || >= 16}
     peerDependencies:
-      postcss: ^8.5.14
+      postcss: ^8.5.12
 
   postcss-load-config@6.0.1:
     resolution: {integrity: sha512-oPtTM4oerL+UXmx+93ytZVN82RrlY/wPUV8IeDxFrzIjXOLF1pN+EmKPLbubvKHT2HC20xXsCAH2Z+CKV6Oz/g==}
     engines: {node: '>= 18'}
     peerDependencies:
       jiti: '>=1.21.0'
-      postcss: ^8.5.14
+      postcss: ^8.5.12
       tsx: ^4.8.1
       yaml: ^2.8.3
     peerDependenciesMeta:
@@ -3806,7 +3806,7 @@ packages:
     resolution: {integrity: sha512-HQbt28KulC5AJzG+cZtj9kvKB93CFCdLvog1WFLf1D+xmMvPGlBstkpTEZfK5+AN9hfJocyBFCNiqyS48bpgzQ==}
     engines: {node: '>=12.0'}
     peerDependencies:
-      postcss: ^8.5.14
+      postcss: ^8.5.12
 
   postcss-selector-parser@6.0.10:
     resolution: {integrity: sha512-IQ7TZdoaqbT+LCpShg46jnZVlhWD2w6iQYAcYXfHARZ7X1t/UGhhceQDs5X0cGqKvYlHNOuv7Oa1xmb0oQuA3w==}
@@ -4332,7 +4332,7 @@ packages:
     peerDependencies:
       '@microsoft/api-extractor': ^7.36.0
       '@swc/core': ^1
-      postcss: ^8.5.14
+      postcss: ^8.5.12
       typescript: '>=4.5.0'
     peerDependenciesMeta:
       '@microsoft/api-extractor':
