@@ -45,7 +45,6 @@ import {
   byteArray,
   ETransactionVersion,
   hash,
-  ec,
   validateAndParseAddress,
   type Call,
 } from "starknet";

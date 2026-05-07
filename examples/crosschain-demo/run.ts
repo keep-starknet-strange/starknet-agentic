@@ -3,17 +3,7 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import {
-  Account,
-  CallData,
-  ETransactionVersion,
-  PaymasterRpc,
-  type RpcProvider,
-  byteArray,
-  cairo,
-} from "starknet";
 import { Contract, Interface, JsonRpcProvider, Wallet, ZeroAddress } from "ethers";
-import { waitForTransactionWithTimeout } from "@starknetfoundation/starknet-agentic-onboarding-utils";
 import { preflight } from "./steps/preflight.js";
 import { deployAccount } from "./steps/deploy-account.js";
 import { fundDeployer } from "./steps/fund-deployer.js";
@@ -193,75 +183,6 @@ export function parsePositiveIntEnv(value: string | undefined, varName: string, 
     throw new Error(`Invalid ${varName} "${value}". Expected positive integer.`);
   }
   return parsed;
-}
-
-async function updateStarknetUri(args: {
-  provider: RpcProvider;
-  accountAddress: string;
-  privateKey: string;
-  registry: string;
-  agentId: string;
-  uri: string;
-  gasfree: boolean;
-  network: string;
-  paymasterApiKey?: string;
-  paymasterUrl?: string;
-}): Promise<string> {
-  const paymasterUrl =
-    args.paymasterUrl ||
-    (args.network === "sepolia"
-      ? "https://sepolia.paymaster.avnu.fi"
-      : "https://starknet.paymaster.avnu.fi");
-
-  const paymaster = new PaymasterRpc({
-    nodeUrl: paymasterUrl,
-    headers: args.paymasterApiKey
-      ? {
-          "x-paymaster-api-key": args.paymasterApiKey,
-        }
-      : {},
-  });
-
-  const account = new Account({
-    provider: args.provider,
-    address: args.accountAddress,
-    signer: args.privateKey,
-    transactionVersion: ETransactionVersion.V3,
-    paymaster,
-  });
-
-  const call = {
-    contractAddress: args.registry,
-    entrypoint: "set_agent_uri",
-    calldata: CallData.compile({
-      agent_id: cairo.uint256(BigInt(args.agentId)),
-      new_uri: byteArray.byteArrayFromString(args.uri),
-    }),
-  };
-
-  if (!args.gasfree) {
-    const tx = await account.execute(call);
-    await waitForTransactionWithTimeout({
-      provider: args.provider as any,
-      txHash: tx.transaction_hash,
-      timeoutMs: 300_000,
-    });
-    return tx.transaction_hash;
-  }
-
-  if (!args.paymasterApiKey) {
-    throw new Error("--gasfree requires AVNU_PAYMASTER_API_KEY in .env");
-  }
-  const tx = await account.executePaymasterTransaction([call], {
-    feeMode: { mode: "sponsored" },
-  });
-
-  await waitForTransactionWithTimeout({
-    provider: args.provider as any,
-    txHash: tx.transaction_hash,
-    timeoutMs: 300_000,
-  });
-  return tx.transaction_hash;
 }
 
 async function main() {

@@ -1,4 +1,4 @@
-import { RpcProvider, Account, constants } from 'starknet';
+import { RpcProvider, constants } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

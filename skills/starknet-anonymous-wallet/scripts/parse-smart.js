@@ -297,8 +297,7 @@ function escapeRegex(s) {
 function extractTokensAndProtocols(prompt, availableTokens, knownProtocols) {
   const doc = nlp(prompt);
   const text = doc.out('text');
-  const lowerText = text.toLowerCase();
-  
+
   const foundTokens = [];
   const foundProtocols = [];
   

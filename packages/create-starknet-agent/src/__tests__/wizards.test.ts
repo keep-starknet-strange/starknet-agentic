@@ -2,7 +2,7 @@
  * Tests for platform-specific wizards
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   AVAILABLE_SKILLS,
   type WizardResult,
@@ -107,19 +107,6 @@ describe("MCP config generation", () => {
 
     const network = "sepolia";
     const expectedRpcUrl = RPC_URLS[network];
-
-    // The MCP config should include the starknet server
-    const expectedConfig = {
-      mcpServers: {
-        starknet: {
-          command: "npx",
-          args: ["-y", "@starknetfoundation/starknet-agentic-mcp-server@latest"],
-          env: expect.objectContaining({
-            STARKNET_RPC_URL: expectedRpcUrl,
-          }),
-        },
-      },
-    };
 
     expect(expectedRpcUrl).toBe("https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY");
   });

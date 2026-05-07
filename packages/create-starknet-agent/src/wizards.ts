@@ -806,7 +806,7 @@ export async function cursorWizard(
   defaultNetwork: Network = "sepolia",
   jsonOutput = false,
   customSkills?: string[],
-  defaultConfigScope: ConfigScope = "local"
+  _defaultConfigScope: ConfigScope = "local" // Cursor uses project-local .cursor/ regardless of scope
 ): Promise<WizardResult> {
   if (!jsonOutput) {
     console.log();
@@ -825,10 +825,6 @@ export async function cursorWizard(
           ? ["starknet-wallet", "starknet-defi"]
           : await promptSkills();
   const network = skipPrompts ? defaultNetwork : await promptNetwork();
-
-  // For Cursor, config scope doesn't change much (always project-local .cursor/)
-  // but we accept the parameter for API consistency
-  const configScope = defaultConfigScope;
 
   if (!jsonOutput) {
     console.log();
