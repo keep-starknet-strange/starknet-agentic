@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "references" / "finding.schema.json"
+BUNDLE_REQUIRED_MODES = {"default", "deep"}
 
 
 def _write_init(args: argparse.Namespace) -> int:
@@ -130,9 +131,19 @@ def _validate_agent_outputs(workdir: Path) -> list[str]:
     return errors
 
 
+def _bundle_policy(mode: str) -> str:
+    if mode in BUNDLE_REQUIRED_MODES:
+        return "required"
+    if mode == "degraded-deep":
+        return "optional-degraded"
+    return "optional-targeted"
+
+
 def _check(args: argparse.Namespace) -> int:
     workdir = Path(args.workdir).resolve()
     failures: list[str] = []
+    bundle_policy = _bundle_policy(str(args.mode))
+    checks_applied = ["base_artifacts", f"agent_bundles:{bundle_policy}"]
     required = [
         workdir / "cairo-audit-host-capabilities.json",
         workdir / "cairo-audit-model-plan.txt",
@@ -146,15 +157,19 @@ def _check(args: argparse.Namespace) -> int:
         path = workdir / f"cairo-audit-agent-{idx}-bundle.md"
         lines = _line_count(path)
         bundle_lines[str(idx)] = lines
-        if lines <= 0:
+        if bundle_policy == "required" and lines <= 0:
             failures.append(f"missing or empty bundle {idx}")
 
     if not args.skip_schema:
+        checks_applied.append("schema:enabled")
         for err in _validate_agent_outputs(workdir):
             failures.append(f"schema: {err}")
+    else:
+        checks_applied.append("schema:skipped")
 
     report_path = Path(args.report).resolve() if args.report else None
     if report_path:
+        checks_applied.append("report")
         if not report_path.exists():
             failures.append(f"missing report {report_path.as_posix()}")
         else:
@@ -169,6 +184,9 @@ def _check(args: argparse.Namespace) -> int:
     payload = {
         "status": "FAILED" if failures else "OK",
         "workdir": workdir.as_posix(),
+        "mode": args.mode,
+        "checks_applied": checks_applied,
+        "bundle_policy": bundle_policy,
         "bundle_lines": bundle_lines,
         "failures": failures,
     }

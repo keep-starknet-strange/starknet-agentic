@@ -206,7 +206,11 @@ cat "$WORKDIR/cairo-audit-files.txt"
 (c) If `{skill_root}/scripts/quality/audit_local_repo.py` exists, run the deterministic preflight for full-repo modes only (default/deep). In `$filename ...` mode, skip preflight so the context stays scoped to the targeted files:
 
 ```bash
-python3 "{skill_root}/scripts/quality/audit_local_repo.py" --repo-root <repo-root> --scan-id preflight --output-dir "{workdir}"
+BENCHMARK_BRIDGE=""
+if [ -f "{skill_root}/../../scripts/quality/benchmark_cairo_auditor.py" ]; then
+  BENCHMARK_BRIDGE="--enable-benchmark-bridge"
+fi
+python3 "{skill_root}/scripts/quality/audit_local_repo.py" --repo-root <repo-root> --scan-id preflight --output-dir "{workdir}" $BENCHMARK_BRIDGE
 ```
 
 Print the preflight results (class counts, severity counts) as context for specialists.
@@ -379,7 +383,7 @@ Dropped-candidate handling:
 
 If `--file-output` is set, write the report to `{repo-root}/security-review-{timestamp}.md` and print the path.
 
-After rendering, if `{skill_root}/scripts/quality/deep_integrity.py` exists, run its `check` command against `{workdir}` and the report path. The check validates each `cairo-audit-agent-*-findings.json` against `references/finding.schema.json`; pass `--skip-schema` only when validating an out-of-tree skill install. If it fails in non-degraded deep mode, mark `Execution Integrity: FAILED` and stop before publishing findings.
+After rendering, if `{skill_root}/scripts/quality/deep_integrity.py` exists, run its `check` command against `{workdir}` and the report path. The check validates each `cairo-audit-agent-*-findings.json` against `references/finding.schema.json` and reports the mode-specific checks applied; vector bundle artifacts are required for `default` and `deep`, but optional for `targeted` and `degraded-deep`. Pass `--skip-schema` only when validating an out-of-tree skill install. If it fails in non-degraded deep mode, mark `Execution Integrity: FAILED` and stop before publishing findings.
 
 ## Banner
 

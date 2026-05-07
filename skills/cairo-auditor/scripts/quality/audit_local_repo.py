@@ -409,6 +409,11 @@ def main() -> int:
         "--exclude",
         default="test,tests,mock,mocks,example,examples,preset,presets,fixture,fixtures,vendor,vendors",
     )
+    parser.add_argument(
+        "--enable-benchmark-bridge",
+        action="store_true",
+        help="Opt in to the in-repository benchmark detector bridge when available.",
+    )
     parser.add_argument("--fail-on-findings", action="store_true")
     args = parser.parse_args()
     safe_scan_id = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(args.scan_id)).strip("._-")
@@ -422,7 +427,7 @@ def main() -> int:
 
     excluded_dirs = {token.strip().lower() for token in args.exclude.split(",") if token.strip()}
     all_files, prod_files = _iter_cairo_files(repo_root, excluded_dirs)
-    benchmark_detectors, detector_source = load_benchmark_detectors()
+    benchmark_detectors, detector_source = load_benchmark_detectors(enabled=args.enable_benchmark_bridge)
     findings = _build_findings(repo_root, prod_files, benchmark_detectors)
 
     generated_at = datetime.now(UTC).replace(microsecond=0)

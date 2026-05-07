@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import sys
 from pathlib import Path
@@ -10,6 +11,8 @@ from types import ModuleType
 from typing import Callable
 
 Detector = Callable[[str], bool]
+
+ENABLE_BENCHMARK_BRIDGE_ENV = "CAUD_ENABLE_BENCHMARK_BRIDGE"
 
 NOISY_BRIDGE_CLASSES = {
     # This class is valuable in benchmark scoring, but in local preflight it
@@ -103,40 +106,57 @@ def _load_module(path: Path) -> ModuleType | None:
     return module
 
 
-def _candidate_benchmark_paths() -> list[Path]:
+def _env_enabled(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _repo_benchmark_path() -> Path | None:
     here = Path(__file__).resolve()
-    candidates: list[Path] = []
-    for parent in here.parents:
-        candidate = parent / "scripts" / "quality" / "benchmark_cairo_auditor.py"
-        if candidate.exists() and candidate.resolve() != here:
-            candidates.append(candidate)
-    return candidates
+    skill_root = here.parents[2]
+    if skill_root.name != "cairo-auditor" or skill_root.parent.name != "skills":
+        return None
+    repo_root = skill_root.parents[1]
+    candidate = repo_root / "scripts" / "quality" / "benchmark_cairo_auditor.py"
+    if not candidate.is_file():
+        return None
+    resolved = candidate.resolve()
+    if resolved == here:
+        return None
+    if resolved != candidate:
+        return None
+    return resolved
 
 
-def load_benchmark_detectors() -> tuple[dict[str, Detector], str]:
+def load_benchmark_detectors(*, enabled: bool = False) -> tuple[dict[str, Detector], str]:
     """Load the canonical benchmark detector suite when this skill lives in-repo.
 
     Public skill installs may only contain the `skills/cairo-auditor` directory.
     In that case, callers keep their local parser detectors and this bridge
     simply reports that benchmark detectors were unavailable.
     """
-    for path in _candidate_benchmark_paths():
-        try:
-            module = _load_module(path)
-        except Exception:
-            continue
-        if module is None:
-            continue
-        detectors = getattr(module, "DETECTORS", None)
-        if isinstance(detectors, dict) and detectors:
-            normalized: dict[str, Detector] = {}
-            for class_id, detector in detectors.items():
-                if str(class_id) in NOISY_BRIDGE_CLASSES:
-                    continue
-                if callable(detector):
-                    normalized[str(class_id)] = detector
-            if normalized:
-                return normalized, path.as_posix()
+    if not enabled and not _env_enabled(os.environ.get(ENABLE_BENCHMARK_BRIDGE_ENV)):
+        return {}, "unavailable"
+
+    path = _repo_benchmark_path()
+    if path is None:
+        return {}, "unavailable"
+
+    try:
+        module = _load_module(path)
+    except Exception:
+        return {}, "unavailable"
+    if module is None:
+        return {}, "unavailable"
+    detectors = getattr(module, "DETECTORS", None)
+    if isinstance(detectors, dict) and detectors:
+        normalized: dict[str, Detector] = {}
+        for class_id, detector in detectors.items():
+            if str(class_id) in NOISY_BRIDGE_CLASSES:
+                continue
+            if callable(detector):
+                normalized[str(class_id)] = detector
+        if normalized:
+            return normalized, path.as_posix()
     return {}, "unavailable"
 
 

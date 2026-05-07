@@ -230,7 +230,7 @@ More tags = stronger signal. Findings with only `[CODE-TRACE]` are valid but low
 
 **Targeted** scans one or more specific files instead of the full repo. It runs the same 4 vector specialists on only the paths you provide and skips deterministic preflight to keep context scoped. Use this for fast, focused review of a single contract or module.
 
-**Local** runs a deterministic preflight scanner with no AI calls. Catches obvious patterns (ungated upgrades, missing non-zero guards, commented-out access control) and, when run from this repository, bridges into the benchmark detector suite for broader known-class coverage. Useful as a CI gate or when offline.
+**Local** runs a deterministic preflight scanner with no AI calls. Catches obvious patterns (ungated upgrades, missing non-zero guards, commented-out access control) and can opt into this repository's benchmark detector suite with `--enable-benchmark-bridge` or `CAUD_ENABLE_BENCHMARK_BRIDGE=1` for broader known-class coverage. Useful as a CI gate or when offline.
 
 ## Install
 
@@ -368,7 +368,7 @@ If you want the stable regression target used by this repository, clone `keep-st
 skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo
 ```
 
-That fixture is intentionally vulnerable and should reliably produce at least three upgrade findings: missing access control on upgrade, missing timelock, and missing non-zero class-hash guard. When run from this repository, the benchmark detector bridge may add constructor/address lifecycle findings.
+That fixture is intentionally vulnerable and should reliably produce at least three upgrade findings: missing access control on upgrade, missing timelock, and missing non-zero class-hash guard. When explicitly enabled from this repository, the benchmark detector bridge may add constructor/address lifecycle findings.
 
 This path is primarily for manual maintainer regression. Repository CI runs separate validation checks for the skill and report contract rather than asking users to invoke this fixture path directly.
 

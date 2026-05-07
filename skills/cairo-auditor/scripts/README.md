@@ -5,9 +5,11 @@ Use scripts in this directory to transform raw audit text into normalized findin
 ## `quality/audit_local_repo.py`
 
 Deterministic preflight scanner used by `cairo-auditor` in default/deep full-repo mode.
-When this skill is run from the full repository, it also loads the canonical
-benchmark detector map from `scripts/quality/benchmark_cairo_auditor.py`.
-Standalone skill installs keep the local parser detectors.
+It always keeps local parser detectors enabled. The canonical benchmark detector
+map from `scripts/quality/benchmark_cairo_auditor.py` is opt-in and loads only
+from the fixed in-repository path when `--enable-benchmark-bridge` or
+`CAUD_ENABLE_BENCHMARK_BRIDGE=1` is set. Standalone skill installs keep the
+local parser detectors.
 
 ### Usage
 
@@ -16,6 +18,12 @@ python3 skills/cairo-auditor/scripts/quality/audit_local_repo.py \
   --repo-root /path/to/repo \
   --scan-id preflight \
   --output-dir /tmp
+```
+
+For maintainer benchmark-backed regression runs from this repository, add:
+
+```bash
+--enable-benchmark-bridge
 ```
 
 ### Output
@@ -95,7 +103,9 @@ python3 skills/cairo-auditor/scripts/quality/structured_report.py \
 
 ## `quality/deep_integrity.py`
 
-Creates and validates deep-mode integrity artifacts.
+Creates and validates deep-mode integrity artifacts. Bundle artifacts are
+required for `default` and `deep`, and reported as optional for `targeted` and
+`degraded-deep`.
 
 ```bash
 python3 skills/cairo-auditor/scripts/quality/deep_integrity.py init \

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -77,6 +78,7 @@ def run_case(case: dict[str, object]) -> tuple[bool, str]:
             f"fixture-{case['name']}",
             "--output-dir",
             tmpdir,
+            "--enable-benchmark-bridge",
         ]
         proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
         if proc.returncode != 0:
@@ -148,12 +150,53 @@ def run_case(case: dict[str, object]) -> tuple[bool, str]:
     return True, f"{case['name']}: ok (findings={findings}, classes={sorted(classes)})"
 
 
+def run_bridge_default_disabled() -> tuple[bool, str]:
+    fixture = FIXTURES / "unchecked_fee_bound"
+    with tempfile.TemporaryDirectory(prefix="cairo-auditor-bridge-disabled-") as tmpdir:
+        cmd = [
+            "python3",
+            str(SCRIPT),
+            "--repo-root",
+            str(fixture),
+            "--scan-id",
+            "bridge-disabled",
+            "--output-dir",
+            tmpdir,
+        ]
+        env = dict(os.environ)
+        env.pop("CAUD_ENABLE_BENCHMARK_BRIDGE", None)
+        proc = subprocess.run(cmd, text=True, capture_output=True, check=False, env=env)
+        if proc.returncode != 0:
+            return False, f"bridge-disabled: scanner exited {proc.returncode}: {proc.stderr.strip()}"
+        try:
+            payload = json.loads(proc.stdout.strip())
+        except json.JSONDecodeError as exc:
+            return False, f"bridge-disabled: scanner stdout is not JSON: {exc}"
+        detector_source = payload.get("detector_source", {})
+        benchmark_count = int(detector_source.get("benchmark_detector_count", -1))
+        benchmark_source = str(detector_source.get("benchmark_detector_source", ""))
+        if benchmark_count != 0 or benchmark_source != "unavailable":
+            return (
+                False,
+                "bridge-disabled: benchmark bridge loaded without explicit opt-in",
+            )
+        classes = set(payload.get("class_counts", {}).keys())
+        if "UNCHECKED_FEE_BOUND" in classes:
+            return False, "bridge-disabled: benchmark-only fee detector ran without opt-in"
+
+    return True, "benchmark detector bridge is unavailable without explicit opt-in"
+
+
 def main() -> int:
     if not SCRIPT.exists():
         print(f"missing scanner script: {SCRIPT}", file=sys.stderr)
         return 1
 
     failures: list[str] = []
+    ok, msg = run_bridge_default_disabled()
+    print(msg)
+    if not ok:
+        failures.append(msg)
     for case in CASES:
         ok, msg = run_case(case)
         print(msg)

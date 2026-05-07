@@ -350,6 +350,91 @@ def run_schema_check_rejects_malformed() -> tuple[bool, str]:
     return True, "schema check rejects malformed agent output and --skip-schema bypasses it"
 
 
+def run_integrity_mode_specific_bundle_checks() -> tuple[bool, str]:
+    def prepare_workdir(workdir: Path) -> tuple[bool, str]:
+        (workdir / "cairo-audit-files.txt").write_text("src/lib.cairo\n", encoding="utf-8")
+        init_proc = subprocess.run(
+            [
+                "python3",
+                str(DEEP_INTEGRITY),
+                "init",
+                "--workdir",
+                str(workdir),
+                "--host",
+                "codex",
+                "--vector-model",
+                "gpt-5.4",
+                "--adversarial-model",
+                "gpt-5.4",
+                "--agent-tool-available",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if init_proc.returncode != 0:
+            return False, f"deep integrity init failed: {init_proc.stderr.strip()}"
+        return True, ""
+
+    for mode, expected_policy in (
+        ("targeted", "optional-targeted"),
+        ("degraded-deep", "optional-degraded"),
+    ):
+        with tempfile.TemporaryDirectory(prefix=f"cairo-auditor-{mode}-integrity-") as tmpdir:
+            workdir = Path(tmpdir)
+            ok, msg = prepare_workdir(workdir)
+            if not ok:
+                return False, msg
+            check_proc = subprocess.run(
+                [
+                    "python3",
+                    str(DEEP_INTEGRITY),
+                    "check",
+                    "--workdir",
+                    str(workdir),
+                    "--mode",
+                    mode,
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if check_proc.returncode != 0:
+                return False, f"{mode} integrity should not require bundles: {check_proc.stdout.strip()}"
+            payload = json.loads(check_proc.stdout)
+            if payload.get("bundle_policy") != expected_policy:
+                return False, f"{mode} bundle policy mismatch: {payload.get('bundle_policy')}"
+            if f"agent_bundles:{expected_policy}" not in payload.get("checks_applied", []):
+                return False, f"{mode} checks_applied missing bundle policy: {payload.get('checks_applied')}"
+
+    with tempfile.TemporaryDirectory(prefix="cairo-auditor-deep-integrity-missing-bundles-") as tmpdir:
+        workdir = Path(tmpdir)
+        ok, msg = prepare_workdir(workdir)
+        if not ok:
+            return False, msg
+        check_proc = subprocess.run(
+            [
+                "python3",
+                str(DEEP_INTEGRITY),
+                "check",
+                "--workdir",
+                str(workdir),
+                "--mode",
+                "deep",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if check_proc.returncode == 0:
+            return False, "deep integrity should still require vector bundles"
+        payload = json.loads(check_proc.stdout)
+        if payload.get("bundle_policy") != "required":
+            return False, f"deep bundle policy mismatch: {payload.get('bundle_policy')}"
+
+    return True, "integrity check applies mode-specific bundle requirements"
+
+
 def validate_markers(path: Path, markers: tuple[str, ...], label: str) -> tuple[bool, str]:
     try:
         content = path.read_text(encoding="utf-8")
@@ -373,6 +458,7 @@ def main() -> int:
         run_adversarial_fixture_preflight(),
         run_structured_deep_path(),
         run_schema_check_rejects_malformed(),
+        run_integrity_mode_specific_bundle_checks(),
         validate_markers(REPORT_FORMAT, REQUIRED_REPORT_MARKERS, "report format"),
         validate_markers(SKILL_DOC, REQUIRED_SKILL_MARKERS, "skill contract"),
     ]
