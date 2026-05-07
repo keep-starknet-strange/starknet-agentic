@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
-    "starknet": "^9.4.2"
+    "starknet": "^10.0.2"
   }
 }

@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "starknet": "^9.4.2"
+    "starknet": "^10.0.2"
   },
   "devDependencies": {
     "tsup": "^8.5.0",
