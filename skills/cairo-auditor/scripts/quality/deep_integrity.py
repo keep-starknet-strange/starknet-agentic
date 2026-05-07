@@ -90,6 +90,12 @@ def _validate(value: Any, schema: dict, path: str, errors: list[str]) -> None:
         for key, sub in schema.get("properties", {}).items():
             if key in value:
                 _validate(value[key], sub, f"{path}.{key}", errors)
+        if isinstance(schema.get("if"), dict):
+            trial: list[str] = []
+            _validate(value, schema["if"], path, trial)
+            branch = schema.get("then") if not trial else schema.get("else")
+            if isinstance(branch, dict):
+                _validate(value, branch, path, errors)
     if isinstance(value, list):
         item_schema = schema.get("items")
         if isinstance(item_schema, dict):
@@ -112,7 +118,7 @@ def _validate(value: Any, schema: dict, path: str, errors: list[str]) -> None:
 
 def _validate_agent_outputs(workdir: Path) -> list[str]:
     if not SCHEMA_PATH.exists():
-        return []
+        return [f"finding schema missing: {SCHEMA_PATH}"]
     try:
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:

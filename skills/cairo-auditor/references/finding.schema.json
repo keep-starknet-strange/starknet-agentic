@@ -50,6 +50,13 @@
             },
             "contains": { "const": "[CODE-TRACE]" }
           }
+        },
+        "if": {
+          "properties": { "confidence": { "minimum": 75 } },
+          "required": ["confidence"]
+        },
+        "then": {
+          "required": ["recommended_fix", "required_tests"]
         }
       }
     },

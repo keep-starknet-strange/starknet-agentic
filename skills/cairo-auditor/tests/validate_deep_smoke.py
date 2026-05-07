@@ -20,6 +20,7 @@ SKILL_DOC = ROOT / "SKILL.md"
 
 REQUIRED_CLASS = "NO_ACCESS_CONTROL_MUTATION"
 SCANNER_TIMEOUT_SECONDS = 180
+HELPER_TIMEOUT_SECONDS = 60
 REQUIRED_REPORT_MARKERS = (
     "Execution Integrity: <FULL|DEGRADED|FAILED>",
     "## Execution Trace",
@@ -95,7 +96,10 @@ def run_adversarial_fixture_preflight() -> tuple[bool, str]:
             "--output-dir",
             tmpdir,
         ]
-        proc = subprocess.run(cmd, text=True, capture_output=True, check=False, timeout=SCANNER_TIMEOUT_SECONDS)
+        try:
+            proc = subprocess.run(cmd, text=True, capture_output=True, check=False, timeout=SCANNER_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            return False, f"adversarial fixture preflight timed out after {SCANNER_TIMEOUT_SECONDS}s"
         if proc.returncode != 0:
             return False, f"adversarial fixture preflight exited {proc.returncode}: {proc.stderr.strip()}"
         try:
@@ -117,23 +121,27 @@ def run_structured_deep_path() -> tuple[bool, str]:
 
         surface_json = workdir / "cairo-audit-surface-map.json"
         surface_md = workdir / "cairo-audit-surface-map.md"
-        proc = subprocess.run(
-            [
-                "python3",
-                str(SURFACE_MAP),
-                "--repo-root",
-                str(ADVERSARIAL_FIXTURE),
-                "--scope-file",
-                str(scope_file),
-                "--output-json",
-                str(surface_json),
-                "--output-md",
-                str(surface_md),
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            proc = subprocess.run(
+                [
+                    "python3",
+                    str(SURFACE_MAP),
+                    "--repo-root",
+                    str(ADVERSARIAL_FIXTURE),
+                    "--scope-file",
+                    str(scope_file),
+                    "--output-json",
+                    str(surface_json),
+                    "--output-md",
+                    str(surface_md),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=HELPER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"surface map timed out after {HELPER_TIMEOUT_SECONDS}s"
         if proc.returncode != 0:
             return False, f"surface map failed: {proc.stderr.strip()}"
         surface_text = surface_md.read_text(encoding="utf-8")
@@ -141,25 +149,29 @@ def run_structured_deep_path() -> tuple[bool, str]:
             if marker not in surface_text:
                 return False, f"surface map missing marker: {marker}"
 
-        init_proc = subprocess.run(
-            [
-                "python3",
-                str(DEEP_INTEGRITY),
-                "init",
-                "--workdir",
-                str(workdir),
-                "--host",
-                "codex",
-                "--vector-model",
-                "gpt-5.4",
-                "--adversarial-model",
-                "gpt-5.4",
-                "--agent-tool-available",
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            init_proc = subprocess.run(
+                [
+                    "python3",
+                    str(DEEP_INTEGRITY),
+                    "init",
+                    "--workdir",
+                    str(workdir),
+                    "--host",
+                    "codex",
+                    "--vector-model",
+                    "gpt-5.4",
+                    "--adversarial-model",
+                    "gpt-5.4",
+                    "--agent-tool-available",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=HELPER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"deep integrity init timed out after {HELPER_TIMEOUT_SECONDS}s"
         if init_proc.returncode != 0:
             return False, f"deep integrity init failed: {init_proc.stderr.strip()}"
 
@@ -202,31 +214,35 @@ def run_structured_deep_path() -> tuple[bool, str]:
 
         report_md = workdir / "security-review-test.md"
         report_json = workdir / "security-review-test.json"
-        render_proc = subprocess.run(
-            [
-                "python3",
-                str(STRUCTURED_REPORT),
-                "--repo-root",
-                str(ADVERSARIAL_FIXTURE),
-                "--mode",
-                "deep",
-                "--workdir",
-                str(workdir),
-                "--scope-file",
-                str(scope_file),
-                "--agent-output",
-                str(agent5),
-                "--output-md",
-                str(report_md),
-                "--output-json",
-                str(report_json),
-                "--execution-integrity",
-                "FULL",
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            render_proc = subprocess.run(
+                [
+                    "python3",
+                    str(STRUCTURED_REPORT),
+                    "--repo-root",
+                    str(ADVERSARIAL_FIXTURE),
+                    "--mode",
+                    "deep",
+                    "--workdir",
+                    str(workdir),
+                    "--scope-file",
+                    str(scope_file),
+                    "--agent-output",
+                    str(agent5),
+                    "--output-md",
+                    str(report_md),
+                    "--output-json",
+                    str(report_json),
+                    "--execution-integrity",
+                    "FULL",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=HELPER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"structured report timed out after {HELPER_TIMEOUT_SECONDS}s"
         if render_proc.returncode != 0:
             return False, f"structured report failed: {render_proc.stderr.strip()}"
         report = report_md.read_text(encoding="utf-8")
@@ -234,22 +250,26 @@ def run_structured_deep_path() -> tuple[bool, str]:
             if marker not in report:
                 return False, f"structured report missing marker: {marker}"
 
-        check_proc = subprocess.run(
-            [
-                "python3",
-                str(DEEP_INTEGRITY),
-                "check",
-                "--workdir",
-                str(workdir),
-                "--mode",
-                "deep",
-                "--report",
-                str(report_md),
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            check_proc = subprocess.run(
+                [
+                    "python3",
+                    str(DEEP_INTEGRITY),
+                    "check",
+                    "--workdir",
+                    str(workdir),
+                    "--mode",
+                    "deep",
+                    "--report",
+                    str(report_md),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=HELPER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"deep integrity check timed out after {HELPER_TIMEOUT_SECONDS}s"
         if check_proc.returncode != 0:
             return False, f"deep integrity check failed: {check_proc.stdout.strip()} {check_proc.stderr.strip()}"
 
@@ -263,25 +283,29 @@ def run_schema_check_rejects_malformed() -> tuple[bool, str]:
         for idx in range(1, 5):
             (workdir / f"cairo-audit-agent-{idx}-bundle.md").write_text("non-empty\n", encoding="utf-8")
 
-        init_proc = subprocess.run(
-            [
-                "python3",
-                str(DEEP_INTEGRITY),
-                "init",
-                "--workdir",
-                str(workdir),
-                "--host",
-                "codex",
-                "--vector-model",
-                "gpt-5.4",
-                "--adversarial-model",
-                "gpt-5.4",
-                "--agent-tool-available",
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            init_proc = subprocess.run(
+                [
+                    "python3",
+                    str(DEEP_INTEGRITY),
+                    "init",
+                    "--workdir",
+                    str(workdir),
+                    "--host",
+                    "codex",
+                    "--vector-model",
+                    "gpt-5.4",
+                    "--adversarial-model",
+                    "gpt-5.4",
+                    "--agent-tool-available",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=HELPER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"deep integrity init timed out after {HELPER_TIMEOUT_SECONDS}s"
         if init_proc.returncode != 0:
             return False, f"deep integrity init failed: {init_proc.stderr.strip()}"
 
@@ -310,40 +334,48 @@ def run_schema_check_rejects_malformed() -> tuple[bool, str]:
             encoding="utf-8",
         )
 
-        check_proc = subprocess.run(
-            [
-                "python3",
-                str(DEEP_INTEGRITY),
-                "check",
-                "--workdir",
-                str(workdir),
-                "--mode",
-                "deep",
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            check_proc = subprocess.run(
+                [
+                    "python3",
+                    str(DEEP_INTEGRITY),
+                    "check",
+                    "--workdir",
+                    str(workdir),
+                    "--mode",
+                    "deep",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=HELPER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"deep integrity check timed out after {HELPER_TIMEOUT_SECONDS}s"
         if check_proc.returncode == 0:
             return False, "schema check did not reject malformed agent output"
         if "schema:" not in check_proc.stdout:
             return False, f"schema check rejected without surfacing schema error: {check_proc.stdout.strip()}"
 
-        skip_proc = subprocess.run(
-            [
-                "python3",
-                str(DEEP_INTEGRITY),
-                "check",
-                "--workdir",
-                str(workdir),
-                "--mode",
-                "deep",
-                "--skip-schema",
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            skip_proc = subprocess.run(
+                [
+                    "python3",
+                    str(DEEP_INTEGRITY),
+                    "check",
+                    "--workdir",
+                    str(workdir),
+                    "--mode",
+                    "deep",
+                    "--skip-schema",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=HELPER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"deep integrity --skip-schema check timed out after {HELPER_TIMEOUT_SECONDS}s"
         if skip_proc.returncode != 0:
             return False, f"--skip-schema should bypass schema check: {skip_proc.stdout.strip()}"
 
@@ -353,25 +385,29 @@ def run_schema_check_rejects_malformed() -> tuple[bool, str]:
 def run_integrity_mode_specific_bundle_checks() -> tuple[bool, str]:
     def prepare_workdir(workdir: Path) -> tuple[bool, str]:
         (workdir / "cairo-audit-files.txt").write_text("src/lib.cairo\n", encoding="utf-8")
-        init_proc = subprocess.run(
-            [
-                "python3",
-                str(DEEP_INTEGRITY),
-                "init",
-                "--workdir",
-                str(workdir),
-                "--host",
-                "codex",
-                "--vector-model",
-                "gpt-5.4",
-                "--adversarial-model",
-                "gpt-5.4",
-                "--agent-tool-available",
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            init_proc = subprocess.run(
+                [
+                    "python3",
+                    str(DEEP_INTEGRITY),
+                    "init",
+                    "--workdir",
+                    str(workdir),
+                    "--host",
+                    "codex",
+                    "--vector-model",
+                    "gpt-5.4",
+                    "--adversarial-model",
+                    "gpt-5.4",
+                    "--agent-tool-available",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=HELPER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"deep integrity init timed out after {HELPER_TIMEOUT_SECONDS}s"
         if init_proc.returncode != 0:
             return False, f"deep integrity init failed: {init_proc.stderr.strip()}"
         return True, ""
@@ -385,20 +421,24 @@ def run_integrity_mode_specific_bundle_checks() -> tuple[bool, str]:
             ok, msg = prepare_workdir(workdir)
             if not ok:
                 return False, msg
-            check_proc = subprocess.run(
-                [
-                    "python3",
-                    str(DEEP_INTEGRITY),
-                    "check",
-                    "--workdir",
-                    str(workdir),
-                    "--mode",
-                    mode,
-                ],
-                text=True,
-                capture_output=True,
-                check=False,
-            )
+            try:
+                check_proc = subprocess.run(
+                    [
+                        "python3",
+                        str(DEEP_INTEGRITY),
+                        "check",
+                        "--workdir",
+                        str(workdir),
+                        "--mode",
+                        mode,
+                    ],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                    timeout=HELPER_TIMEOUT_SECONDS,
+                )
+            except subprocess.TimeoutExpired:
+                return False, f"{mode} integrity check timed out after {HELPER_TIMEOUT_SECONDS}s"
             if check_proc.returncode != 0:
                 return False, f"{mode} integrity should not require bundles: {check_proc.stdout.strip()}"
             payload = json.loads(check_proc.stdout)
@@ -412,20 +452,24 @@ def run_integrity_mode_specific_bundle_checks() -> tuple[bool, str]:
         ok, msg = prepare_workdir(workdir)
         if not ok:
             return False, msg
-        check_proc = subprocess.run(
-            [
-                "python3",
-                str(DEEP_INTEGRITY),
-                "check",
-                "--workdir",
-                str(workdir),
-                "--mode",
-                "deep",
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            check_proc = subprocess.run(
+                [
+                    "python3",
+                    str(DEEP_INTEGRITY),
+                    "check",
+                    "--workdir",
+                    str(workdir),
+                    "--mode",
+                    "deep",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=HELPER_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"deep integrity check timed out after {HELPER_TIMEOUT_SECONDS}s"
         if check_proc.returncode == 0:
             return False, "deep integrity should still require vector bundles"
         payload = json.loads(check_proc.stdout)

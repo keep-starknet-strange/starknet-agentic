@@ -325,8 +325,16 @@ def _build_findings(
                 continue
             try:
                 detected = bool(detector(code))
-            except Exception:
-                detected = False
+            except Exception as exc:  # surface crashes instead of treating as clean
+                metadata = DETECTOR_METADATA.get(class_id, {})
+                add(
+                    rel,
+                    relevant_line(code, class_id) or 1,
+                    class_id,
+                    "High",
+                    f"{metadata.get('title', class_id)} (detector crash: {exc.__class__.__name__}: {exc})",
+                )
+                continue
             if not detected:
                 continue
             metadata = DETECTOR_METADATA.get(class_id, {})

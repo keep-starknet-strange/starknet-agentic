@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
 import os
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
-from typing import Callable
 
 Detector = Callable[[str], bool]
+
+_log = logging.getLogger(__name__)
 
 ENABLE_BENCHMARK_BRIDGE_ENV = "CAUD_ENABLE_BENCHMARK_BRIDGE"
 
@@ -102,7 +105,11 @@ def _load_module(path: Path) -> ModuleType | None:
         return None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(spec.name, None)
+        raise
     return module
 
 
@@ -143,7 +150,8 @@ def load_benchmark_detectors(*, enabled: bool = False) -> tuple[dict[str, Detect
 
     try:
         module = _load_module(path)
-    except Exception:
+    except Exception as exc:
+        _log.debug("benchmark bridge load failed for %s: %s", path, exc)
         return {}, "unavailable"
     if module is None:
         return {}, "unavailable"

@@ -359,7 +359,7 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 - When `--strict-models` is set, treat model fallback as unavailable capability and enforce the same fail-closed behavior (`CAUD-009`) unless `--allow-degraded` is explicitly present.
 **Turn 4 — Report.** Merge all agent results and emit the report in canonical order:
 
-0. If `{skill_root}/scripts/quality/structured_report.py` exists, render through it with all `{workdir}/cairo-audit-agent-*-findings.json` files, the preflight JSON path, `{workdir}/cairo-audit-files.txt`, and the resolved execution-integrity value. Use its Markdown output as the report body.
+0. If `{skill_root}/scripts/quality/structured_report.py` exists, render through it with all `{workdir}/cairo-audit-agent-*-findings.json` files, the preflight JSON path, `{workdir}/cairo-audit-files.txt`, the resolved execution-integrity value, and `--proven-only` when that flag is active. Use its Markdown output as the report body.
 1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence).
 2. Apply evidence tags per `references/judging.md` Evidence Tags section:
    - Validate every finding has `[CODE-TRACE]`; if a source agent omitted it, add `[CODE-TRACE]` during merge normalization.

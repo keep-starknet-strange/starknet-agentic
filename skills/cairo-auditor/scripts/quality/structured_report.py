@@ -307,6 +307,59 @@ def _bundle_lines(workdir: Path, idx: int) -> int:
     return len(path.read_text(encoding="utf-8", errors="ignore").splitlines())
 
 
+def _read_agent_models(workdir: Path) -> dict[str, str]:
+    """Parse `cairo-audit-agent-models.txt` if present.
+
+    Accepts simple `agent=model` or `<idx>=<model>` lines so vector/adversarial
+    overrides recorded by the orchestrator surface in the Execution Trace
+    instead of always rendering as `unknown`.
+    """
+    path = workdir / "cairo-audit-agent-models.txt"
+    if not path.exists():
+        return {}
+    models: dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip().lower()
+        value = value.strip()
+        if not key or not value:
+            continue
+        if key.startswith("agent_"):
+            key = key[len("agent_") :]
+        models[key] = value
+    return models
+
+
+def _agent_model(models: dict[str, str], idx: int, fallback_keys: tuple[str, ...] = ()) -> str:
+    direct = models.get(str(idx))
+    if direct:
+        return direct
+    for key in fallback_keys:
+        value = models.get(key)
+        if value:
+            return value
+    return "unknown"
+
+
+def _findings_count(path: Path) -> int:
+    if not path.exists():
+        return 0
+    try:
+        data = json.loads(path.read_text(encoding="utf-8") or "{}")
+    except json.JSONDecodeError:
+        return 0
+    if isinstance(data, dict):
+        findings = data.get("findings")
+        if isinstance(findings, list):
+            return len(findings)
+    if isinstance(data, list):
+        return sum(1 for item in data if isinstance(item, dict))
+    return 0
+
+
 def _render_report(
     *,
     repo_root: Path,
@@ -356,6 +409,9 @@ def _render_report(
     ]
     if integrity == "DEGRADED":
         lines += ["`WARNING: degraded execution (specialist agents unavailable or strict-model fallback)`", ""]
+    scope_path = workdir / "cairo-audit-files.txt"
+    scope_status = "OK" if scope_path.exists() and scope_paths else "MISSING"
+    agent_models = _read_agent_models(workdir)
     lines += [
         "---",
         "",
@@ -363,17 +419,41 @@ def _render_report(
         "",
         "| Stage | Model | Evidence | Status |",
         "|---|---|---|---|",
-        f"| Scope discovery | n/a | `{workdir / 'cairo-audit-files.txt'}` ({len(scope_paths)} files) | OK |",
+        f"| Scope discovery | n/a | `{scope_path}` ({len(scope_paths)} files) | {scope_status} |",
         f"| Threat intel enrichment (optional) | n/a | `{workdir / 'cairo-audit-threat-intel.md'}` | {_md_cell(threat_intel_status)} |",
     ]
     for idx in range(1, 5):
         bundle = workdir / f"cairo-audit-agent-{idx}-bundle.md"
+        bundle_lines_count = _bundle_lines(workdir, idx)
+        if not bundle.exists():
+            agent_status = "MISSING"
+        elif bundle_lines_count <= 0:
+            agent_status = "EMPTY"
+        else:
+            agent_status = "OK"
+        model_label = _agent_model(agent_models, idx, fallback_keys=("vector", "default"))
         lines.append(
-            f"| Agent {idx} vector scan | unknown | `{bundle}` ({_bundle_lines(workdir, idx)} lines) | OK |"
+            f"| Agent {idx} vector scan | {_md_cell(model_label)} | `{bundle}` ({bundle_lines_count} lines) | {agent_status} |"
         )
-    agent5_status = "OK" if mode in {"deep", "degraded-deep"} else "SKIPPED"
+    agent5_findings_path = workdir / "cairo-audit-agent-5-findings.json"
+    agent5_bundle = workdir / "cairo-audit-agent-5-bundle.md"
+    agent5_findings = _findings_count(agent5_findings_path)
+    agent5_bundle_lines = _bundle_lines(workdir, 5)
+    if mode not in {"deep", "degraded-deep"}:
+        agent5_status = "SKIPPED"
+        agent5_evidence = f"direct read from `{scope_path}`"
+    elif agent5_findings_path.exists() and agent5_findings > 0:
+        agent5_status = "OK"
+        agent5_evidence = f"`{agent5_findings_path}` ({agent5_findings} findings)"
+    elif agent5_bundle.exists() and agent5_bundle_lines > 0:
+        agent5_status = "OK"
+        agent5_evidence = f"`{agent5_bundle}` ({agent5_bundle_lines} lines)"
+    else:
+        agent5_status = "MISSING"
+        agent5_evidence = f"`{agent5_findings_path}` (not produced)"
+    agent5_model = _agent_model(agent_models, 5, fallback_keys=("adversarial", "default"))
     lines += [
-        f"| Agent 5 adversarial (deep only) | unknown | direct read from `{workdir / 'cairo-audit-files.txt'}` | {agent5_status} |",
+        f"| Agent 5 adversarial (deep only) | {_md_cell(agent5_model)} | {agent5_evidence} | {agent5_status} |",
         "",
         "---",
         "",

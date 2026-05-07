@@ -110,6 +110,7 @@ def _is_exposed(fn: dict[str, object], code: str) -> bool:
 
 def _discover_files(repo_root: Path, scope_file: Path | None) -> list[Path]:
     if scope_file and scope_file.exists():
+        repo_root_resolved = repo_root.resolve()
         files: list[Path] = []
         for line in scope_file.read_text(encoding="utf-8").splitlines():
             raw = line.strip()
@@ -118,8 +119,17 @@ def _discover_files(repo_root: Path, scope_file: Path | None) -> list[Path]:
             path = Path(raw)
             if not path.is_absolute():
                 path = repo_root / path
-            if path.exists() and path.suffix == ".cairo":
-                files.append(path.resolve())
+            try:
+                resolved = path.resolve()
+            except OSError:
+                continue
+            try:
+                resolved.relative_to(repo_root_resolved)
+            except ValueError:
+                # paths outside repo_root are skipped to prevent leaking out-of-scope content
+                continue
+            if resolved.exists() and resolved.suffix == ".cairo":
+                files.append(resolved)
         return sorted(set(files))
 
     files = []
