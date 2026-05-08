@@ -271,19 +271,40 @@ def _dedupe_and_tag(
     return merged, dropped
 
 
+_SCOPE_FILE_BYTES_CAP = 10 * 1024 * 1024  # 10 MiB per file is more than any realistic Cairo source.
+
+
 def _read_scope(scope_file: Path | None, repo_root: Path, findings: list[dict[str, Any]]) -> tuple[list[str], int]:
     paths: list[str] = []
     if scope_file and scope_file.exists():
         paths = [line.strip() for line in scope_file.read_text(encoding="utf-8").splitlines() if line.strip()]
     if not paths:
         paths = sorted({str(row.get("file", "")) for row in findings if row.get("file")})
+    repo_root_resolved = repo_root.resolve()
     total_lines = 0
     for raw in paths:
         path = Path(raw)
         if not path.is_absolute():
             path = repo_root / path
         try:
-            total_lines += len(path.read_text(encoding="utf-8", errors="ignore").splitlines())
+            resolved = path.resolve()
+        except OSError:
+            continue
+        try:
+            resolved.relative_to(repo_root_resolved)
+        except ValueError:
+            # Skip paths outside repo_root: agent-controlled values must not pull in
+            # files like /dev/zero or huge out-of-tree blobs during line counting.
+            continue
+        try:
+            stat = resolved.stat()
+        except OSError:
+            continue
+        # Only line-count regular files within a sane size budget.
+        if not stat.st_size or stat.st_size > _SCOPE_FILE_BYTES_CAP:
+            continue
+        try:
+            total_lines += len(resolved.read_text(encoding="utf-8", errors="ignore").splitlines())
         except OSError:
             continue
     rel_paths: list[str] = []
@@ -291,9 +312,9 @@ def _read_scope(scope_file: Path | None, repo_root: Path, findings: list[dict[st
         path = Path(raw)
         if path.is_absolute():
             try:
-                rel_paths.append(path.resolve().relative_to(repo_root.resolve()).as_posix())
+                rel_paths.append(path.resolve().relative_to(repo_root_resolved).as_posix())
                 continue
-            except ValueError:
+            except (OSError, ValueError):
                 # path lives outside repo_root; keep the original absolute string in the scope table.
                 pass
         rel_paths.append(raw)
@@ -563,7 +584,7 @@ def main() -> int:
         "mode": args.mode,
         "execution_integrity": args.execution_integrity,
         "findings": findings,
-        "dropped_candidates": dropped or [{"candidate": "none", "class": "n/a", "drop_reason": "n/a"}],
+        "dropped_candidates": dropped,
     }
     out_json = Path(args.output_json).resolve()
     out_md = Path(args.output_md).resolve()

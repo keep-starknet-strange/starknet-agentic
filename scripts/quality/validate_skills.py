@@ -7,6 +7,7 @@ standards for the starknet-agentic repository.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -192,12 +193,20 @@ def check_skill(path: Path) -> list[str]:
     return errors
 
 
+def _walk_skill_files() -> list[Path]:
+    skills: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(ROOT):
+        # Prune excluded directories in-place so the filesystem walk skips them.
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDED_PATH_PARTS]
+        if "SKILL.md" in filenames:
+            candidate = Path(dirpath) / "SKILL.md"
+            if _is_repo_skill_path(candidate):
+                skills.append(candidate)
+    return skills
+
+
 def main() -> int:
-    skill_files = sorted(
-        p
-        for p in ROOT.rglob("SKILL.md")
-        if _is_repo_skill_path(p)
-    )
+    skill_files = sorted(_walk_skill_files())
 
     all_errors: list[str] = []
     for path in skill_files:

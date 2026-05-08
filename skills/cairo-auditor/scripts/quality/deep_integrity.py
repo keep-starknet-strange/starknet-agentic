@@ -148,16 +148,27 @@ def _bundle_policy(mode: str) -> str:
 def _check(args: argparse.Namespace) -> int:
     workdir = Path(args.workdir).resolve()
     failures: list[str] = []
-    bundle_policy = _bundle_policy(str(args.mode))
-    checks_applied = ["base_artifacts", f"agent_bundles:{bundle_policy}"]
-    required = [
+    mode = str(args.mode)
+    bundle_policy = _bundle_policy(mode)
+    init_required = mode in {"deep", "degraded-deep"}
+    init_policy = "required" if init_required else "optional"
+    checks_applied = [
+        "base_artifacts",
+        f"init_artifacts:{init_policy}",
+        f"agent_bundles:{bundle_policy}",
+    ]
+    always_required = [workdir / "cairo-audit-files.txt"]
+    init_artifacts = [
         workdir / "cairo-audit-host-capabilities.json",
         workdir / "cairo-audit-model-plan.txt",
-        workdir / "cairo-audit-files.txt",
     ]
-    for path in required:
+    for path in always_required:
         if not path.exists():
             failures.append(f"missing {path.name}")
+    if init_required:
+        for path in init_artifacts:
+            if not path.exists():
+                failures.append(f"missing {path.name}")
     bundle_lines: dict[str, int] = {}
     for idx in range(1, 5):
         path = workdir / f"cairo-audit-agent-{idx}-bundle.md"
