@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cairo Auditor Agent Output",
+  "type": "object",
+  "required": ["agent_id", "findings", "dropped_candidates"],
+  "additionalProperties": true,
+  "properties": {
+    "agent_id": {
+      "type": ["integer", "string"]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "class_id",
+          "root_cause",
+          "file",
+          "priority",
+          "severity",
+          "confidence",
+          "description",
+          "attack_path",
+          "guard_analysis",
+          "evidence_tags"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "class_id": { "type": "string", "minLength": 1 },
+          "root_cause": { "type": "string", "minLength": 1 },
+          "file": { "type": "string", "minLength": 1 },
+          "line": { "type": ["integer", "null"], "minimum": 1 },
+          "priority": { "enum": ["P0", "P1", "P2", "P3"] },
+          "severity": { "enum": ["Critical", "High", "Medium", "Low"] },
+          "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "description": { "type": "string", "minLength": 1 },
+          "attack_path": { "type": "string", "minLength": 1 },
+          "guard_analysis": { "type": "string", "minLength": 1 },
+          "recommended_fix": { "type": "string" },
+          "required_tests": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "evidence_tags": {
+            "type": "array",
+            "items": {
+              "enum": ["[CODE-TRACE]", "[PREFLIGHT-HIT]", "[CROSS-AGENT]", "[ADVERSARIAL]"]
+            },
+            "contains": { "const": "[CODE-TRACE]" }
+          }
+        },
+        "if": {
+          "properties": { "confidence": { "minimum": 75 } },
+          "required": ["confidence"]
+        },
+        "then": {
+          "required": ["recommended_fix", "required_tests"]
+        }
+      }
+    },
+    "dropped_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["candidate", "class", "drop_reason"],
+        "additionalProperties": true,
+        "properties": {
+          "candidate": { "type": "string" },
+          "class": { "type": "string" },
+          "drop_reason": {
+            "enum": [
+              "false_positive",
+              "duplicate_root_cause",
+              "below_confidence_threshold",
+              "insufficient_evidence"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

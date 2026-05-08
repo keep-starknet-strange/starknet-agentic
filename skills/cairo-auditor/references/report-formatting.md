@@ -4,6 +4,13 @@
 
 When `--file-output` is set, save the report to `{repo-root}/security-review-{timestamp}.md` where `{timestamp}` is `YYYYMMDD-HHMMSS` at scan time (middle `MM` denotes minutes).
 
+## Structured Rendering
+
+Specialist outputs are structured JSON matching `structured-findings.md`.
+The orchestrator renders Markdown after JSON parsing, FP-gate filtering,
+deduplication, evidence-tag merging, and optional `--proven-only` severity
+capping. Use `scripts/quality/structured_report.py` when available.
+
 ## Output Format
 
 ````markdown

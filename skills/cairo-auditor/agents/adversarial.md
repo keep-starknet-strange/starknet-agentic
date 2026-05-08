@@ -4,11 +4,10 @@ Construct realistic exploit paths that cross function and contract boundaries.
 
 ## Critical Output Rule
 
-Return findings only in your final response. Do not emit draft findings during analysis.
-- Final output must be exactly one of:
-  - `No findings.`
-  - One or more finding blocks only.
-- Do not include report headers, ASCII art, transport logs, or tool transcript text.
+Return structured JSON only in your final response. Do not emit draft findings during analysis.
+- Final output must be exactly one JSON object matching `../references/structured-findings.md`.
+- Use `{"agent_id": 5, "findings": [], "dropped_candidates": []}` when there are no findings.
+- Do not include report headers, ASCII art, markdown finding blocks, transport logs, or tool transcript text.
 - Your final response is the deliverable. Do not write files.
 
 ## Focus Areas
@@ -20,7 +19,7 @@ Return findings only in your final response. Do not emit draft findings during a
 
 ## Workflow
 
-1. Read all in-scope `.cairo` files, `../references/judging.md`, and `../references/report-formatting.md` first. If available, also read `{workdir}/cairo-audit-threat-intel.md` as a prioritization hint only.
+1. Read all in-scope `.cairo` files, `{workdir}/cairo-audit-surface-map.md`, `../references/judging.md`, and `../references/structured-findings.md` first. If available, also read `{workdir}/cairo-audit-threat-intel.md` as a prioritization hint only.
 2. Build candidate exploit chains and classify each into one bucket:
    - `DROP` (no concrete in-scope path, unreachable, or already guarded),
    - `INVESTIGATE` (plausible but incomplete),
@@ -31,8 +30,8 @@ Return findings only in your final response. Do not emit draft findings during a
    - `AX1 | path: entry() -> helper() -> sink() | guard: none | verdict: CONFIRM [88]`
    - `AX2 | path: set_*() -> write() | guard: assert_only_owner | verdict: DROP (FP gate 3: guarded)`
 5. Run one composability pass if 2+ findings survive (compound impact across functions/modules).
-6. Return only final finding blocks (or `No findings.`). Do not output verdict traces.
-7. Include evidence tags in every finding line per `../references/report-formatting.md`.
+6. Return only the final JSON object. Do not output verdict traces.
+7. Include evidence tags in every finding per `../references/structured-findings.md`.
 
 ## Candidate Format
 
@@ -47,7 +46,7 @@ Use this structure for each surviving candidate in your reasoning:
 Deep-pass budget:
 
 - `DROP` candidates: <=1 line each.
-- `CONFIRM` candidates: <=3 lines each before final formatted finding block.
+- `CONFIRM` candidates: <=3 lines each before final JSON output.
 
 ## Validation Rules
 
@@ -63,15 +62,14 @@ After deep pass + composability:
 
 - Do not revisit dropped candidates.
 - Do not expand scope beyond in-scope files.
-- Output final finding blocks or `No findings.` and stop.
+- Output the final JSON object and stop.
 
 ## Evidence Tags
 
-Tag every confirmed finding with `[CODE-TRACE] [ADVERSARIAL]` on its metadata line. `[CODE-TRACE]` means you traced a concrete path through in-scope source. `[ADVERSARIAL]` means you discovered or confirmed it via adversarial reasoning. The orchestrator may add additional tags during merge.
+Tag every confirmed finding with `[CODE-TRACE] [ADVERSARIAL]` in `evidence_tags`. `[CODE-TRACE]` means you traced a concrete path through in-scope source. `[ADVERSARIAL]` means you discovered or confirmed it via adversarial reasoning. The orchestrator may add additional tags during merge.
 
 ## Scope Constraints
 
 - Security findings only.
 - No style-only, naming-only, or gas-only notes.
 - No duplicate root causes.
-

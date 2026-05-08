@@ -119,12 +119,15 @@ repo / contract
 deterministic preflight
       |
       v
+surface map + structured finding contract
+      |
+      v
 4 vector specialists
       |
       +--> deep mode: +1 adversarial specialist
       |
       v
-dedupe + false-positive gate
+JSON normalize + dedupe + false-positive gate
       |
       v
 security-review-YYYYMMDD-HHMMSS.md
@@ -223,11 +226,11 @@ More tags = stronger signal. Findings with only `[CODE-TRACE]` are valid but low
 
 **Default** scans the full codebase with 4 parallel agents, each covering a different attack-vector partition (access control, external calls, math/economics, storage/trust). Good for fast iteration.
 
-**Deep** adds a 5th adversarial agent that reads all source files and constructs multi-step exploit chains across function and contract boundaries. Use this before deployments or when default mode returns only low-confidence results.
+**Deep** adds a 5th adversarial agent that reads the generated surface map plus all source files and constructs multi-step exploit chains across function and contract boundaries. Use this before deployments or when default mode returns only low-confidence results.
 
 **Targeted** scans one or more specific files instead of the full repo. It runs the same 4 vector specialists on only the paths you provide and skips deterministic preflight to keep context scoped. Use this for fast, focused review of a single contract or module.
 
-**Local** runs a deterministic preflight scanner with no AI calls. Catches obvious patterns (ungated upgrades, missing non-zero guards, commented-out access control). Useful as a CI gate or when offline.
+**Local** runs a deterministic preflight scanner with no AI calls. Catches obvious patterns (ungated upgrades, missing non-zero guards, commented-out access control) and can opt into this repository's benchmark detector suite with `--enable-benchmark-bridge` or `CAUD_ENABLE_BENCHMARK_BRIDGE=1` for broader known-class coverage. Useful as a CI gate or when offline.
 
 ## Install
 
@@ -365,7 +368,7 @@ If you want the stable regression target used by this repository, clone `keep-st
 skills/cairo-auditor/tests/fixtures/insecure_upgrade_controller/src/lib.cairo
 ```
 
-That fixture is intentionally vulnerable and should reliably produce three findings: missing access control on upgrade, missing timelock, and missing non-zero class-hash guard.
+That fixture is intentionally vulnerable and should reliably produce at least three upgrade findings: missing access control on upgrade, missing timelock, and missing non-zero class-hash guard. When explicitly enabled from this repository, the benchmark detector bridge may add constructor/address lifecycle findings.
 
 This path is primarily for manual maintainer regression. Repository CI runs separate validation checks for the skill and report contract rather than asking users to invoke this fixture path directly.
 
@@ -374,11 +377,11 @@ This path is primarily for manual maintainer regression. Repository CI runs sepa
 The skill orchestrates a **4-turn pipeline**:
 
 1. **Discover** — find in-scope `.cairo` files, run deterministic preflight scan
-2. **Prepare** — build 4 code bundles, each paired with a different attack-vector partition
-3. **Spawn** — launch 4 parallel vector specialists (+ optional adversarial in deep mode)
-4. **Report** — merge findings, deduplicate by root cause, sort by confidence, apply formatting
+2. **Prepare** — generate a surface map and build 4 code bundles, each paired with a different attack-vector partition
+3. **Spawn** — launch 4 parallel vector specialists (+ optional adversarial in deep mode), each returning structured JSON
+4. **Report** — normalize JSON, deduplicate by root cause, sort by confidence, apply formatting
 
-Each vector agent scans the full codebase against ~30 attack vectors from its assigned partition (access control, external calls, math/economics, storage/trust). Every candidate finding goes through a strict false-positive gate requiring: (1) a concrete attack path, (2) a reachable entry point, and (3) confirmation that no existing guard blocks the exploit.
+Each vector agent scans the full codebase against ~30 attack vectors from its assigned partition (access control, external calls, math/economics, storage/trust). Every candidate finding goes through a strict false-positive gate requiring: (1) a concrete attack path, (2) a reachable entry point, and (3) confirmation that no existing guard blocks the exploit. Agents emit JSON first; the orchestrator renders Markdown only after merge and evidence-tag normalization.
 
 Confidence starts at 100 and is reduced by: privileged caller requirement (-25), partial attack path (-20), self-contained impact (-15), narrow preconditions (-10). Only findings passing the FP gate are reported.
 
@@ -450,6 +453,13 @@ Deep mode uses host-aware model routing:
 For large codebases (largest file >1000 lines or any bundle >1400 lines), deep mode splits into two waves (Agents 1-4, then Agent 5) to preserve transport stability.
 
 Optional threat-intel enrichment (deep mode only) pulls bounded security signals as prioritization hints for specialists. It never creates findings by itself — all findings require in-scope FP-gated proof.
+
+Deep mode also writes a surface map and integrity artifacts into `WORKDIR`:
+
+- `cairo-audit-surface-map.md`
+- `cairo-audit-host-capabilities.json`
+- `cairo-audit-model-plan.txt`
+- `cairo-audit-agent-*-findings.json`
 
 ### Verifying a deep run
 
