@@ -41,7 +41,7 @@ jobs:
 
       - name: Create Release Pull Request or Publish
         id: changesets
-        uses: changesets/action@6a0a831ff30acef54f2c6aa1cbbc1096b066edaf # v1.7.0 (tag object: e87c8ed249971350e47fab7515075f44eb134e5b)
+        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.7.0 (tag object: e87c8ed249971350e47fab7515075f44eb134e5b)
         with:
           version: pnpm ci:version
           publish: pnpm ci:release
