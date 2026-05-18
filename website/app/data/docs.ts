@@ -170,6 +170,11 @@ export const DOC_CATEGORIES: DocCategory[] = [
         description: "Confidential ERC20 payments with encrypted balances and zero-knowledge proofs",
       },
       {
+        slug: "snip-36",
+        title: "SNIP-36 Skill",
+        description: "Virtual block proving workflows for Starknet contracts, proof servers, and starknet.js clients",
+      },
+      {
         slug: "starkzap-sdk",
         title: "Starkzap SDK Skill",
         description: "Project-focused guide for StarkSDK onboarding, wallets, paymaster flows, and staking",
