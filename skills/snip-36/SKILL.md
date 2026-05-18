@@ -41,6 +41,13 @@ SNIP-36 allows executing a single `INVOKE_TXN_V3` off-chain against a reference 
 
 ---
 
+## Quick Start
+
+1. Review the [operator checklist](references/operator-checklist.md).
+2. Add a virtual `create_proof` function that emits one L2->L1 message.
+3. Prove an unsigned virtual tx with `snip36 prove virtual-os`.
+4. Submit `verify_result` with `{ proof, proofFacts }` and the decoded message.
+
 ## When to Use
 
 - The user asks for SNIP-36, virtual block proving, off-chain Starknet proof generation, or proof-backed on-chain verification.
