@@ -56,7 +56,7 @@ SNIP-36 allows executing a single `INVOKE_TXN_V3` off-chain against a reference 
 
 ## Generic 3-Phase Pattern
 
-```
+```text
 PHASE 1 — CREATE (off-chain build)
   Build a signed INVOKE_TXN_V3 that calls the virtual function.
   Never broadcast. Includes public_input + private_input in calldata.
@@ -134,7 +134,7 @@ fn verify_result(
 
 ### proof_facts layout
 
-```
+```text
 index: [0,  1,  2,                   3,  4,            5,          6,              7,          8,             ...]
 value: [0,  0,  virtual_OS_prog_hash, 0,  block_number, block_hash, OS_config_hash, n_messages, msg_hash_0,    msg_hash_1, ...]
 ```
@@ -238,7 +238,11 @@ app.listen(Number(process.env.PORT ?? 3030));
 ```typescript
 // src/prove.ts
 proveRouter.post("/prove", (req, res) => {
-    const { blockNumber, tx } = req.body;   // tx: INVOKE_TXN_V3
+    const { blockNumber, tx } = req.body ?? {};
+    if (!Number.isInteger(blockNumber) || blockNumber < 0 || typeof tx !== "object" || tx == null) {
+        res.status(400).json({ code: "INVALID_REQUEST", message: "blockNumber or tx is invalid" });
+        return;
+    }
 
     const txJsonPath = `./tmp/tx-${Date.now()}.json`;
     fs.writeFileSync(txJsonPath, JSON.stringify(tx));
@@ -263,7 +267,11 @@ proveRouter.post("/prove", (req, res) => {
     child.stderr.on("data", c => send("log", { stream: "stderr", line: c.toString() }));
 
     child.on("close", code => {
-        if (code === 0) {
+        try {
+            if (code !== 0) {
+                send("error", { code: "PROVER_EXIT_NON_ZERO", message: "snip36 exited non-zero" });
+                return;
+            }
             const proof = fs.readFileSync(`${outputBase}.proof`, "ascii").trim();
             const proofFacts = JSON.parse(fs.readFileSync(`${outputBase}.proof_facts`, "ascii"));
             const rawPath = `${outputBase}.raw_messages.json`;
@@ -271,10 +279,13 @@ proveRouter.post("/prove", (req, res) => {
                 ? JSON.parse(fs.readFileSync(rawPath, "ascii")).l2_to_l1_messages
                 : undefined;
             send("done", { proof, proofFacts, ...(l2ToL1Messages && { l2ToL1Messages }) });
-        } else {
-            send("error", { message: "snip36 exited non-zero" });
+        } catch {
+            send("error", { code: "ARTIFACT_READ_FAILED", message: "failed to read proof artifacts" });
+        } finally {
+            [txJsonPath, `${outputBase}.proof`, `${outputBase}.proof_facts`, `${outputBase}.raw_messages.json`]
+                .forEach(p => fs.existsSync(p) && fs.unlinkSync(p));
+            res.end();
         }
-        res.end();
     });
 });
 ```
@@ -400,7 +411,7 @@ async function proveAndVerify(
 
 ### SNIP-36 transaction hash extension
 
-```
+```text
 Standard v3: poseidon(INVOKE, version, sender, tip_rb_hash, paymaster_hash,
                       chain_id, nonce, da_mode, acct_deploy_hash, calldata_hash)
 
@@ -415,7 +426,7 @@ SNIP-36:     poseidon(INVOKE, version, sender, tip_rb_hash, paymaster_hash,
 
 ## Part 4 — Frontend Architecture (Next.js)
 
-```
+```text
 BROWSER                          NEXT.JS SERVER             PROOF SERVER
 ─────────────────────────────── ──────────────────────────  ────────────
 1. Collect user inputs (public)
@@ -479,9 +490,20 @@ PROOF_SERVER_URL=http://localhost:3030  # server-only
 
 ---
 
+## Error Handling
+
+| Error | Source | Recovery |
+|---|---|---|
+| `INVALID_REQUEST` | `/prove` handler (our example) — bad `blockNumber` or missing `tx` | Validate inputs before calling `/prove`; `blockNumber` must be a non-negative integer, `tx` must be an `INVOKE_TXN_V3` object |
+| `PROVER_EXIT_NON_ZERO` | `/prove` handler (our example) — `snip36` CLI exited with non-zero code | Check proof server stderr logs; verify `--rpc-url` is reachable and `--block-number` is a recent finalized block |
+| `ARTIFACT_READ_FAILED` | `/prove` handler (our example) — `.proof` or `.proof_facts` file unreadable after CLI success | Check disk space on the proof server (~10 GB needed); verify `--output` path is writable |
+| `'Proof message mismatch'` | Cairo `verify_result` assert — `proof_facts[8]` does not match recomputed message hash | The `public_message` passed to `verify_result` does not match what `create_proof` emitted; check payload serialization order and field list |
+
+---
+
 ## Quick Reference
 
-```
+```text
 Three functions per contract:
   create_proof(public, private) → emits L2→L1 msg via send_message_to_l1_syscall
   verify_result(public_msg)     → reads proof_facts, checks hash, applies state
