@@ -26,6 +26,7 @@ PUBLIC_SKILLS = [
     "cairo-testing",
     "controller-cli",
     "huginn-onboard",
+    "snip-36",
     "starknet-anonymous-wallet",
     "starknet-defi",
     "starknet-identity",
