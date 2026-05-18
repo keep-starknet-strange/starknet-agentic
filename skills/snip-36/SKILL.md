@@ -28,6 +28,7 @@ allowed-tools:
 user-invocable: true
 ---
 
+# SNIP-36
 
 ## Overview
 
