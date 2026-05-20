@@ -282,7 +282,7 @@ Only surfaces explicitly tested in this repository are marked as supported.
 
 | Surface | Install Path | Status |
 |---|---|---|
-| Codex | `install-skill-from-github.py --repo keep-starknet-strange/starknet-agentic --path skills/cairo-auditor --ref main` | Supported |
+| Codex | `install-skill-from-github.py --repo keep-starknet-strange/starknet-agentic --path skills/cairo-auditor --ref <commit-sha>` | Supported |
 | Claude Code | `/plugin marketplace add keep-starknet-strange/starknet-agentic` plus `/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user` | Supported |
 | Agent Skills CLI | `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor` | Supported |
 | Other Agent Skills-compatible hosts | Host-specific skill import | Not verified here |
