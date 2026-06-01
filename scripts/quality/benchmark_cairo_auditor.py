@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 import shutil
@@ -10,6 +11,56 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+
+
+def _load_component_resolution():
+    """Load the skill's shared component-resolution helpers when in-repo.
+
+    Keeps a single source of truth for OZ component surfaces shared with the
+    runtime surface map. Falls back to no-op stubs if the skill directory is
+    absent (e.g. when only this script is vendored), so detectors keep their
+    prior behaviour.
+    """
+    module_path = (
+        Path(__file__).resolve().parents[2]
+        / "skills"
+        / "cairo-auditor"
+        / "scripts"
+        / "quality"
+        / "component_resolution.py"
+    )
+    if not module_path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("cairo_auditor_component_resolution", module_path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        return None
+    return module
+
+
+_COMPONENTS = _load_component_resolution()
+
+
+def _component_facts(code: str) -> dict[str, object]:
+    if _COMPONENTS is None:
+        return {}
+    try:
+        return _COMPONENTS.resolve_components(code)
+    except Exception:
+        return {}
+
+
+def _initializer_guards_param(code: str, param: str) -> bool:
+    if _COMPONENTS is None:
+        return False
+    try:
+        return bool(_COMPONENTS.initializer_guards_param(code, param))
+    except Exception:
+        return False
 
 
 @dataclass
@@ -334,6 +385,10 @@ def detect_critical_address_init_without_nonzero_guard(code: str) -> bool:
                 body,
             )
         )
+        # An OZ Ownable/AccessControl initializer rejects the zero address
+        # internally, so routing the param through it is a valid guard.
+        if not has_guard and _initializer_guards_param(code, param):
+            has_guard = True
         if has_guard:
             continue
         direct_write = bool(re.search(rf"\b\w+\.write\(\s*{param}\b", body))
@@ -423,11 +478,18 @@ def detect_irrevocable_admin(code: str) -> bool:
     if owner_only_params and has_ownable_rotation_surface:
         return False
 
+    facts = _component_facts(code)
     has_accesscontrol_rotation_surface = (
         "accesscontrolcomponent" in lower_no_comments
         and (
             "impl accesscontrolimpl" in lower_no_comments
             or "accesscontrolcomponent::accesscontrolimpl" in lower_no_comments
+        )
+    ) or bool(
+        facts.get("access_control")
+        and any(
+            surface in ("grant_role", "revoke_role", "renounce_role", "accesscontrolmixinimpl")
+            for surface in facts.get("rotation_surfaces", [])  # type: ignore[arg-type]
         )
     )
     if seeded_via_role and not seeded_via_direct_write and has_accesscontrol_rotation_surface:

@@ -91,6 +91,7 @@ try {
 - `--allow-degraded` (off by default): permit fallback execution when specialist agents cannot be spawned. On hosts with deep-mode enforcement enabled, this flag opts into degraded execution.
 - `--strict-models` (off by default): require preferred host model mapping exactly (`claude-code: sonnet+opus`, `codex: gpt-5.4`). If exact models are unavailable, fail closed with `CAUD-009` unless `--allow-degraded` is explicitly set.
 - `--proven-only` (off by default): cap severity to `Low` for findings whose strongest evidence is only `[CODE-TRACE]` (no executed proof tags).
+- `--force-adversarial` (off by default, deep mode): override the complexity gate and always run Agent 5 on the full adversarial model, even for low-complexity scopes. See deep mode Cost Controls.
 
 ## Host Capability Preflight (Deep Mode, Experimental)
 
@@ -228,27 +229,40 @@ python3 "{skill_root}/scripts/quality/surface_map.py" \
   --repo-root <repo-root> \
   --scope-file "{workdir}/cairo-audit-files.txt" \
   --output-json "{workdir}/cairo-audit-surface-map.json" \
-  --output-md "{workdir}/cairo-audit-surface-map.md"
+  --output-md "{workdir}/cairo-audit-surface-map.md" \
+  --output-routing "{workdir}/cairo-audit-routing.json"
 ```
+
+The surface map now includes a **Component Resolution** section (embedded OZ
+Ownable/AccessControl/Upgradeable surfaces — used by the FP gate in
+`references/judging.md` to suppress IRREVOCABLE_ADMIN / missing-guard false
+positives) and a **Routing & Complexity** section. `cairo-audit-routing.json`
+carries per-file vector-partition relevance and an `complexity` block
+(`score`, `threshold`, `adversarial_action`) consumed by deep mode's Cost
+Controls (relevance routing + complexity-gated Agent 5).
 
 Append a compact summary from `{workdir}/cairo-audit-surface-map.md` to Agent 5 prompts in deep mode.
 
-(d) Bash: create four per-agent bundle files (`{workdir}/cairo-audit-agent-{1,2,3,4}-bundle.md`) in a **single command**. Each bundle concatenates:
+(d) Bash: build a **shared cacheable prefix** once, then compose four per-agent
+bundle files from it in a **single command**. The shared prefix concatenates:
   - **all** in-scope `.cairo` files (with `### path` headers and fenced code blocks),
   - `{refs_root}/judging.md`,
   - `{refs_root}/structured-findings.md`,
-  - `{refs_root}/report-formatting.md`,
-  - `{refs_root}/attack-vectors/attack-vectors-N.md` (one per agent — only the attack-vectors file differs).
+  - `{refs_root}/report-formatting.md`.
 
-Print line counts per bundle. Example command:
-
-Before running this command, substitute placeholders (`{refs_root}`, `{repo-root}`) with the concrete paths resolved in Turn 1.
+Each bundle is then `shared-prefix + attack-vectors-N.md` (one per agent — only
+the trailing attack-vectors file differs). This ordering is deliberate: the
+identical leading block lets prompt-caching hosts reuse it across agents 2–4
+(see deep mode Cost Controls → "Shared cached source prefix"). Print line counts
+per bundle. Substitute placeholders (`{refs_root}`, `{repo-root}`) with the
+concrete paths resolved in Turn 1 before running.
 
 ```bash
 REFS="{refs_root}"
 SRC="{repo-root}"
 WORKDIR="{workdir}"
 IN_SCOPE="$WORKDIR/cairo-audit-files.txt"
+PREFIX="$WORKDIR/cairo-audit-shared-prefix.md"
 set -euo pipefail
 
 build_code_block() {
@@ -263,23 +277,32 @@ build_code_block() {
   done < "$IN_SCOPE"
 }
 
-CODE=$(build_code_block)
+# Build the byte-identical shared prefix exactly once.
+{
+  build_code_block
+  echo "---"
+  cat "$REFS/judging.md"
+  echo "---"
+  cat "$REFS/structured-findings.md"
+  echo "---"
+  cat "$REFS/report-formatting.md"
+} > "$PREFIX"
+echo "Shared prefix: $(wc -l < "$PREFIX") lines"
 
 for i in 1 2 3 4; do
   {
-    echo "$CODE"
-    echo "---"
-    cat "$REFS/judging.md"
-    echo "---"
-    cat "$REFS/structured-findings.md"
-    echo "---"
-    cat "$REFS/report-formatting.md"
+    cat "$PREFIX"
     echo "---"
     cat "$REFS/attack-vectors/attack-vectors-$i.md"
   } > "$WORKDIR/cairo-audit-agent-$i-bundle.md"
   echo "Bundle $i: $(wc -l < "$WORKDIR/cairo-audit-agent-$i-bundle.md") lines"
 done
 ```
+
+For **large scopes** (any bundle > 1400 lines), prefer relevance-routed source
+per `{workdir}/cairo-audit-routing.json` instead of the full shared prefix: give
+agent N only the files listed under `partition_files["N"]`. See deep mode Cost
+Controls → "Relevance-routed source".
 
 Do NOT inline source-code files into prompts. Bundles replace raw source in prompts. Non-code context blocks (deterministic preflight summary and optional threat-intel summary) may be appended.
 
@@ -310,9 +333,8 @@ Threat-intel usage rules:
 - Always spawn Agents 1–4 in parallel.
 - In **deep** mode, use adaptive fanout:
   - If the largest in-scope file is `<= 1000` lines and all bundles are `<= 1400` lines, spawn Agent 5 in parallel with Agents 1–4.
-  - Otherwise, run two waves for transport stability:
-    1. Wave A: Agents 1–4 in parallel.
-    2. Wave B: Agent 5 after Wave A completes.
+  - Otherwise, run two waves for transport stability: Wave A (Agents 1–4), then Wave B (Agent 5).
+- **Cost Controls (see deep.md):** order prompts with the identical bundle prefix leading for cache reuse; relevance-route source on large scopes; complexity-gate Agent 5 via `complexity.adversarial_action` in `cairo-audit-routing.json` (`full`/`downgrade`/`skip`, override with `--force-adversarial`); run `escalation_plan.py --workdir {workdir}` after Wave A to opus-escalate only files with first-pass signal; and when Agent 5 follows Wave A, prepend a "Vector findings so far" block so it corroborates across lenses (`[CROSS-AGENT]`). Print the gate decision and reasons.
 
 - Resolve host-aware model labels first:
   - write `{workdir}/cairo-audit-model-plan.txt` with `host`, `vector_model`, and `adversarial_model`.
