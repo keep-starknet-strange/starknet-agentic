@@ -32,13 +32,13 @@ jobs:
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.35.2 (tag object: 7fc6561ed893d15cec696e062df840b21db27eb0)
+        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.35.2 (tag object: 7fc6561ed893d15cec696e062df840b21db27eb0)
         with:
           languages: ${{ matrix.language }}
           queries: ${{ matrix.queries }}
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.35.2 (tag object: 7fc6561ed893d15cec696e062df840b21db27eb0)
+        uses: github/codeql-action/autobuild@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.35.2 (tag object: 7fc6561ed893d15cec696e062df840b21db27eb0)
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.35.2 (tag object: 7fc6561ed893d15cec696e062df840b21db27eb0)
+        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.35.2 (tag object: 7fc6561ed893d15cec696e062df840b21db27eb0)
