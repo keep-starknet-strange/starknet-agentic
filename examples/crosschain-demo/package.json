@@ -15,7 +15,7 @@
   "dependencies": {
     "@starknetfoundation/starknet-agentic-onboarding-utils": "workspace:*",
     "dotenv": "^17.4.2",
-    "ethers": "^6.16.0",
+    "ethers": "^6.17.0",
     "starknet": "^10.0.2"
   },
   "devDependencies": {
