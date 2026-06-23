@@ -185,7 +185,7 @@ When degraded:
 - Findings that fail FP gate must be dropped entirely and not reported.
 - Every finding must carry at least one evidence tag per `../references/judging.md` Evidence Tags section.
 - The orchestrator adds `[PREFLIGHT-HIT]` when deterministic preflight flagged the same class/entry.
-- The orchestrator adds `[CROSS-AGENT]` when 2+ agents independently reported the same root cause before deduplication.
+- The orchestrator adds `[CROSS-AGENT]` when 2+ agents independently reported the same root cause before deduplication (typically a vector agent corroborated by the adversarial agent — see `judging.md`).
 - The orchestrator adds `[ADVERSARIAL]` when Agent 5 discovered or confirmed the finding.
 - Evidence tags appear in the metadata line after severity and in the Findings Index `Evidence` column.
 - Track dropped candidates in `Dropped Candidates` with one of: `false_positive`, `duplicate_root_cause`, `below_confidence_threshold`, `insufficient_evidence`.
