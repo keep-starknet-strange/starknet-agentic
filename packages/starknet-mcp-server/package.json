@@ -19,7 +19,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@avnu/avnu-sdk": "^4.0.1",
+    "@avnu/avnu-sdk": "^4.1.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*",
     "starknet": "^10.0.2",
@@ -27,9 +27,9 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/coverage-v8": "4.1.10",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   }
 }
