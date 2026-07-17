@@ -19,7 +19,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@avnu/avnu-sdk": "^4.1.0",
+    "@avnu/avnu-sdk": "^4.2.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*",
     "starknet": "^10.0.2",
