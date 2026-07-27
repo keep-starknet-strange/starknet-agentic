@@ -29,7 +29,7 @@
     "@changesets/cli": "2.31.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
-    "eslint": "^10.7.0",
+    "eslint": "^10.8.0",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3",
     "vite": "^8.1.5",
