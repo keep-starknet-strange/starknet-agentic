@@ -10,6 +10,6 @@
     "fast-json-patch": "^3.1.1",
     "fast-uri": "^3.1.5",
     "js-yaml": "^3.15.0",
-    "brace-expansion": "^1.1.16"
+    "brace-expansion": "^1.1.18"
   }
 }
