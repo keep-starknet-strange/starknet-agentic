@@ -160,7 +160,7 @@ The public catalog is maintained in [`skills/README.md`](./skills/README.md) and
 | Use case | Requirements |
 |---|---|
 | CLI scaffolder | Node.js `>=18.0.0` |
-| Source checkout | Node.js `>=20.9.0`, `pnpm` `>=10.28.2` |
+| Source checkout | Node.js `>=24.0.0`, `pnpm` `>=10.28.2` |
 | Cairo contracts | Scarb `>=2.14.0`, Starknet Foundry `snforge` `>=0.54.1` |
 | Networked examples | Starknet RPC URL, account address, and signer configuration |
 
