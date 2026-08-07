@@ -18,7 +18,7 @@
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 24+
 - A test private key (generate: `PRIVATE_KEY=0x$(openssl rand -hex 32)`)
 - For **sponsored** mode: [AVNU Paymaster API key](https://portal.avnu.fi/)
 
