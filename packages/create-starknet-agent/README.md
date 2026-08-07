@@ -230,7 +230,7 @@ Checks:
 
 ## Requirements
 
-- Node.js >= 18.0.0
+- Node.js >= 24.0.0
 - A Starknet account (Ready, Braavos, or custom)
 - Testnet funds for Sepolia (use a [faucet](https://starknet-faucet.vercel.app))
 

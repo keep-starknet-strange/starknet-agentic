@@ -14,7 +14,7 @@ For v2 scaffolding, the flow also includes a pre-onboarding funding decision sta
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 24+
 - `pnpm install`
 - A funded Starknet Sepolia deployer account
 - A funded Base Sepolia EOA

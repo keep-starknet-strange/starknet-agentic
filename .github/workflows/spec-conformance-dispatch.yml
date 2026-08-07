@@ -46,13 +46,23 @@ jobs:
           TOKEN: ${{ secrets.CROSS_REPO_DISPATCH_TOKEN }}
           SPEC_VERSION: ${{ steps.spec.outputs.version }}
         run: |
-          set -euo pipefail
+          # Deliberately no `set -e`: this step only notifies counterpart repos.
+          # A counterpart being unreachable, or this repo's dispatch token being
+          # expired, must not turn unrelated PRs red. Failures are reported as
+          # warning annotations and in the job summary instead of failing the job.
+          set -uo pipefail
+
           if [ -z "${TOKEN:-}" ]; then
             echo "CROSS_REPO_DISPATCH_TOKEN is not configured; skipping cross-repo dispatch."
             exit 0
           fi
 
           SISNA_TARGET="${SISNA_REPO:-omarespejel/SISNA}"
+          body="$(mktemp)"
+          failed=0
+
+          echo "### Cross-repo spec dispatch" >> "${GITHUB_STEP_SUMMARY}"
+
           for target in "keep-starknet-strange/starkclaw" "${SISNA_TARGET}"; do
             owner="${target%%/*}"
             repo="${target##*/}"
@@ -62,10 +72,38 @@ jobs:
               --arg source_ref "${GITHUB_REF}" \
               --arg spec_version "${SPEC_VERSION}" \
               '{event_type:"spec-conformance-request", client_payload:{source_repo:$source_repo, source_sha:$source_sha, source_ref:$source_ref, spec_version:$spec_version}}')
-            curl -fsSL -X POST \
+
+            code=$(curl -sS -X POST \
+              -o "${body}" -w '%{http_code}' \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${TOKEN}" \
               "https://api.github.com/repos/${owner}/${repo}/dispatches" \
-              -d "${payload}"
-            echo "Dispatched spec-conformance-request to ${target}"
+              -d "${payload}") || code="000"
+
+            if [ "${code}" = "204" ]; then
+              echo "Dispatched spec-conformance-request to ${target}"
+              echo "- \`${target}\`: dispatched (204)" >> "${GITHUB_STEP_SUMMARY}"
+              continue
+            fi
+
+            failed=1
+            reason=$(jq -r '.message // empty' "${body}" 2>/dev/null)
+            reason="${reason:-no response body}"
+            case "${code}" in
+              000) hint="network error contacting api.github.com" ;;
+              401) hint="CROSS_REPO_DISPATCH_TOKEN is expired or revoked; rotate it in repository settings" ;;
+              403) hint="token lacks permission to dispatch to this repo" ;;
+              404) hint="repo not found, or the token cannot see it" ;;
+              *)   hint="unexpected response" ;;
+            esac
+            echo "::warning title=Cross-repo dispatch failed::${target} returned HTTP ${code} (${reason}) - ${hint}"
+            echo "- \`${target}\`: **failed** - HTTP ${code} (${reason}); ${hint}" >> "${GITHUB_STEP_SUMMARY}"
           done
+
+          rm -f "${body}"
+
+          if [ "${failed}" -ne 0 ]; then
+            echo "One or more cross-repo dispatches failed; see the warnings above."
+            echo "" >> "${GITHUB_STEP_SUMMARY}"
+            echo "Counterpart repos were **not** notified. This does not fail the build." >> "${GITHUB_STEP_SUMMARY}"
+          fi
