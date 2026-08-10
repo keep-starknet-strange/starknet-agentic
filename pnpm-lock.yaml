@@ -26,7 +26,7 @@ overrides:
   picomatch@<2.3.2: ^2.3.2
   picomatch@>=4.0.0 <4.0.4: ^4.0.4
   path-to-regexp@>=8.0.0 <8.4.0: ^8.4.0
-  vite: 8.2.0
+  vite: 8.2.1
   ws@>=8.0.0 <8.21.0: 8.21.0
   yaml@>=2.0.0 <2.8.3: ^2.8.3
 
@@ -48,16 +48,16 @@ importers:
         version: 10.8.0(jiti@2.6.1)
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vite:
-        specifier: 8.2.0
-        version: 8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3)
+        specifier: 8.2.1
+        version: 8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3)
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   examples/carry-agent:
     dependencies:
@@ -72,8 +72,8 @@ importers:
         version: 4.4.3
     devDependencies:
       tsx:
-        specifier: ^4.23.5
-        version: 4.23.5
+        specifier: ^4.23.10
+        version: 4.23.10
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -100,14 +100,14 @@ importers:
         version: 10.0.2(typescript@6.0.3)(zod@4.4.3)
     devDependencies:
       tsx:
-        specifier: ^4.23.5
-        version: 4.23.5
+        specifier: ^4.23.10
+        version: 4.23.10
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   examples/defi-agent:
     dependencies:
@@ -122,8 +122,8 @@ importers:
         version: 10.0.2(typescript@6.0.3)(zod@4.4.3)
     devDependencies:
       tsx:
-        specifier: ^4.23.5
-        version: 4.23.5
+        specifier: ^4.23.10
+        version: 4.23.10
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -138,14 +138,14 @@ importers:
         version: 10.0.2(typescript@6.0.3)(zod@4.4.3)
     devDependencies:
       tsx:
-        specifier: ^4.23.5
-        version: 4.23.5
+        specifier: ^4.23.10
+        version: 4.23.10
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   examples/full-stack-swarm:
     dependencies:
@@ -160,8 +160,8 @@ importers:
         version: 10.0.2(typescript@6.0.3)(zod@4.4.3)
     devDependencies:
       tsx:
-        specifier: ^4.23.5
-        version: 4.23.5
+        specifier: ^4.23.10
+        version: 4.23.10
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -188,8 +188,8 @@ importers:
         version: 10.0.2(typescript@6.0.3)(zod@4.4.3)
     devDependencies:
       tsx:
-        specifier: ^4.23.5
-        version: 4.23.5
+        specifier: ^4.23.10
+        version: 4.23.10
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -207,8 +207,8 @@ importers:
         version: 4.4.3
     devDependencies:
       tsx:
-        specifier: ^4.23.5
-        version: 4.23.5
+        specifier: ^4.23.10
+        version: 4.23.10
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -223,14 +223,14 @@ importers:
         version: 3.0.0(ethers@6.17.0)(typescript@6.0.3)
     devDependencies:
       tsx:
-        specifier: ^4.23.5
-        version: 4.23.5
+        specifier: ^4.23.10
+        version: 4.23.10
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   packages/create-starknet-agent:
     dependencies:
@@ -249,13 +249,13 @@ importers:
         version: 2.4.9
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   packages/prediction-arb-scanner:
     dependencies:
@@ -268,19 +268,19 @@ importers:
         version: 26.1.2
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   packages/shared:
     devDependencies:
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -299,13 +299,13 @@ importers:
         version: 26.1.2
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   packages/starknet-agent-passport:
     dependencies:
@@ -315,13 +315,13 @@ importers:
     devDependencies:
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   packages/starknet-mcp-server:
     dependencies:
@@ -349,13 +349,13 @@ importers:
         version: 4.1.10(vitest@4.1.10)
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   packages/starknet-onboarding-utils:
     dependencies:
@@ -371,13 +371,13 @@ importers:
         version: 26.1.2
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   packages/x402-starknet:
     dependencies:
@@ -399,13 +399,13 @@ importers:
         version: 10.8.0(jiti@2.6.1)
       tsup:
         specifier: ^8.5.0
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   website:
     dependencies:
@@ -435,17 +435,17 @@ importers:
         version: 19.2.8(react@19.2.8)
       rehype-pretty-code:
         specifier: ^0.14.5
-        version: 0.14.5(shiki@4.4.1)
+        version: 0.14.5(shiki@4.4.2)
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
       shiki:
-        specifier: ^4.4.1
-        version: 4.4.1
+        specifier: ^4.4.2
+        version: 4.4.2
     devDependencies:
       '@tailwindcss/typography':
         specifier: ^0.5.20
-        version: 0.5.20(tailwindcss@3.4.19(tsx@4.23.5)(yaml@2.8.3))
+        version: 0.5.20(tailwindcss@3.4.19(tsx@4.23.10)(yaml@2.8.3))
       '@types/mdx':
         specifier: ^2.0.14
         version: 2.0.14
@@ -460,7 +460,7 @@ importers:
         version: 19.2.4(@types/react@19.2.18)
       autoprefixer:
         specifier: ^10.5.4
-        version: 10.5.4(postcss@8.5.25)
+        version: 10.5.4(postcss@8.5.26)
       eslint:
         specifier: ^10.8.0
         version: 10.8.0(jiti@1.21.7)
@@ -469,10 +469,10 @@ importers:
         version: 16.3.0(@typescript-eslint/parser@8.66.0(eslint@10.8.0(jiti@1.21.7))(typescript@6.0.3))(eslint@10.8.0(jiti@1.21.7))(typescript@6.0.3)
       postcss:
         specifier: ^8.5.12
-        version: 8.5.25
+        version: 8.5.26
       tailwindcss:
         specifier: ^3.4.19
-        version: 3.4.19(tsx@4.23.5)(yaml@2.8.3)
+        version: 3.4.19(tsx@4.23.10)(yaml@2.8.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1467,32 +1467,32 @@ packages:
   '@scure/starknet@1.1.0':
     resolution: {integrity: sha512-83g3M6Ix2qRsPN4wqLDqiRZ2GBNbjVWfboJE/9UjfG+MHr6oDSu/CWgy8hsBSJejr09DkkL+l0Ze4KVrlCIdtQ==}
 
-  '@shikijs/core@4.4.1':
-    resolution: {integrity: sha512-VeR2CY6Nn9/WbisoYLOQZ7HZOnwTrpBuOw4wExjqLnBCi62BNWynBUO6K2uPIASPFJwAv7cX1fUu+LrPlSstcw==}
+  '@shikijs/core@4.4.2':
+    resolution: {integrity: sha512-StyzbAyxg2/tBGf78gwbBkGyeQ73lf8UiJArFaQhTQIDqQOCKPCQFanvrs4/Yv3Yfyc+ONInJM6K+FMIf+P+kA==}
     engines: {node: '>=20'}
 
-  '@shikijs/engine-javascript@4.4.1':
-    resolution: {integrity: sha512-6U4lJBh8LTvIkEVqRHv/rr3ruwtO6IweFQt1ME1ntHJMGHS+6N86vfYGO1o8c/DtOCTia2lfhdQBtBrps1sDfQ==}
+  '@shikijs/engine-javascript@4.4.2':
+    resolution: {integrity: sha512-MnIkeqWdVPUWsxlx8gKLVCJFTsqrQJgpTPBPpQwaFeJ56lOnJxj5aN2LUFnfxUEcvOQuNocmbaMnVrCEln6rkw==}
     engines: {node: '>=20'}
 
-  '@shikijs/engine-oniguruma@4.4.1':
-    resolution: {integrity: sha512-p23RugMKss0r5DAtRJW1yAXUDl60JvhQYV20yuxei//26JyDSJefV3umyWzzwep2weblMnJGDYahuti6XkcMgA==}
+  '@shikijs/engine-oniguruma@4.4.2':
+    resolution: {integrity: sha512-GLhowz1+jixjz+wiZ3wMnOn1jTxiFCGl2PkXufivbnwPHKuyw1AYqu5/hbWhZZ2oAb0NP05WUJhYeigY14drnw==}
     engines: {node: '>=20'}
 
-  '@shikijs/langs@4.4.1':
-    resolution: {integrity: sha512-xb2kCMloBCIraIy2fS5MW0t/BxVY3q2nDyQKBoeSeq6KNrQbShHetCFlw2n35fGIJ6t3+hXDLQogP5ir9O9bvA==}
+  '@shikijs/langs@4.4.2':
+    resolution: {integrity: sha512-8DfeusD+Zdv/eYIDdXyJTUnSMHt+aAWjAOCXV20HNGAHRlInXpG8wh421v6B91WOm9TFwRLN+b/LG5F2NAIojg==}
     engines: {node: '>=20'}
 
-  '@shikijs/primitive@4.4.1':
-    resolution: {integrity: sha512-ko2OfDoG89YuQ7xL5LtcQiWKb7NIv1Ephb7g48TVU198OzAMLC8lXVEwaJGHK4sUMYrfAGJDqYmNLOLiW/Kz8w==}
+  '@shikijs/primitive@4.4.2':
+    resolution: {integrity: sha512-l6fQQKsOMlz72n38fztmSgZ76MO6KSWuw8o+GJ+FhmqrpC9pIOJNQNXGgbb5yX2AwpzlEHwsaLPnk/8o4Fm+rA==}
     engines: {node: '>=20'}
 
-  '@shikijs/themes@4.4.1':
-    resolution: {integrity: sha512-wudOaoFro+/Zl9gQv2W1Ur5XlVduqvTuYLI483Xi0wgc1A+cy1hfB2r6ac6ufBgF+ID7KJEW7L41MHrzQ4wH+w==}
+  '@shikijs/themes@4.4.2':
+    resolution: {integrity: sha512-H0CFoL07ddDC2Dd6EdrPYNkRhUR6YCkJlnuYFceYYUJJA5TIm2b5B33qqiDYryBExgbKMndFJPb2u1gTuqO37g==}
     engines: {node: '>=20'}
 
-  '@shikijs/types@4.4.1':
-    resolution: {integrity: sha512-GOwCLQDHM5EjGUWNPrhzJbr6JP8V/Dx/CDVkWvbZ1Avw5JFnNUckrgbLmE07qtg4WlW7Q7QFndhjIkeU9XMPvw==}
+  '@shikijs/types@4.4.2':
+    resolution: {integrity: sha512-PFYitV4vpDr/iPCIhnHp+Q4ftic5N5VeNJ3KQ1O8gn3h2ar8qgwMAXF7tq4m1CWaMS60fV4VqF6vfnWH4F7vqQ==}
     engines: {node: '>=20'}
 
   '@shikijs/vscode-textmate@10.0.2':
@@ -1790,7 +1790,7 @@ packages:
     resolution: {integrity: sha512-v0xaezt+DKEmKfaxg133ldzADrwLGd7Ze1MfQQTYfvs8OqZIwbxyxaYURivwV7sWy5fqn3rH5uOrSp07bp44Ow==}
     peerDependencies:
       msw: ^2.4.9
-      vite: 8.2.0
+      vite: 8.2.1
     peerDependenciesMeta:
       msw:
         optional: true
@@ -3390,13 +3390,8 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  nanoid@3.3.16:
-    resolution: {integrity: sha512-bzlKTyNJ7+LdGIIwy8ijFpIqEQIvafahV7eYykJ8Cvh42EdJeODoJ6gUJXpQJvej1BddH8OqTXZNE/KfbWAu8Q==}
-    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
-  nanoid@3.3.17:
-    resolution: {integrity: sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g==}
+  nanoid@3.3.18:
+    resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -3676,10 +3671,6 @@ packages:
   postcss-value-parser@4.2.0:
     resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 
-  postcss@8.5.25:
-    resolution: {integrity: sha512-DTPx3RWSSnWyzLxQnlH0rJP+EW5ekl16ZU4/psbIhA0e53kJfdgaN5vKM+xP7yJtXVu+nfdVFmlgFDEKAe4Pyw==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postcss@8.5.26:
     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
     engines: {node: ^10 || ^12 || >=14}
@@ -3937,8 +3928,8 @@ packages:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
 
-  shiki@4.4.1:
-    resolution: {integrity: sha512-rFP+iYKzjLEIqiMiKANhARqiAbk4deDhWnBtnUO/K0D0dPxMGDH4N0FVfBY/VeI+lPrV4wNGCHQZp7EOr7NNBw==}
+  shiki@4.4.2:
+    resolution: {integrity: sha512-P8F/dFhRevaw2uSdeIYlq/5SXZNY85DPtmXQ947gD1Zj2JqO5AkNvVVBar0Me9JkFx3uzVud/qOtP5ek9NEQGA==}
     engines: {node: '>=20'}
 
   side-channel-list@1.0.1:
@@ -4218,8 +4209,8 @@ packages:
       typescript:
         optional: true
 
-  tsx@4.23.5:
-    resolution: {integrity: sha512-rw55FUaqOoI7RvlQwLbhO4nSDApnQ4/CykPuiQ/EPvtrX3WA9Ig55jIt9VvbBJbzJuj12ueRu4PMZ2SxPVbihg==}
+  tsx@4.23.10:
+    resolution: {integrity: sha512-0Vb9eKU47njkxv/6B8CRZRDsxNDT/Pz+BIU+M5jw7xL3TdzAjSxlZUxu0xFL/kLpaG3sHZ0LH2wbK1T1yo7CUQ==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -4345,8 +4336,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vite@8.2.0:
-    resolution: {integrity: sha512-pn+CFpM0lwDeKwmOq1ZaBK/9sjorZcgqxki6MbY/jPEVd9vichIlmlD4HmQ5wdP5EgqQCFRaACBxMC7uEGc6lQ==}
+  vite@8.2.1:
+    resolution: {integrity: sha512-EU/eS7BH3XROHh2YnBefjM6DBKA6ZeMZEYQbj7NLWg5wHYlhB8B/Mayd5XsgWq+NFYccDOTemRpdETWR6Ka/lw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -4404,7 +4395,7 @@ packages:
       '@vitest/ui': 4.1.10
       happy-dom: '*'
       jsdom: '*'
-      vite: 8.2.0
+      vite: 8.2.1
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -5409,40 +5400,40 @@ snapshots:
       '@noble/curves': 1.7.0
       '@noble/hashes': 1.6.1
 
-  '@shikijs/core@4.4.1':
+  '@shikijs/core@4.4.2':
     dependencies:
-      '@shikijs/primitive': 4.4.1
-      '@shikijs/types': 4.4.1
+      '@shikijs/primitive': 4.4.2
+      '@shikijs/types': 4.4.2
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.5
       hast-util-to-html: 9.0.5
 
-  '@shikijs/engine-javascript@4.4.1':
+  '@shikijs/engine-javascript@4.4.2':
     dependencies:
-      '@shikijs/types': 4.4.1
+      '@shikijs/types': 4.4.2
       '@shikijs/vscode-textmate': 10.0.2
       oniguruma-to-es: 4.3.6
 
-  '@shikijs/engine-oniguruma@4.4.1':
+  '@shikijs/engine-oniguruma@4.4.2':
     dependencies:
-      '@shikijs/types': 4.4.1
+      '@shikijs/types': 4.4.2
       '@shikijs/vscode-textmate': 10.0.2
 
-  '@shikijs/langs@4.4.1':
+  '@shikijs/langs@4.4.2':
     dependencies:
-      '@shikijs/types': 4.4.1
+      '@shikijs/types': 4.4.2
 
-  '@shikijs/primitive@4.4.1':
+  '@shikijs/primitive@4.4.2':
     dependencies:
-      '@shikijs/types': 4.4.1
+      '@shikijs/types': 4.4.2
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.5
 
-  '@shikijs/themes@4.4.1':
+  '@shikijs/themes@4.4.2':
     dependencies:
-      '@shikijs/types': 4.4.1
+      '@shikijs/types': 4.4.2
 
-  '@shikijs/types@4.4.1':
+  '@shikijs/types@4.4.2':
     dependencies:
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.5
@@ -5473,10 +5464,10 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@tailwindcss/typography@0.5.20(tailwindcss@3.4.19(tsx@4.23.5)(yaml@2.8.3))':
+  '@tailwindcss/typography@0.5.20(tailwindcss@3.4.19(tsx@4.23.10)(yaml@2.8.3))':
     dependencies:
       postcss-selector-parser: 6.0.10
-      tailwindcss: 3.4.19(tsx@4.23.5)(yaml@2.8.3)
+      tailwindcss: 3.4.19(tsx@4.23.10)(yaml@2.8.3)
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
@@ -5722,7 +5713,7 @@ snapshots:
       obug: 2.1.3
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+      vitest: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
 
   '@vitest/expect@4.1.10':
     dependencies:
@@ -5733,13 +5724,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.10(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))':
+  '@vitest/mocker@4.1.10(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))':
     dependencies:
       '@vitest/spy': 4.1.10
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3)
+      vite: 8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3)
 
   '@vitest/pretty-format@4.1.10':
     dependencies:
@@ -5930,13 +5921,13 @@ snapshots:
 
   async-function@1.0.0: {}
 
-  autoprefixer@10.5.4(postcss@8.5.25):
+  autoprefixer@10.5.4(postcss@8.5.26):
     dependencies:
       browserslist: 4.28.6
       caniuse-lite: 1.0.30001806
       fraction.js: 5.3.4
       picocolors: 1.1.1
-      postcss: 8.5.25
+      postcss: 8.5.26
       postcss-value-parser: 4.2.0
 
   available-typed-arrays@1.0.7:
@@ -7888,9 +7879,7 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nanoid@3.3.16: {}
-
-  nanoid@3.3.17: {}
+  nanoid@3.3.18: {}
 
   napi-postinstall@0.3.4: {}
 
@@ -8126,39 +8115,39 @@ snapshots:
 
   possible-typed-array-names@1.1.0: {}
 
-  postcss-import@15.1.0(postcss@8.5.25):
+  postcss-import@15.1.0(postcss@8.5.26):
     dependencies:
-      postcss: 8.5.25
+      postcss: 8.5.26
       postcss-value-parser: 4.2.0
       read-cache: 1.0.0
       resolve: 1.22.11
 
-  postcss-js@4.1.0(postcss@8.5.25):
+  postcss-js@4.1.0(postcss@8.5.26):
     dependencies:
       camelcase-css: 2.0.1
-      postcss: 8.5.25
+      postcss: 8.5.26
 
-  postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.25)(tsx@4.23.5)(yaml@2.8.3):
+  postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.26)(tsx@4.23.10)(yaml@2.8.3):
     dependencies:
       lilconfig: 3.1.3
     optionalDependencies:
       jiti: 1.21.7
-      postcss: 8.5.25
-      tsx: 4.23.5
+      postcss: 8.5.26
+      tsx: 4.23.10
       yaml: 2.8.3
 
-  postcss-load-config@6.0.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(yaml@2.8.3):
+  postcss-load-config@6.0.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(yaml@2.8.3):
     dependencies:
       lilconfig: 3.1.3
     optionalDependencies:
       jiti: 2.6.1
       postcss: 8.5.26
-      tsx: 4.23.5
+      tsx: 4.23.10
       yaml: 2.8.3
 
-  postcss-nested@6.2.0(postcss@8.5.25):
+  postcss-nested@6.2.0(postcss@8.5.26):
     dependencies:
-      postcss: 8.5.25
+      postcss: 8.5.26
       postcss-selector-parser: 6.1.2
 
   postcss-selector-parser@6.0.10:
@@ -8173,15 +8162,9 @@ snapshots:
 
   postcss-value-parser@4.2.0: {}
 
-  postcss@8.5.25:
-    dependencies:
-      nanoid: 3.3.16
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
   postcss@8.5.26:
     dependencies:
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -8323,13 +8306,13 @@ snapshots:
       hast-util-from-html: 2.0.3
       unified: 11.0.5
 
-  rehype-pretty-code@0.14.5(shiki@4.4.1):
+  rehype-pretty-code@0.14.5(shiki@4.4.2):
     dependencies:
       '@types/hast': 3.0.5
       hast-util-to-string: 3.0.1
       parse-numeric-range: 1.3.0
       rehype-parse: 9.0.1
-      shiki: 4.4.1
+      shiki: 4.4.2
       unified: 11.0.5
       unist-util-visit: 5.1.0
 
@@ -8593,14 +8576,14 @@ snapshots:
 
   shebang-regex@3.0.0: {}
 
-  shiki@4.4.1:
+  shiki@4.4.2:
     dependencies:
-      '@shikijs/core': 4.4.1
-      '@shikijs/engine-javascript': 4.4.1
-      '@shikijs/engine-oniguruma': 4.4.1
-      '@shikijs/langs': 4.4.1
-      '@shikijs/themes': 4.4.1
-      '@shikijs/types': 4.4.1
+      '@shikijs/core': 4.4.2
+      '@shikijs/engine-javascript': 4.4.2
+      '@shikijs/engine-oniguruma': 4.4.2
+      '@shikijs/langs': 4.4.2
+      '@shikijs/themes': 4.4.2
+      '@shikijs/types': 4.4.2
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.5
 
@@ -8809,7 +8792,7 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  tailwindcss@3.4.19(tsx@4.23.5)(yaml@2.8.3):
+  tailwindcss@3.4.19(tsx@4.23.10)(yaml@2.8.3):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -8825,11 +8808,11 @@ snapshots:
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.1.1
-      postcss: 8.5.25
-      postcss-import: 15.1.0(postcss@8.5.25)
-      postcss-js: 4.1.0(postcss@8.5.25)
-      postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.25)(tsx@4.23.5)(yaml@2.8.3)
-      postcss-nested: 6.2.0(postcss@8.5.25)
+      postcss: 8.5.26
+      postcss-import: 15.1.0(postcss@8.5.26)
+      postcss-js: 4.1.0(postcss@8.5.26)
+      postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.26)(tsx@4.23.10)(yaml@2.8.3)
+      postcss-nested: 6.2.0(postcss@8.5.26)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.11
       sucrase: 3.35.1
@@ -8896,7 +8879,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tsup@8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(typescript@6.0.3)(yaml@2.8.3):
+  tsup@8.5.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(typescript@6.0.3)(yaml@2.8.3):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.28.1)
       cac: 6.7.14
@@ -8907,7 +8890,7 @@ snapshots:
       fix-dts-default-cjs-exports: 1.0.1
       joycon: 3.1.1
       picocolors: 1.1.1
-      postcss-load-config: 6.0.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.5)(yaml@2.8.3)
+      postcss-load-config: 6.0.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.23.10)(yaml@2.8.3)
       resolve-from: 5.0.0
       rollup: 4.59.0
       source-map: 0.7.6
@@ -8924,7 +8907,7 @@ snapshots:
       - tsx
       - yaml
 
-  tsx@4.23.5:
+  tsx@4.23.10:
     dependencies:
       esbuild: 0.28.1
     optionalDependencies:
@@ -9115,7 +9098,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3):
+  vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.5
@@ -9127,13 +9110,13 @@ snapshots:
       esbuild: 0.28.1
       fsevents: 2.3.3
       jiti: 2.6.1
-      tsx: 4.23.5
+      tsx: 4.23.10
       yaml: 2.8.3
 
-  vitest@4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3)):
+  vitest@4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.10
-      '@vitest/mocker': 4.1.10(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3))
+      '@vitest/mocker': 4.1.10(vite@8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3))
       '@vitest/pretty-format': 4.1.10
       '@vitest/runner': 4.1.10
       '@vitest/snapshot': 4.1.10
@@ -9150,7 +9133,7 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: 8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.8.3)
+      vite: 8.2.1(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.10)(yaml@2.8.3)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 26.1.2
