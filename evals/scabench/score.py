@@ -104,34 +104,78 @@ def load_report(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _max_matching(edges: dict[int, list[int]], order: list[int]) -> dict[int, int]:
+    """Maximum-cardinality bipartite matching by augmenting paths (Kuhn's).
+
+    A greedy pass is order-dependent, which `evals/**` forbids: an expected finding
+    can claim a report on a weak edge and block a later expected finding whose only
+    edge is that same report, losing a match that a maximum matching would keep.
+    Iterating `order` and pre-sorted `edges` deterministically makes the result a
+    function of the score matrix alone, not of input ordering.
+    """
+    report_to_expected: dict[int, int] = {}
+
+    def augment(node: int, seen: set[int]) -> bool:
+        for report in edges.get(node, []):
+            if report in seen:
+                continue
+            seen.add(report)
+            holder = report_to_expected.get(report)
+            if holder is None or augment(holder, seen):
+                report_to_expected[report] = node
+                return True
+        return False
+
+    for node in order:
+        augment(node, set())
+    return {expected: report for report, expected in report_to_expected.items()}
+
+
 def score(project: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, Any]:
     expected = project.get("vulnerabilities", [])
     results = []
-    claimed: set[int] = set()
 
-    for vuln in expected:
-        # A reported finding can satisfy at most one expected vulnerability. Without
-        # this, one broadly-worded finding matches several and inflates recall past
-        # the number of distinct things the auditor actually reported.
-        best_idx, best_score = -1, 0.0
-        for idx, finding in enumerate(findings):
-            if idx in claimed:
-                continue
-            value = _best_score(vuln, finding)
-            if value > best_score:
-                best_idx, best_score = idx, value
+    matrix = [[_best_score(vuln, finding) for finding in findings] for vuln in expected]
+    is_lead = [str(finding.get("_tier", "")) == "lead" for finding in findings]
+    # Stable identity for tie-breaking, so equal scores never resolve by list order.
+    identity = [str(finding.get("title", "")) for finding in findings]
+    order = sorted(range(len(expected)), key=lambda e: str(expected[e].get("finding_id", "")))
 
-        is_lead = best_idx >= 0 and str(findings[best_idx].get("_tier", "")) == "lead"
-        if best_score >= AUTO_MATCH_THRESHOLD and not is_lead:
-            verdict = "auto_matched"
-            claimed.add(best_idx)
-        elif best_score >= REVIEW_THRESHOLD or (best_score >= AUTO_MATCH_THRESHOLD and is_lead):
-            # A lead is explicitly not a proven finding, so it can never raise the
-            # recall floor no matter how well its text matches.
-            verdict = "needs_review"
-            claimed.add(best_idx)
+    def edges_for(indices: list[int], floor: float, allow_leads: bool) -> dict[int, list[int]]:
+        return {
+            e: sorted(
+                (
+                    r
+                    for r in indices
+                    if matrix[e][r] >= floor and (allow_leads or not is_lead[r])
+                ),
+                key=lambda r: (-matrix[e][r], identity[r], r),
+            )
+            for e in range(len(expected))
+        }
+
+    # Proven matches first. A lead is never a proven finding, so it is excluded here
+    # and can only ever reach needs_review, whatever its text similarity.
+    all_reports = list(range(len(findings)))
+    auto = _max_matching(edges_for(all_reports, AUTO_MATCH_THRESHOLD, allow_leads=False), order)
+
+    # Review candidates draw only from reports no proven match claimed.
+    remaining = [r for r in all_reports if r not in set(auto.values())]
+    review_order = [e for e in order if e not in auto]
+    review_edges = edges_for(remaining, REVIEW_THRESHOLD, allow_leads=True)
+    review_edges = {e: rs for e, rs in review_edges.items() if e in set(review_order)}
+    review = _max_matching(review_edges, review_order)
+
+    claimed: set[int] = set(auto.values()) | set(review.values())
+
+    for e, vuln in enumerate(expected):
+        if e in auto:
+            verdict, best_idx = "auto_matched", auto[e]
+        elif e in review:
+            verdict, best_idx = "needs_review", review[e]
         else:
-            verdict = "unmatched"
+            verdict, best_idx = "unmatched", -1
+        best_score = matrix[e][best_idx] if best_idx >= 0 else (max(matrix[e]) if findings else 0.0)
 
         # Lexical ranking is not reliable enough to trust the top hit alone: on this
         # dataset a true match has been observed ranking second behind a false one
@@ -140,9 +184,8 @@ def score(project: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, 
         # findings, including ones already claimed, so a reviewer can spot a
         # misassignment the greedy pass made.
         ranked = sorted(
-            ((_best_score(vuln, f), f.get("title", "")) for f in findings),
-            key=lambda pair: pair[0],
-            reverse=True,
+            ((matrix[e][r], identity[r], r) for r in range(len(findings))),
+            key=lambda triple: (-triple[0], triple[1], triple[2]),
         )[:3]
 
         results.append(
@@ -153,12 +196,12 @@ def score(project: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, 
                 "verdict": verdict,
                 "score": round(best_score, 3),
                 "candidate": (findings[best_idx].get("title") if best_idx >= 0 and verdict != "unmatched" else None),
-                "top_candidates": [{"score": round(s, 3), "title": t} for s, t in ranked],
+                "top_candidates": [{"score": round(sc, 3), "title": t} for sc, t, _ in ranked],
             }
         )
 
-    auto = sum(1 for r in results if r["verdict"] == "auto_matched")
-    review = sum(1 for r in results if r["verdict"] == "needs_review")
+    auto_count = sum(1 for r in results if r["verdict"] == "auto_matched")
+    review_count = sum(1 for r in results if r["verdict"] == "needs_review")
     total = len(expected) or 1
     extra = [f for i, f in enumerate(findings) if i not in claimed]
 
@@ -166,11 +209,11 @@ def score(project: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, 
         "project_id": project.get("project_id"),
         "expected_findings": len(expected),
         "reported_findings": len(findings),
-        "auto_matched": auto,
-        "needs_review": review,
-        "unmatched": len(expected) - auto - review,
-        "recall_floor": round(auto / total, 3),
-        "recall_ceiling": round((auto + review) / total, 3),
+        "auto_matched": auto_count,
+        "needs_review": review_count,
+        "unmatched": len(expected) - auto_count - review_count,
+        "recall_floor": round(auto_count / total, 3),
+        "recall_ceiling": round((auto_count + review_count) / total, 3),
         "reported_unassigned": len(extra),
         "per_finding": results,
     }
