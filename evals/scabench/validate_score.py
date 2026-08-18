@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from score import (  # noqa: E402 - path set above
     AUTO_MATCH_THRESHOLD,
     _max_matching,
+    _max_weight_matching,
     load_ground_truth,
     score,
 )
@@ -141,9 +142,63 @@ def check_ground_truth_loads() -> tuple[bool, str]:
     return True, "ground truth: 13 findings, content digest pinned"
 
 
+def check_assignment_is_weight_optimal() -> tuple[bool, str]:
+    """Maximum cardinality is not enough: the total score must also be optimal.
+
+    Cross-checked against brute force over random instances, because a hand-picked
+    example only proves the one case. The concrete regression is E0->R0=0.90,
+    E0->R1=0.80, E1->R0=0.85, E1->R1=0.84, where a cardinality-only matcher returns
+    1.65 and the optimum is 1.74.
+    """
+    import itertools  # noqa: PLC0415 - test-only
+    import random  # noqa: PLC0415 - test-only
+
+    edges = {0: [0, 1], 1: [0, 1]}
+    weight = {(0, 0): 0.90, (0, 1): 0.80, (1, 0): 0.85, (1, 1): 0.84}
+    got = _max_weight_matching(edges, [0, 1], weight)
+    total = sum(weight[(e, r)] for e, r in got.items())
+    if abs(total - 1.74) > 1e-9:
+        return False, f"weight-optimal case returned {total:.3f}, expected 1.740"
+
+    def brute(edge_map: dict[int, list[int]], w: dict[tuple[int, int], float]) -> tuple[int, float]:
+        lefts = list(edge_map)
+        reports = sorted({r for rs in edge_map.values() for r in rs})
+        best = (0, 0.0)
+        for size in range(min(len(lefts), len(reports)), -1, -1):
+            found = False
+            for left_pick in itertools.combinations(lefts, size):
+                for right_pick in itertools.permutations(reports, size):
+                    if all(right_pick[i] in edge_map[left_pick[i]] for i in range(size)):
+                        found = True
+                        value = sum(w[(left_pick[i], right_pick[i])] for i in range(size))
+                        if (size, value) > best:
+                            best = (size, value)
+            if found:
+                break
+        return best
+
+    rng = random.Random(7)
+    for trial in range(120):
+        n_left, n_right = rng.randint(1, 4), rng.randint(1, 4)
+        edge_map: dict[int, list[int]] = {}
+        w: dict[tuple[int, int], float] = {}
+        for e in range(n_left):
+            picks = [r for r in range(n_right) if rng.random() < 0.6]
+            edge_map[e] = picks
+            for r in picks:
+                w[(e, r)] = round(rng.uniform(0.1, 1.0), 3)
+        assignment = _max_weight_matching(edge_map, list(range(n_left)), w)
+        mine = (len(assignment), round(sum(w[(e, r)] for e, r in assignment.items()), 6))
+        expected_best = brute(edge_map, w)
+        if mine != (expected_best[0], round(expected_best[1], 6)):
+            return False, f"trial {trial}: got {mine}, brute force found {expected_best} (edges={edge_map})"
+    return True, "assignment: weight-optimal, cross-checked against brute force on 120 instances"
+
+
 CHECKS = (
     check_matching_is_maximum,
     check_matching_order_independent,
+    check_assignment_is_weight_optimal,
     check_scorecard_order_independent,
     check_no_report_claimed_twice,
     check_lead_never_auto_matches,

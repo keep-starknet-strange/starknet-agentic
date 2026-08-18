@@ -36,6 +36,9 @@ _STOPWORDS = {
 }
 
 AUTO_MATCH_THRESHOLD = 0.45
+# Above this many expected findings the exact subset DP is skipped for cardinality-only
+# matching. Ground-truth sets in this corpus are far smaller (13 for the current target).
+_DP_LIMIT = 20
 REVIEW_THRESHOLD = 0.22
 
 
@@ -104,6 +107,72 @@ def load_report(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _max_weight_matching(
+    edges: dict[int, list[int]], order: list[int], weight: dict[tuple[int, int], float]
+) -> dict[int, int]:
+    """Maximum cardinality first, then maximum total weight among those matchings.
+
+    Plain augmenting-path matching maximises cardinality but not total score, so it
+    can report a worse candidate for an expected finding than an equally-sized
+    assignment would. For E0->R0=0.90, E0->R1=0.80, E1->R0=0.85, E1->R1=0.84 it
+    yields 1.65 where 1.74 is available at the same cardinality.
+
+    Solved exactly by DP over subsets of expected findings, scanning reports one at
+    a time: dp[mask] is the best (count, weight) using the reports seen so far, with
+    `mask` recording which expected findings are matched. Exact rather than
+    heuristic, and deterministic because ties resolve on the lowest expected index.
+
+    The expected set is small by construction (one entry per ground-truth finding),
+    but the subset space is guarded: above _DP_LIMIT this falls back to cardinality-
+    only matching rather than hanging, and says so via the returned assignment being
+    merely maximum-cardinality.
+    """
+    if len(order) > _DP_LIMIT:
+        return _max_matching(edges, order)
+
+    index = {e: i for i, e in enumerate(order)}
+    reports = sorted({r for e in order for r in edges.get(e, [])})
+    # dp[mask] -> (matched count, total weight); count dominates so cardinality wins first.
+    dp: dict[int, tuple[int, float]] = {0: (0, 0.0)}
+    back: dict[tuple[int, int], tuple[int, int | None]] = {}
+
+    for step, r in enumerate(reports):
+        nxt = dict(dp)
+        nxt_back: dict[int, tuple[int, int | None]] = {}
+        for mask, (count, total) in dp.items():
+            # Option: leave this report unassigned (already carried by dict(dp)).
+            for e in order:
+                bit = 1 << index[e]
+                if mask & bit or r not in edges.get(e, []):
+                    continue
+                cand_mask = mask | bit
+                cand = (count + 1, total + weight[(e, r)])
+                best = nxt.get(cand_mask)
+                if best is None or cand > best:
+                    nxt[cand_mask] = cand
+                    nxt_back[cand_mask] = (mask, e)
+        for mask, parent in nxt_back.items():
+            back[(step, mask)] = parent
+        dp = nxt
+
+    if not dp:
+        return {}
+    best_mask = max(dp, key=lambda m: (dp[m][0], dp[m][1], -m))
+
+    # Walk the chosen reports back out of the DP table.
+    assignment: dict[int, int] = {}
+    mask = best_mask
+    for step in range(len(reports) - 1, -1, -1):
+        parent = back.get((step, mask))
+        if parent is None:
+            continue
+        prev_mask, chosen = parent
+        if chosen is not None and prev_mask != mask:
+            assignment[chosen] = reports[step]
+            mask = prev_mask
+    return assignment
+
+
 def _max_matching(edges: dict[int, list[int]], order: list[int]) -> dict[int, int]:
     """Maximum-cardinality bipartite matching by augmenting paths (Kuhn's).
 
@@ -157,14 +226,17 @@ def score(project: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, 
     # Proven matches first. A lead is never a proven finding, so it is excluded here
     # and can only ever reach needs_review, whatever its text similarity.
     all_reports = list(range(len(findings)))
-    auto = _max_matching(edges_for(all_reports, AUTO_MATCH_THRESHOLD, allow_leads=False), order)
+    weights = {(e, r): matrix[e][r] for e in range(len(expected)) for r in all_reports}
+    auto = _max_weight_matching(
+        edges_for(all_reports, AUTO_MATCH_THRESHOLD, allow_leads=False), order, weights
+    )
 
     # Review candidates draw only from reports no proven match claimed.
     remaining = [r for r in all_reports if r not in set(auto.values())]
     review_order = [e for e in order if e not in auto]
     review_edges = edges_for(remaining, REVIEW_THRESHOLD, allow_leads=True)
     review_edges = {e: rs for e, rs in review_edges.items() if e in set(review_order)}
-    review = _max_matching(review_edges, review_order)
+    review = _max_weight_matching(review_edges, review_order, weights)
 
     claimed: set[int] = set(auto.values()) | set(review.values())
 

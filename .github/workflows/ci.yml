@@ -61,6 +61,7 @@ jobs:
               - 'pnpm-workspace.yaml'
             skills:
               - '.agents/**'
+              - 'evals/scabench/**'
               - 'SKILL.md'
               - 'requirements.txt'
               - 'README.md'
