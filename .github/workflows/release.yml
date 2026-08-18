@@ -41,12 +41,12 @@ jobs:
 
       - name: Create Release Pull Request or Publish
         id: changesets
-        uses: changesets/action@22ccf9aa43179fe9e27dc62e575971d28cce197c # v1.7.0 (tag object: e87c8ed249971350e47fab7515075f44eb134e5b)
+        uses: changesets/action@22ccf9aa43179fe9e27dc62e575971d28cce197c # v2.0.0
         with:
-          version: pnpm ci:version
-          publish: pnpm ci:release
-          title: 'chore: version packages'
-          commit: 'chore: version packages'
+          version-script: pnpm ci:version
+          publish-script: pnpm ci:release
+          pr-title: 'chore: version packages'
+          commit-message: 'chore: version packages'
         env:
           # Prefer PAT (if configured) so version PRs can trigger downstream CI.
           GITHUB_TOKEN: "${{ secrets.RELEASE_BOT_PAT || secrets.GITHUB_TOKEN }}"
