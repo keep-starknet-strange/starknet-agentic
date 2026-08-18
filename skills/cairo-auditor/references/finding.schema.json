@@ -87,7 +87,11 @@
               "required": ["tier"]
             },
             "then": {
-              "required": ["unverified"]
+              "required": ["unverified"],
+              "properties": {
+                "recommended_fix": { "type": "string", "maxLength": 0 },
+                "required_tests": { "type": "array", "maxItems": 0 }
+              }
             }
           }
         ]

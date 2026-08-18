@@ -149,8 +149,10 @@ def _normalize_finding(row: dict[str, Any], source: Path) -> dict[str, Any]:
     if tier not in {"finding", "lead"}:
         tier = "finding"
     unverified = str(row.get("unverified", "")).strip()
-    if tier == "lead" and not unverified:
-        unverified = "Specialist did not record which link in the attack path is unproven."
+    # A lead whose unproven link is unrecorded is not a usable lead. Inventing a
+    # placeholder would launder the schema requirement whenever the integrity gate
+    # is skipped, so the row is marked and dropped as insufficient evidence instead.
+    unusable_lead = tier == "lead" and not unverified
 
     confidence = max(0, min(100, _safe_int(row.get("confidence"), 75)))
     priority = str(row.get("priority", "P3")).strip().upper()
@@ -173,8 +175,16 @@ def _normalize_finding(row: dict[str, Any], source: Path) -> dict[str, Any]:
         "description": str(row.get("description", "")).strip(),
         "attack_path": str(row.get("attack_path", "")).strip(),
         "guard_analysis": str(row.get("guard_analysis", "")).strip(),
-        "recommended_fix": str(row.get("recommended_fix", "")).strip(),
-        "required_tests": [str(item) for item in _as_list(row.get("required_tests")) if str(item)],
+        # Leads carry no remediation in any representation. Hiding the Fix block in
+        # markdown while leaving the fields populated in JSON lets a consumer of
+        # payload["leads"] treat an unproven trail as a verified patch.
+        "recommended_fix": "" if tier == "lead" else str(row.get("recommended_fix", "")).strip(),
+        "required_tests": (
+            []
+            if tier == "lead"
+            else [str(item) for item in _as_list(row.get("required_tests")) if str(item)]
+        ),
+        "_unusable_lead": unusable_lead,
         "evidence_tags": evidence,
         "root_cause": str(row.get("root_cause", "")).strip(),
         "agent_id": agent_id,
@@ -581,7 +591,8 @@ def _render_report(
     if leads:
         lines += [
             "Unproven trails. A specialist saw something structurally suspicious here but could not close the",
-            "attack path. These carry no confidence score and no fix — they are review targets, not findings.",
+            "attack path. Each carries a confidence score used only for ordering, omitted here, and never a",
+            "fix — these are review targets, not findings.",
             "",
         ]
         for idx, lead in enumerate(leads, 1):
@@ -665,6 +676,18 @@ def main() -> int:
         raw_dropped.extend(drops)
 
     preflight = _load_preflight(preflight_path)
+    # A lead with no recorded unproven link is dropped rather than given a placeholder.
+    unusable = [row for row in raw_findings if row.pop("_unusable_lead", False)]
+    raw_findings = [row for row in raw_findings if row not in unusable]
+    raw_dropped += [
+        {
+            "candidate": str(row.get("title", "lead")),
+            "class": str(row.get("class_id", "UNKNOWN")),
+            "drop_reason": "insufficient_evidence",
+            "file": str(row.get("file", "")),
+        }
+        for row in unusable
+    ]
     merged, dropped = _dedupe_and_tag(raw_findings, preflight, proven_only=args.proven_only)
     dropped = raw_dropped + dropped
     completeness = _completeness(raw_findings, merged, dropped)

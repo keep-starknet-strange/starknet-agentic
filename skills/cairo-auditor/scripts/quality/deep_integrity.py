@@ -75,7 +75,8 @@ def _type_ok(value: Any, type_spec: Any) -> bool:
 # here while a spec-compliant validator still enforced them.
 _VALIDATED_KEYWORDS = frozenset(
     {
-        "type", "enum", "const", "minLength", "minimum", "maximum", "required",
+        "type", "enum", "const", "minLength", "maxLength", "minimum", "maximum", "required",
+        "maxItems",
         "properties", "if", "then", "else", "items", "contains",
         "allOf", "anyOf", "oneOf", "not",
     }
@@ -125,6 +126,10 @@ def _validate(value: Any, schema: dict, path: str, errors: list[str]) -> None:
         errors.append(f"{path}: value {value!r} != const {schema['const']!r}")
     if isinstance(value, str) and "minLength" in schema and len(value) < schema["minLength"]:
         errors.append(f"{path}: string shorter than minLength {schema['minLength']}")
+    if isinstance(value, str) and "maxLength" in schema and len(value) > schema["maxLength"]:
+        errors.append(f"{path}: string longer than maxLength {schema['maxLength']}")
+    if isinstance(value, list) and "maxItems" in schema and len(value) > schema["maxItems"]:
+        errors.append(f"{path}: array longer than maxItems {schema['maxItems']}")
     if isinstance(value, int) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:
             errors.append(f"{path}: {value} < minimum {schema['minimum']}")
