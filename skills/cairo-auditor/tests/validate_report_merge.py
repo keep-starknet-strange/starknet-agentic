@@ -139,6 +139,14 @@ def check_lead_partition() -> tuple[bool, str]:
         return False, "lead partition: report is missing the Leads section"
     if "Could not prove the callback" not in report:
         return False, "lead partition: report does not surface the unverified link"
+    # Fix-free must hold in the JSON too, not only in the rendered markdown. The
+    # `_finding()` helper supplies remediation by default, so this asserts the
+    # normalizer strips it rather than the fixture happening to omit it.
+    lead = payload["leads"][0]
+    if lead.get("recommended_fix") or lead.get("required_tests"):
+        return False, f"lead retained remediation in JSON: {lead.get('recommended_fix')!r} {lead.get('required_tests')!r}"
+    if not payload["findings"][0].get("recommended_fix"):
+        return False, "control: the proven finding lost its fix, so the strip is too broad"
     # The lead is Medium; it must not be counted in the Medium severity column.
     # Expected row: Critical=1, High=0, Medium=0, Low=0, Total=1, Leads=1.
     if "| 1 | 0 | 0 | 0 | 1 | 1 |" not in report:
@@ -206,11 +214,15 @@ def check_schema_conditionals_enforced_at_runtime() -> tuple[bool, str]:
     spec.loader.exec_module(module)
     schema = json.loads((ROOT / "references" / "finding.schema.json").read_text(encoding="utf-8"))
 
+    # Leads must arrive with remediation cleared, which is what the normalizer now
+    # guarantees; a lead that still carries a fix is itself a schema violation.
+    clean_lead = {"recommended_fix": "", "required_tests": []}
     cases = [
         ("high-confidence finding without a fix", _finding(recommended_fix=None, required_tests=None), False),
         ("high-confidence finding with a fix", _finding(), True),
-        ("lead with unverified", _finding(tier="lead", unverified="u"), True),
-        ("lead without unverified", _finding(tier="lead"), False),
+        ("lead with unverified", _finding(tier="lead", unverified="u", **clean_lead), True),
+        ("lead without unverified", _finding(tier="lead", **clean_lead), False),
+        ("lead carrying a fix", _finding(tier="lead", unverified="u"), False),
         ("invalid tier value", _finding(tier="maybe"), False),
     ]
     for name, finding, should_pass in cases:
@@ -243,11 +255,33 @@ def check_completeness_reported() -> tuple[bool, str]:
     return True, "completeness: every file with a candidate survives the merge"
 
 
+def check_lead_without_unverified_is_dropped() -> tuple[bool, str]:
+    """A lead with no recorded unproven link is dropped, not given a placeholder."""
+    payload, _ = _run(
+        [
+            _finding(title="Real finding"),
+            _finding(
+                title="Lead with no unverified link",
+                file="src/router.cairo",
+                root_cause="something suspicious",
+                tier="lead",
+            ),
+        ]
+    )
+    if payload["leads"]:
+        return False, f"a lead with no `unverified` survived: {payload['leads']}"
+    reasons = {row["drop_reason"] for row in payload["dropped_candidates"]}
+    if "insufficient_evidence" not in reasons:
+        return False, f"unusable lead was not dropped as insufficient_evidence: {reasons}"
+    return True, "leads: missing `unverified` is dropped rather than papered over"
+
+
 CHECKS = (
     check_no_cross_file_merge,
     check_case_distinct_files_stay_separate,
     check_same_file_still_merges,
     check_lead_partition,
+    check_lead_without_unverified_is_dropped,
     check_completeness_ignores_dropped_coverage,
     check_completeness_reported,
     check_schema_conditionals_enforced_at_runtime,
