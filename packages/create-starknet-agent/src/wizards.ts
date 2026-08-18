@@ -134,30 +134,39 @@ export function trustedSkillApiUrl(url: string): string | null {
   return `https://api.github.com${parsed.pathname}${parsed.search}`;
 }
 
-function sanitizeDownloadedText(content: string): string | null {
-  if (typeof content !== "string") {
-    return null;
+export type SkillDownloadResult =
+  | { status: "ok"; content: string }
+  | { status: "fetch_failed" }
+  | { status: "rejected"; reason: string };
+
+export function sanitizeDownloadedText(content: string): SkillDownloadResult {
+  if (content.length === 0) {
+    return { status: "rejected", reason: "empty file" };
   }
-  if (content.length === 0 || Buffer.byteLength(content, "utf8") > MAX_SKILL_FILE_BYTES) {
-    return null;
+  if (Buffer.byteLength(content, "utf8") > MAX_SKILL_FILE_BYTES) {
+    return { status: "rejected", reason: "file exceeds 1 MiB" };
   }
   if (content.includes("\0")) {
-    return null;
+    return { status: "rejected", reason: "file contains a NUL byte" };
   }
-  return Buffer.from(content, "utf8").toString("utf8");
+  return { status: "ok", content };
 }
 
-async function readBoundedUtf8Text(response: Response): Promise<string | null> {
+async function readBoundedUtf8Text(response: Response): Promise<SkillDownloadResult> {
   const contentLength = response.headers.get("content-length");
   if (contentLength !== null) {
     const declared = Number(contentLength);
     if (!Number.isFinite(declared) || declared < 0 || declared > MAX_SKILL_FILE_BYTES) {
-      return null;
+      return { status: "rejected", reason: "file exceeds 1 MiB or has an invalid Content-Length" };
     }
   }
 
   if (!response.body) {
-    return sanitizeDownloadedText(await response.text());
+    try {
+      return sanitizeDownloadedText(await response.text());
+    } catch {
+      return { status: "fetch_failed" };
+    }
   }
 
   const reader = response.body.getReader();
@@ -172,17 +181,16 @@ async function readBoundedUtf8Text(response: Response): Promise<string | null> {
       totalBytes += value.byteLength;
       if (totalBytes > MAX_SKILL_FILE_BYTES) {
         await reader.cancel();
-        return null;
+        return { status: "rejected", reason: "file exceeds 1 MiB" };
       }
       chunks.push(value);
     }
   } catch {
     await reader.cancel().catch(() => undefined);
-    return null;
+    return { status: "fetch_failed" };
   }
 
-  const bytes = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
-  return sanitizeDownloadedText(bytes.toString("utf8"));
+  return sanitizeDownloadedText(Buffer.concat(chunks).toString("utf8"));
 }
 
 /**
@@ -470,19 +478,19 @@ async function fetchGitHubDirectory(skillId: string): Promise<GitHubContentItem[
 /**
  * Download a single file from a trusted GitHub URL.
  */
-async function downloadFile(url: string): Promise<string | null> {
+async function downloadFile(url: string): Promise<SkillDownloadResult> {
   const trustedUrl = trustedSkillDownloadUrl(url);
   if (!trustedUrl) {
-    return null;
+    return { status: "rejected", reason: "URL is not a trusted GitHub skill download" };
   }
   try {
     const response = await fetch(trustedUrl, { redirect: "manual" });
     if (!response.ok) {
-      return null;
+      return { status: "fetch_failed" };
     }
     return await readBoundedUtf8Text(response);
   } catch {
-    return null;
+    return { status: "fetch_failed" };
   }
 }
 
@@ -541,11 +549,22 @@ async function downloadSkillDirectory(
       const subPathNew = subPath ? `${subPath}/${item.name}` : item.name;
       fileCount += await downloadSkillDirectory(skillId, localPath, subPathNew);
     } else if (item.type === "file" && item.download_url) {
-      // Download file
-      const content = await downloadFile(item.download_url);
-      if (content !== null) {
-        fs.writeFileSync(localPath, content, "utf-8");
-        fileCount++;
+      const downloaded = await downloadFile(item.download_url);
+      switch (downloaded.status) {
+        case "ok":
+          fs.writeFileSync(localPath, downloaded.content, "utf-8");
+          fileCount++;
+          break;
+        case "rejected":
+          console.log(pc.yellow(`  Warning: skipped ${item.name} in ${skillId}: ${downloaded.reason}`));
+          break;
+        case "fetch_failed":
+          console.log(pc.yellow(`  Warning: failed to fetch ${item.name} in ${skillId}`));
+          break;
+        default: {
+          const _exhaustive: never = downloaded;
+          throw new Error(`Unhandled skill download status: ${_exhaustive}`);
+        }
       }
     }
   }
@@ -562,7 +581,8 @@ async function fetchSkillMdOnly(skillId: string): Promise<string | null> {
     return null;
   }
 
-  return downloadFile(skill.rawUrl);
+  const downloaded = await downloadFile(skill.rawUrl);
+  return downloaded.status === "ok" ? downloaded.content : null;
 }
 
 /**
@@ -583,6 +603,9 @@ async function installSkills(
 
   for (const skillId of selectedSkills) {
     if (!AVAILABLE_SKILLS.some((skill) => skill.id === skillId)) {
+      if (!silent) {
+        console.log(pc.yellow(`  ✗ Failed to install ${skillId}: unknown skill`));
+      }
       failed.push(skillId);
       continue;
     }

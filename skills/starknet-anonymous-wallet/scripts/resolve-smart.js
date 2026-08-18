@@ -428,6 +428,16 @@ async function main() {
       }));
       process.exit(1);
     }
+    if (operationType === "AVNU_SWAP" && operations.length === 0) {
+      console.log(JSON.stringify({
+        ...result,
+        success: false,
+        canProceed: false,
+        nextStep: "INVALID_PARSED_INPUT",
+        error: "parsed.operations must contain at least one swap operation for AVNU_SWAP"
+      }));
+      process.exit(1);
+    }
     
     result.parsed = parsed;
     result.operationType = operationType;

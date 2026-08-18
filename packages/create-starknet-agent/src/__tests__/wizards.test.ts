@@ -5,6 +5,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   AVAILABLE_SKILLS,
+  sanitizeDownloadedText,
   trustedSkillApiUrl,
   trustedSkillDownloadUrl,
   type WizardResult,
@@ -63,6 +64,11 @@ describe("wizards", () => {
         expect(skill.description).toBeTruthy();
         expect(typeof skill.recommended).toBe("boolean");
       }
+    });
+
+    it("has unique ids so CLI --skills can derive its allowlist from this list", () => {
+      const ids = AVAILABLE_SKILLS.map((skill) => skill.id);
+      expect(new Set(ids).size).toBe(ids.length);
     });
   });
 
@@ -150,6 +156,25 @@ describe("trustedSkillDownloadUrl", () => {
         "https://objects.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-wallet/SKILL.md"
       )
     ).toBeNull();
+  });
+});
+
+describe("sanitizeDownloadedText", () => {
+  it("accepts a normal UTF-8 skill file", () => {
+    const result = sanitizeDownloadedText("# Skill\n");
+    expect(result).toEqual({ status: "ok", content: "# Skill\n" });
+  });
+
+  it("rejects empty, NUL, and oversized files with distinct reasons", () => {
+    expect(sanitizeDownloadedText("")).toEqual({ status: "rejected", reason: "empty file" });
+    expect(sanitizeDownloadedText("ok\0no")).toEqual({
+      status: "rejected",
+      reason: "file contains a NUL byte",
+    });
+    expect(sanitizeDownloadedText("a".repeat(1_048_577))).toEqual({
+      status: "rejected",
+      reason: "file exceeds 1 MiB",
+    });
   });
 });
 
