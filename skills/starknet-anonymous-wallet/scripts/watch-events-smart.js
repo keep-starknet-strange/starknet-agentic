@@ -11,7 +11,7 @@
  *   "contractAddress": "0x...", 
  *   "eventNames": ["JobListed"],
  *   "pollIntervalMs": 3000, // fallback polling interval
- *   "webhookUrl": "http://localhost:3000/webhook", // optional
+ *   "webhookUrl": "http://localhost:3000/webhook", // optional (CLI JSON / WEBHOOK_URL env)
  *   "schedule": { // optional - creates cron job
  *     "enabled": true,
  *     "name": "ekubo-swap-monitor"
@@ -89,7 +89,7 @@ function toWebhookPayload(data) {
     contractAddress: String(data?.contractAddress || ''),
     keys,
     data: eventData,
-    eventName: String(data?.eventName || 'unknown')
+    selector: String(data?.selector || '')
   });
 }
 
@@ -131,6 +131,8 @@ function createCronJob(config) {
   // Keep durationMs if it exists (for TTL handling), only remove schedule metadata
   const scheduleInfo = execConfig.schedule;
   delete execConfig.schedule;
+  const scheduledWebhookUrl = sanitizeWebhookUrl(execConfig.webhookUrl);
+  delete execConfig.webhookUrl;
   
   // If duration was specified, add it to execConfig so the watcher knows when to self-destruct
   if (scheduleInfo?.durationMs) {
@@ -141,10 +143,13 @@ function createCronJob(config) {
 
   const scriptPath = new URL(import.meta.url).pathname;
   const shellQuote = (value) => `'${String(value).replace(/'/g, `'"'"'`)}'`;
+  const webhookExport = scheduledWebhookUrl
+    ? `export WEBHOOK_URL=${shellQuote(scheduledWebhookUrl)}\n`
+    : '';
 
   const shellScript = `#!/bin/bash
 cd "$(dirname "$0")"
-LOCKFILE=${shellQuote(`${configPath}.lock`)}
+${webhookExport}LOCKFILE=${shellQuote(`${configPath}.lock`)}
 exec flock -n "$LOCKFILE" node ${shellQuote(scriptPath)} ${shellQuote(`@${configPath}`)}
 `;
   const shellPath = join(cronDir, `${jobName}.sh`);
@@ -206,7 +211,7 @@ function deriveWebSocketUrl(httpUrl) {
 
 // Unified Event Watcher with mode switching
 class SmartEventWatcher {
-  constructor(config) {
+  constructor(config, webhookUrl) {
     this.config = config;
     const rpcUrl = config.httpRpcUrl || resolveRpcUrl();
     this.httpUrl = rpcUrl;
@@ -215,7 +220,7 @@ class SmartEventWatcher {
     this.pollIntervalMs = config.pollIntervalMs || DEFAULT_POLL_INTERVAL;
     this.healthCheckIntervalMs = config.healthCheckIntervalMs || DEFAULT_HEALTH_CHECK_INTERVAL;
     this.webhookTimeoutMs = config.webhookTimeoutMs || DEFAULT_WEBHOOK_TIMEOUT_MS;
-    this.webhookUrl = sanitizeWebhookUrl(config.webhookUrl);
+    this.webhookUrl = sanitizeWebhookUrl(webhookUrl);
     this.contractAddress = config.contractAddress;
     this.eventNames = config.eventNames || [];
     this.forcedMode = config.mode || 'auto'; // 'auto', 'websocket', 'polling'
@@ -642,6 +647,7 @@ class SmartEventWatcher {
       }
     }
 
+    const selector = keys[0];
     const eventData = {
       type: 'event',
       source,
@@ -651,13 +657,24 @@ class SmartEventWatcher {
       contractAddress: event.from_address || event.contractAddress,
       keys,
       data: event.data,
-      eventName: this.getEventName(keys[0])
+      eventName: this.getEventName(selector),
+      selector
     };
     
     logEvent(eventData);
     
     if (this.webhookUrl) {
-      sendWebhook(this.webhookUrl, eventData, this.webhookTimeoutMs).catch(() => {});
+      sendWebhook(this.webhookUrl, {
+        type: eventData.type,
+        source: eventData.source,
+        timestamp: eventData.timestamp,
+        blockNumber: eventData.blockNumber,
+        transactionHash: eventData.transactionHash,
+        contractAddress: eventData.contractAddress,
+        keys: eventData.keys,
+        data: eventData.data,
+        selector: eventData.selector
+      }, this.webhookTimeoutMs).catch(() => {});
     }
   }
 
@@ -722,9 +739,9 @@ class SmartEventWatcher {
 
 // Main
 async function main() {
-  let rawInput = process.argv[2];
+  const cliArg = process.argv[2];
   
-  if (!rawInput) {
+  if (!cliArg) {
     console.error(JSON.stringify({
       error: 'No input provided',
       usage: 'node watch-events-smart.js \'{ "contractAddress": "0x...", "eventNames": ["Swapped"] }\''
@@ -732,19 +749,32 @@ async function main() {
     process.exit(1);
   }
 
-  let configPath = null;
-  if (rawInput.startsWith('@')) {
-    configPath = rawInput.slice(1);
-    rawInput = readFileSync(configPath, 'utf8');
-  }
-  
   let config;
-  try {
-    config = JSON.parse(rawInput);
-  } catch (err) {
-    const source = configPath ? `config file ${configPath}` : 'input argument';
-    console.error(JSON.stringify({ error: `Invalid JSON in ${source}: ${err.message}` }));
-    process.exit(1);
+  let configPath = null;
+  // File-backed cron configs must not supply the webhook URL; use WEBHOOK_URL
+  // (exported by the cron wrapper) so file bytes never reach fetch().
+  let webhookUrl = sanitizeWebhookUrl(process.env.WEBHOOK_URL);
+
+  if (cliArg.startsWith('@')) {
+    configPath = cliArg.slice(1);
+    try {
+      config = JSON.parse(readFileSync(configPath, 'utf8'));
+    } catch (err) {
+      console.error(JSON.stringify({ error: `Invalid JSON in config file ${configPath}: ${err.message}` }));
+      process.exit(1);
+    }
+  } else {
+    let argvConfig;
+    try {
+      argvConfig = JSON.parse(cliArg);
+    } catch (err) {
+      console.error(JSON.stringify({ error: `Invalid JSON in input argument: ${err.message}` }));
+      process.exit(1);
+    }
+    config = argvConfig;
+    if (!webhookUrl) {
+      webhookUrl = sanitizeWebhookUrl(argvConfig.webhookUrl);
+    }
   }
 
   // Remember config path/job name when started from cron
@@ -778,7 +808,7 @@ async function main() {
     }
   }
   
-  const watcher = new SmartEventWatcher(config);
+  const watcher = new SmartEventWatcher(config, webhookUrl);
   
   process.on('SIGINT', () => watcher.stop());
   process.on('SIGTERM', () => watcher.stop());
