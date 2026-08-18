@@ -70,6 +70,15 @@ def main() -> int:
     failures: list[str] = []
     total_fp = 0
 
+    # A baseline entry for a fixture that no longer exists means the fixture was
+    # deleted or renamed out of validation without CI noticing.
+    present = {f.name for f in fixtures}
+    for orphan in sorted(set(baseline) - present):
+        failures.append(
+            f"{orphan}: baseline references a fixture that is not on disk. "
+            f"Restore it or remove its baseline entry."
+        )
+
     for fixture in fixtures:
         findings = scan(fixture)
         actual = Counter(str(f.get("class_id", "UNKNOWN")) for f in findings)
@@ -77,6 +86,21 @@ def main() -> int:
             {cls: int(meta["count"]) for cls, meta in baseline.get(fixture.name, {}).items()}
         )
         total_fp += sum(actual.values())
+
+        # Locations matter, not just counts: an old false positive disappearing while a
+        # new one of the same class appears elsewhere leaves the count unchanged.
+        for cls, meta in baseline.get(fixture.name, {}).items():
+            want_lines = sorted(int(line) for line in meta.get("lines", []))
+            if not want_lines:
+                continue
+            got_lines = sorted(
+                int(f["line"]) for f in findings if f.get("class_id") == cls and f.get("line") is not None
+            )
+            if got_lines != want_lines:
+                failures.append(
+                    f"{fixture.name}: {cls} moved -- baseline lines {want_lines}, found {got_lines}. "
+                    f"Same count, different location means a different false positive."
+                )
 
         for cls in sorted(set(actual) | set(expected)):
             got, want = actual.get(cls, 0), expected.get(cls, 0)

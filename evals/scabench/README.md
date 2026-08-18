@@ -23,7 +23,7 @@ the sanitization is auditable rather than trusted.
 A protocol specification is deliberately not treated as leakage. Real auditors get
 the spec, and it is what separates a documented-invariant violation from an
 inferred one. Only finding-specific text counts: finding ids, known-issues section
-headers, and distinctive phrases from finding titles.
+headers, and distinctive phrases from finding titles. `.gz` members are decompressed and scanned rather than skipped by suffix, and any file that cannot be text-searched (binary assets) is listed as `unscanned_files` in the manifest instead of being silently passed over.
 
 For this target the strip pass removes nothing and the leak scan comes back clean
 — `docs/SECURITY.md` is a generic reporting policy and `docs/spec.md` is the
@@ -45,10 +45,13 @@ python3 evals/scabench/score.py \
   --report /tmp/scabench-work/report.json
 ```
 
-Reproducibility is pinned two ways: the commit
+Reproducibility is pinned two ways and **both are enforced**: the commit
 `9e48514c6151a9b65ee23b4a6f9bced8c6f2b793`, and a content digest over `.cairo`
 files only (`72778c4e...`), which stays stable even if the host re-compresses its
-tarballs.
+tarballs. `prepare.py` compares the digest against the value recorded in the
+ground truth and refuses to produce a target on mismatch — an earlier revision
+computed and printed the digest without ever checking it, which made the second
+pin decorative.
 
 ## What the scorer is, and is not
 

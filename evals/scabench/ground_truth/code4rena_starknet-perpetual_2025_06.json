@@ -103,5 +103,6 @@
     "dataset": "datasets/curated-2025-08-18/curated-2025-08-18.json",
     "vendored_on": "2026-08-17",
     "note": "Vendored so the eval is hermetic and the ground truth cannot drift under us."
-  }
+  },
+  "expected_cairo_content_sha256": "72778c4ece7c43aee53a32f7d58a3ef9c2d43a8d0b2ef757d7176e09339743e3"
 }

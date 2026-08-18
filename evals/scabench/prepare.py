@@ -28,6 +28,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import io
 import json
@@ -130,8 +131,12 @@ def extract(blob: bytes, dest: Path) -> None:
             if not parts:
                 continue
             target = dest.joinpath(*parts).resolve()
-            if not str(target).startswith(str(dest.resolve())):
+            # Path containment, not string prefix: `str.startswith` treats a sibling
+            # such as `<dest>_evil` as inside `<dest>`, which is no containment at all.
+            if not target.is_relative_to(dest.resolve()):
                 raise SystemExit(f"Refusing path traversal in archive: {member.name}")
+            if member.issym() or member.islnk():
+                raise SystemExit(f"Refusing link member in archive: {member.name}")
             if member.isdir():
                 target.mkdir(parents=True, exist_ok=True)
             elif member.isfile():
@@ -163,7 +168,7 @@ def strip_answer_keys(source: Path) -> list[str]:
     return removed
 
 
-def scan_for_leaks(source: Path, project: dict[str, Any]) -> list[dict[str, str]]:
+def scan_for_leaks(source: Path, project: dict[str, Any]) -> tuple[list[dict[str, str]], list[str]]:
     """Look for finding-specific text in whatever survived the strip pass."""
     vulns = project.get("vulnerabilities", [])
     finding_ids = [v["finding_id"] for v in vulns if v.get("finding_id")]
@@ -173,12 +178,26 @@ def scan_for_leaks(source: Path, project: dict[str, Any]) -> list[dict[str, str]
             phrases[phrase] = vuln.get("finding_id", "?")
 
     leaks: list[dict[str, str]] = []
+    unscanned: list[str] = []
     for path in sorted(source.rglob("*")):
-        if not path.is_file() or path.suffix.lower() in {".png", ".jpg", ".gz", ".lock"}:
+        if not path.is_file():
             continue
+        rel_early = path.relative_to(source).as_posix()
         try:
-            text = path.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
+            if path.suffix.lower() == ".gz":
+                # A compressed file that survived the strip pass can still carry the
+                # answer key; skipping it by suffix would let a leak through a tree
+                # the manifest calls sanitized.
+                with gzip.open(path, "rt", encoding="utf-8", errors="ignore") as handle:
+                    text = handle.read()
+            else:
+                raw = path.read_bytes()
+                if b"\x00" in raw[:4096]:
+                    unscanned.append(rel_early)
+                    continue
+                text = raw.decode("utf-8", errors="ignore")
+        except (OSError, EOFError, gzip.BadGzipFile):
+            unscanned.append(rel_early)
             continue
         rel = path.relative_to(source).as_posix()
         lowered = text.lower()
@@ -194,7 +213,7 @@ def scan_for_leaks(source: Path, project: dict[str, Any]) -> list[dict[str, str]
         for phrase, finding_id in phrases.items():
             if phrase in normalized:
                 leaks.append({"file": rel, "kind": "title_phrase", "evidence": f"{finding_id}: {phrase}"})
-    return leaks
+    return leaks, unscanned
 
 
 def main() -> int:
@@ -223,12 +242,22 @@ def main() -> int:
     print(f"cairo files  : {cairo_before}")
     print(f"content sha  : {digest}")
 
+    expected_digest = str(project.get("expected_cairo_content_sha256", "")).strip()
+    if not expected_digest:
+        print("content pin  : ABSENT -- record `expected_cairo_content_sha256` to pin this target")
+    elif digest != expected_digest:
+        print(f"content pin  : MISMATCH\n  expected {expected_digest}\n  got      {digest}")
+        print("\nThe Cairo content at this URL changed. Refusing to score against a moved target.")
+        return 1
+    else:
+        print("content pin  : verified")
+
     removed = strip_answer_keys(source)
     print(f"stripped     : {len(removed)} path(s){':' if removed else ' (nothing matched)'}")
     for rel in removed:
         print(f"               - {rel}")
 
-    leaks = scan_for_leaks(source, project)
+    leaks, unscanned = scan_for_leaks(source, project)
     manifest = {
         "project_id": project["project_id"],
         "codebase_id": codebase["codebase_id"],
@@ -239,6 +268,8 @@ def main() -> int:
         "ground_truth_findings": len(project["vulnerabilities"]),
         "stripped_paths": removed,
         "leak_hits": leaks,
+        "unscanned_files": unscanned,
+        "expected_cairo_content_sha256": project.get("expected_cairo_content_sha256"),
         "sanitized": not leaks,
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -253,6 +284,8 @@ def main() -> int:
         print("\n--allow-leaks set: continuing, but any score from this tree is invalid.")
     else:
         print("leak scan    : clean (no finding ids, known-issues sections, or title phrases)")
+    if unscanned:
+        print(f"unscanned    : {len(unscanned)} binary file(s) not text-searchable: {', '.join(unscanned[:5])}")
 
     print(f"\nprepared     : {source}")
     print(f"manifest     : {out / 'manifest.json'}")

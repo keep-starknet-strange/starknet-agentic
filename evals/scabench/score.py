@@ -110,24 +110,35 @@ def score(project: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, 
     claimed: set[int] = set()
 
     for vuln in expected:
+        # A reported finding can satisfy at most one expected vulnerability. Without
+        # this, one broadly-worded finding matches several and inflates recall past
+        # the number of distinct things the auditor actually reported.
         best_idx, best_score = -1, 0.0
         for idx, finding in enumerate(findings):
+            if idx in claimed:
+                continue
             value = _best_score(vuln, finding)
             if value > best_score:
                 best_idx, best_score = idx, value
 
-        if best_score >= AUTO_MATCH_THRESHOLD:
+        is_lead = best_idx >= 0 and str(findings[best_idx].get("_tier", "")) == "lead"
+        if best_score >= AUTO_MATCH_THRESHOLD and not is_lead:
             verdict = "auto_matched"
             claimed.add(best_idx)
-        elif best_score >= REVIEW_THRESHOLD:
+        elif best_score >= REVIEW_THRESHOLD or (best_score >= AUTO_MATCH_THRESHOLD and is_lead):
+            # A lead is explicitly not a proven finding, so it can never raise the
+            # recall floor no matter how well its text matches.
             verdict = "needs_review"
+            claimed.add(best_idx)
         else:
             verdict = "unmatched"
 
         # Lexical ranking is not reliable enough to trust the top hit alone: on this
         # dataset a true match has been observed ranking second behind a false one
         # that shared generic words. Surface the top three so a reviewer confirms in
-        # seconds rather than trusting a threshold.
+        # seconds rather than trusting a threshold. These are ranked over ALL reported
+        # findings, including ones already claimed, so a reviewer can spot a
+        # misassignment the greedy pass made.
         ranked = sorted(
             ((_best_score(vuln, f), f.get("title", "")) for f in findings),
             key=lambda pair: pair[0],
@@ -160,7 +171,7 @@ def score(project: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, 
         "unmatched": len(expected) - auto - review,
         "recall_floor": round(auto / total, 3),
         "recall_ceiling": round((auto + review) / total, 3),
-        "unmatched_reported": len(extra),
+        "reported_unassigned": len(extra),
         "per_finding": results,
     }
 
@@ -183,7 +194,7 @@ def main() -> int:
     print(f"needs review   : {card['needs_review']}")
     print(f"unmatched      : {card['unmatched']}")
     print(f"recall (lexical): {card['recall_floor']:.0%} floor .. {card['recall_ceiling']:.0%} ceiling")
-    print(f"reported but unmatched to ground truth: {card['unmatched_reported']}")
+    print(f"reported but assigned to no expected finding: {card['reported_unassigned']}")
     print()
     print("NOTE: lexical matching is a triage aid, not a judge. Confirm the candidates")
     print("below before quoting a recall number. A true match has been observed ranking")
