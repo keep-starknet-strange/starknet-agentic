@@ -37,7 +37,6 @@ const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/keep-starknet-strange
 const GITHUB_OWNER_REPO = "keep-starknet-strange/starknet-agentic";
 const TRUSTED_SKILL_DOWNLOAD_HOSTS = new Set([
   "raw.githubusercontent.com",
-  "objects.githubusercontent.com",
 ]);
 const MAX_SKILL_FILE_BYTES = 1_048_576;
 
@@ -73,7 +72,7 @@ export const AVAILABLE_SKILLS: SkillInfo[] = [
 ];
 
 /**
- * HTTPS GitHub download URLs for skill files (raw / objects).
+ * HTTPS GitHub download URLs for skill files (raw.githubusercontent.com).
  * Rejects other hosts, credentials, and path traversal before fetch.
  */
 export function trustedSkillDownloadUrl(url: string): string | null {
@@ -445,6 +444,7 @@ async function fetchGitHubDirectory(skillId: string): Promise<GitHubContentItem[
 
   try {
     const response = await fetch(apiUrl, {
+      redirect: "manual",
       headers: {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "create-starknet-agent",
@@ -476,11 +476,11 @@ async function downloadFile(url: string): Promise<string | null> {
     return null;
   }
   try {
-    const response = await fetch(trustedUrl);
+    const response = await fetch(trustedUrl, { redirect: "manual" });
     if (!response.ok) {
       return null;
     }
-    return readBoundedUtf8Text(response);
+    return await readBoundedUtf8Text(response);
   } catch {
     return null;
   }

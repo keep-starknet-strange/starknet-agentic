@@ -11,7 +11,7 @@
  *   "contractAddress": "0x...", 
  *   "eventNames": ["JobListed"],
  *   "pollIntervalMs": 3000, // fallback polling interval
- *   "webhookUrl": "http://localhost:3000/webhook", // optional (CLI JSON / WEBHOOK_URL env)
+ *   "webhookUrl": "http://localhost:3000/webhook", // CLI JSON only; file-backed cron uses WEBHOOK_URL
  *   "schedule": { // optional - creates cron job
  *     "enabled": true,
  *     "name": "ekubo-swap-monitor"
@@ -26,7 +26,7 @@
 import { RpcProvider, hash } from 'starknet';
 import { WebSocket } from 'ws';
 import { execSync, execFileSync } from 'child_process';
-import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, mkdtempSync, rmSync, openSync, fstatSync, closeSync, constants as fsConstants } from 'fs';
+import { writeFileSync, chmodSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, mkdtempSync, rmSync, openSync, fstatSync, closeSync, constants as fsConstants } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
 
@@ -55,7 +55,8 @@ const MAX_WEBHOOK_URL_LENGTH = 2048;
 
 /**
  * Allow only http(s) webhook URLs and rebuild them from parsed parts.
- * Blocks credentials, non-http schemes, and oversized values (SSRF hardening).
+ * Blocks credentials in the URL, non-http(s) schemes, and oversized values.
+ * Does not block private, link-local, or loopback destinations.
  */
 function sanitizeWebhookUrl(value) {
   if (typeof value !== 'string' || value.length === 0 || value.length > MAX_WEBHOOK_URL_LENGTH) {
@@ -77,18 +78,42 @@ function sanitizeWebhookUrl(value) {
   return parsed.protocol + '//' + parsed.host + path + parsed.search;
 }
 
+function copyIdentifier(value) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 128) {
+    return '';
+  }
+  let out = '';
+  for (let i = 0; i < value.length; i++) {
+    const c = value.charCodeAt(i);
+    const ok = (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95;
+    if (!ok) return '';
+    out += String.fromCharCode(c);
+  }
+  return out;
+}
+
+function toFiniteNumberOrNull(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function toWebhookPayload(data) {
   const keys = Array.isArray(data?.keys) ? data.keys.map((key) => String(key)) : [];
   const eventData = Array.isArray(data?.data) ? data.data.map((item) => String(item)) : [];
+  const blockNumber = toFiniteNumberOrNull(data?.blockNumber);
   return JSON.stringify({
     type: String(data?.type || 'event'),
     source: String(data?.source || ''),
     timestamp: String(data?.timestamp || ''),
-    blockNumber: Number(data?.blockNumber) || 0,
+    blockNumber,
     transactionHash: String(data?.transactionHash || ''),
     contractAddress: String(data?.contractAddress || ''),
     keys,
     data: eventData,
+    eventName: copyIdentifier(data?.eventName) || 'unknown',
     selector: String(data?.selector || '')
   });
 }
@@ -154,6 +179,7 @@ exec flock -n "$LOCKFILE" node ${shellQuote(scriptPath)} ${shellQuote(`@${config
 `;
   const shellPath = join(cronDir, `${jobName}.sh`);
   writeFileSync(shellPath, shellScript, { mode: 0o700 });
+  chmodSync(shellPath, 0o700);
 
   const cronEntry = `* * * * * ${shellPath} >> ${join(cronDir, `${jobName}.log`)} 2>&1`;
   
@@ -222,7 +248,9 @@ class SmartEventWatcher {
     this.webhookTimeoutMs = config.webhookTimeoutMs || DEFAULT_WEBHOOK_TIMEOUT_MS;
     this.webhookUrl = sanitizeWebhookUrl(webhookUrl);
     this.contractAddress = config.contractAddress;
-    this.eventNames = config.eventNames || [];
+    this.eventNames = Array.isArray(config.eventNames)
+      ? config.eventNames.map(copyIdentifier).filter(Boolean)
+      : [];
     this.forcedMode = config.mode || 'auto'; // 'auto', 'websocket', 'polling'
     this.currentMode = 'initializing';
     this.isShuttingDown = false;
@@ -664,17 +692,7 @@ class SmartEventWatcher {
     logEvent(eventData);
     
     if (this.webhookUrl) {
-      sendWebhook(this.webhookUrl, {
-        type: eventData.type,
-        source: eventData.source,
-        timestamp: eventData.timestamp,
-        blockNumber: eventData.blockNumber,
-        transactionHash: eventData.transactionHash,
-        contractAddress: eventData.contractAddress,
-        keys: eventData.keys,
-        data: eventData.data,
-        selector: eventData.selector
-      }, this.webhookTimeoutMs).catch(() => {});
+      sendWebhook(this.webhookUrl, eventData, this.webhookTimeoutMs).catch(() => {});
     }
   }
 
@@ -751,9 +769,7 @@ async function main() {
 
   let config;
   let configPath = null;
-  // File-backed cron configs must not supply the webhook URL; use WEBHOOK_URL
-  // (exported by the cron wrapper) so file bytes never reach fetch().
-  let webhookUrl = sanitizeWebhookUrl(process.env.WEBHOOK_URL);
+  let webhookUrl = null;
 
   if (cliArg.startsWith('@')) {
     configPath = cliArg.slice(1);
@@ -762,6 +778,16 @@ async function main() {
     } catch (err) {
       console.error(JSON.stringify({ error: `Invalid JSON in config file ${configPath}: ${err.message}` }));
       process.exit(1);
+    }
+    // File-backed cron configs must not supply the webhook URL; use WEBHOOK_URL
+    // (exported by the cron wrapper) so file bytes never reach fetch().
+    webhookUrl = sanitizeWebhookUrl(process.env.WEBHOOK_URL);
+    if (typeof config.webhookUrl === 'string' && config.webhookUrl.length > 0) {
+      if (webhookUrl) {
+        log('config file webhookUrl is ignored; using WEBHOOK_URL from the environment', 'warn');
+      } else {
+        log('config file webhookUrl is ignored and WEBHOOK_URL is unset; webhook delivery disabled. Export WEBHOOK_URL in the cron wrapper (new jobs do this automatically)', 'warn');
+      }
     }
   } else {
     let argvConfig;
@@ -772,9 +798,7 @@ async function main() {
       process.exit(1);
     }
     config = argvConfig;
-    if (!webhookUrl) {
-      webhookUrl = sanitizeWebhookUrl(argvConfig.webhookUrl);
-    }
+    webhookUrl = sanitizeWebhookUrl(argvConfig.webhookUrl) || sanitizeWebhookUrl(process.env.WEBHOOK_URL);
   }
 
   // Remember config path/job name when started from cron

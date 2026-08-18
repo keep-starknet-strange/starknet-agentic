@@ -143,6 +143,14 @@ describe("trustedSkillDownloadUrl", () => {
       )
     ).toBeNull();
   });
+
+  it("rejects objects.githubusercontent.com (path shape never matches this repo)", () => {
+    expect(
+      trustedSkillDownloadUrl(
+        "https://objects.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-wallet/SKILL.md"
+      )
+    ).toBeNull();
+  });
 });
 
 describe("trustedSkillApiUrl", () => {

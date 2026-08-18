@@ -68,7 +68,7 @@ ${pc.bold("Options:")}
   --version, -v         Show version number
 
 ${pc.bold("Credentials Options:")}
-  --from-env            Import credentials from current environment variables
+  --from-env            Prefill address and RPC from the environment; with --json, also import the private key
   --from-ready          Show guide for exporting from Ready wallet
   --from-braavos        Show guide for exporting from Braavos wallet
 
