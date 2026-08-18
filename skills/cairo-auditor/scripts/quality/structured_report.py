@@ -145,6 +145,13 @@ def _normalize_finding(row: dict[str, Any], source: Path) -> dict[str, Any]:
     if agent_id == "5" and "[ADVERSARIAL]" not in evidence:
         evidence.append("[ADVERSARIAL]")
 
+    tier = str(row.get("tier", "finding")).strip().lower()
+    if tier not in {"finding", "lead"}:
+        tier = "finding"
+    unverified = str(row.get("unverified", "")).strip()
+    if tier == "lead" and not unverified:
+        unverified = "Specialist did not record which link in the attack path is unproven."
+
     confidence = max(0, min(100, _safe_int(row.get("confidence"), 75)))
     priority = str(row.get("priority", "P3")).strip().upper()
     if priority not in PRIORITY_RANK:
@@ -158,6 +165,8 @@ def _normalize_finding(row: dict[str, Any], source: Path) -> dict[str, Any]:
         "class_id": class_id or "UNKNOWN",
         "file": file_path or "unknown",
         "line": row.get("line"),
+        "tier": tier,
+        "unverified": unverified,
         "priority": priority,
         "severity": severity,
         "confidence": confidence,
@@ -174,31 +183,36 @@ def _normalize_finding(row: dict[str, Any], source: Path) -> dict[str, Any]:
 
 
 def _root_key(finding: dict[str, Any]) -> str:
+    # File scope is always part of the key. Two specialists can describe unrelated
+    # bugs in different files with the same root-cause sentence; merging those
+    # silently discards a real finding, so cross-file merges are never allowed.
+    file_scope = str(finding.get("file", "")).lower()
     explicit = str(finding.get("root_cause", "")).strip()
     if explicit:
-        return explicit.lower()
+        return f"{file_scope}|{explicit.lower()}"
     return "|".join(
         [
+            file_scope,
             str(finding.get("class_id", "")).lower(),
-            str(finding.get("file", "")).lower(),
             str(finding.get("line", "")),
             str(finding.get("title", "")).lower(),
         ]
     )
 
 
+def _rank(finding: dict[str, Any]) -> tuple[int, int, int, int]:
+    # A proven finding always outranks a lead for the same root cause: if one
+    # specialist closed the path, the unproven version is the duplicate.
+    return (
+        0 if str(finding.get("tier", "finding")) == "lead" else 1,
+        _safe_int(finding.get("confidence")),
+        -PRIORITY_RANK.get(str(finding.get("priority", "P3")), 3),
+        len(str(finding.get("attack_path", ""))),
+    )
+
+
 def _better(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
-    a_key = (
-        _safe_int(a.get("confidence")),
-        -PRIORITY_RANK.get(str(a.get("priority", "P3")), 3),
-        len(str(a.get("attack_path", ""))),
-    )
-    b_key = (
-        _safe_int(b.get("confidence")),
-        -PRIORITY_RANK.get(str(b.get("priority", "P3")), 3),
-        len(str(b.get("attack_path", ""))),
-    )
-    return a if a_key >= b_key else b
+    return a if _rank(a) >= _rank(b) else b
 
 
 def _load_preflight(path: Path | None) -> list[dict[str, Any]]:
@@ -258,6 +272,7 @@ def _dedupe_and_tag(
                     "candidate": str(loser.get("title", "duplicate")),
                     "class": str(loser.get("class_id", "UNKNOWN")),
                     "drop_reason": "duplicate_root_cause",
+                    "file": str(loser.get("file", "")),
                 }
             )
 
@@ -269,6 +284,31 @@ def _dedupe_and_tag(
         )
     )
     return merged, dropped
+
+
+def _partition_tiers(
+    merged: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    findings = [row for row in merged if str(row.get("tier", "finding")) != "lead"]
+    leads = [row for row in merged if str(row.get("tier", "finding")) == "lead"]
+    return findings, leads
+
+
+def _completeness(
+    raw_findings: list[dict[str, Any]],
+    merged: list[dict[str, Any]],
+    dropped: list[dict[str, str]],
+) -> tuple[int, int, list[str]]:
+    """Every file that produced a candidate must survive into the report.
+
+    Dedupe collapsing a file out of the output entirely is a merge bug, not a
+    result. Returns (covered, total, missing_files) so the report can show it.
+    """
+    produced = {str(row.get("file", "")) for row in raw_findings if str(row.get("file", ""))}
+    covered = {str(row.get("file", "")) for row in merged if str(row.get("file", ""))}
+    covered |= {str(row.get("file", "")) for row in dropped if str(row.get("file", ""))}
+    missing = sorted(produced - covered)
+    return len(produced & covered), len(produced), missing
 
 
 _SCOPE_FILE_BYTES_CAP = 10 * 1024 * 1024  # 10 MiB per file is more than any realistic Cairo source.
@@ -387,6 +427,7 @@ def _render_report(
     mode: str,
     workdir: Path,
     findings: list[dict[str, Any]],
+    leads: list[dict[str, Any]],
     dropped: list[dict[str, str]],
     scope_paths: list[str],
     total_lines: int,
@@ -395,6 +436,7 @@ def _render_report(
     generated_at: str,
     integrity: str,
     threat_intel_status: str,
+    completeness: tuple[int, int, list[str]],
 ) -> str:
     counts = Counter(str(row.get("severity", "Low")) for row in findings)
     total = sum(counts.values())
@@ -407,9 +449,9 @@ def _render_report(
         "",
         "## Signal Summary",
         "",
-        "| Critical | High | Medium | Low | Total |",
-        "|----------|------|--------|-----|-------|",
-        f"| {counts.get('Critical', 0)} | {counts.get('High', 0)} | {counts.get('Medium', 0)} | {counts.get('Low', 0)} | {total} |",
+        "| Critical | High | Medium | Low | Total | Leads |",
+        "|----------|------|--------|-----|-------|-------|",
+        f"| {counts.get('Critical', 0)} | {counts.get('High', 0)} | {counts.get('Medium', 0)} | {counts.get('Low', 0)} | {total} | {len(leads)} |",
         "",
         "---",
         "",
@@ -473,8 +515,16 @@ def _render_report(
         agent5_status = "MISSING"
         agent5_evidence = f"`{agent5_findings_path}` (not produced)"
     agent5_model = _agent_model(agent_models, 5, fallback_keys=("adversarial", "default"))
+    covered_files, produced_files, missing_files = completeness
+    if missing_files:
+        completeness_status = "FAILED"
+        completeness_evidence = f"dropped without trace: {', '.join(f'`{_md_cell(p)}`' for p in missing_files[:5])}"
+    else:
+        completeness_status = "OK"
+        completeness_evidence = "every file with a candidate is represented"
     lines += [
         f"| Agent 5 adversarial (deep only) | {_md_cell(agent5_model)} | {agent5_evidence} | {agent5_status} |",
+        f"| Merge completeness | n/a | {covered_files}/{produced_files} files · {completeness_evidence} | {completeness_status} |",
         "",
         "---",
         "",
@@ -509,6 +559,31 @@ def _render_report(
                     lines.append(f"- {test}")
                 lines.append("")
         lines += ["---", ""]
+
+    lines += ["## Leads", ""]
+    if leads:
+        lines += [
+            "Unproven trails. A specialist saw something structurally suspicious here but could not close the",
+            "attack path. These carry no confidence score and no fix — they are review targets, not findings.",
+            "",
+        ]
+        for idx, lead in enumerate(leads, 1):
+            line = lead.get("line")
+            location = f"{lead.get('file')}:{line}" if line else str(lead.get("file"))
+            tags = " ".join(_extract_tags(lead.get("evidence_tags")))
+            lines += [
+                f"[LEAD] **{idx}. {_md_cell(lead.get('title'))}**",
+                "",
+                f"`Class: {lead.get('class_id')}` · `{_md_cell(location)}` · `{tags}`",
+                "",
+                str(lead.get("description") or lead.get("attack_path") or "Structural suspicion reported by specialist."),
+                "",
+                f"**Could not verify.** {_md_cell(lead.get('unverified'))}",
+                "",
+            ]
+        lines += ["---", ""]
+    else:
+        lines += ["No leads.", "", "---", ""]
 
     lines += ["## Dropped Candidates", "", "| Candidate | Class | Drop Reason |", "|-----------|-------|-------------|"]
     if dropped:
@@ -573,18 +648,27 @@ def main() -> int:
         raw_dropped.extend(drops)
 
     preflight = _load_preflight(preflight_path)
-    findings, dropped = _dedupe_and_tag(raw_findings, preflight, proven_only=args.proven_only)
+    merged, dropped = _dedupe_and_tag(raw_findings, preflight, proven_only=args.proven_only)
     dropped = raw_dropped + dropped
-    scope_paths, total_lines = _read_scope(scope_file, repo_root, findings)
+    completeness = _completeness(raw_findings, merged, dropped)
+    findings, leads = _partition_tiers(merged)
+    scope_paths, total_lines = _read_scope(scope_file, repo_root, merged)
     generated_at = datetime.now(UTC).replace(microsecond=0).isoformat()
 
+    covered_files, produced_files, missing_files = completeness
     payload = {
         "generated_at": generated_at,
         "repo_root": repo_root.as_posix(),
         "mode": args.mode,
         "execution_integrity": args.execution_integrity,
         "findings": findings,
+        "leads": leads,
         "dropped_candidates": dropped,
+        "merge_completeness": {
+            "files_with_candidates": produced_files,
+            "files_covered": covered_files,
+            "missing_files": missing_files,
+        },
     }
     out_json = Path(args.output_json).resolve()
     out_md = Path(args.output_md).resolve()
@@ -597,6 +681,7 @@ def main() -> int:
             mode=args.mode,
             workdir=workdir,
             findings=findings,
+            leads=leads,
             dropped=dropped,
             scope_paths=scope_paths,
             total_lines=total_lines,
@@ -605,10 +690,20 @@ def main() -> int:
             generated_at=generated_at,
             integrity=args.execution_integrity,
             threat_intel_status=args.threat_intel_status,
+            completeness=completeness,
         ),
         encoding="utf-8",
     )
-    print(json.dumps({"findings": len(findings), "output_md": out_md.as_posix(), "output_json": out_json.as_posix()}))
+    print(
+        json.dumps(
+            {
+                "findings": len(findings),
+                "leads": len(leads),
+                "output_md": out_md.as_posix(),
+                "output_json": out_json.as_posix(),
+            }
+        )
+    )
     return 0
 
 

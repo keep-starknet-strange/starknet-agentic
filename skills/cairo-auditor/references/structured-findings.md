@@ -24,6 +24,8 @@ Each specialist final response must be a JSON object:
 | `root_cause` | yes | Stable dedupe key. Same root cause across agents should match. |
 | `file` | yes | Repo-relative Cairo path. |
 | `line` | no | Best-effort 1-based line. |
+| `tier` | no | `finding` (default) or `lead`. A lead is a high-signal trail you could not prove end-to-end. |
+| `unverified` | yes for leads | The specific link in the attack path you could not establish. |
 | `priority` | yes | `P0`, `P1`, `P2`, or `P3`. |
 | `severity` | yes | `Critical`, `High`, `Medium`, or `Low`. |
 | `confidence` | yes | Integer `0..100` after FP-gate deductions. |

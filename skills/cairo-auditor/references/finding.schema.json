@@ -32,6 +32,16 @@
           "root_cause": { "type": "string", "minLength": 1 },
           "file": { "type": "string", "minLength": 1 },
           "line": { "type": ["integer", "null"], "minimum": 1 },
+          "tier": {
+            "enum": ["finding", "lead"],
+            "default": "finding",
+            "description": "A lead is a high-signal trail the specialist could not prove end-to-end. Leads carry no fix and are reported separately from findings."
+          },
+          "unverified": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Required for leads: the specific link in the attack path that could not be established."
+          },
           "priority": { "enum": ["P0", "P1", "P2", "P3"] },
           "severity": { "enum": ["Critical", "High", "Medium", "Low"] },
           "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
@@ -51,13 +61,36 @@
             "contains": { "const": "[CODE-TRACE]" }
           }
         },
-        "if": {
-          "properties": { "confidence": { "minimum": 75 } },
-          "required": ["confidence"]
-        },
-        "then": {
-          "required": ["recommended_fix", "required_tests"]
-        }
+        "allOf": [
+          {
+            "if": {
+              "allOf": [
+                {
+                  "properties": { "confidence": { "minimum": 75 } },
+                  "required": ["confidence"]
+                },
+                {
+                  "not": {
+                    "properties": { "tier": { "const": "lead" } },
+                    "required": ["tier"]
+                  }
+                }
+              ]
+            },
+            "then": {
+              "required": ["recommended_fix", "required_tests"]
+            }
+          },
+          {
+            "if": {
+              "properties": { "tier": { "const": "lead" } },
+              "required": ["tier"]
+            },
+            "then": {
+              "required": ["unverified"]
+            }
+          }
+        ]
       }
     },
     "dropped_candidates": {

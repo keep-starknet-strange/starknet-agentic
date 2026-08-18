@@ -10,6 +10,19 @@ Drop the finding if any check fails.
 2. **Reachability**: threat actor in scope can call the path under actual access control (`assert_only_*`, role checks, caller checks, account validation paths). If only `owner/admin/governance` can call it, keep it in scope as governance/admin risk and score accordingly.
 3. **No existing guard** blocks the attack (`assert`, non-reentrant lock, OZ component guard, explicit invariant check).
 
+## Leads (Unproven Trails)
+
+A finding that fails only check 1 — you can see the suspicious shape but cannot close the
+attack path to impact — is a **lead**, not a dropped candidate. Emit it with `tier: "lead"`
+and state in `unverified` exactly which link you could not establish.
+
+Leads carry no fix and no confidence score, and are reported in their own section. They exist
+because "I found something structurally wrong here and could not prove exploitability" is the
+most useful thing to hand a human reviewer, and dropping it silently is the worst outcome.
+
+Do not use the lead tier to launder a finding that fails check 2 or check 3: if the path is
+unreachable, or an existing guard blocks it, it is a false positive and stays dropped.
+
 ## Confidence Score
 
 Start at `100`, apply deductions:
