@@ -153,7 +153,7 @@ ${webhookExport}LOCKFILE=${shellQuote(`${configPath}.lock`)}
 exec flock -n "$LOCKFILE" node ${shellQuote(scriptPath)} ${shellQuote(`@${configPath}`)}
 `;
   const shellPath = join(cronDir, `${jobName}.sh`);
-  writeFileSync(shellPath, shellScript, { mode: 0o755 });
+  writeFileSync(shellPath, shellScript, { mode: 0o700 });
 
   const cronEntry = `* * * * * ${shellPath} >> ${join(cronDir, `${jobName}.log`)} 2>&1`;
   
@@ -789,7 +789,7 @@ async function main() {
   }
 
   if (config.schedule?.enabled) {
-    const result = createCronJob(config);
+    const result = createCronJob({ ...config, webhookUrl });
     if (result.success) {
       console.log(JSON.stringify({
         type: 'cron-scheduled',

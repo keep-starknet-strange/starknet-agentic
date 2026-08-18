@@ -135,6 +135,14 @@ describe("trustedSkillDownloadUrl", () => {
       )
     ).toBeNull();
   });
+
+  it("rejects valid-host URLs outside the skills/ tree", () => {
+    expect(
+      trustedSkillDownloadUrl(
+        "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/packages/create-starknet-agent/package.json"
+      )
+    ).toBeNull();
+  });
 });
 
 describe("trustedSkillApiUrl", () => {

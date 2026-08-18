@@ -93,8 +93,17 @@ export function trustedSkillDownloadUrl(url: string): string | null {
   if (!TRUSTED_SKILL_DOWNLOAD_HOSTS.has(host)) {
     return null;
   }
-  const prefix = `/${GITHUB_OWNER_REPO}/`;
-  if (!parsed.pathname.startsWith(prefix) || parsed.pathname.includes("..")) {
+  const repoPrefix = `/${GITHUB_OWNER_REPO}/`;
+  if (!parsed.pathname.startsWith(repoPrefix) || parsed.pathname.includes("..")) {
+    return null;
+  }
+  const rest = parsed.pathname.slice(repoPrefix.length);
+  const skillsIdx = rest.indexOf("/skills/");
+  if (skillsIdx <= 0) {
+    return null;
+  }
+  const ref = rest.slice(0, skillsIdx);
+  if (ref.length === 0 || ref.includes("/")) {
     return null;
   }
   return `https://${host}${parsed.pathname}${parsed.search}`;
@@ -130,13 +139,51 @@ function sanitizeDownloadedText(content: string): string | null {
   if (typeof content !== "string") {
     return null;
   }
-  if (content.length === 0 || content.length > MAX_SKILL_FILE_BYTES) {
+  if (content.length === 0 || Buffer.byteLength(content, "utf8") > MAX_SKILL_FILE_BYTES) {
     return null;
   }
   if (content.includes("\0")) {
     return null;
   }
   return Buffer.from(content, "utf8").toString("utf8");
+}
+
+async function readBoundedUtf8Text(response: Response): Promise<string | null> {
+  const contentLength = response.headers.get("content-length");
+  if (contentLength !== null) {
+    const declared = Number(contentLength);
+    if (!Number.isFinite(declared) || declared < 0 || declared > MAX_SKILL_FILE_BYTES) {
+      return null;
+    }
+  }
+
+  if (!response.body) {
+    return sanitizeDownloadedText(await response.text());
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_SKILL_FILE_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } catch {
+    await reader.cancel().catch(() => undefined);
+    return null;
+  }
+
+  const bytes = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+  return sanitizeDownloadedText(bytes.toString("utf8"));
 }
 
 /**
@@ -433,8 +480,7 @@ async function downloadFile(url: string): Promise<string | null> {
     if (!response.ok) {
       return null;
     }
-    const content = await response.text();
-    return sanitizeDownloadedText(content);
+    return readBoundedUtf8Text(response);
   } catch {
     return null;
   }

@@ -416,6 +416,18 @@ async function main() {
     };
     
     const { operations = [], operationType, abis = {}, addresses = {} } = parsed;
+    const abisValid = abis !== null && typeof abis === "object" && !Array.isArray(abis);
+    const addressesValid = addresses !== null && typeof addresses === "object" && !Array.isArray(addresses);
+    if (!Array.isArray(operations) || !abisValid || !addressesValid) {
+      console.log(JSON.stringify({
+        ...result,
+        success: false,
+        canProceed: false,
+        nextStep: "INVALID_PARSED_INPUT",
+        error: "parsed.operations must be an array and parsed.abis/addresses must be objects"
+      }));
+      process.exit(1);
+    }
     
     result.parsed = parsed;
     result.operationType = operationType;
