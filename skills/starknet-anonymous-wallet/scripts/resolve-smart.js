@@ -189,16 +189,6 @@ function loadProtocols() {
   return protocols;
 }
 
-// ============ MULTI-ADDRESS ABI SCANNING ============
-async function fetchABI(address, provider) {
-  try {
-    const response = await provider.getClassAt(address);
-    return response.abi || [];
-  } catch (e) {
-    return [];
-  }
-}
-
 // ============ PROMPT INJECTION PROTECTION ============
 // ============ CONFIGURATION (loaded from JSON files) ============
 // Loaded dynamically in main() to allow registration during execution
@@ -248,49 +238,6 @@ function loadAccount(index = 0) {
 }
 
 // ============ ABI ANALYSIS ============
-function tokenize(str) {
-  return str.replace(/([A-Z])/g, '_$1').replace(/^_/, '').toLowerCase().split(/[_\-]+/).filter(Boolean);
-}
-
-function calculateSimilarity(query, target) {
-  const q = String(query || '').toLowerCase();
-  const t = String(target || '').toLowerCase();
-  if (!q || !t) return 0;
-  
-  if (t === q) return 100;
-  if (t.includes(q)) return 70 + (q.length / t.length) * 20;
-  if (q.includes(t)) return 60 + (t.length / q.length) * 15;
-  
-  let score = 0;
-  const qTokens = tokenize(q);
-  const tTokens = tokenize(t);
-  const MAX_SUBSTRING_LEN = 6;
-  const MAX_SUBSTRING_STARTS = 12;
-  
-  for (const qt of qTokens) {
-    for (const tt of tTokens) {
-      if (qt === tt) score += 30;
-      else if (tt.includes(qt)) score += 20;
-      else if (qt.includes(tt)) score += 15;
-      else {
-        // Common substrings (bounded to avoid runaway O(n^3)-style costs)
-        const maxLen = Math.min(MAX_SUBSTRING_LEN, qt.length, tt.length);
-        for (let len = 3; len <= maxLen; len++) {
-          const maxStarts = Math.min(qt.length - len + 1, MAX_SUBSTRING_STARTS);
-          for (let i = 0; i < maxStarts; i++) {
-            if (tt.includes(qt.substring(i, i + len))) {
-              score += len * 2;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  return score;
-}
-
 function extractABIItems(abi) {
   const functions = [];
   const events = [];
@@ -344,20 +291,6 @@ function isComplexAbiType(typeStr) {
 }
 
 // ============ TOKEN OPERATIONS ============
-function formatUnitsSafe(value, decimals, maxFractionDigits = 6) {
-  const d = Number(decimals ?? 18);
-  if (!Number.isInteger(d) || d < 0) return value.toString();
-
-  const base = 10n ** BigInt(d);
-  const whole = value / base;
-  const frac = value % base;
-
-  if (d === 0) return whole.toString();
-  let fracStr = frac.toString().padStart(d, '0').slice(0, maxFractionDigits);
-  fracStr = fracStr.replace(/0+$/, '');
-  return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
-}
-
 function toUint256(n) {
   return [(n & ((1n << 128n) - 1n)).toString(), (n >> 128n).toString()];
 }
@@ -482,7 +415,7 @@ async function main() {
       orchestration: [{ step: 0, name: "Using LLM-parsed data" }]
     };
     
-    const { operations = [], operationType, abis = {}, addresses = {} } = parsed || {};
+    const { operations = [], operationType, abis = {}, addresses = {} } = parsed;
     
     result.parsed = parsed;
     result.operationType = operationType;

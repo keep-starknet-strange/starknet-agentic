@@ -5,6 +5,8 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   AVAILABLE_SKILLS,
+  trustedSkillApiUrl,
+  trustedSkillDownloadUrl,
   type WizardResult,
 } from "../wizards.js";
 
@@ -109,5 +111,44 @@ describe("MCP config generation", () => {
     const expectedRpcUrl = RPC_URLS[network];
 
     expect(expectedRpcUrl).toBe("https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY");
+  });
+});
+
+describe("trustedSkillDownloadUrl", () => {
+  it("accepts raw.githubusercontent.com URLs for this repo", () => {
+    const url =
+      "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-wallet/SKILL.md";
+    expect(trustedSkillDownloadUrl(url)).toBe(url);
+  });
+
+  it("rejects non-https, foreign hosts, credentials, and traversal", () => {
+    expect(trustedSkillDownloadUrl("http://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/x")).toBeNull();
+    expect(trustedSkillDownloadUrl("https://evil.example/keep-starknet-strange/starknet-agentic/main/skills/x")).toBeNull();
+    expect(
+      trustedSkillDownloadUrl(
+        "https://user:pass@raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/x"
+      )
+    ).toBeNull();
+    expect(
+      trustedSkillDownloadUrl(
+        "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/../other/skills/x"
+      )
+    ).toBeNull();
+  });
+});
+
+describe("trustedSkillApiUrl", () => {
+  it("accepts GitHub Contents API URLs under skills/", () => {
+    const url =
+      "https://api.github.com/repos/keep-starknet-strange/starknet-agentic/contents/skills/starknet-wallet";
+    expect(trustedSkillApiUrl(url)).toBe(url);
+  });
+
+  it("rejects other GitHub API paths", () => {
+    expect(
+      trustedSkillApiUrl(
+        "https://api.github.com/repos/keep-starknet-strange/starknet-agentic/contents/packages/create-starknet-agent"
+      )
+    ).toBeNull();
   });
 });

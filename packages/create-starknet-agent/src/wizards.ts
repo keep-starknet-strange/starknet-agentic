@@ -34,6 +34,12 @@ export interface SkillInfo {
 
 const GITHUB_API_BASE = "https://api.github.com/repos/keep-starknet-strange/starknet-agentic/contents/skills";
 const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills";
+const GITHUB_OWNER_REPO = "keep-starknet-strange/starknet-agentic";
+const TRUSTED_SKILL_DOWNLOAD_HOSTS = new Set([
+  "raw.githubusercontent.com",
+  "objects.githubusercontent.com",
+]);
+const MAX_SKILL_FILE_BYTES = 1_048_576;
 
 export const AVAILABLE_SKILLS: SkillInfo[] = [
   {
@@ -65,6 +71,73 @@ export const AVAILABLE_SKILLS: SkillInfo[] = [
     rawUrl: `${GITHUB_RAW_BASE}/starknet-anonymous-wallet/SKILL.md`,
   },
 ];
+
+/**
+ * HTTPS GitHub download URLs for skill files (raw / objects).
+ * Rejects other hosts, credentials, and path traversal before fetch.
+ */
+export function trustedSkillDownloadUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:") {
+    return null;
+  }
+  if (parsed.username !== "" || parsed.password !== "") {
+    return null;
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (!TRUSTED_SKILL_DOWNLOAD_HOSTS.has(host)) {
+    return null;
+  }
+  const prefix = `/${GITHUB_OWNER_REPO}/`;
+  if (!parsed.pathname.startsWith(prefix) || parsed.pathname.includes("..")) {
+    return null;
+  }
+  return `https://${host}${parsed.pathname}${parsed.search}`;
+}
+
+/**
+ * HTTPS GitHub Contents API URLs under this repo's skills/ tree.
+ */
+export function trustedSkillApiUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:") {
+    return null;
+  }
+  if (parsed.hostname.toLowerCase() !== "api.github.com") {
+    return null;
+  }
+  if (parsed.username !== "" || parsed.password !== "") {
+    return null;
+  }
+  const prefix = `/repos/${GITHUB_OWNER_REPO}/contents/skills/`;
+  if (!parsed.pathname.startsWith(prefix) || parsed.pathname.includes("..")) {
+    return null;
+  }
+  return `https://api.github.com${parsed.pathname}${parsed.search}`;
+}
+
+function sanitizeDownloadedText(content: string): string | null {
+  if (typeof content !== "string") {
+    return null;
+  }
+  if (content.length === 0 || content.length > MAX_SKILL_FILE_BYTES) {
+    return null;
+  }
+  if (content.includes("\0")) {
+    return null;
+  }
+  return Buffer.from(content, "utf8").toString("utf8");
+}
 
 /**
  * Setup modes for non-standalone platforms
@@ -318,7 +391,10 @@ interface GitHubContentItem {
  * Fetch directory contents from GitHub API
  */
 async function fetchGitHubDirectory(skillId: string): Promise<GitHubContentItem[] | null> {
-  const apiUrl = `${GITHUB_API_BASE}/${skillId}`;
+  const apiUrl = trustedSkillApiUrl(`${GITHUB_API_BASE}/${skillId}`);
+  if (!apiUrl) {
+    return null;
+  }
 
   try {
     const response = await fetch(apiUrl, {
@@ -345,15 +421,20 @@ async function fetchGitHubDirectory(skillId: string): Promise<GitHubContentItem[
 }
 
 /**
- * Download a single file from GitHub
+ * Download a single file from a trusted GitHub URL.
  */
 async function downloadFile(url: string): Promise<string | null> {
+  const trustedUrl = trustedSkillDownloadUrl(url);
+  if (!trustedUrl) {
+    return null;
+  }
   try {
-    const response = await fetch(url);
+    const response = await fetch(trustedUrl);
     if (!response.ok) {
       return null;
     }
-    return await response.text();
+    const content = await response.text();
+    return sanitizeDownloadedText(content);
   } catch {
     return null;
   }
@@ -435,15 +516,7 @@ async function fetchSkillMdOnly(skillId: string): Promise<string | null> {
     return null;
   }
 
-  try {
-    const response = await fetch(skill.rawUrl);
-    if (!response.ok) {
-      return null;
-    }
-    return await response.text();
-  } catch {
-    return null;
-  }
+  return downloadFile(skill.rawUrl);
 }
 
 /**
@@ -463,6 +536,10 @@ async function installSkills(
   }
 
   for (const skillId of selectedSkills) {
+    if (!AVAILABLE_SKILLS.some((skill) => skill.id === skillId)) {
+      failed.push(skillId);
+      continue;
+    }
     const skillDir = path.join(skillsPath, skillId);
 
     // Create skill directory

@@ -9,7 +9,7 @@
   "overrides": {
     "fast-json-patch": "^3.1.1",
     "fast-uri": "^3.1.5",
-    "js-yaml": "^3.15.0",
+    "js-yaml": "^3.15.1",
     "brace-expansion": "^1.1.18"
   }
 }

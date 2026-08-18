@@ -51,15 +51,58 @@ function logEvent(eventData) {
   console.log(JSON.stringify(eventData));
 }
 
+const MAX_WEBHOOK_URL_LENGTH = 2048;
+
+/**
+ * Allow only http(s) webhook URLs and rebuild them from parsed parts.
+ * Blocks credentials, non-http schemes, and oversized values (SSRF hardening).
+ */
+function sanitizeWebhookUrl(value) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > MAX_WEBHOOK_URL_LENGTH) {
+    return null;
+  }
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return null;
+  }
+  if (parsed.username !== '' || parsed.password !== '') {
+    return null;
+  }
+  const path = parsed.pathname || '/';
+  return parsed.protocol + '//' + parsed.host + path + parsed.search;
+}
+
+function toWebhookPayload(data) {
+  const keys = Array.isArray(data?.keys) ? data.keys.map((key) => String(key)) : [];
+  const eventData = Array.isArray(data?.data) ? data.data.map((item) => String(item)) : [];
+  return JSON.stringify({
+    type: String(data?.type || 'event'),
+    source: String(data?.source || ''),
+    timestamp: String(data?.timestamp || ''),
+    blockNumber: Number(data?.blockNumber) || 0,
+    transactionHash: String(data?.transactionHash || ''),
+    contractAddress: String(data?.contractAddress || ''),
+    keys,
+    data: eventData,
+    eventName: String(data?.eventName || 'unknown')
+  });
+}
+
 async function sendWebhook(webhookUrl, data, timeoutMs = DEFAULT_WEBHOOK_TIMEOUT_MS) {
-  if (!webhookUrl) return;
+  const safeUrl = sanitizeWebhookUrl(webhookUrl);
+  if (!safeUrl) return;
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    await fetch(webhookUrl, {
+    await fetch(safeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: toWebhookPayload(data),
       signal: controller.signal
     });
   } catch (err) {
@@ -172,7 +215,7 @@ class SmartEventWatcher {
     this.pollIntervalMs = config.pollIntervalMs || DEFAULT_POLL_INTERVAL;
     this.healthCheckIntervalMs = config.healthCheckIntervalMs || DEFAULT_HEALTH_CHECK_INTERVAL;
     this.webhookTimeoutMs = config.webhookTimeoutMs || DEFAULT_WEBHOOK_TIMEOUT_MS;
-    this.webhookUrl = config.webhookUrl || null;
+    this.webhookUrl = sanitizeWebhookUrl(config.webhookUrl);
     this.contractAddress = config.contractAddress;
     this.eventNames = config.eventNames || [];
     this.forcedMode = config.mode || 'auto'; // 'auto', 'websocket', 'polling'

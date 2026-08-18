@@ -450,22 +450,24 @@ export async function runCredentialsSetup(args: CredentialsArgs): Promise<void> 
     console.log();
   }
 
-  // Initialize credentials from environment if --from-env
+  // Initialize credentials from environment if --from-env.
+  // Private keys from env are only used for presence logging, never as a
+  // prompt initial value (password fields must not echo a default).
   let initialAddress: string | undefined;
-  let initialPrivateKey: string | undefined;
   let initialRpcUrl: string | undefined;
+  let envHasPrivateKey = false;
 
   if (args.fromEnv) {
     const envCreds = loadFromEnv();
     initialAddress = envCreds.address;
-    initialPrivateKey = envCreds.privateKey;
+    envHasPrivateKey = Boolean(envCreds.privateKey);
     initialRpcUrl = envCreds.rpcUrl;
 
     if (!args.jsonOutput) {
-      if (envCreds.address || envCreds.privateKey || envCreds.rpcUrl) {
+      if (envCreds.address || envHasPrivateKey || envCreds.rpcUrl) {
         console.log(pc.green("✓ Loaded credentials from environment"));
         if (envCreds.address) console.log(pc.dim(`  Address: ${envCreds.address.slice(0, 10)}...`));
-        if (envCreds.privateKey) console.log(pc.dim("  Private key: ****"));
+        if (envHasPrivateKey) console.log(pc.dim("  Private key: ****"));
         if (envCreds.rpcUrl) console.log(pc.dim(`  RPC URL: ${envCreds.rpcUrl}`));
         console.log();
       } else {
