@@ -32,7 +32,7 @@ Register and manage AI agent identities on Starknet using the ERC-8004 standard.
 ERC-8004 defines three interconnected on-chain registries for AI agents:
 
 1. **Identity Registry** -- Agents as ERC-721 NFTs with metadata
-2. **Reputation Registry** -- Feedback system with cryptographic authorization
+2. **Reputation Registry** -- Feedback, filtered by reviewer at read time
 3. **Validation Registry** -- Third-party assessments (zkML, TEE, staker)
 
 Reference implementation: [erc8004-cairo](https://github.com/Akashneelesh/erc8004-cairo)
@@ -117,42 +117,31 @@ await account.execute({
 
 ## Reputation System
 
-### Authorize and Submit Feedback
+### Submit Feedback
 
-The reputation system uses a cryptographic authorization flow:
+Any client may call `give_feedback` directly. The deployed registry does **not**
+require an authorization signature from the agent owner, so anyone can write
+feedback about any agent, solicited or not. Plan for that (see
+[Security Considerations](#security-considerations)).
 
-1. **Agent owner** creates a FeedbackAuth struct and signs it
-2. **Client** submits feedback with the authorization
+A score is a **signed fixed-point pair**, not a 0-100 integer: `value` (`i128`)
+plus `value_decimals` (`u8`, 0-18). Read them together — `value: 9977` with
+`value_decimals: 2` means 99.77. Nothing constrains the range, so a score is only
+comparable against others from the same writer using the same `tag1`.
 
 ```typescript
-// Step 1: Agent owner creates authorization
-const feedbackAuth = {
-  agent_id: agentId,
-  client_address: clientAddress,
-  index_limit: 10, // Max feedback entries allowed
-  expiry: Math.floor(Date.now() / 1000) + 3600, // 1 hour
-  chain_id: chainId,
-  identity_registry: registryAddress,
-  signer_address: ownerAddress,
-};
-
-// Sign the authorization (using agent owner's account)
-const messageHash = computePoseidonHash(feedbackAuth); // EIP-712 style
-const signature = await ownerAccount.signMessage(messageHash);
-
-// Step 2: Client submits feedback
 await clientAccount.execute({
   contractAddress: reputationRegistryAddress,
   entrypoint: "give_feedback",
   calldata: CallData.compile({
-    agent_id: agentId,
-    score: 85, // 0-100
-    tag1: encodedTag("reliability"),
-    tag2: encodedTag("speed"),
-    fileuri: "",
-    filehash: 0,
-    feedback_auth: feedbackAuth,
-    signature: signature,
+    agent_id: agentId,          // u256
+    value: 85,                  // i128, signed; negative is allowed
+    value_decimals: 0,          // u8 0-18; 85 with 0 decimals = 85
+    tag1: "reliability",        // ByteArray
+    tag2: "speed",              // ByteArray
+    endpoint: "",               // ByteArray - which service was used
+    feedback_uri: "",           // ByteArray - optional off-chain detail
+    feedback_hash: 0,           // u256
   }),
 });
 ```
@@ -166,20 +155,21 @@ const reputationRegistry = new Contract({
   providerOrAccount: provider,
 });
 
-// Get summary for an agent (count + average score)
-const [count, avgScore] = await reputationRegistry.get_summary(
+// get_summary REVERTS on an empty client list. This is deliberate: an unfiltered
+// average is exactly what EIP-8004 warns is Sybil-bait, so decide whose opinion
+// you trust and pass those addresses.
+const trusted = [clientA, clientB]; // must be non-empty
+const [count, value, valueDecimals] = await reputationRegistry.get_summary(
   agentId,
-  [], // all client addresses (or filter specific ones)
-  0,  // tag1 filter (0 = all)
-  0,  // tag2 filter (0 = all)
+  trusted,
+  "", // tag1 filter, empty ByteArray = all
+  "", // tag2 filter, empty ByteArray = all
 );
+const average = Number(value) / 10 ** Number(valueDecimals);
 
-// Read specific feedback
-const [score, tag1, tag2, isRevoked] = await reputationRegistry.read_feedback(
-  agentId,
-  clientAddress,
-  feedbackIndex,
-);
+// Read specific feedback: (value, value_decimals, tag1, tag2, is_revoked)
+const [fValue, fDecimals, tag1, tag2, isRevoked] =
+  await reputationRegistry.read_feedback(agentId, clientAddress, feedbackIndex);
 
 // Get all clients who gave feedback
 const clients = await reputationRegistry.get_clients(agentId);
@@ -297,8 +287,13 @@ Serve at `/.well-known/agent.json` for A2A discovery.
 
 ## Security Considerations
 
-- Only the agent owner can update metadata and authorize feedback
-- Feedback requires cryptographic authorization (prevents spam)
+- Only the agent owner can update metadata
+- **Feedback is NOT gated by an owner signature.** Any address can call
+  `give_feedback` about any agent. There is no on-chain spam protection, so treat
+  raw feedback as untrusted input and filter by reviewer before showing or
+  aggregating it
+- `get_summary` refuses an empty `client_addresses` list, which forces that filter
+  at the contract level
 - Self-feedback is prevented (agent owner cannot give feedback to own agent)
 - Self-validation is prevented (agent owner cannot validate own agent)
 - Signatures include chain ID and expiry to prevent replay attacks
