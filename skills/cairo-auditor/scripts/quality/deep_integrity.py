@@ -68,7 +68,54 @@ def _type_ok(value: Any, type_spec: Any) -> bool:
     return True
 
 
+# Keywords this validator actually evaluates, and metadata it may safely ignore.
+# Anything outside both sets is reported rather than skipped: a schema keyword the
+# validator does not understand is a silent hole in the gate, not a no-op. Moving
+# the finding schema's conditionals under `allOf` previously disabled both of them
+# here while a spec-compliant validator still enforced them.
+_VALIDATED_KEYWORDS = frozenset(
+    {
+        "type", "enum", "const", "minLength", "minimum", "maximum", "required",
+        "properties", "if", "then", "else", "items", "contains",
+        "allOf", "anyOf", "oneOf", "not",
+    }
+)
+_IGNORED_KEYWORDS = frozenset(
+    {"$schema", "$comment", "_comment", "title", "description", "default", "examples", "additionalProperties"}
+)
+
+
+def _unsupported_keywords(schema: dict) -> list[str]:
+    return sorted(set(schema) - _VALIDATED_KEYWORDS - _IGNORED_KEYWORDS)
+
+
+def _matches(value: Any, schema: dict) -> bool:
+    trial: list[str] = []
+    _validate(value, schema, "", trial)
+    return not trial
+
+
 def _validate(value: Any, schema: dict, path: str, errors: list[str]) -> None:
+    unsupported = _unsupported_keywords(schema)
+    if unsupported:
+        errors.append(
+            f"{path}: schema uses keyword(s) {unsupported} this validator does not evaluate; "
+            f"refusing to pass silently"
+        )
+    for sub in schema.get("allOf", []):
+        if isinstance(sub, dict):
+            _validate(value, sub, path, errors)
+    if isinstance(schema.get("anyOf"), list):
+        branches = [s for s in schema["anyOf"] if isinstance(s, dict)]
+        if branches and not any(_matches(value, s) for s in branches):
+            errors.append(f"{path}: value matches none of the anyOf branches")
+    if isinstance(schema.get("oneOf"), list):
+        branches = [s for s in schema["oneOf"] if isinstance(s, dict)]
+        matched = sum(1 for s in branches if _matches(value, s))
+        if branches and matched != 1:
+            errors.append(f"{path}: value matches {matched} oneOf branches, expected exactly 1")
+    if isinstance(schema.get("not"), dict) and _matches(value, schema["not"]):
+        errors.append(f"{path}: value must not match the 'not' schema")
     if "type" in schema and not _type_ok(value, schema["type"]):
         errors.append(f"{path}: expected type {schema['type']}, got {type(value).__name__}")
         return

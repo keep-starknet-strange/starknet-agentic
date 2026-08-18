@@ -186,7 +186,10 @@ def _root_key(finding: dict[str, Any]) -> str:
     # File scope is always part of the key. Two specialists can describe unrelated
     # bugs in different files with the same root-cause sentence; merging those
     # silently discards a real finding, so cross-file merges are never allowed.
-    file_scope = str(finding.get("file", "")).lower()
+    # The path keeps its case: `src/Foo.cairo` and `src/foo.cairo` are different
+    # files on a case-sensitive filesystem, and folding them would reintroduce
+    # exactly the cross-file merge this key exists to prevent.
+    file_scope = str(finding.get("file", ""))
     explicit = str(finding.get("root_cause", "")).strip()
     if explicit:
         return f"{file_scope}|{explicit.lower()}"
@@ -299,16 +302,27 @@ def _completeness(
     merged: list[dict[str, Any]],
     dropped: list[dict[str, str]],
 ) -> tuple[int, int, list[str]]:
-    """Every file that produced a candidate must survive into the report.
+    """Every file that produced a candidate must SURVIVE into the merged output.
 
-    Dedupe collapsing a file out of the output entirely is a merge bug, not a
-    result. Returns (covered, total, missing_files) so the report can show it.
+    Only the merged set counts as coverage. Counting dropped candidates would
+    defeat the metric: a file whose sole finding was wrongly collapsed into
+    another file's would appear as covered precisely when the merge bug this
+    exists to surface had occurred.
+
+    `dropped` is still consulted, but only to classify a missing file -- a file
+    lost to `duplicate_root_cause` is a merge suspect, while one dropped as a
+    false positive is an expected outcome.
     """
     produced = {str(row.get("file", "")) for row in raw_findings if str(row.get("file", ""))}
     covered = {str(row.get("file", "")) for row in merged if str(row.get("file", ""))}
-    covered |= {str(row.get("file", "")) for row in dropped if str(row.get("file", ""))}
     missing = sorted(produced - covered)
-    return len(produced & covered), len(produced), missing
+    dup_only = {
+        str(row.get("file", ""))
+        for row in dropped
+        if str(row.get("file", "")) and row.get("drop_reason") == "duplicate_root_cause"
+    }
+    suspects = sorted(f for f in missing if f in dup_only)
+    return len(produced & covered), len(produced), suspects
 
 
 _SCOPE_FILE_BYTES_CAP = 10 * 1024 * 1024  # 10 MiB per file is more than any realistic Cairo source.
@@ -515,13 +529,16 @@ def _render_report(
         agent5_status = "MISSING"
         agent5_evidence = f"`{agent5_findings_path}` (not produced)"
     agent5_model = _agent_model(agent_models, 5, fallback_keys=("adversarial", "default"))
-    covered_files, produced_files, missing_files = completeness
-    if missing_files:
+    covered_files, produced_files, suspect_files = completeness
+    if suspect_files:
         completeness_status = "FAILED"
-        completeness_evidence = f"dropped without trace: {', '.join(f'`{_md_cell(p)}`' for p in missing_files[:5])}"
+        completeness_evidence = (
+            "lost to duplicate_root_cause: "
+            + ", ".join(f"`{_md_cell(p)}`" for p in suspect_files[:5])
+        )
     else:
         completeness_status = "OK"
-        completeness_evidence = "every file with a candidate is represented"
+        completeness_evidence = "no file lost to a cross-file merge"
     lines += [
         f"| Agent 5 adversarial (deep only) | {_md_cell(agent5_model)} | {agent5_evidence} | {agent5_status} |",
         f"| Merge completeness | n/a | {covered_files}/{produced_files} files · {completeness_evidence} | {completeness_status} |",
@@ -655,7 +672,7 @@ def main() -> int:
     scope_paths, total_lines = _read_scope(scope_file, repo_root, merged)
     generated_at = datetime.now(UTC).replace(microsecond=0).isoformat()
 
-    covered_files, produced_files, missing_files = completeness
+    covered_files, produced_files, suspect_files = completeness
     payload = {
         "generated_at": generated_at,
         "repo_root": repo_root.as_posix(),
@@ -667,7 +684,7 @@ def main() -> int:
         "merge_completeness": {
             "files_with_candidates": produced_files,
             "files_covered": covered_files,
-            "missing_files": missing_files,
+            "merge_suspect_files": suspect_files,
         },
     }
     out_json = Path(args.output_json).resolve()
