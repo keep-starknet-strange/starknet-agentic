@@ -16,7 +16,8 @@ A finding that fails only check 1 — you can see the suspicious shape but canno
 attack path to impact — is a **lead**, not a dropped candidate. Emit it with `tier: "lead"`
 and state in `unverified` exactly which link you could not establish.
 
-Leads carry no fix and no confidence score, and are reported in their own section. They exist
+Leads carry a confidence score, so reviewers can order them, but never a fix block -- there is
+no verified path to fix. They are reported in their own section. They exist
 because "I found something structurally wrong here and could not prove exploitability" is the
 most useful thing to hand a human reviewer, and dropping it silently is the worst outcome.
 
