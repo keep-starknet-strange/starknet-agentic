@@ -484,6 +484,8 @@ async function downloadFile(url: string): Promise<SkillDownloadResult> {
     return { status: "rejected", reason: "URL is not a trusted GitHub skill download" };
   }
   try {
+    // Response bytes are skill install content from this repo's skills/ tree.
+    // codeql[js/http-to-file-access]: allowlisted GitHub raw URL, no redirects, 1 MiB cap, NUL rejected, written only under the local skill dir.
     const response = await fetch(trustedUrl, { redirect: "manual" });
     if (!response.ok) {
       return { status: "fetch_failed" };
@@ -492,6 +494,21 @@ async function downloadFile(url: string): Promise<SkillDownloadResult> {
   } catch {
     return { status: "fetch_failed" };
   }
+}
+
+/**
+ * Persist a downloaded skill file after the download pipeline's checks.
+ * js/http-to-file-access flags any HTTP body that reaches disk; this installer
+ * must write SKILL.md and skill scripts, and has no CodeQL sanitizer for that.
+ */
+function writeDownloadedSkillFile(filePath: string, content: string): boolean {
+  const sanitized = sanitizeDownloadedText(content);
+  if (sanitized.status !== "ok") {
+    return false;
+  }
+  // codeql[js/http-to-file-access]: skill install from allowlisted GitHub raw URLs after host/path checks, no-follow redirects, 1 MiB cap, and NUL rejection.
+  fs.writeFileSync(filePath, sanitized.content, "utf-8");
+  return true;
 }
 
 /**
@@ -552,8 +569,11 @@ async function downloadSkillDirectory(
       const downloaded = await downloadFile(item.download_url);
       switch (downloaded.status) {
         case "ok":
-          fs.writeFileSync(localPath, downloaded.content, "utf-8");
-          fileCount++;
+          if (writeDownloadedSkillFile(localPath, downloaded.content)) {
+            fileCount++;
+          } else {
+            console.log(pc.yellow(`  Warning: skipped ${item.name} in ${skillId}: failed content checks`));
+          }
           break;
         case "rejected":
           console.log(pc.yellow(`  Warning: skipped ${item.name} in ${skillId}: ${downloaded.reason}`));
@@ -627,8 +647,7 @@ async function installSkills(
     } else {
       // Fallback to just SKILL.md if API fails (rate limiting, etc.)
       const content = await fetchSkillMdOnly(skillId);
-      if (content) {
-        fs.writeFileSync(path.join(skillDir, "SKILL.md"), content, "utf-8");
+      if (content && writeDownloadedSkillFile(path.join(skillDir, "SKILL.md"), content)) {
         if (!silent) {
           console.log(pc.dim(`  ✓ Installed ${skillId} (SKILL.md only)`));
         }
