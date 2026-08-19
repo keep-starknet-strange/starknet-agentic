@@ -39,6 +39,7 @@ const TRUSTED_SKILL_DOWNLOAD_HOSTS = new Set([
   "raw.githubusercontent.com",
 ]);
 const MAX_SKILL_FILE_BYTES = 1_048_576;
+const SKILL_FETCH_TIMEOUT_MS = 15_000;
 
 export const AVAILABLE_SKILLS: SkillInfo[] = [
   {
@@ -453,6 +454,7 @@ async function fetchGitHubDirectory(skillId: string): Promise<GitHubContentItem[
   try {
     const response = await fetch(apiUrl, {
       redirect: "manual",
+      signal: AbortSignal.timeout(SKILL_FETCH_TIMEOUT_MS),
       headers: {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "create-starknet-agent",
@@ -486,7 +488,10 @@ async function downloadFile(url: string): Promise<SkillDownloadResult> {
   try {
     // Response bytes are skill install content from this repo's skills/ tree.
     // codeql[js/http-to-file-access]: allowlisted GitHub raw URL, no redirects, 1 MiB cap, NUL rejected, written only under the local skill dir.
-    const response = await fetch(trustedUrl, { redirect: "manual" });
+    const response = await fetch(trustedUrl, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(SKILL_FETCH_TIMEOUT_MS),
+    });
     if (!response.ok) {
       return { status: "fetch_failed" };
     }

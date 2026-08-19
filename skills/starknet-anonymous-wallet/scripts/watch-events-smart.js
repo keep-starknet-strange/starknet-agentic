@@ -92,6 +92,31 @@ function copyIdentifier(value) {
   return out;
 }
 
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseConfiguredEventNames(eventNames) {
+  if (eventNames === undefined) {
+    return { ok: true, names: [] };
+  }
+  if (!Array.isArray(eventNames)) {
+    return { ok: false, error: '"eventNames" must be an array of identifiers' };
+  }
+  const names = [];
+  for (const raw of eventNames) {
+    const name = copyIdentifier(raw);
+    if (!name) {
+      return {
+        ok: false,
+        error: `"eventNames" contains an invalid identifier: ${JSON.stringify(raw)}`,
+      };
+    }
+    names.push(name);
+  }
+  return { ok: true, names };
+}
+
 function toFiniteNumberOrNull(value) {
   if (value === null || value === undefined || value === '') {
     return null;
@@ -248,9 +273,11 @@ class SmartEventWatcher {
     this.webhookTimeoutMs = config.webhookTimeoutMs || DEFAULT_WEBHOOK_TIMEOUT_MS;
     this.webhookUrl = sanitizeWebhookUrl(webhookUrl);
     this.contractAddress = config.contractAddress;
-    this.eventNames = Array.isArray(config.eventNames)
-      ? config.eventNames.map(copyIdentifier).filter(Boolean)
-      : [];
+    const parsedEventNames = parseConfiguredEventNames(config.eventNames);
+    if (!parsedEventNames.ok) {
+      throw new Error(parsedEventNames.error);
+    }
+    this.eventNames = parsedEventNames.names;
     this.forcedMode = config.mode || 'auto'; // 'auto', 'websocket', 'polling'
     this.currentMode = 'initializing';
     this.isShuttingDown = false;
@@ -779,6 +806,10 @@ async function main() {
       console.error(JSON.stringify({ error: `Invalid JSON in config file ${configPath}: ${err.message}` }));
       process.exit(1);
     }
+    if (!isPlainObject(config)) {
+      console.error(JSON.stringify({ error: `Invalid JSON in config file ${configPath}: expected a non-null object` }));
+      process.exit(1);
+    }
     // File-backed cron configs must not supply the webhook URL; use WEBHOOK_URL
     // (exported by the cron wrapper) so file bytes never reach fetch().
     webhookUrl = sanitizeWebhookUrl(process.env.WEBHOOK_URL);
@@ -797,9 +828,20 @@ async function main() {
       console.error(JSON.stringify({ error: `Invalid JSON in input argument: ${err.message}` }));
       process.exit(1);
     }
+    if (!isPlainObject(argvConfig)) {
+      console.error(JSON.stringify({ error: 'Invalid JSON in input argument: expected a non-null object' }));
+      process.exit(1);
+    }
     config = argvConfig;
     webhookUrl = sanitizeWebhookUrl(argvConfig.webhookUrl) || sanitizeWebhookUrl(process.env.WEBHOOK_URL);
   }
+
+  const parsedEventNames = parseConfiguredEventNames(config.eventNames);
+  if (!parsedEventNames.ok) {
+    console.error(JSON.stringify({ error: parsedEventNames.error }));
+    process.exit(1);
+  }
+  config.eventNames = parsedEventNames.names;
 
   // Remember config path/job name when started from cron
   if (configPath) {
@@ -832,7 +874,13 @@ async function main() {
     }
   }
   
-  const watcher = new SmartEventWatcher(config, webhookUrl);
+  let watcher;
+  try {
+    watcher = new SmartEventWatcher(config, webhookUrl);
+  } catch (err) {
+    console.error(JSON.stringify({ error: err.message }));
+    process.exit(1);
+  }
   
   process.on('SIGINT', () => watcher.stop());
   process.on('SIGTERM', () => watcher.stop());

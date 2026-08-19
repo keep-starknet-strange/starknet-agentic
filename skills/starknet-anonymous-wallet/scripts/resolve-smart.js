@@ -416,27 +416,38 @@ async function main() {
     };
     
     const { operations = [], operationType, abis = {}, addresses = {} } = parsed;
+    const operationsValid = Array.isArray(operations) &&
+      operations.every((op) => op !== null && typeof op === "object" && !Array.isArray(op));
     const abisValid = abis !== null && typeof abis === "object" && !Array.isArray(abis);
     const addressesValid = addresses !== null && typeof addresses === "object" && !Array.isArray(addresses);
-    if (!Array.isArray(operations) || !abisValid || !addressesValid) {
+    if (!operationsValid || !abisValid || !addressesValid) {
       console.log(JSON.stringify({
         ...result,
         success: false,
         canProceed: false,
         nextStep: "INVALID_PARSED_INPUT",
-        error: "parsed.operations must be an array and parsed.abis/addresses must be objects"
+        error: "parsed.operations must be an array of objects and parsed.abis/addresses must be objects"
       }));
       process.exit(1);
     }
-    if (operationType === "AVNU_SWAP" && operations.length === 0) {
-      console.log(JSON.stringify({
-        ...result,
-        success: false,
-        canProceed: false,
-        nextStep: "INVALID_PARSED_INPUT",
-        error: "parsed.operations must contain at least one swap operation for AVNU_SWAP"
-      }));
-      process.exit(1);
+    if (operationType === "AVNU_SWAP") {
+      const swapOp = operations[0];
+      if (
+        !swapOp ||
+        typeof swapOp.tokenIn !== "string" ||
+        swapOp.tokenIn.length === 0 ||
+        typeof swapOp.tokenOut !== "string" ||
+        swapOp.tokenOut.length === 0
+      ) {
+        console.log(JSON.stringify({
+          ...result,
+          success: false,
+          canProceed: false,
+          nextStep: "INVALID_PARSED_INPUT",
+          error: "parsed.operations[0] must include non-empty tokenIn and tokenOut for AVNU_SWAP"
+        }));
+        process.exit(1);
+      }
     }
     
     result.parsed = parsed;
