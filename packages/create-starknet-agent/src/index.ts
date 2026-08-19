@@ -27,7 +27,7 @@ import {
   getPlatformByType,
   isValidPlatformType,
 } from "./platform.js";
-import { runWizard } from "./wizards.js";
+import { AVAILABLE_SKILLS, runWizard } from "./wizards.js";
 import { parseCredentialsArgs, runCredentialsSetup } from "./credentials.js";
 import { parseVerifyArgs, runVerification } from "./verify.js";
 
@@ -68,7 +68,7 @@ ${pc.bold("Options:")}
   --version, -v         Show version number
 
 ${pc.bold("Credentials Options:")}
-  --from-env            Import credentials from current environment variables
+  --from-env            Prefill address and RPC from the environment; with --json, also import the private key
   --from-ready          Show guide for exporting from Ready wallet
   --from-braavos        Show guide for exporting from Braavos wallet
 
@@ -143,8 +143,7 @@ interface ParsedArgs {
   showVersion: boolean;
 }
 
-// Valid skill IDs
-const VALID_SKILLS = ["starknet-wallet", "starknet-defi", "starknet-identity", "starknet-anonymous-wallet"];
+const VALID_SKILLS = AVAILABLE_SKILLS.map((skill) => skill.id);
 
 /**
  * Parse and validate skill list from CLI argument

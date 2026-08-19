@@ -21,6 +21,51 @@ import { loadPrivateKeyByAccountAddress } from './_keys.js';
 
 const AVNU_VIRTUAL_SENTINELS = new Set(['__avnu_virtual__', '0x01']);
 const VESU_VIRTUAL_SENTINELS = new Set(['__vesu_virtual__', '0x02']);
+const SUPPORTED_OPERATION_TYPES = new Set([
+  'AVNU_SWAP',
+  'WRITE',
+  'READ',
+  'CONDITIONAL',
+  'EVENT_WATCH',
+]);
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isOptionalString(value) {
+  return value === undefined || typeof value === 'string';
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function isAbiValue(value) {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isAvnuRouted(op, addresses) {
+  const protocol = typeof op?.protocol === 'string' ? op.protocol : '';
+  return protocol.toLowerCase() === 'avnu' ||
+    AVNU_VIRTUAL_SENTINELS.has(String(addresses[op?.protocol] || '')) ||
+    AVNU_VIRTUAL_SENTINELS.has(String(op?.contractAddress || ''));
+}
+
+function hasAvnuSwapTokens(op) {
+  return isNonEmptyString(op?.tokenIn) && isNonEmptyString(op?.tokenOut);
+}
+
+function emitInvalidParsedInput(result, error) {
+  console.log(JSON.stringify({
+    ...result,
+    success: false,
+    canProceed: false,
+    nextStep: 'INVALID_PARSED_INPUT',
+    error,
+  }));
+  process.exit(1);
+}
 
 // ============ LOOT SURVIVOR LATEST ADVENTURER (LOCAL UX STATE) ============
 // We intentionally do NOT scan chain/indexers for "latest adventurer".
@@ -189,16 +234,6 @@ function loadProtocols() {
   return protocols;
 }
 
-// ============ MULTI-ADDRESS ABI SCANNING ============
-async function fetchABI(address, provider) {
-  try {
-    const response = await provider.getClassAt(address);
-    return response.abi || [];
-  } catch (e) {
-    return [];
-  }
-}
-
 // ============ PROMPT INJECTION PROTECTION ============
 // ============ CONFIGURATION (loaded from JSON files) ============
 // Loaded dynamically in main() to allow registration during execution
@@ -248,49 +283,6 @@ function loadAccount(index = 0) {
 }
 
 // ============ ABI ANALYSIS ============
-function tokenize(str) {
-  return str.replace(/([A-Z])/g, '_$1').replace(/^_/, '').toLowerCase().split(/[_\-]+/).filter(Boolean);
-}
-
-function calculateSimilarity(query, target) {
-  const q = String(query || '').toLowerCase();
-  const t = String(target || '').toLowerCase();
-  if (!q || !t) return 0;
-  
-  if (t === q) return 100;
-  if (t.includes(q)) return 70 + (q.length / t.length) * 20;
-  if (q.includes(t)) return 60 + (t.length / q.length) * 15;
-  
-  let score = 0;
-  const qTokens = tokenize(q);
-  const tTokens = tokenize(t);
-  const MAX_SUBSTRING_LEN = 6;
-  const MAX_SUBSTRING_STARTS = 12;
-  
-  for (const qt of qTokens) {
-    for (const tt of tTokens) {
-      if (qt === tt) score += 30;
-      else if (tt.includes(qt)) score += 20;
-      else if (qt.includes(tt)) score += 15;
-      else {
-        // Common substrings (bounded to avoid runaway O(n^3)-style costs)
-        const maxLen = Math.min(MAX_SUBSTRING_LEN, qt.length, tt.length);
-        for (let len = 3; len <= maxLen; len++) {
-          const maxStarts = Math.min(qt.length - len + 1, MAX_SUBSTRING_STARTS);
-          for (let i = 0; i < maxStarts; i++) {
-            if (tt.includes(qt.substring(i, i + len))) {
-              score += len * 2;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  return score;
-}
-
 function extractABIItems(abi) {
   const functions = [];
   const events = [];
@@ -344,20 +336,6 @@ function isComplexAbiType(typeStr) {
 }
 
 // ============ TOKEN OPERATIONS ============
-function formatUnitsSafe(value, decimals, maxFractionDigits = 6) {
-  const d = Number(decimals ?? 18);
-  if (!Number.isInteger(d) || d < 0) return value.toString();
-
-  const base = 10n ** BigInt(d);
-  const whole = value / base;
-  const frac = value % base;
-
-  if (d === 0) return whole.toString();
-  let fracStr = frac.toString().padStart(d, '0').slice(0, maxFractionDigits);
-  fracStr = fracStr.replace(/0+$/, '');
-  return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
-}
-
 function toUint256(n) {
   return [(n & ((1n << 128n) - 1n)).toString(), (n >> 128n).toString()];
 }
@@ -482,7 +460,52 @@ async function main() {
       orchestration: [{ step: 0, name: "Using LLM-parsed data" }]
     };
     
-    const { operations = [], operationType, abis = {}, addresses = {} } = parsed || {};
+    if (!isPlainObject(parsed)) {
+      emitInvalidParsedInput(result, "parsed must be a non-null object");
+    }
+
+    const { operations = [], operationType, abis = {}, addresses = {} } = parsed;
+    if (!SUPPORTED_OPERATION_TYPES.has(operationType)) {
+      emitInvalidParsedInput(result, "parsed.operationType must be one of AVNU_SWAP, WRITE, READ, CONDITIONAL, EVENT_WATCH");
+    }
+
+    const operationsValid = Array.isArray(operations) && operations.every((op) =>
+      isPlainObject(op) &&
+      isOptionalString(op.protocol) &&
+      isOptionalString(op.action) &&
+      isOptionalString(op.contractAddress)
+    );
+    const abisValid = isPlainObject(abis) && Object.values(abis).every(isAbiValue);
+    const addressesValid = isPlainObject(addresses);
+    const watchers = parsed.watchers;
+    const watchersValid = watchers === undefined || (
+      Array.isArray(watchers) &&
+      watchers.every((w) =>
+        isPlainObject(w) &&
+        isOptionalString(w.protocol) &&
+        isOptionalString(w.action) &&
+        isOptionalString(w.eventName)
+      )
+    );
+    if (!operationsValid || !abisValid || !addressesValid || !watchersValid) {
+      emitInvalidParsedInput(
+        result,
+        "parsed.operations must be objects with string identifiers, parsed.abis values must be string arrays, parsed.addresses must be an object, and parsed.watchers must be an array of objects when present"
+      );
+    }
+    if (operationType === "AVNU_SWAP" && !hasAvnuSwapTokens(operations[0])) {
+      emitInvalidParsedInput(result, "parsed.operations[0] must include non-empty tokenIn and tokenOut for AVNU_SWAP");
+    }
+    if (operationType === "WRITE" && operations.some((op) => isAvnuRouted(op, addresses) && !hasAvnuSwapTokens(op))) {
+      emitInvalidParsedInput(result, "AVNU WRITE operations must include non-empty tokenIn and tokenOut");
+    }
+    if (
+      operationType === "CONDITIONAL" &&
+      Array.isArray(watchers) &&
+      watchers.some((w) => w.action && w.action !== "watch" && isAvnuRouted(w, addresses) && !hasAvnuSwapTokens(w))
+    ) {
+      emitInvalidParsedInput(result, "AVNU CONDITIONAL actions must include non-empty tokenIn and tokenOut");
+    }
     
     result.parsed = parsed;
     result.operationType = operationType;

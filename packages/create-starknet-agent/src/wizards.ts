@@ -34,6 +34,12 @@ export interface SkillInfo {
 
 const GITHUB_API_BASE = "https://api.github.com/repos/keep-starknet-strange/starknet-agentic/contents/skills";
 const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills";
+const GITHUB_OWNER_REPO = "keep-starknet-strange/starknet-agentic";
+const TRUSTED_SKILL_DOWNLOAD_HOSTS = new Set([
+  "raw.githubusercontent.com",
+]);
+const MAX_SKILL_FILE_BYTES = 1_048_576;
+const SKILL_FETCH_TIMEOUT_MS = 15_000;
 
 export const AVAILABLE_SKILLS: SkillInfo[] = [
   {
@@ -65,6 +71,128 @@ export const AVAILABLE_SKILLS: SkillInfo[] = [
     rawUrl: `${GITHUB_RAW_BASE}/starknet-anonymous-wallet/SKILL.md`,
   },
 ];
+
+/**
+ * HTTPS GitHub download URLs for skill files (raw.githubusercontent.com).
+ * Rejects other hosts, credentials, and path traversal before fetch.
+ */
+export function trustedSkillDownloadUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:") {
+    return null;
+  }
+  if (parsed.username !== "" || parsed.password !== "") {
+    return null;
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (!TRUSTED_SKILL_DOWNLOAD_HOSTS.has(host)) {
+    return null;
+  }
+  const repoPrefix = `/${GITHUB_OWNER_REPO}/`;
+  if (!parsed.pathname.startsWith(repoPrefix) || parsed.pathname.includes("..")) {
+    return null;
+  }
+  const rest = parsed.pathname.slice(repoPrefix.length);
+  const skillsIdx = rest.indexOf("/skills/");
+  if (skillsIdx <= 0) {
+    return null;
+  }
+  const ref = rest.slice(0, skillsIdx);
+  if (ref.length === 0 || ref.includes("/")) {
+    return null;
+  }
+  return `https://${host}${parsed.pathname}${parsed.search}`;
+}
+
+/**
+ * HTTPS GitHub Contents API URLs under this repo's skills/ tree.
+ */
+export function trustedSkillApiUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:") {
+    return null;
+  }
+  if (parsed.hostname.toLowerCase() !== "api.github.com") {
+    return null;
+  }
+  if (parsed.username !== "" || parsed.password !== "") {
+    return null;
+  }
+  const prefix = `/repos/${GITHUB_OWNER_REPO}/contents/skills/`;
+  if (!parsed.pathname.startsWith(prefix) || parsed.pathname.includes("..")) {
+    return null;
+  }
+  return `https://api.github.com${parsed.pathname}${parsed.search}`;
+}
+
+export type SkillDownloadResult =
+  | { status: "ok"; content: string }
+  | { status: "fetch_failed" }
+  | { status: "rejected"; reason: string };
+
+export function sanitizeDownloadedText(content: string): SkillDownloadResult {
+  if (content.length === 0) {
+    return { status: "rejected", reason: "empty file" };
+  }
+  if (Buffer.byteLength(content, "utf8") > MAX_SKILL_FILE_BYTES) {
+    return { status: "rejected", reason: "file exceeds 1 MiB" };
+  }
+  if (content.includes("\0")) {
+    return { status: "rejected", reason: "file contains a NUL byte" };
+  }
+  return { status: "ok", content };
+}
+
+async function readBoundedUtf8Text(response: Response): Promise<SkillDownloadResult> {
+  const contentLength = response.headers.get("content-length");
+  if (contentLength !== null) {
+    const declared = Number(contentLength);
+    if (!Number.isFinite(declared) || declared < 0 || declared > MAX_SKILL_FILE_BYTES) {
+      return { status: "rejected", reason: "file exceeds 1 MiB or has an invalid Content-Length" };
+    }
+  }
+
+  if (!response.body) {
+    try {
+      return sanitizeDownloadedText(await response.text());
+    } catch {
+      return { status: "fetch_failed" };
+    }
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_SKILL_FILE_BYTES) {
+        await reader.cancel();
+        return { status: "rejected", reason: "file exceeds 1 MiB" };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    await reader.cancel().catch(() => undefined);
+    return { status: "fetch_failed" };
+  }
+
+  return sanitizeDownloadedText(Buffer.concat(chunks).toString("utf8"));
+}
 
 /**
  * Setup modes for non-standalone platforms
@@ -318,10 +446,15 @@ interface GitHubContentItem {
  * Fetch directory contents from GitHub API
  */
 async function fetchGitHubDirectory(skillId: string): Promise<GitHubContentItem[] | null> {
-  const apiUrl = `${GITHUB_API_BASE}/${skillId}`;
+  const apiUrl = trustedSkillApiUrl(`${GITHUB_API_BASE}/${skillId}`);
+  if (!apiUrl) {
+    return null;
+  }
 
   try {
     const response = await fetch(apiUrl, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(SKILL_FETCH_TIMEOUT_MS),
       headers: {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "create-starknet-agent",
@@ -345,18 +478,42 @@ async function fetchGitHubDirectory(skillId: string): Promise<GitHubContentItem[
 }
 
 /**
- * Download a single file from GitHub
+ * Download a single file from a trusted GitHub URL.
  */
-async function downloadFile(url: string): Promise<string | null> {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      return null;
-    }
-    return await response.text();
-  } catch {
-    return null;
+async function downloadFile(url: string): Promise<SkillDownloadResult> {
+  const trustedUrl = trustedSkillDownloadUrl(url);
+  if (!trustedUrl) {
+    return { status: "rejected", reason: "URL is not a trusted GitHub skill download" };
   }
+  try {
+    // Response bytes are skill install content from this repo's skills/ tree.
+    // codeql[js/http-to-file-access]: allowlisted GitHub raw URL, no redirects, 1 MiB cap, NUL rejected, written only under the local skill dir.
+    const response = await fetch(trustedUrl, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(SKILL_FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      return { status: "fetch_failed" };
+    }
+    return await readBoundedUtf8Text(response);
+  } catch {
+    return { status: "fetch_failed" };
+  }
+}
+
+/**
+ * Persist a downloaded skill file after the download pipeline's checks.
+ * js/http-to-file-access flags any HTTP body that reaches disk; this installer
+ * must write SKILL.md and skill scripts, and has no CodeQL sanitizer for that.
+ */
+function writeDownloadedSkillFile(filePath: string, content: string): boolean {
+  const sanitized = sanitizeDownloadedText(content);
+  if (sanitized.status !== "ok") {
+    return false;
+  }
+  // codeql[js/http-to-file-access]: skill install from allowlisted GitHub raw URLs after host/path checks, no-follow redirects, 1 MiB cap, and NUL rejection.
+  fs.writeFileSync(filePath, sanitized.content, "utf-8");
+  return true;
 }
 
 /**
@@ -414,11 +571,25 @@ async function downloadSkillDirectory(
       const subPathNew = subPath ? `${subPath}/${item.name}` : item.name;
       fileCount += await downloadSkillDirectory(skillId, localPath, subPathNew);
     } else if (item.type === "file" && item.download_url) {
-      // Download file
-      const content = await downloadFile(item.download_url);
-      if (content !== null) {
-        fs.writeFileSync(localPath, content, "utf-8");
-        fileCount++;
+      const downloaded = await downloadFile(item.download_url);
+      switch (downloaded.status) {
+        case "ok":
+          if (writeDownloadedSkillFile(localPath, downloaded.content)) {
+            fileCount++;
+          } else {
+            console.log(pc.yellow(`  Warning: skipped ${item.name} in ${skillId}: failed content checks`));
+          }
+          break;
+        case "rejected":
+          console.log(pc.yellow(`  Warning: skipped ${item.name} in ${skillId}: ${downloaded.reason}`));
+          break;
+        case "fetch_failed":
+          console.log(pc.yellow(`  Warning: failed to fetch ${item.name} in ${skillId}`));
+          break;
+        default: {
+          const _exhaustive: never = downloaded;
+          throw new Error(`Unhandled skill download status: ${_exhaustive}`);
+        }
       }
     }
   }
@@ -435,15 +606,8 @@ async function fetchSkillMdOnly(skillId: string): Promise<string | null> {
     return null;
   }
 
-  try {
-    const response = await fetch(skill.rawUrl);
-    if (!response.ok) {
-      return null;
-    }
-    return await response.text();
-  } catch {
-    return null;
-  }
+  const downloaded = await downloadFile(skill.rawUrl);
+  return downloaded.status === "ok" ? downloaded.content : null;
 }
 
 /**
@@ -463,6 +627,13 @@ async function installSkills(
   }
 
   for (const skillId of selectedSkills) {
+    if (!AVAILABLE_SKILLS.some((skill) => skill.id === skillId)) {
+      if (!silent) {
+        console.log(pc.yellow(`  ✗ Failed to install ${skillId}: unknown skill`));
+      }
+      failed.push(skillId);
+      continue;
+    }
     const skillDir = path.join(skillsPath, skillId);
 
     // Create skill directory
@@ -481,8 +652,7 @@ async function installSkills(
     } else {
       // Fallback to just SKILL.md if API fails (rate limiting, etc.)
       const content = await fetchSkillMdOnly(skillId);
-      if (content) {
-        fs.writeFileSync(path.join(skillDir, "SKILL.md"), content, "utf-8");
+      if (content && writeDownloadedSkillFile(path.join(skillDir, "SKILL.md"), content)) {
         if (!silent) {
           console.log(pc.dim(`  ✓ Installed ${skillId} (SKILL.md only)`));
         }

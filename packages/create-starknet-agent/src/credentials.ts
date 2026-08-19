@@ -121,7 +121,7 @@ ${pc.bold("Description:")}
 ${pc.bold("Options:")}
   --platform <name>    Target platform (openclaw, claude-code, cursor, generic-mcp)
   --network <name>     Network (mainnet, sepolia)
-  --from-env           Import credentials from current environment variables
+  --from-env           Prefill address and RPC from the environment; with --json, also import the private key
   --from-ready         Show guide for exporting from Ready wallet
   --from-braavos       Show guide for exporting from Braavos wallet
   --json               Output machine-readable JSON
@@ -450,22 +450,24 @@ export async function runCredentialsSetup(args: CredentialsArgs): Promise<void> 
     console.log();
   }
 
-  // Initialize credentials from environment if --from-env
+  // Initialize credentials from environment if --from-env.
+  // Interactive password prompts never echo a default. --json uses the env
+  // private key directly so --from-env --json can run non-interactively.
   let initialAddress: string | undefined;
-  let initialPrivateKey: string | undefined;
   let initialRpcUrl: string | undefined;
+  let envPrivateKey: string | undefined;
 
   if (args.fromEnv) {
     const envCreds = loadFromEnv();
     initialAddress = envCreds.address;
-    initialPrivateKey = envCreds.privateKey;
+    envPrivateKey = envCreds.privateKey;
     initialRpcUrl = envCreds.rpcUrl;
 
     if (!args.jsonOutput) {
-      if (envCreds.address || envCreds.privateKey || envCreds.rpcUrl) {
+      if (envCreds.address || envPrivateKey || envCreds.rpcUrl) {
         console.log(pc.green("✓ Loaded credentials from environment"));
         if (envCreds.address) console.log(pc.dim(`  Address: ${envCreds.address.slice(0, 10)}...`));
-        if (envCreds.privateKey) console.log(pc.dim("  Private key: ****"));
+        if (envPrivateKey) console.log(pc.dim("  Private key: ****"));
         if (envCreds.rpcUrl) console.log(pc.dim(`  RPC URL: ${envCreds.rpcUrl}`));
         console.log();
       } else {
@@ -475,60 +477,63 @@ export async function runCredentialsSetup(args: CredentialsArgs): Promise<void> 
     }
   }
 
-  // Cancel handler
-  const onCancel = () => {
-    console.log(pc.red("\nOperation cancelled."));
-    process.exit(0);
-  };
+  let address: string;
+  let privateKey: string;
+  let rpcUrl: string;
 
-  // Show link to docs for setting up an account
-  if (!args.jsonOutput) {
+  if (args.jsonOutput) {
+    address = initialAddress ?? "";
+    privateKey = envPrivateKey ?? "";
+    rpcUrl = initialRpcUrl || RPC_URLS.sepolia;
+  } else {
+    const onCancel = () => {
+      console.log(pc.red("\nOperation cancelled."));
+      process.exit(0);
+    };
+
     console.log(pc.dim("  Don't have a Starknet account? Follow the guide:"));
     console.log(pc.cyan("  https://www.starknet-agentic.com/docs/getting-started/quick-start#getting-your-credentials"));
     console.log();
+
+    const rpcResponse = await prompts(
+      {
+        type: "text",
+        name: "rpcUrl",
+        message: "Starknet RPC URL:",
+        initial: initialRpcUrl || RPC_URLS.sepolia,
+        validate: (value: string) =>
+          isValidRpcUrl(value) || "Invalid URL format (must be http:// or https://)",
+      },
+      { onCancel }
+    );
+
+    const addressResponse = await prompts(
+      {
+        type: "text",
+        name: "address",
+        message: "Starknet account address:",
+        initial: initialAddress,
+        validate: (value: string) =>
+          isValidAddress(value) || "Invalid address format (expected 0x + 1-64 hex characters)",
+      },
+      { onCancel }
+    );
+
+    const keyResponse = await prompts(
+      {
+        type: "password",
+        name: "privateKey",
+        message: "Private key:",
+        validate: (value: string) =>
+          isValidPrivateKey(value) || "Invalid key format (expected 0x + 1-64 hex characters)",
+      },
+      { onCancel }
+    );
+
+    address = addressResponse.address;
+    privateKey = keyResponse.privateKey;
+    rpcUrl = rpcResponse.rpcUrl;
   }
-
-  // Prompt for RPC URL first
-  const rpcResponse = await prompts(
-    {
-      type: "text",
-      name: "rpcUrl",
-      message: "Starknet RPC URL:",
-      initial: initialRpcUrl || RPC_URLS.sepolia,
-      validate: (value: string) =>
-        isValidRpcUrl(value) || "Invalid URL format (must be http:// or https://)",
-    },
-    { onCancel }
-  );
-
-  // Prompt for account address
-  const addressResponse = await prompts(
-    {
-      type: "text",
-      name: "address",
-      message: "Starknet account address:",
-      initial: initialAddress,
-      validate: (value: string) =>
-        isValidAddress(value) || "Invalid address format (expected 0x + 1-64 hex characters)",
-    },
-    { onCancel }
-  );
-
-  // Prompt for private key (password type - hidden input)
-  const keyResponse = await prompts(
-    {
-      type: "password",
-      name: "privateKey",
-      message: "Private key:",
-      validate: (value: string) =>
-        isValidPrivateKey(value) || "Invalid key format (expected 0x + 1-64 hex characters)",
-    },
-    { onCancel }
-  );
-
-  const address = addressResponse.address;
-  const privateKey = keyResponse.privateKey;
-  const rpcUrl = rpcResponse.rpcUrl;
 
   // Validate credentials
   if (!args.jsonOutput) {

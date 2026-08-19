@@ -11,7 +11,7 @@
  *   "contractAddress": "0x...", 
  *   "eventNames": ["JobListed"],
  *   "pollIntervalMs": 3000, // fallback polling interval
- *   "webhookUrl": "http://localhost:3000/webhook", // optional
+ *   "webhookUrl": "http://localhost:3000/webhook", // CLI JSON only; file-backed cron uses WEBHOOK_URL
  *   "schedule": { // optional - creates cron job
  *     "enabled": true,
  *     "name": "ekubo-swap-monitor"
@@ -26,7 +26,7 @@
 import { RpcProvider, hash } from 'starknet';
 import { WebSocket } from 'ws';
 import { execSync, execFileSync } from 'child_process';
-import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, mkdtempSync, rmSync, openSync, fstatSync, closeSync, constants as fsConstants } from 'fs';
+import { writeFileSync, chmodSync, mkdirSync, existsSync, readFileSync, unlinkSync, readdirSync, mkdtempSync, rmSync, openSync, fstatSync, closeSync, constants as fsConstants } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join, basename } from 'path';
 
@@ -51,15 +51,108 @@ function logEvent(eventData) {
   console.log(JSON.stringify(eventData));
 }
 
+const MAX_WEBHOOK_URL_LENGTH = 2048;
+
+/**
+ * Allow only http(s) webhook URLs and rebuild them from parsed parts.
+ * Blocks credentials in the URL, non-http(s) schemes, and oversized values.
+ * Does not block private, link-local, or loopback destinations.
+ */
+function sanitizeWebhookUrl(value) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > MAX_WEBHOOK_URL_LENGTH) {
+    return null;
+  }
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return null;
+  }
+  if (parsed.username !== '' || parsed.password !== '') {
+    return null;
+  }
+  const path = parsed.pathname || '/';
+  return parsed.protocol + '//' + parsed.host + path + parsed.search;
+}
+
+function copyIdentifier(value) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 128) {
+    return '';
+  }
+  let out = '';
+  for (let i = 0; i < value.length; i++) {
+    const c = value.charCodeAt(i);
+    const ok = (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95;
+    if (!ok) return '';
+    out += String.fromCharCode(c);
+  }
+  return out;
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseConfiguredEventNames(eventNames) {
+  if (eventNames === undefined) {
+    return { ok: true, names: [] };
+  }
+  if (!Array.isArray(eventNames)) {
+    return { ok: false, error: '"eventNames" must be an array of identifiers' };
+  }
+  const names = [];
+  for (const raw of eventNames) {
+    const name = copyIdentifier(raw);
+    if (!name) {
+      return {
+        ok: false,
+        error: `"eventNames" contains an invalid identifier: ${JSON.stringify(raw)}`,
+      };
+    }
+    names.push(name);
+  }
+  return { ok: true, names };
+}
+
+function toFiniteNumberOrNull(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toWebhookPayload(data) {
+  const keys = Array.isArray(data?.keys) ? data.keys.map((key) => String(key)) : [];
+  const eventData = Array.isArray(data?.data) ? data.data.map((item) => String(item)) : [];
+  const blockNumber = toFiniteNumberOrNull(data?.blockNumber);
+  return JSON.stringify({
+    type: String(data?.type || 'event'),
+    source: String(data?.source || ''),
+    timestamp: String(data?.timestamp || ''),
+    blockNumber,
+    transactionHash: String(data?.transactionHash || ''),
+    contractAddress: String(data?.contractAddress || ''),
+    keys,
+    data: eventData,
+    eventName: copyIdentifier(data?.eventName) || 'unknown',
+    selector: String(data?.selector || '')
+  });
+}
+
 async function sendWebhook(webhookUrl, data, timeoutMs = DEFAULT_WEBHOOK_TIMEOUT_MS) {
-  if (!webhookUrl) return;
+  const safeUrl = sanitizeWebhookUrl(webhookUrl);
+  if (!safeUrl) return;
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    await fetch(webhookUrl, {
+    await fetch(safeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: toWebhookPayload(data),
       signal: controller.signal
     });
   } catch (err) {
@@ -88,6 +181,8 @@ function createCronJob(config) {
   // Keep durationMs if it exists (for TTL handling), only remove schedule metadata
   const scheduleInfo = execConfig.schedule;
   delete execConfig.schedule;
+  const scheduledWebhookUrl = sanitizeWebhookUrl(execConfig.webhookUrl);
+  delete execConfig.webhookUrl;
   
   // If duration was specified, add it to execConfig so the watcher knows when to self-destruct
   if (scheduleInfo?.durationMs) {
@@ -98,14 +193,18 @@ function createCronJob(config) {
 
   const scriptPath = new URL(import.meta.url).pathname;
   const shellQuote = (value) => `'${String(value).replace(/'/g, `'"'"'`)}'`;
+  const webhookExport = scheduledWebhookUrl
+    ? `export WEBHOOK_URL=${shellQuote(scheduledWebhookUrl)}\n`
+    : '';
 
   const shellScript = `#!/bin/bash
 cd "$(dirname "$0")"
-LOCKFILE=${shellQuote(`${configPath}.lock`)}
+${webhookExport}LOCKFILE=${shellQuote(`${configPath}.lock`)}
 exec flock -n "$LOCKFILE" node ${shellQuote(scriptPath)} ${shellQuote(`@${configPath}`)}
 `;
   const shellPath = join(cronDir, `${jobName}.sh`);
-  writeFileSync(shellPath, shellScript, { mode: 0o755 });
+  writeFileSync(shellPath, shellScript, { mode: 0o700 });
+  chmodSync(shellPath, 0o700);
 
   const cronEntry = `* * * * * ${shellPath} >> ${join(cronDir, `${jobName}.log`)} 2>&1`;
   
@@ -163,7 +262,7 @@ function deriveWebSocketUrl(httpUrl) {
 
 // Unified Event Watcher with mode switching
 class SmartEventWatcher {
-  constructor(config) {
+  constructor(config, webhookUrl) {
     this.config = config;
     const rpcUrl = config.httpRpcUrl || resolveRpcUrl();
     this.httpUrl = rpcUrl;
@@ -172,9 +271,13 @@ class SmartEventWatcher {
     this.pollIntervalMs = config.pollIntervalMs || DEFAULT_POLL_INTERVAL;
     this.healthCheckIntervalMs = config.healthCheckIntervalMs || DEFAULT_HEALTH_CHECK_INTERVAL;
     this.webhookTimeoutMs = config.webhookTimeoutMs || DEFAULT_WEBHOOK_TIMEOUT_MS;
-    this.webhookUrl = config.webhookUrl || null;
+    this.webhookUrl = sanitizeWebhookUrl(webhookUrl);
     this.contractAddress = config.contractAddress;
-    this.eventNames = config.eventNames || [];
+    const parsedEventNames = parseConfiguredEventNames(config.eventNames);
+    if (!parsedEventNames.ok) {
+      throw new Error(parsedEventNames.error);
+    }
+    this.eventNames = parsedEventNames.names;
     this.forcedMode = config.mode || 'auto'; // 'auto', 'websocket', 'polling'
     this.currentMode = 'initializing';
     this.isShuttingDown = false;
@@ -599,6 +702,7 @@ class SmartEventWatcher {
       }
     }
 
+    const selector = keys[0];
     const eventData = {
       type: 'event',
       source,
@@ -608,7 +712,8 @@ class SmartEventWatcher {
       contractAddress: event.from_address || event.contractAddress,
       keys,
       data: event.data,
-      eventName: this.getEventName(keys[0])
+      eventName: this.getEventName(selector),
+      selector
     };
     
     logEvent(eventData);
@@ -679,9 +784,9 @@ class SmartEventWatcher {
 
 // Main
 async function main() {
-  let rawInput = process.argv[2];
+  const cliArg = process.argv[2];
   
-  if (!rawInput) {
+  if (!cliArg) {
     console.error(JSON.stringify({
       error: 'No input provided',
       usage: 'node watch-events-smart.js \'{ "contractAddress": "0x...", "eventNames": ["Swapped"] }\''
@@ -689,20 +794,67 @@ async function main() {
     process.exit(1);
   }
 
-  let configPath = null;
-  if (rawInput.startsWith('@')) {
-    configPath = rawInput.slice(1);
-    rawInput = readFileSync(configPath, 'utf8');
-  }
-  
   let config;
-  try {
-    config = JSON.parse(rawInput);
-  } catch (err) {
-    const source = configPath ? `config file ${configPath}` : 'input argument';
-    console.error(JSON.stringify({ error: `Invalid JSON in ${source}: ${err.message}` }));
+  let configPath = null;
+  let webhookUrl = null;
+
+  if (cliArg.startsWith('@')) {
+    configPath = cliArg.slice(1);
+    try {
+      config = JSON.parse(readFileSync(configPath, 'utf8'));
+    } catch (err) {
+      console.error(JSON.stringify({ error: `Invalid JSON in config file ${configPath}: ${err.message}` }));
+      process.exit(1);
+    }
+    if (!isPlainObject(config)) {
+      console.error(JSON.stringify({ error: `Invalid JSON in config file ${configPath}: expected a non-null object` }));
+      process.exit(1);
+    }
+    // File-backed cron configs must not supply the webhook URL; use WEBHOOK_URL
+    // (exported by the cron wrapper) so file bytes never reach fetch().
+    webhookUrl = sanitizeWebhookUrl(process.env.WEBHOOK_URL);
+    if (typeof config.webhookUrl === 'string' && config.webhookUrl.length > 0) {
+      if (webhookUrl) {
+        log('config file webhookUrl is ignored; using WEBHOOK_URL from the environment', 'warn');
+      } else {
+        log('config file webhookUrl is ignored and WEBHOOK_URL is unset; webhook delivery disabled. Export WEBHOOK_URL in the cron wrapper (new jobs do this automatically)', 'warn');
+      }
+    }
+  } else {
+    let argvConfig;
+    try {
+      argvConfig = JSON.parse(cliArg);
+    } catch (err) {
+      console.error(JSON.stringify({ error: `Invalid JSON in input argument: ${err.message}` }));
+      process.exit(1);
+    }
+    if (!isPlainObject(argvConfig)) {
+      console.error(JSON.stringify({ error: 'Invalid JSON in input argument: expected a non-null object' }));
+      process.exit(1);
+    }
+    config = argvConfig;
+    if (Object.prototype.hasOwnProperty.call(argvConfig, 'webhookUrl')) {
+      const rawWebhookUrl = argvConfig.webhookUrl;
+      if (rawWebhookUrl === undefined || rawWebhookUrl === null || rawWebhookUrl === '') {
+        webhookUrl = null;
+      } else {
+        webhookUrl = sanitizeWebhookUrl(rawWebhookUrl);
+        if (!webhookUrl) {
+          console.error(JSON.stringify({ error: 'Invalid webhookUrl in input argument' }));
+          process.exit(1);
+        }
+      }
+    } else {
+      webhookUrl = sanitizeWebhookUrl(process.env.WEBHOOK_URL);
+    }
+  }
+
+  const parsedEventNames = parseConfiguredEventNames(config.eventNames);
+  if (!parsedEventNames.ok) {
+    console.error(JSON.stringify({ error: parsedEventNames.error }));
     process.exit(1);
   }
+  config.eventNames = parsedEventNames.names;
 
   // Remember config path/job name when started from cron
   if (configPath) {
@@ -716,7 +868,7 @@ async function main() {
   }
 
   if (config.schedule?.enabled) {
-    const result = createCronJob(config);
+    const result = createCronJob({ ...config, webhookUrl });
     if (result.success) {
       console.log(JSON.stringify({
         type: 'cron-scheduled',
@@ -735,7 +887,13 @@ async function main() {
     }
   }
   
-  const watcher = new SmartEventWatcher(config);
+  let watcher;
+  try {
+    watcher = new SmartEventWatcher(config, webhookUrl);
+  } catch (err) {
+    console.error(JSON.stringify({ error: err.message }));
+    process.exit(1);
+  }
   
   process.on('SIGINT', () => watcher.stop());
   process.on('SIGTERM', () => watcher.stop());
