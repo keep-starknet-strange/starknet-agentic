@@ -6,7 +6,7 @@
  * - Mint ERC-8004 identities (gasless via AVNU paymaster).
  * - Register a session key + spending policy on-chain.
  * - Start SISNA as a signer boundary (holds session private keys).
- * - Run AVNU swaps via @starknet-agentic/mcp-server in signer proxy mode.
+ * - Run AVNU swaps via @starknetfoundation/starknet-agentic-mcp-server in signer proxy mode.
  * - Prove on-chain denial by attempting an oversized swap.
  *
  * Output:

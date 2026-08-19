@@ -1,4 +1,4 @@
-# @starknet-agentic/agent-passport
+# @starknetfoundation/starknet-agentic-agent-passport
 
 Passport conventions on top of ERC-8004 `IdentityRegistry`.
 
@@ -17,7 +17,7 @@ Example capability object:
 {
   "name": "swap",
   "description": "Swap tokens via AVNU",
-  "endpoint": "mcp://@starknet-agentic/mcp-server/swap",
+  "endpoint": "mcp://@starknetfoundation/starknet-agentic-mcp-server/swap",
   "version": "1"
 }
 ```

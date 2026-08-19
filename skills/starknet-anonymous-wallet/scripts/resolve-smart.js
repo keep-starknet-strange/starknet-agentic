@@ -15,8 +15,6 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, mkdir
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
-import { findCanonicalAction, ALL_SYNONYMS } from './synonyms.js';
-
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
 import { loadPrivateKeyByAccountAddress } from './_keys.js';
@@ -63,12 +61,6 @@ function lootStateGetLatest(accountAddress) {
   if (!accountAddress) return null;
   const map = lootStateLoad();
   return lootStateGetEntry(map, accountAddress).latestAdventurerId;
-}
-
-function lootStateGetPending(accountAddress) {
-  if (!accountAddress) return false;
-  const map = lootStateLoad();
-  return lootStateGetEntry(map, accountAddress).pendingEncounter;
 }
 
 function sleepSync(ms) {
@@ -128,13 +120,6 @@ function lootStateSetLatest(accountAddress, adventurerId) {
   });
 }
 
-function lootStateSetPending(accountAddress, pending) {
-  if (!accountAddress) return;
-  lootStateMutate(accountAddress, (entry) => {
-    entry.pendingEncounter = Boolean(pending);
-  });
-}
-
 // ============ DYNAMIC REGISTRY LOADING ============
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -186,11 +171,6 @@ function loadRegistry(filename) {
   return {};
 }
 
-function saveRegistry(filename, data) {
-  const filepath = join(SKILL_ROOT, filename);
-  writeFileSync(filepath, JSON.stringify(data, null, 2) + '\n');
-}
-
 function loadProtocols() {
   const registry = loadRegistry('protocols.json');
   const protocols = {};
@@ -219,75 +199,9 @@ async function fetchABI(address, provider) {
   }
 }
 
-async function findBestFunctionAcrossAddresses(protocolName, action, protocols, provider) {
-  const addresses = protocols[protocolName];
-  if (!addresses || addresses.length === 0) {
-    return { error: `No addresses found for protocol ${protocolName}` };
-  }
-  
-  let bestMatch = null;
-  let bestScore = 0;
-  let allFunctions = [];
-  
-  // Scan all addresses
-  for (const address of addresses) {
-    const abi = await fetchABI(address, provider);
-    const functions = extractABIItems(abi).functions;
-    
-    for (const func of functions) {
-      const score = calculateSimilarity(action, func.name);
-      allFunctions.push({
-        name: func.name,
-        address: address,
-        score: score,
-        inputs: func.inputs || [],
-        outputs: func.outputs || [],
-        state_mutability: func.state_mutability || 'external'
-      });
-      
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = {
-          name: func.name,
-          address: address,
-          score: score,
-          inputs: func.inputs || [],
-          outputs: func.outputs || [],
-          state_mutability: func.state_mutability || 'external',
-          fullABI: abi
-        };
-      }
-    }
-  }
-  
-  // Sort all functions by score for reference
-  allFunctions.sort((a, b) => b.score - a.score);
-  
-  return {
-    bestMatch: bestMatch,
-    allMatches: allFunctions.slice(0, 10), // Top 10 matches
-    scannedAddresses: addresses.length,
-    protocolName: protocolName
-  };
-}
-
-function loadFriends() {
-  // FRIENDS FEATURE REMOVED - recipients must be addresses
-  return {};
-}
-
 // ============ PROMPT INJECTION PROTECTION ============
 // ============ CONFIGURATION (loaded from JSON files) ============
 // Loaded dynamically in main() to allow registration during execution
-
-// ============ HELPERS ============
-function tryParseJSON(str) {
-  try {
-    return JSON.parse(str);
-  } catch {
-    return null;
-  }
-}
 
 // ============ SECRETS MANAGEMENT (SINGLE ACCESS) ============
 function getSecretsDir() {
@@ -429,58 +343,6 @@ function isComplexAbiType(typeStr) {
   );
 }
 
-function estimateCalldataLenFromInputs(inputs) {
-  if (!Array.isArray(inputs)) return null;
-  let n = 0;
-  for (const inp of inputs) {
-    const t = String(inp?.type || '').toLowerCase();
-    if (!t) return null;
-
-    // Complex types: skip strict length enforcement (avoid false positives)
-    if (isComplexAbiType(t)) {
-      return null;
-    }
-
-    // Cairo u256 / Uint256 is typically 2 felts
-    if (t === 'u256' || t.endsWith('::u256') || t.includes('uint256') || t.includes('core::integer::u256')) {
-      n += 2;
-      continue;
-    }
-
-    // Default: 1 felt
-    n += 1;
-  }
-  return n;
-}
-
-async function resolveFromABI(provider, contractAddress, query, type = 'function') {
-  try {
-    const resp = await provider.getClassAt(contractAddress);
-    if (!resp.abi) return null;
-    
-    const { functions, events } = extractABIItems(resp.abi);
-    const items = type === 'event' ? events : functions;
-    
-    if (items.length === 0) return null;
-    
-    let best = null;
-    let bestScore = 0;
-    
-    for (const item of items) {
-      const score = calculateSimilarity(query, item.name);
-      if (score > bestScore) {
-        bestScore = score;
-        best = item;
-      }
-    }
-    
-    const threshold = query.length <= 3 ? 20 : query.length <= 6 ? 15 : 10;
-    return bestScore >= threshold ? { name: best.name, score: bestScore } : null;
-  } catch (err) {
-    return null;
-  }
-}
-
 // ============ TOKEN OPERATIONS ============
 function formatUnitsSafe(value, decimals, maxFractionDigits = 6) {
   const d = Number(decimals ?? 18);
@@ -494,40 +356,6 @@ function formatUnitsSafe(value, decimals, maxFractionDigits = 6) {
   let fracStr = frac.toString().padStart(d, '0').slice(0, maxFractionDigits);
   fracStr = fracStr.replace(/0+$/, '');
   return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
-}
-
-async function getTokenBalance(provider, tokenAddress, accountAddress, decimals) {
-  try {
-    const result = await provider.callContract({
-      contractAddress: tokenAddress,
-      entrypoint: 'balanceOf',
-      calldata: [accountAddress]
-    });
-    const raw = Array.isArray(result) ? result : (result?.result || []);
-    if (raw.length >= 2) {
-      const value = BigInt(raw[0]) + (BigInt(raw[1]) << 128n);
-      return {
-        raw: value.toString(),
-        human: formatUnitsSafe(value, decimals)
-      };
-    }
-  } catch {}
-  return { raw: "0", human: "0" };
-}
-
-async function getTokenAllowance(provider, tokenAddress, owner, spender) {
-  try {
-    const result = await provider.callContract({
-      contractAddress: tokenAddress,
-      entrypoint: 'allowance',
-      calldata: [owner, spender]
-    });
-    const raw = Array.isArray(result) ? result : (result?.result || []);
-    if (raw.length >= 2) {
-      return BigInt(raw[0]) + (BigInt(raw[1]) << 128n);
-    }
-  } catch {}
-  return 0n;
 }
 
 function toUint256(n) {

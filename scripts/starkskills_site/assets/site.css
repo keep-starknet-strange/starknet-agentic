@@ -339,6 +339,14 @@ code {
   box-shadow: var(--shadow);
 }
 
+.section-card .tools-grid {
+  margin-top: 16px;
+}
+
+.section-card pre {
+  margin-top: 18px;
+}
+
 .section-head {
   align-items: flex-end;
   gap: 20px;
@@ -762,6 +770,20 @@ code {
   color: var(--text);
   border-color: var(--border-strong);
   background: var(--panel-2);
+}
+
+.preview-frame {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.report-preview {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 .footer {

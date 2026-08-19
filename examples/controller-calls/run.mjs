@@ -15,7 +15,6 @@
  *   STARKNET_PRIVATE_KEY
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
 import { resolveRpcSpecVersion } from "../../scripts/rpc-spec-version.mjs";
 
 // --- Call builder (mirrors starknet_build_calls MCP tool logic) ---
@@ -119,5 +118,5 @@ const result = await account.execute(calls);
 
 console.log(JSON.stringify({ transactionHash: result.transaction_hash }, null, 2));
 
-const receipt = await provider.waitForTransaction(result.transaction_hash);
+await provider.waitForTransaction(result.transaction_hash);
 console.error("Transaction accepted:", result.transaction_hash);

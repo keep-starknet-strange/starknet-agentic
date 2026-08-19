@@ -2,7 +2,7 @@ import {
   deployAccountViaFactory,
   type DeployerAccountLike,
   type ProviderLike,
-} from "@starknet-agentic/onboarding-utils";
+} from "@starknetfoundation/starknet-agentic-onboarding-utils";
 import type { StarknetNetworkConfig } from "../config.js";
 
 export interface DeployAccountResult {

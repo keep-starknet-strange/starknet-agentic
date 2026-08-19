@@ -5,7 +5,7 @@
  * Optional (--verify-tx): send a 0-value self-transfer to prove tx plumbing.
  */
 
-import { firstActionBalances, type ProviderLike } from "@starknet-agentic/onboarding-utils";
+import { firstActionBalances, type ProviderLike } from "@starknetfoundation/starknet-agentic-onboarding-utils";
 import { TOKENS } from "../config.js";
 
 export interface FirstActionResult {

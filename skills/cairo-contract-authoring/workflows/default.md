@@ -44,6 +44,6 @@ Orchestrated by [SKILL.md](../SKILL.md). This is the reference for each phase.
 
 - Run `../references/audit-handoff.md` flow if security-sensitive.
 - Execute local deterministic preflight:
-  `python3 scripts/quality/audit_local_repo.py --repo-root <project-root> --scan-id handoff-audit`
+  `python3 skills/cairo-auditor/scripts/quality/audit_local_repo.py --repo-root <project-root> --scan-id handoff-audit`
 - Patch findings and add regression tests.
 - Distill fixed issue classes back into evals (`evals/cases/contract_skill_benchmark.jsonl` and `evals/cases/contract_skill_generation_eval.jsonl`) so guardrails stay enforced.

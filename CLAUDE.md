@@ -13,7 +13,7 @@ Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (
 |-----------|-----------|---------|
 | Smart contracts | Cairo (Scarb + snforge) | Cairo 2.14.0, Scarb 2.14.0 |
 | Contract deps | OpenZeppelin Cairo | v3.0.0 |
-| TypeScript packages | pnpm workspaces, tsup | Node 20+ |
+| TypeScript packages | pnpm workspaces, tsup | Node 24+ |
 | MCP server | `@modelcontextprotocol/sdk` | ^1.0.0 |
 | Starknet interaction | starknet.js | ^9.2.1 |
 | DeFi aggregation | `@avnu/avnu-sdk` | ^4.0.1 |
@@ -92,7 +92,7 @@ NOTE: The Agent Account contract at `contracts/agent-account/` (~570 lines main 
 | Build single TS package | `pnpm build` | `packages/<pkg>/` |
 | Dev mode (website) | `pnpm dev` | `website/` |
 | Deploy contracts (Sepolia) | `bash scripts/deploy_sepolia.sh` | `contracts/erc8004-cairo/` |
-| Scaffold new agent | `npx create-starknet-agent@latest` | any |
+| Scaffold new agent | `npx @starknetfoundation/create-starknet-agent@latest` | any |
 
 </commands>
 
@@ -295,7 +295,7 @@ Always consult `references/` before relying on training data for Starknet-specif
 |---------|----------|
 | `scarb build` fails with version mismatch | Ensure Scarb 2.14.0 installed. Check `Scarb.toml` edition. |
 | snforge tests fail on deploy | Mock contracts must implement required interfaces. Check `src/mock/`. |
-| pnpm install fails | Ensure pnpm installed globally. Node 18+ required. |
+| pnpm install fails | Ensure pnpm installed globally. Node 24+ required. |
 | E2E tests fail | Check `.env` has valid Sepolia RPC URL and funded account. |
 | Git submodule empty (`references/starknet-docs/`) | Run `git submodule update --init --recursive` |
 | starknet.js type errors | All packages standardized on ^9.2.1. Use object-form constructors: `new Account({ provider, address, signer })` and `new Contract({ abi, address, providerOrAccount })`. |

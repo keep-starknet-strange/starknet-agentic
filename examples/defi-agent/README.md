@@ -258,7 +258,7 @@ await this.findArbitrage(TOKENS.STRK, TOKENS.USDC, amount);
 ### Add On-Chain Identity
 
 ```typescript
-import { createStarknetA2AAdapter } from "@starknet-agentic/a2a";
+import { createStarknetA2AAdapter } from "@starknetfoundation/starknet-agentic-a2a";
 
 const adapter = createStarknetA2AAdapter({ ... });
 await adapter.registerAgent(account, {

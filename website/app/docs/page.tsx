@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DOC_CATEGORIES } from "@/data/docs";
+import { getVisibleDocCategories } from "@/data/docs";
 
 export const metadata: Metadata = {
   title: "Documentation | Starknet Agentic",
@@ -60,6 +60,8 @@ function CategoryIcon({ category }: { category: string }) {
 }
 
 export default function DocsPage() {
+  const categories = getVisibleDocCategories();
+
   return (
     <div className="px-6 md:px-8 lg:px-12 py-12 md:py-16">
       <div className="max-w-4xl">
@@ -101,7 +103,7 @@ export default function DocsPage() {
 
         {/* Categories grid */}
         <div className="grid gap-6 md:grid-cols-2">
-          {DOC_CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <div
               key={category.slug}
               className="neo-card-hover p-6"

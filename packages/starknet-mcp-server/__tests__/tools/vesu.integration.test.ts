@@ -11,7 +11,6 @@ import {
   getVTokenAddress,
   buildDepositCalls,
   buildWithdrawCalls,
-  VESU_POOL_FACTORY,
   VESU_PRIME_POOL,
 } from "../../src/helpers/vesu.js";
 

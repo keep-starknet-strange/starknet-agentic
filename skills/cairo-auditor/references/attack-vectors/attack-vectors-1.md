@@ -1,5 +1,8 @@
 # Cairo Attack Vectors (1/4): Access Control + Upgradeability
 
+> **D:** Detection pattern — what makes this vector dangerous.
+> **FP:** False-positive caveat — when this pattern is actually safe.
+
 **1. Immediate upgrade without delay**
 - **D:** privileged `upgrade` path calls `replace_class_syscall` or `upgradeable.upgrade` in one transaction with no schedule/execute split.
 - **FP:** explicit timelock state with pending hash and `now >= scheduled + delay` check.

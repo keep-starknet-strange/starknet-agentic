@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/full-stack-swarm-example",
+  "name": "@starknetfoundation/starknet-agentic-full-stack-swarm-example",
   "version": "0.1.0",
   "private": true,
   "description": "Full stack swarm demo: SessionAccount + SISNA signer boundary + MCP tools + AVNU gasless + ERC-8004",
@@ -9,12 +9,12 @@
     "run:sepolia": "npx tsx run.ts --network sepolia"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "dotenv": "^17.3.1",
-    "starknet": "^9.4.2"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "dotenv": "^17.4.2",
+    "starknet": "^10.0.2"
   },
   "devDependencies": {
-    "tsx": "^4.7.0",
-    "typescript": "^5.9.0"
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3"
   }
 }

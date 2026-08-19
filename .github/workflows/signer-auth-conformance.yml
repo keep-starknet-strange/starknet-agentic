@@ -44,15 +44,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.0
 
       - name: Setup Node
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "20"
+          node-version: "24"
 
-      - name: Install AJV CLI
-        run: npm install --global ajv-cli@5.0.0
+      - name: Install AJV CLI (hash-pinned via tools/ajv-cli/package-lock.json)
+        run: |
+          npm ci --prefix tools/ajv-cli --ignore-scripts
+          echo "$GITHUB_WORKSPACE/tools/ajv-cli/node_modules/.bin" >> "$GITHUB_PATH"
 
       - name: Run parity checker unit tests
         run: node --test scripts/security/check-session-signature-parity.test.mjs
@@ -70,17 +72,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@53751a9789c7351e4924f01fe68370252a4f1f18 # v2.4.1
-        with:
-          version: 10
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v2.4.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -88,14 +88,14 @@ jobs:
 
       - name: Run auth conformance vectors (shows failing vector IDs)
         run: |
-          pnpm --filter @starknet-agentic/mcp-server test -- __tests__/helpers/keyringAuthVectors.test.ts
+          pnpm --filter @starknetfoundation/starknet-agentic-mcp-server test -- __tests__/helpers/keyringAuthVectors.test.ts
 
   parity_with_counterparts:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.0
 
       - name: Compare vectors with SISNA/starkclaw main (if published)
         run: |

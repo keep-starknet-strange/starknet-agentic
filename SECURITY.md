@@ -4,7 +4,8 @@
 
 If you discover a security vulnerability, please report it privately.
 
-- Prefer GitHub Private Vulnerability Reporting in this repository.
+- Preferred: open a private advisory via [GitHub Private Vulnerability Reporting](https://github.com/keep-starknet-strange/starknet-agentic/security/advisories/new).
+  See [GitHub's docs on privately reporting a security vulnerability](https://docs.github.com/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability) for the workflow.
 - If private reporting is not available, open a security issue without exploit details and ask for a private channel.
 
 Please include:

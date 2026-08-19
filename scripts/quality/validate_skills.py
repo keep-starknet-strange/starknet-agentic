@@ -7,6 +7,7 @@ standards for the starknet-agentic repository.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -16,6 +17,15 @@ ROOT = Path(__file__).resolve().parents[2]
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+\.md)\)")
 DISALLOWED_DESCRIPTION_PREFIXES = ("use ", "use when ", "use for ", "use this ")
+EXCLUDED_PATH_PARTS = {
+    ".git",
+    ".next",
+    ".pnpm-store",
+    ".venv",
+    "dist",
+    "node_modules",
+    "tmp",
+}
 
 try:
     import yaml
@@ -89,6 +99,14 @@ def _resolve_link_path(current_skill: Path, target: str) -> Path:
     if target.startswith("/"):
         return (ROOT / target.lstrip("/")).resolve()
     return (current_skill.parent / target).resolve()
+
+
+def _is_repo_skill_path(path: Path) -> bool:
+    try:
+        rel = path.resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        return False
+    return not any(part in EXCLUDED_PATH_PARTS for part in rel.parts)
 
 
 def check_skill(path: Path) -> list[str]:
@@ -175,12 +193,20 @@ def check_skill(path: Path) -> list[str]:
     return errors
 
 
+def _walk_skill_files() -> list[Path]:
+    skills: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(ROOT):
+        # Prune excluded directories in-place so the filesystem walk skips them.
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDED_PATH_PARTS]
+        if "SKILL.md" in filenames:
+            candidate = Path(dirpath) / "SKILL.md"
+            if _is_repo_skill_path(candidate):
+                skills.append(candidate)
+    return skills
+
+
 def main() -> int:
-    skill_files = sorted(
-        p
-        for p in ROOT.rglob("SKILL.md")
-        if ".venv" not in p.as_posix() and "/tmp/" not in p.as_posix()
-    )
+    skill_files = sorted(_walk_skill_files())
 
     all_errors: list[str] = []
     for path in skill_files:

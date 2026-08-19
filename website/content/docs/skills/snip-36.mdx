@@ -1,0 +1,40 @@
+---
+title: SNIP-36 Skill
+description: Virtual block proving workflows for Starknet contracts, proof servers, and starknet.js clients
+---
+
+# SNIP-36 Skill
+
+The `snip-36` skill documents virtual block proving on Starknet. Use it when an
+agent needs to build a virtual `INVOKE_TXN_V3`, prove it off-chain, and submit a
+verified result on-chain without exposing private inputs.
+
+## Installation
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/snip-36
+
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills
+/starknet-agentic-skills:snip-36
+```
+
+## Use This Skill For
+
+- Cairo contracts with virtual `create_proof` and on-chain `verify_result`
+- proof server patterns around `snip36 prove virtual-os`
+- starknet.js `getSignedTransaction` orchestration without broadcasting
+- nullifier, message hash, and `proof_facts` recovery checks
+
+## Core Flow
+
+1. Build a signed virtual transaction for the private computation.
+2. Send `{ blockNumber, tx }` to a backend proof server.
+3. Decode the emitted L2-to-L1 message payload.
+4. Submit the verifier call with `{ proof, proofFacts }`.
+
+## References
+
+- [Source skill directory](https://github.com/keep-starknet-strange/starknet-agentic/tree/main/skills/snip-36)
+- [SKILL.md](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/snip-36/SKILL.md)
+- [Operator checklist](https://github.com/keep-starknet-strange/starknet-agentic/blob/main/skills/snip-36/references/operator-checklist.md)

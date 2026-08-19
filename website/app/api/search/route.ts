@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { DOC_CATEGORIES } from "@/data/docs";
+import { getVisibleDocCategories } from "@/data/docs";
 import type { DocSearchResult } from "@/data/types";
 
 const contentDirectory = path.join(process.cwd(), "content/docs");
@@ -89,8 +89,9 @@ export async function GET(request: NextRequest) {
 
   const lowerQuery = query.toLowerCase().trim();
   const results: DocSearchResult[] = [];
+  const categories = getVisibleDocCategories();
 
-  for (const category of DOC_CATEGORIES) {
+  for (const category of categories) {
     for (const page of category.pages) {
       const filePath = path.join(contentDirectory, category.slug, `${page.slug}.mdx`);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { SKILLS, getAllKeywords, filterSkills } from "@/data/skills";
+import { getAllKeywords, filterSkills } from "@/data/skills";
 import { SkillCard } from "./SkillCard";
 
 export function SkillsGrid() {

@@ -23,12 +23,12 @@ Core infrastructure features required for v1.0 release. MVP definition: MCP serv
 **Description**: Publish all complete skills to GitHub, ClawHub, and other channels for maximum distribution.
 
 **Requirements**:
-- [x] Register/Setup Publication for `@starknet-agentic/skill-wallet`
-- [x] Register/Setup Publication for `@starknet-agentic/skill-defi`
-- [x] Register/Setup Publication for `@starknet-agentic/skill-identity`
-- [x] Register/Setup Publication for `@starknet-agentic/skill-mini-pay`
-- [x] Register/Setup Publication for `@starknet-agentic/skill-anonymous-wallet`
-- [x] Register/Setup Publication for `@starknet-agentic/huginn-onboard`
+- [x] Register/Setup Publication for `@starknetfoundation/starknet-agentic-skill-wallet`
+- [x] Register/Setup Publication for `@starknetfoundation/starknet-agentic-skill-defi`
+- [x] Register/Setup Publication for `@starknetfoundation/starknet-agentic-skill-identity`
+- [x] Register/Setup Publication for `@starknetfoundation/starknet-agentic-skill-mini-pay`
+- [x] Register/Setup Publication for `@starknetfoundation/starknet-agentic-skill-anonymous-wallet`
+- [x] Register/Setup Publication for `@starknetfoundation/starknet-agentic-huginn-onboard`
 - [ ] Publish skills to ClawHub for OpenClaw/MoltBook users (blocked: CLI not on npm, publishing workflow undocumented)
 - [x] Update skills README with installation instructions for all channels
 - [x] Set up automated publishing in CI workflow

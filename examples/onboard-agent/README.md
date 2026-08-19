@@ -11,7 +11,7 @@ One-command path to deploy a Starknet agent account with ERC-8004 identity regis
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 24+
 - An existing Starknet account with funds (to pay gas for the deploy)
 - Contracts deployed (AgentAccountFactory + IdentityRegistry). See `contracts/agent-account/scripts/deploy.js`
 - Optional for gasfree deploy: AVNU paymaster key (`AVNU_PAYMASTER_API_KEY`)
@@ -80,7 +80,7 @@ The script saves:
 
 1. **Fund the new account** with ETH or STRK for gas
 2. **Set up session keys** for delegated operations (see `contracts/agent-account/`)
-3. **Publish capabilities** via `@starknet-agentic/agent-passport`
+3. **Publish capabilities** via `@starknetfoundation/starknet-agentic-agent-passport`
 4. **Connect to MCP server** for AI-agent operations (see `packages/starknet-mcp-server/`)
 
 ## Architecture

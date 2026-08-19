@@ -1,0 +1,6 @@
+interface:
+  display_name: "SNIP-36"
+  short_description: "Virtual block proving patterns for Starknet contracts, proof servers, and starknet.js clients."
+  default_prompt: "Design or implement this SNIP-36 virtual block proving workflow with secure Cairo verification, proof server handling, and starknet.js orchestration."
+policy:
+  allow_implicit_invocation: true

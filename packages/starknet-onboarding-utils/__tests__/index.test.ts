@@ -7,7 +7,7 @@ import {
   waitForTransactionWithTimeout,
 } from "../src/index.js";
 
-describe("@starknet-agentic/onboarding-utils", () => {
+describe("@starknetfoundation/starknet-agentic-onboarding-utils", () => {
   describe("waitForTransactionWithTimeout", () => {
     it("resolves when the receipt arrives before timeout", async () => {
       vi.useFakeTimers();

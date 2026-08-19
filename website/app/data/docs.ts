@@ -117,6 +117,7 @@ export const DOC_CATEGORIES: DocCategory[] = [
         slug: "huginn-onboard",
         title: "Huginn Onboard Skill",
         description: "Bridge to Starknet and register with Huginn",
+        hidden: true,
       },
       {
         slug: "cairo-coding",
@@ -169,9 +170,15 @@ export const DOC_CATEGORIES: DocCategory[] = [
         description: "Confidential ERC20 payments with encrypted balances and zero-knowledge proofs",
       },
       {
+        slug: "snip-36",
+        title: "SNIP-36 Skill",
+        description: "Virtual block proving workflows for Starknet contracts, proof servers, and starknet.js clients",
+      },
+      {
         slug: "starkzap-sdk",
         title: "Starkzap SDK Skill",
         description: "Project-focused guide for StarkSDK onboarding, wallets, paymaster flows, and staking",
+        hidden: true,
       },
       {
         slug: "starknet-js",
@@ -187,6 +194,7 @@ export const DOC_CATEGORIES: DocCategory[] = [
         slug: "publishing",
         title: "Publishing to ClawHub",
         description: "Share your skills with the community",
+        hidden: true,
       },
     ],
   },
@@ -233,9 +241,20 @@ export const DOC_CATEGORIES: DocCategory[] = [
   },
 ];
 
+export function getVisibleDocCategories(): DocCategory[] {
+  return DOC_CATEGORIES.map((category) => ({
+    ...category,
+    pages: category.pages.filter((page) => !page.hidden),
+  })).filter((category) => category.pages.length > 0);
+}
+
 // Helper function to get all pages flattened
-export function getAllDocPages(): (DocPage & { category: string; categorySlug: string })[] {
-  return DOC_CATEGORIES.flatMap((category) =>
+export function getAllDocPages(
+  options: { includeHidden?: boolean } = {}
+): (DocPage & { category: string; categorySlug: string })[] {
+  const categories = options.includeHidden ? DOC_CATEGORIES : getVisibleDocCategories();
+
+  return categories.flatMap((category) =>
     category.pages.map((page) => ({
       ...page,
       category: category.title,

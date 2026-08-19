@@ -1,8 +1,7 @@
-import { Account, Contract, RpcProvider, hash, ec, cairo, CallData, shortString, json } from 'starknet';
+import { Account, Contract, RpcProvider, hash, ec, cairo, shortString } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import readline from 'readline';
 import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -120,8 +119,8 @@ async function main() {
     
     const funderAddress = validateEnvVar('DEPLOYER_ADDRESS');
     const funderPrivateKey = validateEnvVar('DEPLOYER_PRIVATE_KEY');
-    const funderAccount = new Account({ provider, address: funderAddress, signer: funderPrivateKey });
-    
+    new Account({ provider, address: funderAddress, signer: funderPrivateKey });
+
     console.log(`💰 Funder: ${funderAddress.slice(0, 18)}...`);
     console.log('   ✅ Connected\n');
 

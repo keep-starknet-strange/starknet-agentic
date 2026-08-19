@@ -1,6 +1,6 @@
 {
-  "name": "create-starknet-agent",
-  "version": "0.5.0",
+  "name": "@starknetfoundation/create-starknet-agent",
+  "version": "1.0.0",
   "description": "CLI tool to scaffold a Starknet AI agent project",
   "keywords": [
     "starknet",
@@ -14,7 +14,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/keep-starknet-strange/starknet-agentic"
+    "url": "https://github.com/keep-starknet-strange/starknet-agentic",
+    "directory": "packages/create-starknet-agent"
   },
   "homepage": "https://starknet-agentic.vercel.app",
   "type": "module",
@@ -27,7 +28,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts --format esm --clean && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
     "prepublishOnly": "pnpm build",
     "test": "vitest run",
@@ -38,14 +39,14 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^25.3.5",
+    "@types/node": "^26.2.0",
     "@types/prompts": "^2.4.9",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.0",
-    "vitest": "^4.0.18"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24.0.0"
   },
   "publishConfig": {
     "access": "public"

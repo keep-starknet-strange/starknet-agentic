@@ -5,6 +5,8 @@
 - Semgrep auxiliary rules: `semgrep/README.md`
 - Judging/FP gate: `judging.md`
 - Output contract: `report-formatting.md`
+- Structured finding contract: `structured-findings.md`
+- JSON schema: `finding.schema.json`
 - Threat-intel source policy: `threat-intel-sources.md`
 - Imported audit corpus notes: `audit-findings/README.md`
 - Release gate checklist: `checklists/release-gate.md`

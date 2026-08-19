@@ -7,6 +7,8 @@
 - `parity_check.py`: required repository parity and local tool checks.
 - `check_codex_distribution.py`: validates Codex-facing install/discovery surface (`.agents/skills` symlinks, public-skill `openai.yaml`, and install docs markers).
 - `test_codex_distribution.py`: regression tests for Codex distribution validation.
+- `check_cairo_auditor_release_hygiene.py`: when `skills/cairo-auditor/VERSION` changes, requires either a matching git tag (`v<version>`) or a matching GitHub release draft/published release.
+- `test_cairo_auditor_release_hygiene.py`: regression tests for release-hygiene checks.
 - `check_vulndb_parity.py`: enforces benchmark/detector class parity with `skills/cairo-auditor/references/vulnerability-db/`.
 - `check_attack_vector_coverage.py`: enforces minimum attack-vector corpus size and unique vector IDs.
 - `check_semgrep_vector_coverage.py`: enforces Semgrep `attack_vectors_core` metadata covers core vectors `1..80`.

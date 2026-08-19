@@ -72,12 +72,6 @@ function lootStateGetLatest(accountAddress) {
   return lootStateGetEntry(map, accountAddress).latestAdventurerId;
 }
 
-function lootStateGetPending(accountAddress) {
-  if (!accountAddress) return false;
-  const map = lootStateLoad();
-  return lootStateGetEntry(map, accountAddress).pendingEncounter;
-}
-
 function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
@@ -192,14 +186,6 @@ function toU8(v, name = 'value') {
   const n = Number(v);
   if (!Number.isInteger(n) || n < 0 || n > 255) fail(`${name} out of u8 range`, { [name]: v });
   return String(n);
-}
-
-function tryDecodeFeltToString(feltHex) {
-  try {
-    return shortString.decodeShortString(feltHex);
-  } catch {
-    return null;
-  }
 }
 
 async function readGameState(provider, adventurerId) {

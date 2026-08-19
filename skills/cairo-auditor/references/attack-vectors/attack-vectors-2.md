@@ -1,5 +1,8 @@
 # Cairo Attack Vectors (2/4): External Calls + Reentrancy + Messaging
 
+> **D:** Detection pattern — what makes this vector dangerous.
+> **FP:** False-positive caveat — when this pattern is actually safe.
+
 **21. CEI violation on ERC1155 transfer path**
 - **D:** state mutation happens after `safe_transfer_from` (directly or through helper chain).
 - **FP:** critical state committed before interaction or robust non-reentrant guard blocks re-entry.

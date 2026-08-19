@@ -6,7 +6,7 @@
 import { StarkSDK } from "starkzap";
 
 async function main() {
-  const sdk = new StarkSDK({ network: "sepolia" });
+  new StarkSDK({ network: "sepolia" });
 
   // Replace with real staking API usage in Starkzap repo context.
   console.log("SDK initialized for staking pool discovery checks (network: sepolia)");

@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/erc8004-validation-demo",
+  "name": "@starknetfoundation/starknet-agentic-erc8004-validation-demo",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,12 +8,12 @@
     "test": "vitest run --silent"
   },
   "dependencies": {
-    "dotenv": "^17.3.1",
-    "starknet": "^9.4.2"
+    "dotenv": "^17.4.2",
+    "starknet": "^10.0.2"
   },
   "devDependencies": {
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.0",
-    "vitest": "^4.0.18"
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/secure-defi-demo",
+  "name": "@starknetfoundation/starknet-agentic-secure-defi-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Deterministic Base->Starknet secure DeFi demo (session key evidence + Vesu + policy rejection)",
@@ -12,12 +12,12 @@
     "test": "node --test --import tsx test/*.test.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "dotenv": "^17.3.1",
-    "zod": "^4.3.6"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "dotenv": "^17.4.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.0"
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3"
   }
 }

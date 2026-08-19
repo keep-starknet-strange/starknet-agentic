@@ -1,4 +1,4 @@
-# @starknet-agentic/prediction-arb-scanner
+# @starknetfoundation/starknet-agentic-prediction-arb-scanner
 
 Signals-only prediction market arbitrage scanner.
 

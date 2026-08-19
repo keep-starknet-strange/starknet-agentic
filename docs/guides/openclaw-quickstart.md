@@ -20,7 +20,7 @@ Add the MCP server to your agent runtime config and set env vars:
   "mcpServers": {
     "starknet": {
       "command": "npx",
-      "args": ["@starknet-agentic/mcp-server"],
+      "args": ["@starknetfoundation/starknet-agentic-mcp-server"],
       "env": {
         "STARKNET_RPC_URL": "https://starknet-sepolia-rpc.publicnode.com",
         "STARKNET_ACCOUNT_ADDRESS": "0x...",

@@ -10,7 +10,6 @@
  */
 
 import { RpcProvider, Contract, Account, shortString } from "starknet";
-import { z } from "zod";
 
 // ============================================================================
 // Type Definitions
@@ -270,12 +269,6 @@ export class StarknetA2AAdapter {
       capabilities?: string[];
     }
   ): Promise<string> {
-    const identityRegistry = new Contract({
-      abi: IDENTITY_REGISTRY_ABI,
-      address: this.identityRegistryAddress,
-      providerOrAccount: account,
-    });
-
     try {
       const capabilities = metadata.capabilities || [];
       const capabilitiesAsFelts = capabilities.map(stringToFelt);

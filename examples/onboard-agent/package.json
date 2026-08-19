@@ -1,6 +1,6 @@
 {
-  "name": "@starknet-agentic/onboard-agent-example",
-  "version": "0.1.0",
+  "name": "@starknetfoundation/starknet-agentic-onboard-agent-example",
+  "version": "0.1.1",
   "private": true,
   "description": "E2E agent onboarding flow: deploy account + register identity + verify",
   "type": "module",
@@ -12,12 +12,12 @@
     "smoke": "npx tsx smoke.ts"
   },
   "dependencies": {
-    "@starknet-agentic/onboarding-utils": "workspace:*",
-    "dotenv": "^17.3.1",
-    "starknet": "^9.4.2"
+    "@starknetfoundation/starknet-agentic-onboarding-utils": "workspace:*",
+    "dotenv": "^17.4.2",
+    "starknet": "^10.0.2"
   },
   "devDependencies": {
-    "tsx": "^4.7.0",
-    "typescript": "^5.9.0"
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3"
   }
 }

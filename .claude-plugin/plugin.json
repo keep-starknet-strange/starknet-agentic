@@ -12,6 +12,7 @@
     "./skills/starknet-identity",
     "./skills/starknet-mini-pay",
     "./skills/starknet-anonymous-wallet",
+    "./skills/snip-36",
     "./skills/starkzap-sdk",
     "./skills/huginn-onboard",
     "./skills/controller-cli",

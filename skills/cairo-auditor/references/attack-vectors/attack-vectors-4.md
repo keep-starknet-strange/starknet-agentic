@@ -1,5 +1,8 @@
 # Cairo Attack Vectors (4/4): Storage + Components + Trust Chains
 
+> **D:** Detection pattern — what makes this vector dangerous.
+> **FP:** False-positive caveat — when this pattern is actually safe.
+
 **61. Constructor dead parameter**
 - **D:** constructor accepts security-critical parameter but never uses it (ForgeYields redeem request pattern).
 - **FP:** parameter is explicitly deprecated/compat-only and cannot affect privilege/invariants.

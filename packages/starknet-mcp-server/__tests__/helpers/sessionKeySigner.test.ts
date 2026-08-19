@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { ec, hash, num, stark } from "starknet";
 import { SessionKeySigner } from "../../src/helpers/sessionKeySigner.js";
 

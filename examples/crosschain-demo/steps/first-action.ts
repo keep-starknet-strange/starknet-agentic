@@ -1,4 +1,4 @@
-import { firstActionBalances } from "@starknet-agentic/onboarding-utils";
+import { firstActionBalances } from "@starknetfoundation/starknet-agentic-onboarding-utils";
 import type { RpcProvider } from "starknet";
 import { TOKENS } from "../config.js";
 

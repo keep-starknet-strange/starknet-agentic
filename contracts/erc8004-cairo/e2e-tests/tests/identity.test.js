@@ -11,12 +11,6 @@ import {
 import { ec, hash, shortString } from 'starknet';
 
 // SNIP-6 signature helpers for set_agent_wallet
-function toI128BigInt(num) {
-  if (num >= 0) return BigInt(num);
-  const FELT_PRIME = BigInt('0x800000000000011000000000000000000000000000000000000000000000001');
-  return FELT_PRIME - BigInt(Math.abs(num));
-}
-
 function toFeltBigInt(value) {
   if (typeof value === 'bigint') return value;
   if (typeof value === 'number') return BigInt(value);

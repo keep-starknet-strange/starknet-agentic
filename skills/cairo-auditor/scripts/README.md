@@ -5,6 +5,11 @@ Use scripts in this directory to transform raw audit text into normalized findin
 ## `quality/audit_local_repo.py`
 
 Deterministic preflight scanner used by `cairo-auditor` in default/deep full-repo mode.
+It always keeps local parser detectors enabled. The canonical benchmark detector
+map from `scripts/quality/benchmark_cairo_auditor.py` is opt-in and loads only
+from the fixed in-repository path when `--enable-benchmark-bridge` or
+`CAUD_ENABLE_BENCHMARK_BRIDGE=1` is set. Standalone skill installs keep the
+local parser detectors.
 
 ### Usage
 
@@ -15,9 +20,16 @@ python3 skills/cairo-auditor/scripts/quality/audit_local_repo.py \
   --output-dir /tmp
 ```
 
+For maintainer benchmark-backed regression runs from this repository, add:
+
+```bash
+--enable-benchmark-bridge
+```
+
 ### Output
 
 - Writes JSON + Markdown preflight artifacts to `--output-dir`.
+- Artifact names follow `<scan-id>-YYYYMMDD-HHMMSSZ.json` and `<scan-id>-YYYYMMDD-HHMMSSZ.md`.
 - Prints a compact JSON summary to stdout with:
   - `findings`
   - `class_counts`
@@ -33,3 +45,77 @@ The preflight parser currently inspects externally callable functions declared v
 
 Functions outside those patterns are not part of deterministic preflight coverage and should be
 reviewed by vector/deep-agent passes.
+
+## `doctor.sh`
+
+One-command post-run validation for deep audits.
+
+### Usage
+
+```bash
+bash skills/cairo-auditor/scripts/doctor.sh --report-dir .
+```
+
+Optional flags:
+
+- `--workdir /path/to/workdir` (defaults to `$CAIRO_AUDITOR_WORKDIR` or `/tmp`)
+- `--report-dir /path/to/repo`
+- `--report /path/to/security-review-*.md`
+
+### What it validates
+
+- host capabilities artifact exists,
+- vector bundle artifacts `1..4` exist with non-zero lines,
+- report exists and includes `Execution Integrity` and `Execution Trace`.
+
+## `quality/surface_map.py`
+
+Builds a compact static map of Cairo functions, exposed entrypoints, storage
+writes, external calls, auth guards, upgrade paths, session hooks, and local
+call edges.
+
+```bash
+python3 skills/cairo-auditor/scripts/quality/surface_map.py \
+  --repo-root /path/to/repo \
+  --scope-file /tmp/cairo-audit-files.txt \
+  --output-json /tmp/cairo-audit-surface-map.json \
+  --output-md /tmp/cairo-audit-surface-map.md
+```
+
+Deep mode gives the Markdown map to Agent 5 before free-form adversarial
+reasoning.
+
+## `quality/structured_report.py`
+
+Renders specialist JSON outputs into the canonical Markdown report after
+deduplication and evidence-tag normalization.
+
+```bash
+python3 skills/cairo-auditor/scripts/quality/structured_report.py \
+  --repo-root /path/to/repo \
+  --mode deep \
+  --workdir /tmp/cairo-auditor.run \
+  --scope-file /tmp/cairo-auditor.run/cairo-audit-files.txt \
+  --agent-output /tmp/cairo-auditor.run/cairo-audit-agent-5-findings.json \
+  --output-md /tmp/cairo-auditor.run/security-review.md \
+  --output-json /tmp/cairo-auditor.run/security-review.json
+```
+
+## `quality/deep_integrity.py`
+
+Creates and validates deep-mode integrity artifacts. Bundle artifacts are
+required for `default` and `deep`, and reported as optional for `targeted` and
+`degraded-deep`.
+
+```bash
+python3 skills/cairo-auditor/scripts/quality/deep_integrity.py init \
+  --workdir /tmp/cairo-auditor.run \
+  --host codex \
+  --vector-model gpt-5.4 \
+  --adversarial-model gpt-5.4
+
+python3 skills/cairo-auditor/scripts/quality/deep_integrity.py check \
+  --workdir /tmp/cairo-auditor.run \
+  --mode deep \
+  --report /tmp/cairo-auditor.run/security-review.md
+```

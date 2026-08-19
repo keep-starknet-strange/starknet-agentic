@@ -1,7 +1,7 @@
 ---
 name: cairo-auditor
 description: Security audit of Cairo/Starknet code. Trigger on "audit", "check this contract", "review for security". Modes - default (full repo), deep (+ adversarial reasoning), or specific filenames.
-license: Apache-2.0
+license: MIT
 metadata: {"author":"starknet-agentic","version":"0.2.2","org":"keep-starknet-strange","source":"starknet-agentic"}
 keywords: [cairo, starknet, security, audit, vulnerabilities, semgrep]
 allowed-tools: [Bash, Read, Glob, Grep, Task, Agent]
@@ -16,6 +16,7 @@ You are the orchestrator of a parallelized Cairo/Starknet security audit. Your j
 
 - Default flow: [workflows/default.md](workflows/default.md)
 - Deep flow: [workflows/deep.md](workflows/deep.md)
+- Structured findings: [references/structured-findings.md](references/structured-findings.md)
 - Report schema: [references/report-formatting.md](references/report-formatting.md)
 
 ## Starknet.js Examples
@@ -24,8 +25,8 @@ You are the orchestrator of a parallelized Cairo/Starknet security audit. Your j
 import { Account, Contract, RpcProvider } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
-const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
-const contract = new Contract(abi, process.env.CONTRACT_ADDRESS!, provider).connect(account);
+const account = new Account({ provider, address: process.env.ACCOUNT_ADDRESS!, signer: process.env.PRIVATE_KEY! });
+const contract = new Contract({ abi, address: process.env.CONTRACT_ADDRESS!, providerOrAccount: account });
 
 try {
   // View call for quick sanity checks while triaging findings.
@@ -48,7 +49,7 @@ try {
 | `CAUD-002` | Preflight scan failed or unavailable | Run `python3 "{skill_root}/scripts/quality/audit_local_repo.py"` manually and attach output to the audit context. |
 | `CAUD-003` | Agent bundle generation failed | Rebuild `{workdir}/cairo-audit-agent-*-bundle.md` and confirm each bundle has non-zero line count. |
 | `CAUD-004` | Conflicting findings across agents | Keep the highest-confidence root cause, then request a focused re-run on the disputed file. |
-| `CAUD-005` | Report includes only low-confidence items | Run deep mode (`/cairo-auditor deep`) and add deterministic checks from Semgrep/audit findings. |
+| `CAUD-005` | Report includes only low-confidence items | Re-run deep mode with the host-specific cairo-auditor entrypoint (for example, `/starknet-agentic-skills:cairo-auditor deep` in Claude Code) and add deterministic checks from Semgrep/audit findings. |
 | `CAUD-006` | Deep mode requested but specialist agents unavailable | Re-run in an environment with Agent tool support. Where fail-closed enforcement is enabled, `--allow-degraded` explicitly permits fallback. |
 | `CAUD-007` | Deep mode host capability preflight failed | For hosts with preflight enforcement enabled, surface remediation and stop before findings unless `--allow-degraded` is explicitly present. |
 | `CAUD-008` | Agent transport instability or stalled specialist completion | Retry failed/stalled specialists once. In hosts with deep-mode enforcement enabled, unresolved specialist outages are treated as fail-closed unless explicitly degraded. |
@@ -89,6 +90,7 @@ try {
 - `--file-output` (off by default): also write the report to a markdown file. Without this flag, output goes to the terminal only.
 - `--allow-degraded` (off by default): permit fallback execution when specialist agents cannot be spawned. On hosts with deep-mode enforcement enabled, this flag opts into degraded execution.
 - `--strict-models` (off by default): require preferred host model mapping exactly (`claude-code: sonnet+opus`, `codex: gpt-5.4`). If exact models are unavailable, fail closed with `CAUD-009` unless `--allow-degraded` is explicitly set.
+- `--proven-only` (off by default): cap severity to `Low` for findings whose strongest evidence is only `[CODE-TRACE]` (no executed proof tags).
 
 ## Host Capability Preflight (Deep Mode, Experimental)
 
@@ -106,6 +108,7 @@ Before Turn 1 when mode is `deep`, run a lightweight capability preflight and em
   - run one lightweight specialist probe using `model: gpt-5.4`,
   - persist success/failure and fallback decision.
 - Persist preflight evidence to `{workdir}/cairo-audit-host-capabilities.json` when the probe is available.
+- If `{skill_root}/scripts/quality/deep_integrity.py` exists, use its `init` command to persist host capability and model-plan artifacts instead of hand-writing them.
 
 If preflight fails (in hosts where preflight is enabled):
 
@@ -125,7 +128,7 @@ Select specialist model labels from detected host before spawning:
   - `VECTOR_MODEL=sonnet` (host alias for `claude-sonnet-4-6`)
   - `ADVERSARIAL_MODEL=opus` (host alias for `claude-opus-4-6`)
 - `codex`
-  - `VECTOR_MODEL=gpt-5.4`
+  - `VECTOR_MODEL=gpt-5.4` (Codex-specific label; may change across host versions)
   - `ADVERSARIAL_MODEL=gpt-5.4`
   - If `gpt-5.4` probe fails and `--strict-models` is not set, fallback to `gpt-5.2` for both.
 - `unknown`
@@ -203,20 +206,37 @@ cat "$WORKDIR/cairo-audit-files.txt"
 (c) If `{skill_root}/scripts/quality/audit_local_repo.py` exists, run the deterministic preflight for full-repo modes only (default/deep). In `$filename ...` mode, skip preflight so the context stays scoped to the targeted files:
 
 ```bash
-python3 "{skill_root}/scripts/quality/audit_local_repo.py" --repo-root <repo-root> --scan-id preflight --output-dir "{workdir}"
+BENCHMARK_BRIDGE=""
+if [ -f "{skill_root}/../../scripts/quality/benchmark_cairo_auditor.py" ]; then
+  BENCHMARK_BRIDGE="--enable-benchmark-bridge"
+fi
+python3 "{skill_root}/scripts/quality/audit_local_repo.py" --repo-root <repo-root> --scan-id preflight --output-dir "{workdir}" $BENCHMARK_BRIDGE
 ```
 
 Print the preflight results (class counts, severity counts) as context for specialists.
 
-**Turn 2 — Prepare.** In a single message, make three parallel tool calls:
+**Turn 2 — Prepare.** In a single message, make four parallel tool calls:
 
 (a) Read `{skill_root}/agents/vector-scan.md` — you will paste this full text into every agent prompt.
 
-(b) Read `{refs_root}/report-formatting.md` — you will use this for the final report.
+(b) Read `{refs_root}/structured-findings.md` and `{refs_root}/report-formatting.md` — specialists emit structured JSON, then the orchestrator renders the final report.
 
-(c) Bash: create four per-agent bundle files (`{workdir}/cairo-audit-agent-{1,2,3,4}-bundle.md`) in a **single command**. Each bundle concatenates:
+(c) Bash: build a static audit surface map for all in-scope files:
+
+```bash
+python3 "{skill_root}/scripts/quality/surface_map.py" \
+  --repo-root <repo-root> \
+  --scope-file "{workdir}/cairo-audit-files.txt" \
+  --output-json "{workdir}/cairo-audit-surface-map.json" \
+  --output-md "{workdir}/cairo-audit-surface-map.md"
+```
+
+Append a compact summary from `{workdir}/cairo-audit-surface-map.md` to Agent 5 prompts in deep mode.
+
+(d) Bash: create four per-agent bundle files (`{workdir}/cairo-audit-agent-{1,2,3,4}-bundle.md`) in a **single command**. Each bundle concatenates:
   - **all** in-scope `.cairo` files (with `### path` headers and fenced code blocks),
   - `{refs_root}/judging.md`,
+  - `{refs_root}/structured-findings.md`,
   - `{refs_root}/report-formatting.md`,
   - `{refs_root}/attack-vectors/attack-vectors-N.md` (one per agent — only the attack-vectors file differs).
 
@@ -250,6 +270,8 @@ for i in 1 2 3 4; do
     echo "$CODE"
     echo "---"
     cat "$REFS/judging.md"
+    echo "---"
+    cat "$REFS/structured-findings.md"
     echo "---"
     cat "$REFS/report-formatting.md"
     echo "---"
@@ -301,12 +323,18 @@ Threat-intel usage rules:
 
 - **Agent 5** (adversarial reasoning, **deep** mode only) — spawn with `model: "{adversarial_model}"`. The prompt must instruct it to:
   1. Read `{skill_root}/agents/adversarial.md` for its full instructions.
-  2. Read `{refs_root}/judging.md` and `{refs_root}/report-formatting.md`.
-  3. If present, read `{workdir}/cairo-audit-threat-intel.md` as a prioritization hint only.
-  4. Read `{workdir}/cairo-audit-files.txt` to obtain in-scope paths, then read only those `.cairo` files directly (not via bundle).
-  5. Reason freely — no attack vector reference. Look for logic errors, unsafe interactions, access control gaps, economic exploits, multi-step cross-function chains.
-  6. Apply FP gate to each finding immediately.
-  7. Format findings per report-formatting.md.
+  2. Read `{refs_root}/judging.md` and `{refs_root}/structured-findings.md`.
+  3. Read `{workdir}/cairo-audit-surface-map.md` before free-form reasoning.
+  4. If present, read `{workdir}/cairo-audit-threat-intel.md` as a prioritization hint only.
+  5. Read `{workdir}/cairo-audit-files.txt` to obtain in-scope paths, then read only those `.cairo` files directly (not via bundle).
+  6. Reason freely — no attack vector reference. Look for logic errors, unsafe interactions, access control gaps, economic exploits, multi-step cross-function chains.
+  7. Apply FP gate to each finding immediately.
+  8. Format findings per structured-findings.md.
+
+Specialist output handling:
+- Persist each specialist's raw final JSON to `{workdir}/cairo-audit-agent-N-findings.json`.
+- If output is not valid structured JSON, rerun that specialist once.
+- Do not hand-render finding Markdown from specialist responses.
 
 After spawning, persist execution evidence that will be reused in the final report:
 - confirm `{workdir}/cairo-audit-files.txt` exists and count in-scope files,
@@ -331,14 +359,21 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 - When `--strict-models` is set, treat model fallback as unavailable capability and enforce the same fail-closed behavior (`CAUD-009`) unless `--allow-degraded` is explicitly present.
 **Turn 4 — Report.** Merge all agent results and emit the report in canonical order:
 
+0. If `{skill_root}/scripts/quality/structured_report.py` exists, render through it with all `{workdir}/cairo-audit-agent-*-findings.json` files, the preflight JSON path, `{workdir}/cairo-audit-files.txt`, the resolved execution-integrity value, and `--proven-only` when that flag is active. Use its Markdown output as the report body.
 1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence).
-2. Sort findings by priority (`P0` first); within each priority tier sort by confidence (highest first).
-3. Re-number findings sequentially starting at `1`.
-4. Insert one **Below Confidence Threshold** separator row in the findings index immediately before the first finding with confidence < 75.
-5. Print findings directly — do not re-draft or re-describe them.
-6. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Dropped Candidates`, `Findings Index`.
-7. Add scope table and findings index table per report-formatting.md.
-8. Add the disclaimer.
+2. Apply evidence tags per `references/judging.md` Evidence Tags section:
+   - Validate every finding has `[CODE-TRACE]`; if a source agent omitted it, add `[CODE-TRACE]` during merge normalization.
+   - Add `[PREFLIGHT-HIT]` if the deterministic preflight flagged the same class or entry point.
+   - Add `[CROSS-AGENT]` if 2+ agents independently reported the same root cause before deduplication.
+   - Add `[ADVERSARIAL]` if Agent 5 discovered or confirmed the finding.
+3. Findings with only `[CODE-TRACE]` (no additional tags) are valid but lower-signal; reviewers use the Evidence column in Findings Index to prioritize review order.
+4. Sort findings by priority (`P0` first); within each priority tier sort by confidence (highest first).
+5. Re-number findings sequentially starting at `1`.
+6. Insert one **Below Confidence Threshold** separator row in the findings index immediately before the first finding with confidence < 75.
+7. Print rendered findings directly — do not re-draft or re-describe them.
+8. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Dropped Candidates`, `Findings Index`.
+9. Add scope table and findings index table per report-formatting.md.
+10. Add the disclaimer.
 
 Dropped-candidate handling:
 
@@ -348,26 +383,26 @@ Dropped-candidate handling:
 
 If `--file-output` is set, write the report to `{repo-root}/security-review-{timestamp}.md` and print the path.
 
+After rendering, if `{skill_root}/scripts/quality/deep_integrity.py` exists, run its `check` command against `{workdir}` and the report path. The check validates each `cairo-audit-agent-*-findings.json` against `references/finding.schema.json` and reports the mode-specific checks applied; vector bundle artifacts are required for `default` and `deep`, but optional for `targeted` and `degraded-deep`. Pass `--skip-schema` only when validating an out-of-tree skill install. If it fails in non-degraded deep mode, mark `Execution Integrity: FAILED` and stop before publishing findings.
+
 ## Banner
 
 Before doing anything else, print this exactly:
 
 ```text
-
  ██████╗ █████╗ ██╗██████╗  ██████╗      █████╗ ██╗   ██╗██████╗ ██╗████████╗ ██████╗ ██████╗
 ██╔════╝██╔══██╗██║██╔══██╗██╔═══██╗    ██╔══██╗██║   ██║██╔══██╗██║╚══██╔══╝██╔═══██╗██╔══██╗
 ██║     ███████║██║██████╔╝██║   ██║    ███████║██║   ██║██║  ██║██║   ██║   ██║   ██║██████╔╝
 ██║     ██╔══██║██║██╔══██╗██║   ██║    ██╔══██║██║   ██║██║  ██║██║   ██║   ██║   ██║██╔══██╗
 ╚██████╗██║  ██║██║██║  ██║╚██████╔╝    ██║  ██║╚██████╔╝██████╔╝██║   ██║   ╚██████╔╝██║  ██║
  ╚═════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝     ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝
-
 ```
 
 ## Version Check
 
 After printing the banner, run two parallel tool calls: (a) Read the local `VERSION` file from the same directory as this skill, (b) Bash `curl -sf --connect-timeout 5 --max-time 10 https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/cairo-auditor/VERSION`. If the remote fetch succeeds and the versions differ, print:
 
-> You are not using the latest version. Run `/plugin marketplace update keep-starknet-strange/starknet-agentic` for best security coverage.
+> You are not using the latest version. Update via your install method (e.g. `git pull` or reinstall the plugin) for best security coverage.
 
 Then continue normally. If the fetch fails (offline, timeout), skip silently.
 
@@ -388,14 +423,21 @@ curl -sf --connect-timeout 5 --max-time 10 https://raw.githubusercontent.com/kee
 
 Each finding must include:
 
+- `title`
 - `class_id`
+- `root_cause` (stable dedupe key)
+- `file`
+- `line`
+- `priority` (P0 / P1 / P2 / P3)
 - `severity` (Critical / High / Medium / Low)
 - `confidence` score (0–100)
-- `entry_point` (file:line)
 - `attack_path` (concrete caller -> function -> state -> impact)
 - `guard_analysis` (what guards exist, why they fail)
 - `recommended_fix` (diff block for confidence >= 75)
 - `required_tests` (regression + guard tests)
+- `evidence_tags` (`[CODE-TRACE]` minimum; upgrade when stronger proof exists)
+
+Specialist final outputs must be structured JSON matching `references/structured-findings.md`; markdown finding blocks are invalid specialist output.
 
 ## Evidence Priority
 
@@ -409,6 +451,7 @@ Each finding must include:
 
 - Report only findings that pass FP gate.
 - Findings with confidence `<75` may be listed as low-confidence notes without a fix block.
+- If `--proven-only` is present, findings that only carry `[CODE-TRACE]` evidence must be emitted at `Low` severity.
 - Do not report: style/naming issues, gas optimizations, missing events without security impact, generic centralization notes without exploit path, theoretical attacks requiring compromised sequencer.
 - On hosts where deep-mode enforcement is enabled, deep mode is fail-closed by default: if specialist agents are unavailable and `--allow-degraded` is not present, emit `CAUD-006` and do not publish a findings report.
 - If `--allow-degraded` is present and fallback is used, mark scope mode as `degraded-deep` and include an explicit warning line at top: `WARNING: degraded execution (specialist agents unavailable)`.

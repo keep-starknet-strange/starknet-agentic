@@ -1,5 +1,4 @@
 import { Account, RpcProvider, type TypedData } from "starknet"
-import { trimTrailingChar } from "@starknet-agentic/shared/string"
 
 export type X402PaymentRequired = {
   /** opaque scheme id, ex: exact-starknet */

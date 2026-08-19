@@ -208,7 +208,7 @@ function generateMcpConfig(network: Network, secretsEnvPath?: string): string {
     mcpServers: {
       starknet: {
         command: "npx",
-        args: ["-y", "@starknet-agentic/mcp-server@latest"],
+        args: ["-y", "@starknetfoundation/starknet-agentic-mcp-server@latest"],
         env: {
           STARKNET_RPC_URL: rpcUrl,
           STARKNET_PRIVATE_KEY: "${STARKNET_PRIVATE_KEY}",
@@ -360,6 +360,23 @@ async function downloadFile(url: string): Promise<string | null> {
 }
 
 /**
+ * Reject names that could escape targetDir or alias system paths.
+ * Prevents path traversal if the GitHub API response is tampered with.
+ */
+function isSafeEntryName(name: string): boolean {
+  return (
+    typeof name === "string" &&
+    name.length > 0 &&
+    name.length <= 255 &&
+    !name.includes("\0") &&
+    !name.includes("/") &&
+    !name.includes("\\") &&
+    name !== "." &&
+    name !== ".."
+  );
+}
+
+/**
  * Recursively download a directory from GitHub
  */
 async function downloadSkillDirectory(
@@ -375,9 +392,19 @@ async function downloadSkillDirectory(
   }
 
   let fileCount = 0;
+  const resolvedTargetDir = path.resolve(targetDir);
 
   for (const item of items) {
+    if (!isSafeEntryName(item.name)) {
+      console.log(pc.yellow(`  Warning: skipping suspicious entry name in ${skillId}: ${JSON.stringify(item.name)}`));
+      continue;
+    }
     const localPath = path.join(targetDir, item.name);
+    const resolvedLocalPath = path.resolve(localPath);
+    if (resolvedLocalPath !== path.join(resolvedTargetDir, item.name)) {
+      console.log(pc.yellow(`  Warning: skipping entry that resolves outside target dir: ${JSON.stringify(item.name)}`));
+      continue;
+    }
 
     if (item.type === "dir") {
       // Recursively download subdirectory
@@ -806,7 +833,7 @@ export async function cursorWizard(
   defaultNetwork: Network = "sepolia",
   jsonOutput = false,
   customSkills?: string[],
-  defaultConfigScope: ConfigScope = "local"
+  _defaultConfigScope: ConfigScope = "local" // Cursor uses project-local .cursor/ regardless of scope
 ): Promise<WizardResult> {
   if (!jsonOutput) {
     console.log();
@@ -825,10 +852,6 @@ export async function cursorWizard(
           ? ["starknet-wallet", "starknet-defi"]
           : await promptSkills();
   const network = skipPrompts ? defaultNetwork : await promptNetwork();
-
-  // For Cursor, config scope doesn't change much (always project-local .cursor/)
-  // but we accept the parameter for API consistency
-  const configScope = defaultConfigScope;
 
   if (!jsonOutput) {
     console.log();

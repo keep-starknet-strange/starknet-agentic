@@ -3,7 +3,7 @@
  * create-starknet-agent
  *
  * CLI tool to scaffold a Starknet AI agent project.
- * Run with: npx create-starknet-agent@latest [project-name] [--template <template>]
+ * Run with: npx @starknetfoundation/create-starknet-agent@latest [project-name] [--template <template>]
  */
 
 import fs from "node:fs";
@@ -45,8 +45,8 @@ function printBanner() {
 function printHelp() {
   console.log(`
 ${pc.bold("Usage:")}
-  npx create-starknet-agent [project-name] [options]
-  npx create-starknet-agent credentials [options]
+  npx @starknetfoundation/create-starknet-agent [project-name] [options]
+  npx @starknetfoundation/create-starknet-agent credentials [options]
 
 ${pc.bold("Commands:")}
   ${pc.cyan("credentials")}    Securely configure Starknet wallet credentials
@@ -89,29 +89,29 @@ ${pc.bold("Exit Codes:")}
   3  Platform not supported
 
 ${pc.bold("Examples:")}
-  npx create-starknet-agent my-agent
-  npx create-starknet-agent my-agent --template defi
-  npx create-starknet-agent my-agent --template full --network sepolia
-  npx create-starknet-agent my-agent --platform claude-code
-  npx create-starknet-agent --detect-only
-  npx create-starknet-agent my-agent -y
+  npx @starknetfoundation/create-starknet-agent my-agent
+  npx @starknetfoundation/create-starknet-agent my-agent --template defi
+  npx @starknetfoundation/create-starknet-agent my-agent --template full --network sepolia
+  npx @starknetfoundation/create-starknet-agent my-agent --platform claude-code
+  npx @starknetfoundation/create-starknet-agent --detect-only
+  npx @starknetfoundation/create-starknet-agent my-agent -y
 
 ${pc.bold("Credential Setup:")}
-  npx create-starknet-agent credentials
-  npx create-starknet-agent credentials --from-env
-  npx create-starknet-agent credentials --from-ready
-  npx create-starknet-agent credentials --platform openclaw
+  npx @starknetfoundation/create-starknet-agent credentials
+  npx @starknetfoundation/create-starknet-agent credentials --from-env
+  npx @starknetfoundation/create-starknet-agent credentials --from-ready
+  npx @starknetfoundation/create-starknet-agent credentials --platform openclaw
 
 ${pc.bold("Verification:")}
-  npx create-starknet-agent verify
-  npx create-starknet-agent verify --verbose
-  npx create-starknet-agent verify --skip-e2e
-  npx create-starknet-agent verify --json
+  npx @starknetfoundation/create-starknet-agent verify
+  npx @starknetfoundation/create-starknet-agent verify --verbose
+  npx @starknetfoundation/create-starknet-agent verify --skip-e2e
+  npx @starknetfoundation/create-starknet-agent verify --json
 
 ${pc.bold("Agent Self-Setup (Non-Interactive):")}
-  npx create-starknet-agent --non-interactive --json
-  npx create-starknet-agent --platform openclaw --skills starknet-wallet,starknet-defi --non-interactive --json
-  npx create-starknet-agent verify --json
+  npx @starknetfoundation/create-starknet-agent --non-interactive --json
+  npx @starknetfoundation/create-starknet-agent --platform openclaw --skills starknet-wallet,starknet-defi --non-interactive --json
+  npx @starknetfoundation/create-starknet-agent verify --json
 `);
 }
 
@@ -819,7 +819,7 @@ async function main() {
   // Handle --verify flag (deprecated, redirect to verify subcommand)
   if (parsed.verify) {
     if (!parsed.jsonOutput) {
-      console.log(pc.yellow("Note: --verify flag is deprecated. Use 'npx create-starknet-agent verify' instead."));
+      console.log(pc.yellow("Note: --verify flag is deprecated. Use 'npx @starknetfoundation/create-starknet-agent verify' instead."));
       console.log();
     }
     const verifyArgs = parseVerifyArgs(parsed.jsonOutput ? ["--json"] : []);

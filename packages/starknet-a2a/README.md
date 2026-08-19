@@ -24,7 +24,7 @@ npm run build
 ### Initialize the Adapter
 
 ```typescript
-import { createStarknetA2AAdapter } from "@starknet-agentic/a2a";
+import { createStarknetA2AAdapter } from "@starknetfoundation/starknet-agentic-a2a";
 
 const adapter = createStarknetA2AAdapter({
   rpcUrl: "https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY",
@@ -170,7 +170,7 @@ Generate /.well-known/agent.json content for agent discovery.
 
 ```typescript
 import express from "express";
-import { createStarknetA2AAdapter } from "@starknet-agentic/a2a";
+import { createStarknetA2AAdapter } from "@starknetfoundation/starknet-agentic-a2a";
 
 const app = express();
 const adapter = createStarknetA2AAdapter({ ... });

@@ -1,7 +1,14 @@
 {
-  "name": "@starknet-agentic/agent-passport",
-  "version": "0.1.0",
+  "name": "@starknetfoundation/starknet-agentic-agent-passport",
+  "version": "0.1.1",
   "description": "Passport layer on top of ERC-8004 IdentityRegistry: capability metadata conventions + client helpers",
+  "author": "Starknet Agentic Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keep-starknet-strange/starknet-agentic",
+    "directory": "packages/starknet-agent-passport"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,16 +16,16 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
     "test": "vitest run"
   },
   "dependencies": {
-    "starknet": "^9.4.2"
+    "starknet": "^10.0.2"
   },
   "devDependencies": {
     "tsup": "^8.5.0",
-    "typescript": "^5.9.0",
-    "vitest": "^4.0.18"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   }
 }

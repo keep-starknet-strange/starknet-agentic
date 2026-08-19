@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { DOC_CATEGORIES } from "@/data/docs";
+import { getVisibleDocCategories } from "@/data/docs";
 import { useState } from "react";
 
 interface DocsSidebarProps {
@@ -11,10 +11,11 @@ interface DocsSidebarProps {
 
 export function DocsSidebar({ onNavigate }: DocsSidebarProps) {
   const pathname = usePathname();
+  const categories = getVisibleDocCategories();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     () => {
       // Start with all categories expanded
-      return new Set(DOC_CATEGORIES.map((c) => c.slug));
+      return new Set(categories.map((c) => c.slug));
     }
   );
 
@@ -40,7 +41,7 @@ export function DocsSidebar({ onNavigate }: DocsSidebarProps) {
 
   return (
     <nav className="space-y-6" aria-label="Documentation navigation">
-      {DOC_CATEGORIES.map((category) => (
+      {categories.map((category) => (
         <div key={category.slug}>
           <button
             onClick={() => toggleCategory(category.slug)}

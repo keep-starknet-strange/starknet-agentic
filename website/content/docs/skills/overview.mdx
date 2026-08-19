@@ -9,6 +9,41 @@ import { Callout, Steps, Step } from "@/components/docs";
 
 Skills are reusable capability packages that extend what AI agents can do on Starknet. Each skill provides focused instructions, concrete install paths, and source-linked references for a specific job.
 
+## Start Here: `cairo-auditor`
+
+If you only try one skill first, use [`cairo-auditor`](/docs/skills/cairo-auditor). It is the fastest proof that the install path, host integration, and report artifact flow are all working.
+
+Install it once, then run it on any local `.cairo` file in your own project. The repo fixture is still available, but it is no longer the first-run path.
+
+```bash
+# Codex
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
+```
+
+```text
+# Codex prompt
+Run cairo-auditor on path/to/your_contract.cairo with --file-output.
+Output only the final report.
+```
+
+```text
+# Claude Code install
+/plugin marketplace add keep-starknet-strange/starknet-agentic
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+/reload-plugins
+```
+
+```text
+# Claude Code command
+/starknet-agentic-skills:cairo-auditor path/to/your_contract.cairo --file-output
+```
+
+Expected artifact: `security-review-*.md`
+
 ## What are Skills?
 
 A skill is a self-contained package defined by a `SKILL.md` file with:
@@ -19,38 +54,36 @@ A skill is a self-contained package defined by a `SKILL.md` file with:
 - optional scripts, examples, and setup notes
 
 <Callout type="info" title="Skill Format">
-Skills follow the [AgentSkills specification](/docs/skills/writing-skills) so the same catalog can be consumed by Claude Code, Cursor, Copilot, OpenClaw/MoltBook, and custom runtimes.
+Skills follow the [AgentSkills specification](/docs/skills/writing-skills), so the same catalog is portable across Agent Skills-compatible hosts. Public validation in this repo currently focuses on Codex, Claude Code, and Agent Skills CLI.
 </Callout>
 
-## Available Skills
+## Public Catalog
 
-Starknet Agentic currently ships **17 official skills**.
+Start with the skills that are cleanest to demo and easiest to adopt.
 
 <Callout type="info" title="Link Targets">
-Each catalog entry below now has a dedicated docs page, and every page links back to the canonical source skill in the repository.
+Flagship and additional entries below are part of the main public catalog. Incubating/project-specific entries stay directly routable, but are intentionally hidden from the main docs navigation.
 </Callout>
 
-### Runtime and Operations
+### Flagship First-Run Skills
 
 | Skill | Description |
 |-------|-------------|
 | [starknet-wallet](/docs/skills/starknet-wallet) | Wallet management, transfers, session keys, and gasless transactions |
 | [starknet-defi](/docs/skills/starknet-defi) | Token swaps, DCA, staking, and lending flows via AVNU |
 | [starknet-identity](/docs/skills/starknet-identity) | ERC-8004 on-chain identity, reputation, and validation |
-| [starknet-mini-pay](/docs/skills/starknet-mini-pay) | P2P payments, invoices, QR flows, and Telegram usage |
-| [starknet-anonymous-wallet](/docs/skills/starknet-anonymous-wallet) | Anonymous Starknet wallets via Typhoon |
-| [huginn-onboard](/docs/skills/huginn-onboard) | Cross-chain onboarding to Starknet plus Huginn registration |
-| [controller-cli](/docs/skills/controller-cli) | Cartridge Controller CLI sessions, scoped execution, and paymaster control |
-| [starkzap-sdk](/docs/skills/starkzap-sdk) | keep-starknet-strange/starkzap SDK, onboarding, wallet, ERC20, and staking flows |
-| [starknet-tongo](/docs/skills/starknet-tongo) | Confidential ERC20 payments with encrypted balances and ZK-proven transfers |
+| [cairo-auditor](/docs/skills/cairo-auditor) | Multi-step Cairo security review with strict false-positive gating |
 
-### Cairo and Protocol Skills
+### Additional Available Skills
 
 | Skill | Description |
 |-------|-------------|
+| [starknet-mini-pay](/docs/skills/starknet-mini-pay) | P2P payments, invoices, QR flows, and Telegram usage |
+| [starknet-anonymous-wallet](/docs/skills/starknet-anonymous-wallet) | Anonymous Starknet wallets via Typhoon |
+| [controller-cli](/docs/skills/controller-cli) | Cartridge Controller CLI sessions, scoped execution, and paymaster control |
+| [starknet-tongo](/docs/skills/starknet-tongo) | Confidential ERC20 payments with encrypted balances and ZK-proven transfers |
 | [cairo-contract-authoring](/docs/skills/cairo-contract-authoring) | Workflow-first Cairo contract authoring with language guidance and secure defaults |
 | [cairo-testing](/docs/skills/cairo-testing) | snforge unit, integration, fuzz, fork, and regression testing |
-| [cairo-auditor](/docs/skills/cairo-auditor) | Multi-step Cairo security review with strict false-positive gating |
 | [cairo-optimization](/docs/skills/cairo-optimization) | Profile-driven optimization, BoundedInt rules, and benchmarking |
 | [cairo-deploy](/docs/skills/cairo-deploy) | `sncast` deployment, account setup, network config, and verification |
 | [account-abstraction](/docs/skills/account-abstraction) | Validate/execute path correctness, session policies, nonces, and signatures |
@@ -58,6 +91,15 @@ Each catalog entry below now has a dedicated docs page, and every page links bac
 | [starknet-js](/docs/skills/starknet-js) | starknet.js v9.x SDK patterns, paymaster flows, and contract interaction |
 
 For a workflow-oriented view of the Cairo family, start with [Cairo Development Skills](/docs/skills/cairo-coding).
+
+### Incubating or Project-Specific
+
+These entries stay in the repository because they are useful to contributors, but they are not the recommended first-run demo path:
+
+| Skill | Description |
+|-------|-------------|
+| [huginn-onboard](/docs/skills/huginn-onboard) | Cross-chain onboarding to Starknet plus Huginn registration |
+| [starkzap-sdk](/docs/skills/starkzap-sdk) | keep-starknet-strange/starkzap SDK, onboarding, wallet, ERC20, and staking flows |
 
 ## Installing Skills
 
@@ -79,9 +121,14 @@ npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-wallet
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
-/plugin install starknet-agentic-skills@starknet-agentic-skills
+/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user
+/reload-plugins
 /starknet-agentic-skills:starknet-wallet
 ```
+
+<Callout type="info" title="Claude Code scope">
+Use <code>--scope user</code> as the default for public installs. Use <code>--scope local</code> only when you intentionally want a repo-specific pinned plugin state.
+</Callout>
 
 ### Method 3: Direct GitHub Clone
 
@@ -96,14 +143,11 @@ The agent will automatically discover skills in the `skills/` directory.
 
 The MCP server provides tools that implement skill functionality directly. See the [MCP Server Guide](/docs/guides/mcp-server) for setup.
 
-### Using ClawHub (Coming Soon)
+## Need Help?
 
-Browse and install community skills from [ClawHub](https://clawhub.com):
-
-```bash
-# Install a skill from ClawHub
-claw install starknet-wallet
-```
+- [GitHub Issues](https://github.com/keep-starknet-strange/starknet-agentic/issues) for bugs and docs fixes
+- [Starknet Discord](https://discord.gg/starknet) for ecosystem support
+- [Starknet on X](https://x.com/Starknet) for release updates
 
 ## Skill File Structure
 
@@ -187,4 +231,3 @@ The agent uses the skill references and scripts to accomplish the task while sta
 - **[Wallet Skill](/docs/skills/starknet-wallet)** - Start with wallet operations
 - **[Cairo Development Skills](/docs/skills/cairo-coding)** - Use the workflow map for contract authoring, testing, auditing, optimization, and deployment
 - **[Writing Your Own Skill](/docs/skills/writing-skills)** - Create custom skills
-- **[Publishing to ClawHub](/docs/skills/publishing)** - Share with the community

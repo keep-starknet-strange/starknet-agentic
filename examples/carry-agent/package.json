@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agentic/carry-agent-demo",
+  "name": "@starknetfoundation/starknet-agentic-carry-agent-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Deterministic carry monitor example for Starknet-agentic using Extended market data.",
@@ -11,12 +11,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "dotenv": "^17.3.1",
-    "zod": "^4.3.6"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "dotenv": "^17.4.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.0"
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3"
   }
 }

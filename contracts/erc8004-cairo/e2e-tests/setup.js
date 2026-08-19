@@ -1,4 +1,4 @@
-import { Account, Contract, RpcProvider, cairo, shortString, constants } from 'starknet';
+import { Account, Contract, RpcProvider, cairo, constants } from 'starknet';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

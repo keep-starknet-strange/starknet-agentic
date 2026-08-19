@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   mockQuote,
-  mockSwapResult,
-  mockQuoteToCalls,
   createMockAvnu,
   createMockAvnuNoQuotes,
   createMockAvnuWithError,

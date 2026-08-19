@@ -149,7 +149,7 @@ export function parseVerifyArgs(args: string[]): VerifyArgs {
 export function printVerifyHelp(): void {
   console.log(`
 ${pc.bold("Usage:")}
-  npx create-starknet-agent verify [options]
+  npx @starknetfoundation/create-starknet-agent verify [options]
 
 ${pc.bold("Description:")}
   Verify that your Starknet agent setup is working correctly.
@@ -169,11 +169,11 @@ ${pc.bold("Exit Codes:")}
   2  Missing credentials - setup incomplete
 
 ${pc.bold("Examples:")}
-  npx create-starknet-agent verify
-  npx create-starknet-agent verify --verbose
-  npx create-starknet-agent verify --skip-e2e
-  npx create-starknet-agent verify --platform claude-code
-  npx create-starknet-agent verify --json
+  npx @starknetfoundation/create-starknet-agent verify
+  npx @starknetfoundation/create-starknet-agent verify --verbose
+  npx @starknetfoundation/create-starknet-agent verify --skip-e2e
+  npx @starknetfoundation/create-starknet-agent verify --platform claude-code
+  npx @starknetfoundation/create-starknet-agent verify --json
 `);
 }
 
@@ -223,7 +223,7 @@ async function checkMcpServer(
 
         // Try to extract version from args
         const args = serverConfig.args || [];
-        const versionArg = args.find((a: string) => a.includes("@starknet-agentic/mcp-server"));
+        const versionArg = args.find((a: string) => a.includes("@starknetfoundation/starknet-agentic-mcp-server"));
         if (versionArg) {
           const versionMatch = versionArg.match(/@([\d.]+|latest)$/);
           if (versionMatch) {
@@ -262,7 +262,7 @@ async function pingMcpServer(
     const timeout = 10000; // 10 second timeout
 
     // Try to spawn the MCP server with a simple ping
-    const child = spawn("npx", ["-y", "@starknet-agentic/mcp-server@latest", "--help"], {
+    const child = spawn("npx", ["-y", "@starknetfoundation/starknet-agentic-mcp-server@latest", "--help"], {
       stdio: verbose ? "inherit" : "pipe",
       env: {
         ...process.env,
@@ -697,7 +697,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     }
 
     if (mcpResult.serverConfigured) {
-      console.log(`  ${pc.green("✓")} Server binary: @starknet-agentic/mcp-server${mcpResult.serverVersion ? `@${mcpResult.serverVersion}` : ""}`);
+      console.log(`  ${pc.green("✓")} Server binary: @starknetfoundation/starknet-agentic-mcp-server${mcpResult.serverVersion ? `@${mcpResult.serverVersion}` : ""}`);
     } else if (mcpResult.configExists) {
       console.log(`  ${pc.red("✗")} Starknet server not configured in MCP config`);
     }
@@ -880,13 +880,13 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     // Suggest fixes
     if (!mcpResult.configExists || !mcpResult.serverConfigured) {
       console.log(pc.bold("To configure MCP server:"));
-      console.log(pc.cyan("  npx create-starknet-agent"));
+      console.log(pc.cyan("  npx @starknetfoundation/create-starknet-agent"));
       console.log();
     }
 
     if (!credentialsResult.privateKeyPresent || !credentialsResult.accountAddressPresent) {
       console.log(pc.bold("To add credentials:"));
-      console.log(pc.cyan("  npx create-starknet-agent credentials"));
+      console.log(pc.cyan("  npx @starknetfoundation/create-starknet-agent credentials"));
       console.log();
     }
   }

@@ -67,6 +67,14 @@
       "skill_md_path": "skills/huginn-onboard/SKILL.md"
     },
     {
+      "description": "SNIP-36 virtual block proving on Starknet. Trigger on \\\"virtual block\\\", \\\"SNIP-36\\\", \\\"off-chain proof\\\", \\\"anonymous vote\\\", \\\"heavy computation off-chain\\\", \\\"prove a transaction\\\". Covers Cairo virtual contract, proof server, starknet.js integration, and on-chain verification.",
+      "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/snip-36",
+      "name": "snip-36",
+      "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/snip-36/SKILL.md",
+      "repo_path": "skills/snip-36",
+      "skill_md_path": "skills/snip-36/SKILL.md"
+    },
+    {
       "description": "Create an anonymous Starknet wallet via Typhoon and interact with Starknet contracts. Privacy-focused wallet creation for agents requiring anonymity.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-anonymous-wallet",
       "name": "starknet-anonymous-wallet",

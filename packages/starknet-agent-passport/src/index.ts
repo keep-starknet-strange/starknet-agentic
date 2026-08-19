@@ -33,7 +33,7 @@ export function decodeByteArrayAsString(v: unknown): string {
 }
 
 function isByteArray(v: unknown): v is ByteArray {
-  if (typeof v !== "object" || v === null) return false
+  if (v === null || typeof v !== "object") return false
   const obj = v as Record<string, unknown>
   return (
     Array.isArray(obj.data) &&
