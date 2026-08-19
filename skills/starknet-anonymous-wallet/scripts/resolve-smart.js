@@ -21,6 +21,51 @@ import { loadPrivateKeyByAccountAddress } from './_keys.js';
 
 const AVNU_VIRTUAL_SENTINELS = new Set(['__avnu_virtual__', '0x01']);
 const VESU_VIRTUAL_SENTINELS = new Set(['__vesu_virtual__', '0x02']);
+const SUPPORTED_OPERATION_TYPES = new Set([
+  'AVNU_SWAP',
+  'WRITE',
+  'READ',
+  'CONDITIONAL',
+  'EVENT_WATCH',
+]);
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isOptionalString(value) {
+  return value === undefined || typeof value === 'string';
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function isAbiValue(value) {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isAvnuRouted(op, addresses) {
+  const protocol = typeof op?.protocol === 'string' ? op.protocol : '';
+  return protocol.toLowerCase() === 'avnu' ||
+    AVNU_VIRTUAL_SENTINELS.has(String(addresses[op?.protocol] || '')) ||
+    AVNU_VIRTUAL_SENTINELS.has(String(op?.contractAddress || ''));
+}
+
+function hasAvnuSwapTokens(op) {
+  return isNonEmptyString(op?.tokenIn) && isNonEmptyString(op?.tokenOut);
+}
+
+function emitInvalidParsedInput(result, error) {
+  console.log(JSON.stringify({
+    ...result,
+    success: false,
+    canProceed: false,
+    nextStep: 'INVALID_PARSED_INPUT',
+    error,
+  }));
+  process.exit(1);
+}
 
 // ============ LOOT SURVIVOR LATEST ADVENTURER (LOCAL UX STATE) ============
 // We intentionally do NOT scan chain/indexers for "latest adventurer".
@@ -415,39 +460,51 @@ async function main() {
       orchestration: [{ step: 0, name: "Using LLM-parsed data" }]
     };
     
-    const { operations = [], operationType, abis = {}, addresses = {} } = parsed;
-    const operationsValid = Array.isArray(operations) &&
-      operations.every((op) => op !== null && typeof op === "object" && !Array.isArray(op));
-    const abisValid = abis !== null && typeof abis === "object" && !Array.isArray(abis);
-    const addressesValid = addresses !== null && typeof addresses === "object" && !Array.isArray(addresses);
-    if (!operationsValid || !abisValid || !addressesValid) {
-      console.log(JSON.stringify({
-        ...result,
-        success: false,
-        canProceed: false,
-        nextStep: "INVALID_PARSED_INPUT",
-        error: "parsed.operations must be an array of objects and parsed.abis/addresses must be objects"
-      }));
-      process.exit(1);
+    if (!isPlainObject(parsed)) {
+      emitInvalidParsedInput(result, "parsed must be a non-null object");
     }
-    if (operationType === "AVNU_SWAP") {
-      const swapOp = operations[0];
-      if (
-        !swapOp ||
-        typeof swapOp.tokenIn !== "string" ||
-        swapOp.tokenIn.length === 0 ||
-        typeof swapOp.tokenOut !== "string" ||
-        swapOp.tokenOut.length === 0
-      ) {
-        console.log(JSON.stringify({
-          ...result,
-          success: false,
-          canProceed: false,
-          nextStep: "INVALID_PARSED_INPUT",
-          error: "parsed.operations[0] must include non-empty tokenIn and tokenOut for AVNU_SWAP"
-        }));
-        process.exit(1);
-      }
+
+    const { operations = [], operationType, abis = {}, addresses = {} } = parsed;
+    if (!SUPPORTED_OPERATION_TYPES.has(operationType)) {
+      emitInvalidParsedInput(result, "parsed.operationType must be one of AVNU_SWAP, WRITE, READ, CONDITIONAL, EVENT_WATCH");
+    }
+
+    const operationsValid = Array.isArray(operations) && operations.every((op) =>
+      isPlainObject(op) &&
+      isOptionalString(op.protocol) &&
+      isOptionalString(op.action) &&
+      isOptionalString(op.contractAddress)
+    );
+    const abisValid = isPlainObject(abis) && Object.values(abis).every(isAbiValue);
+    const addressesValid = isPlainObject(addresses);
+    const watchers = parsed.watchers;
+    const watchersValid = watchers === undefined || (
+      Array.isArray(watchers) &&
+      watchers.every((w) =>
+        isPlainObject(w) &&
+        isOptionalString(w.protocol) &&
+        isOptionalString(w.action) &&
+        isOptionalString(w.eventName)
+      )
+    );
+    if (!operationsValid || !abisValid || !addressesValid || !watchersValid) {
+      emitInvalidParsedInput(
+        result,
+        "parsed.operations must be objects with string identifiers, parsed.abis values must be string arrays, parsed.addresses must be an object, and parsed.watchers must be an array of objects when present"
+      );
+    }
+    if (operationType === "AVNU_SWAP" && !hasAvnuSwapTokens(operations[0])) {
+      emitInvalidParsedInput(result, "parsed.operations[0] must include non-empty tokenIn and tokenOut for AVNU_SWAP");
+    }
+    if (operationType === "WRITE" && operations.some((op) => isAvnuRouted(op, addresses) && !hasAvnuSwapTokens(op))) {
+      emitInvalidParsedInput(result, "AVNU WRITE operations must include non-empty tokenIn and tokenOut");
+    }
+    if (
+      operationType === "CONDITIONAL" &&
+      Array.isArray(watchers) &&
+      watchers.some((w) => w.action && w.action !== "watch" && isAvnuRouted(w, addresses) && !hasAvnuSwapTokens(w))
+    ) {
+      emitInvalidParsedInput(result, "AVNU CONDITIONAL actions must include non-empty tokenIn and tokenOut");
     }
     
     result.parsed = parsed;

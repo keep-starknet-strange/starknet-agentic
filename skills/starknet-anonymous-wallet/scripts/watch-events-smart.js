@@ -833,7 +833,20 @@ async function main() {
       process.exit(1);
     }
     config = argvConfig;
-    webhookUrl = sanitizeWebhookUrl(argvConfig.webhookUrl) || sanitizeWebhookUrl(process.env.WEBHOOK_URL);
+    if (Object.prototype.hasOwnProperty.call(argvConfig, 'webhookUrl')) {
+      const rawWebhookUrl = argvConfig.webhookUrl;
+      if (rawWebhookUrl === undefined || rawWebhookUrl === null || rawWebhookUrl === '') {
+        webhookUrl = null;
+      } else {
+        webhookUrl = sanitizeWebhookUrl(rawWebhookUrl);
+        if (!webhookUrl) {
+          console.error(JSON.stringify({ error: 'Invalid webhookUrl in input argument' }));
+          process.exit(1);
+        }
+      }
+    } else {
+      webhookUrl = sanitizeWebhookUrl(process.env.WEBHOOK_URL);
+    }
   }
 
   const parsedEventNames = parseConfiguredEventNames(config.eventNames);
