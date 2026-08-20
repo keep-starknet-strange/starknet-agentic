@@ -35,12 +35,50 @@ Run Cairo benchmark and generate a scorecard:
 
 ```bash
 python scripts/quality/benchmark_cairo_auditor.py \
-  --cases evals/cases/cairo_auditor_benchmark.jsonl \
-  --output evals/scorecards/v0.2.0-cairo-auditor-benchmark.md \
+  --cases evals/cases/cairo_auditor_realworld_benchmark.jsonl \
+  --output evals/scorecards/v0.2.0-cairo-auditor-realworld-benchmark.md \
   --min-precision 0.90 \
   --min-recall 0.90 \
   --min-class-recall 0.90
 ```
+
+The synthetic `cairo_auditor_benchmark.jsonl` pack was retired (it duplicated the
+real-world pack's class distribution and 1.000/1.000 result without real-repo
+provenance). The real-world pack is the single deterministic regression gate.
+
+### Recall + taxonomy coverage (independent ground truth)
+
+The deterministic benchmark and external-triage scorecards measure
+precision/regression; their recall is tautological (a missed vuln cannot appear
+in "what the tool reported"). This eval instead measures coverage against the
+217 human-confirmed findings under `datasets/normalized/findings/`:
+
+```bash
+python scripts/quality/recall_eval_cairo_auditor.py \
+  --output evals/scorecards/v0.2.0-cairo-auditor-recall-coverage.md \
+  --output-json evals/scorecards/v0.2.0-cairo-auditor-recall-coverage.json \
+  --min-taxonomy-coverage 0.10 \
+  --min-crit-high-coverage 0.10
+```
+
+It reports taxonomy coverage (what the 13 classes can represent), deterministic
+recall on the evaluable subset, and the explicit unmeasured remainder.
+
+### Default-vs-deep A/B (does Agent 5 earn its cost?)
+
+Generate two structured-report JSON artifacts over the **same** repo/ref — one
+default run, one deep run — then compare:
+
+```bash
+python scripts/quality/ab_default_vs_deep.py \
+  --default-json /path/to/default-report.json \
+  --deep-json /path/to/deep-report.json \
+  --output-md /tmp/cairo-auditor-ab.md \
+  --output-json /tmp/cairo-auditor-ab.json
+```
+
+It reports deep-only findings, adversarial/cross-agent attribution, a cost
+proxy, and a verdict on whether deep mode added value in that run.
 
 Run contract skill benchmark (compiles/tests fixture contracts and enforces policy assertions):
 

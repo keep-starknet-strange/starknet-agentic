@@ -16,6 +16,14 @@ Return structured JSON only in your final response. Do not emit draft findings d
 - Trust-chain composition (owner -> manager -> allocator -> adapter).
 - Session/account validation-execute interplay.
 - Upgrade/admin takeover paths and failure modes.
+- **Cross-partition composition** — vectors agents 1-4 each scan ONE lens
+  (1: access control + upgradeability, 2: external calls + reentrancy,
+  3: math + pricing + economics, 4: storage + components + trust). A root cause
+  that spans two lenses (e.g. an access-control gap that only becomes critical
+  through an external call, or a math error exploitable only via a storage
+  trust boundary) is under-weighted by every single-lens agent. Deliberately
+  hunt these boundary-spanning chains — they are the findings deep mode exists
+  to add over the default scan.
 
 ## Workflow
 
@@ -30,8 +38,14 @@ Return structured JSON only in your final response. Do not emit draft findings d
    - `AX1 | path: entry() -> helper() -> sink() | guard: none | verdict: CONFIRM [88]`
    - `AX2 | path: set_*() -> write() | guard: assert_only_owner | verdict: DROP (FP gate 3: guarded)`
 5. Run one composability pass if 2+ findings survive (compound impact across functions/modules).
-6. Return only the final JSON object. Do not output verdict traces.
-7. Include evidence tags in every finding per `../references/structured-findings.md`.
+6. **Cross-partition boundary pass.** If the orchestrator passed first-pass
+   vector findings (a "Vector findings so far" block), re-derive each from
+   source. Re-deriving a vector finding from an independent reasoning path is
+   valuable: it earns the finding a `[CROSS-AGENT]` corroboration tag at merge.
+   Then look specifically for a chain that links two vector lenses into a higher
+   impact than either reported alone, and report it as a new finding.
+7. Return only the final JSON object. Do not output verdict traces.
+8. Include evidence tags in every finding per `../references/structured-findings.md`.
 
 ## Candidate Format
 

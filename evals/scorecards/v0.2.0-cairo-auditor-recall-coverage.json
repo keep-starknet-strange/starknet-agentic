@@ -1,0 +1,64 @@
+{
+  "total_findings": 217,
+  "mapped_in_taxonomy": 28,
+  "out_of_taxonomy": 189,
+  "taxonomy_coverage_count": 0.129,
+  "taxonomy_coverage_weighted": 0.1128,
+  "crit_high_total": 43,
+  "crit_high_mapped": 7,
+  "crit_high_coverage": 0.1628,
+  "evaluable_subset": 6,
+  "evaluable_detected": 1,
+  "deterministic_recall_on_evaluable": 0.1667,
+  "unmeasured_placeholder": 22,
+  "by_severity": {
+    "high": 26,
+    "info": 47,
+    "best_practice": 37,
+    "critical": 17,
+    "medium": 30,
+    "low": 60
+  },
+  "mapped_by_severity": {
+    "best_practice": 5,
+    "high": 7,
+    "info": 7,
+    "low": 9
+  },
+  "mapped_class_counts": {
+    "CONSTRUCTOR_DEAD_PARAM": 4,
+    "SHUTDOWN_OVERRIDE_PRECEDENCE": 4,
+    "UNCHECKED_FEE_BOUND": 12,
+    "SYSCALL_SELECTOR_FALLBACK_ASSUMPTION": 3,
+    "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD": 1,
+    "CEI_VIOLATION_ERC1155": 3,
+    "NO_ACCESS_CONTROL_MUTATION": 1
+  },
+  "evaluable_misses": [
+    {
+      "finding_id": "CSC-VESU-001",
+      "class_id": "SHUTDOWN_OVERRIDE_PRECEDENCE",
+      "severity": "high"
+    },
+    {
+      "finding_id": "CSC-VESU-002",
+      "class_id": "SHUTDOWN_OVERRIDE_PRECEDENCE",
+      "severity": "info"
+    },
+    {
+      "finding_id": "ERIM-NOSTRA-I01",
+      "class_id": "SYSCALL_SELECTOR_FALLBACK_ASSUMPTION",
+      "severity": "info"
+    },
+    {
+      "finding_id": "ERIM-NOSTRA-I02",
+      "class_id": "SYSCALL_SELECTOR_FALLBACK_ASSUMPTION",
+      "severity": "info"
+    },
+    {
+      "finding_id": "ERIM-NOSTRA-BP03",
+      "class_id": "CRITICAL_ADDRESS_INIT_WITHOUT_NONZERO_GUARD",
+      "severity": "best_practice"
+    }
+  ]
+}

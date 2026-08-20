@@ -500,11 +500,17 @@ Deterministic scorecards are smoke/regression gates, not final independent proof
 
 | Suite | Cases | Precision | Recall | Scorecard |
 | --- | ---: | ---: | ---: | --- |
-| Core deterministic | 42 | 1.000 | 1.000 | [v0.2.0-cairo-auditor-benchmark.md](../../evals/scorecards/v0.2.0-cairo-auditor-benchmark.md) |
 | Real-world corpus | 42 | 1.000 | 1.000 | [v0.2.0-cairo-auditor-realworld-benchmark.md](../../evals/scorecards/v0.2.0-cairo-auditor-realworld-benchmark.md) |
+
+The earlier synthetic `core-deterministic` pack was retired — it duplicated the
+real-world corpus (same per-class distribution, same 1.000/1.000) without the
+real-repo provenance. The real-world corpus is now the single deterministic
+regression gate.
 
 Additional quality signals:
 
+- **Recall + taxonomy coverage** (independent ground truth, not tautological recall): [v0.2.0-cairo-auditor-recall-coverage.md](../../evals/scorecards/v0.2.0-cairo-auditor-recall-coverage.md) — measures how much of 217 real audit findings the supported taxonomy can represent. This is the honest recall signal; deterministic scorecards above only measure precision/regression.
+- Default-vs-deep A/B: run `scripts/quality/ab_default_vs_deep.py` to quantify the marginal value of the adversarial Agent 5 (see `evals/README.md`).
 - External triage: [v0.2.0-cairo-auditor-external-triage.md](../../evals/scorecards/v0.2.0-cairo-auditor-external-triage.md)
 - Manual gold: [v0.2.0-cairo-auditor-manual-19-gold-recall.md](../../evals/scorecards/v0.2.0-cairo-auditor-manual-19-gold-recall.md)
 

@@ -403,6 +403,7 @@ jobs:
           python3 -m unittest scripts/quality/test_codex_distribution.py
           python3 -m unittest scripts/quality/test_cairo_auditor_release_hygiene.py
           python3 -m unittest scripts/quality/test_sync_cairo_auditor_release.py
+          python3 -m unittest scripts/quality/test_cairo_auditor_quality.py
 
       - name: Validate skill contracts
         run: |
@@ -414,6 +415,7 @@ jobs:
         run: |
           python3 skills/cairo-auditor/tests/validate_preflight.py
           python3 skills/cairo-auditor/tests/validate_deep_smoke.py
+          python3 skills/cairo-auditor/tests/validate_component_resolution.py
 
       - name: Validate skills manifest
         run: |
