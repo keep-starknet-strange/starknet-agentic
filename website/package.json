@@ -15,9 +15,9 @@
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
-    "@next/mdx": "^16.3.1",
+    "@next/mdx": "^16.3.2",
     "gray-matter": "^4.0.3",
-    "next": "^16.3.1",
+    "next": "^16.3.2",
     "next-mdx-remote": "^6.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -32,8 +32,8 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "autoprefixer": "^10.5.4",
-    "eslint": "^10.8.1",
-    "eslint-config-next": "^16.3.1",
+    "eslint": "^10.9.0",
+    "eslint-config-next": "^16.3.2",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.19",
     "typescript": "^6.0.3"
