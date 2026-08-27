@@ -30,7 +30,7 @@
     "@types/mdx": "^2.0.14",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
+    "@types/react-dom": "^19.2.5",
     "autoprefixer": "^10.5.4",
     "eslint": "^10.9.0",
     "eslint-config-next": "^16.3.2",
