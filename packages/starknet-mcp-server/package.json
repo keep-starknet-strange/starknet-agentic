@@ -23,7 +23,7 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*",
     "starknet": "^10.0.2",
-    "zod": "^4.4.3"
+    "zod": "^4.5.2"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
