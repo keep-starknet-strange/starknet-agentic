@@ -22,12 +22,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "zod": "^4.5.2"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.4.1",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   }
 }
