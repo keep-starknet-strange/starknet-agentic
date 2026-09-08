@@ -26,14 +26,14 @@
     "ci:release": "pnpm build && changeset publish"
   },
   "devDependencies": {
-    "@changesets/cli": "3.0.1",
+    "@changesets/cli": "3.0.2",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.4.0",
-    "eslint": "^10.9.1",
+    "@types/node": "^26.4.1",
+    "eslint": "^10.10.0",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   },
   "engines": {
     "node": ">=24.0.0"
