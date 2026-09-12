@@ -19,7 +19,8 @@ This document is the required pre-deletion coverage check for replacing
 3. Verified source preservation file exists:
    `skills/cairo-auditor/references/audit-findings/source-cairo-security-import.md`.
 4. Verified core security signal packs remain intact:
-   - vulnerability database: 29 class files
+   - vulnerability database: 29 class files (count as of this migration check; see
+     `references/vulnerability-db/README.md` for the current total)
    - attack vectors: 170 vectors across 4 partitions
 
 ## Section Coverage Mapping
