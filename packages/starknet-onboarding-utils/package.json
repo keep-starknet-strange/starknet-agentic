@@ -17,10 +17,10 @@
   },
   "dependencies": {
     "@starknetfoundation/starknet-agentic-shared": "workspace:*",
-    "starknet": "^10.0.2"
+    "starknet": "^10.8.0"
   },
   "devDependencies": {
-    "@types/node": "^26.5.0",
+    "@types/node": "^26.5.1",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3",
     "vitest": "^5.0.0"
