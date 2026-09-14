@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "@starknetfoundation/starknet-agentic-shared": "workspace:*",
-    "starknet": "^10.0.2"
+    "starknet": "^10.8.0"
   },
   "devDependencies": {
-    "@types/node": "^26.5.0",
+    "@types/node": "^26.5.1",
     "eslint": "^10.10.0",
     "@eslint/js": "^10.0.1",
     "typescript": "^6.0.3",

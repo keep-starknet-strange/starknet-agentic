@@ -10,7 +10,7 @@
     "dev": "tsx watch index.ts"
   },
   "dependencies": {
-    "starknet": "^10.0.2",
+    "starknet": "^10.8.0",
     "@avnu/avnu-sdk": "^4.2.0",
     "dotenv": "^17.4.2"
   },
