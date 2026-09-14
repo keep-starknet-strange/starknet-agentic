@@ -24,14 +24,16 @@ Each specialist final response must be a JSON object:
 | `root_cause` | yes | Stable dedupe key. Same root cause across agents should match. |
 | `file` | yes | Repo-relative Cairo path. |
 | `line` | no | Best-effort 1-based line. |
+| `tier` | no | `finding` (default) or `lead`. A lead is a high-signal trail you could not prove end-to-end. |
+| `unverified` | yes for leads | The specific link in the attack path you could not establish. |
 | `priority` | yes | `P0`, `P1`, `P2`, or `P3`. |
 | `severity` | yes | `Critical`, `High`, `Medium`, or `Low`. |
 | `confidence` | yes | Integer `0..100` after FP-gate deductions. |
 | `description` | yes | Concrete exploit path and impact. |
 | `attack_path` | yes | Caller -> entrypoint -> state transition -> impact. |
 | `guard_analysis` | yes | Existing guards and why they do or do not block impact. |
-| `recommended_fix` | yes for confidence >= 75 | Diff text or exact remediation. |
-| `required_tests` | yes for confidence >= 75 | Regression and guard tests. |
+| `recommended_fix` | yes for confidence >= 75, and never on leads | Diff text or exact remediation. |
+| `required_tests` | yes for confidence >= 75, and never on leads | Regression and guard tests. |
 | `evidence_tags` | yes | Must include `[CODE-TRACE]`; Agent 5 also includes `[ADVERSARIAL]`. |
 
 `dropped_candidates` entries use:
@@ -46,8 +48,11 @@ Each specialist final response must be a JSON object:
 
 - Parse specialist JSON before rendering any Markdown.
 - Reject malformed specialist output and rerun that specialist once.
-- Deduplicate by `root_cause`, then keep higher confidence, then higher priority,
-  then more complete path evidence.
+- Deduplicate by `(file, root_cause)`. Never merge candidates across files: two
+  specialists can describe unrelated bugs in different files with the same
+  root-cause sentence, and collapsing those silently discards a real finding.
+- Within one key, a proven finding outranks a lead; then keep higher confidence,
+  then higher priority, then more complete path evidence.
 - Add `[CROSS-AGENT]` when the same root cause appears from two or more agents.
 - Add `[PREFLIGHT-HIT]` when deterministic preflight flagged the same class or
   entry point.

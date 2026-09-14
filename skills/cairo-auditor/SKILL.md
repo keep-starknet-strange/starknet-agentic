@@ -360,7 +360,7 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 **Turn 4 — Report.** Merge all agent results and emit the report in canonical order:
 
 0. If `{skill_root}/scripts/quality/structured_report.py` exists, render through it with all `{workdir}/cairo-audit-agent-*-findings.json` files, the preflight JSON path, `{workdir}/cairo-audit-files.txt`, the resolved execution-integrity value, and `--proven-only` when that flag is active. Use its Markdown output as the report body.
-1. Deduplicate by root cause (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence).
+1. Deduplicate by root cause **within a single file** (keep the higher-confidence version, merge broader attack path details; on confidence tie keep higher priority, then more complete path evidence). Never merge candidates across different files: two specialists can describe unrelated bugs in separate files with the same root-cause sentence, and merging those discards a real finding. A proven finding always outranks a lead for the same root cause.
 2. Apply evidence tags per `references/judging.md` Evidence Tags section:
    - Validate every finding has `[CODE-TRACE]`; if a source agent omitted it, add `[CODE-TRACE]` during merge normalization.
    - Add `[PREFLIGHT-HIT]` if the deterministic preflight flagged the same class or entry point.
@@ -371,7 +371,7 @@ Integrity gate (for hosts where deep-mode enforcement is enabled):
 5. Re-number findings sequentially starting at `1`.
 6. Insert one **Below Confidence Threshold** separator row in the findings index immediately before the first finding with confidence < 75.
 7. Print rendered findings directly — do not re-draft or re-describe them.
-8. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Dropped Candidates`, `Findings Index`.
+8. Always include sections in this exact order: `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Leads`, `Dropped Candidates`, `Findings Index`.
 9. Add scope table and findings index table per report-formatting.md.
 10. Add the disclaimer.
 
@@ -436,6 +436,8 @@ Each finding must include:
 - `recommended_fix` (diff block for confidence >= 75)
 - `required_tests` (regression + guard tests)
 - `evidence_tags` (`[CODE-TRACE]` minimum; upgrade when stronger proof exists)
+- `tier` (`finding` by default, or `lead` when the attack path could not be closed)
+- `unverified` (required for leads: the exact link in the path you could not establish)
 
 Specialist final outputs must be structured JSON matching `references/structured-findings.md`; markdown finding blocks are invalid specialist output.
 
