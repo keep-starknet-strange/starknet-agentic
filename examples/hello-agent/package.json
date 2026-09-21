@@ -6,7 +6,7 @@
     "start": "node index.mjs"
   },
   "dependencies": {
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.0",
     "starknet": "^10.8.0"
   }
 }

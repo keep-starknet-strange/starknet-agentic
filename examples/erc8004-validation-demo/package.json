@@ -8,12 +8,12 @@
     "test": "vitest run --silent"
   },
   "dependencies": {
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.0",
     "starknet": "^10.8.0"
   },
   "devDependencies": {
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   }
 }
