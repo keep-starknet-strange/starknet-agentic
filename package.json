@@ -28,8 +28,8 @@
   "devDependencies": {
     "@changesets/cli": "3.0.3",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.6.1",
-    "eslint": "^10.10.0",
+    "@types/node": "^26.6.2",
+    "eslint": "^10.11.0",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3",
     "vite": "^8.3.0",

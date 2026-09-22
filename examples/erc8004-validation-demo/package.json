@@ -8,7 +8,7 @@
     "test": "vitest run --silent"
   },
   "dependencies": {
-    "dotenv": "^18.0.0",
+    "dotenv": "^18.0.1",
     "starknet": "^10.8.0"
   },
   "devDependencies": {
