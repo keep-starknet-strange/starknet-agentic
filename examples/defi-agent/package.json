@@ -12,7 +12,7 @@
   "dependencies": {
     "starknet": "^10.8.0",
     "@avnu/avnu-sdk": "^4.2.0",
-    "dotenv": "^18.0.0"
+    "dotenv": "^18.0.1"
   },
   "devDependencies": {
     "tsx": "^4.23.13",
