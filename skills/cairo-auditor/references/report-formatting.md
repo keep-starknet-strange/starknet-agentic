@@ -27,7 +27,7 @@ capping. Use `scripts/quality/structured_report.py` when available.
 
 ## Signal Summary
 
-| Critical | High | Medium | Low | Total |
+| Critical | High | Medium | Low | Total | Leads |
 |----------|------|--------|-----|-------|
 | N        | N    | N      | N   | N     |
 
@@ -162,8 +162,8 @@ When degraded:
 ## Rules
 
 - Follow the template above exactly.
-- Default section order is `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Dropped Candidates`, then `Findings Index`.
-- In `Signal Summary`, `Total` must equal `Critical + High + Medium + Low`. If any input `Total` differs, recompute and overwrite it.
+- Default section order is `Signal Summary`, `Scope`, `Execution Trace`, `Findings`, `Leads`, `Dropped Candidates`, then `Findings Index`.
+- In `Signal Summary`, `Total` must equal `Critical + High + Medium + Low`. If any input `Total` differs, recompute and overwrite it. `Leads` counts `tier: "lead"` entries and is excluded from the severity columns and from `Total`.
 - `Execution Trace` must include scope discovery and Agents 1-4 for every run.
 - In deep mode, `Execution Trace` must include Agent 5 with actual model label and status.
 - In non-deep modes, keep Agent 5 row with `Status: SKIPPED`.
@@ -171,7 +171,7 @@ When degraded:
 - Keep the optional threat-intel row in the execution trace. Use `SKIPPED` when intel fetch is unavailable/offline.
 - For threat-intel stage, include explicit reason details (`SKIPPED: no curl`, `SKIPPED: offline`, or `FAILED: curl error <code>`).
 - If any specialist is unavailable and degraded mode is explicitly enabled, set `Execution Integrity: DEGRADED` and include the warning line under Scope.
-- If scope discovery or any required stage (Agents 1-4 and Agent 5 in deep mode) has `Status: FAILED` and degraded mode is not explicitly enabled, set `Execution Integrity: FAILED` and stop after `Execution Trace` (do not emit `Findings`, `Dropped Candidates`, or `Findings Index`).
+- If scope discovery or any required stage (Agents 1-4 and Agent 5 in deep mode) has `Status: FAILED` and degraded mode is not explicitly enabled, set `Execution Integrity: FAILED` and stop after `Execution Trace` (do not emit `Findings`, `Leads`, `Dropped Candidates`, or `Findings Index`).
 - If degraded execution is used, repeat the warning again immediately before `Findings Index`.
 - Every finding must include `Evidence` tags in the finding line and in `Findings Index`.
 - Allowed evidence tags: `[CODE-TRACE]`, `[PREFLIGHT-HIT]`, `[CROSS-AGENT]`, `[ADVERSARIAL]`.
@@ -188,6 +188,8 @@ When degraded:
 - The orchestrator adds `[CROSS-AGENT]` when 2+ agents independently reported the same root cause before deduplication.
 - The orchestrator adds `[ADVERSARIAL]` when Agent 5 discovered or confirmed the finding.
 - Evidence tags appear in the metadata line after severity and in the Findings Index `Evidence` column.
+- `Execution Trace` carries a `Merge completeness` row reporting how many files with candidates survived the merge; a file lost to `duplicate_root_cause` sets it to `FAILED`.
+- Emit `Leads` after `Findings`, with `No leads.` when there are none. A lead shows its class, location and unverified link, never a fix block, and its confidence score is used for ordering but not rendered.
 - Track dropped candidates in `Dropped Candidates` with one of: `false_positive`, `duplicate_root_cause`, `below_confidence_threshold`, `insufficient_evidence`.
 - If no candidates are dropped, still emit `Dropped Candidates` with a single `none` row.
 
