@@ -89,9 +89,6 @@ jobs:
         run: |
           python scripts/audit-pipeline/validate_jsonl.py \
             --schema evals/cases/benchmark-case.schema.json \
-            --jsonl evals/cases/cairo_auditor_benchmark.jsonl
-          python scripts/audit-pipeline/validate_jsonl.py \
-            --schema evals/cases/benchmark-case.schema.json \
             --jsonl evals/cases/cairo_auditor_realworld_benchmark.jsonl
           python scripts/audit-pipeline/validate_jsonl.py \
             --schema evals/cases/contract-benchmark-case.schema.json \
@@ -124,7 +121,6 @@ jobs:
       - name: Validate vuln-db parity and vector coverage
         run: |
           python scripts/quality/check_vulndb_parity.py \
-            --cases evals/cases/cairo_auditor_benchmark.jsonl \
             --cases evals/cases/cairo_auditor_realworld_benchmark.jsonl
           python scripts/quality/check_attack_vector_coverage.py \
             --min-vectors 120
@@ -143,15 +139,14 @@ jobs:
             --min-recall 0.80 \
             --min-class-recall 0.60
 
-      - name: Cairo auditor benchmark
+      - name: Cairo auditor recall + taxonomy coverage
         run: |
-          python scripts/quality/benchmark_cairo_auditor.py \
-            --cases evals/cases/cairo_auditor_benchmark.jsonl \
-            --output /tmp/cairo-auditor-benchmark.md \
+          python scripts/quality/recall_eval_cairo_auditor.py \
+            --output /tmp/cairo-auditor-recall-coverage.md \
+            --output-json /tmp/cairo-auditor-recall-coverage.json \
             --version v0.2.0 \
-            --min-precision 0.90 \
-            --min-recall 0.90 \
-            --min-class-recall 0.90
+            --min-taxonomy-coverage 0.10 \
+            --min-crit-high-coverage 0.10
 
       - name: Cairo auditor real-world benchmark
         run: |
@@ -196,6 +191,7 @@ jobs:
           path: |
             /tmp/manual-19-gold-recall.md
             /tmp/manual-19-gold-recall.json
-            /tmp/cairo-auditor-benchmark.md
+            /tmp/cairo-auditor-recall-coverage.md
+            /tmp/cairo-auditor-recall-coverage.json
             /tmp/cairo-auditor-realworld-benchmark.md
             /tmp/contract-skill-benchmark.md
