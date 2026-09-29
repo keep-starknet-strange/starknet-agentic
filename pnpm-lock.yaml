@@ -43,8 +43,8 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.11.0(jiti@2.6.1))
       '@types/node':
-        specifier: ^26.6.2
-        version: 26.6.2
+        specifier: ^26.6.3
+        version: 26.6.3
       eslint:
         specifier: ^10.11.0
         version: 10.11.0(jiti@2.6.1)
@@ -56,10 +56,10 @@ importers:
         version: 6.0.3
       vite:
         specifier: 8.3.1
-        version: 8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1)
+        version: 8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1)
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/carry-agent:
     dependencies:
@@ -67,8 +67,8 @@ importers:
         specifier: ^1.30.1
         version: 1.30.1(zod@4.6.5)
       dotenv:
-        specifier: ^18.0.3
-        version: 18.0.3
+        specifier: ^18.0.4
+        version: 18.0.4
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -92,8 +92,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/starknet-onboarding-utils
       dotenv:
-        specifier: ^18.0.3
-        version: 18.0.3
+        specifier: ^18.0.4
+        version: 18.0.4
       ethers:
         specifier: ^6.17.0
         version: 6.17.0
@@ -108,8 +108,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/defi-agent:
     dependencies:
@@ -117,8 +117,8 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(ethers@6.17.0)(starknet@10.8.0(typescript@6.0.3)(zod@4.6.5))
       dotenv:
-        specifier: ^18.0.3
-        version: 18.0.3
+        specifier: ^18.0.4
+        version: 18.0.4
       starknet:
         specifier: ^10.8.0
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
@@ -133,8 +133,8 @@ importers:
   examples/erc8004-validation-demo:
     dependencies:
       dotenv:
-        specifier: ^18.0.3
-        version: 18.0.3
+        specifier: ^18.0.4
+        version: 18.0.4
       starknet:
         specifier: ^10.8.0
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
@@ -146,8 +146,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/full-stack-swarm:
     dependencies:
@@ -155,8 +155,8 @@ importers:
         specifier: ^1.30.1
         version: 1.30.1(zod@4.6.5)
       dotenv:
-        specifier: ^18.0.3
-        version: 18.0.3
+        specifier: ^18.0.4
+        version: 18.0.4
       starknet:
         specifier: ^10.8.0
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
@@ -171,8 +171,8 @@ importers:
   examples/hello-agent:
     dependencies:
       dotenv:
-        specifier: ^18.0.3
-        version: 18.0.3
+        specifier: ^18.0.4
+        version: 18.0.4
       starknet:
         specifier: ^10.8.0
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
@@ -183,8 +183,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/starknet-onboarding-utils
       dotenv:
-        specifier: ^18.0.3
-        version: 18.0.3
+        specifier: ^18.0.4
+        version: 18.0.4
       starknet:
         specifier: ^10.8.0
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
@@ -202,8 +202,8 @@ importers:
         specifier: ^1.30.1
         version: 1.30.1(zod@4.6.5)
       dotenv:
-        specifier: ^18.0.3
-        version: 18.0.3
+        specifier: ^18.0.4
+        version: 18.0.4
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -218,8 +218,8 @@ importers:
   examples/starkzap-onboard-transfer:
     dependencies:
       dotenv:
-        specifier: ^18.0.3
-        version: 18.0.3
+        specifier: ^18.0.4
+        version: 18.0.4
       starkzap:
         specifier: ^4.0.0
         version: 4.0.0(@avnu/avnu-sdk@4.2.0(ethers@6.17.0)(starknet@10.8.0(typescript@6.0.3)(zod@4.6.5)))(ethers@6.17.0)(typescript@6.0.3)(zod@4.6.5)
@@ -231,8 +231,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/create-starknet-agent:
     dependencies:
@@ -244,8 +244,8 @@ importers:
         version: 2.4.2
     devDependencies:
       '@types/node':
-        specifier: ^26.6.2
-        version: 26.6.2
+        specifier: ^26.6.3
+        version: 26.6.3
       '@types/prompts':
         specifier: ^2.4.9
         version: 2.4.9
@@ -256,8 +256,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/prediction-arb-scanner:
     dependencies:
@@ -266,8 +266,8 @@ importers:
         version: 4.6.5
     devDependencies:
       '@types/node':
-        specifier: ^26.6.2
-        version: 26.6.2
+        specifier: ^26.6.3
+        version: 26.6.3
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
@@ -275,8 +275,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/shared:
     devDependencies:
@@ -297,8 +297,8 @@ importers:
         version: 4.6.5
     devDependencies:
       '@types/node':
-        specifier: ^26.6.2
-        version: 26.6.2
+        specifier: ^26.6.3
+        version: 26.6.3
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
@@ -306,8 +306,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/starknet-agent-passport:
     dependencies:
@@ -322,8 +322,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/starknet-mcp-server:
     dependencies:
@@ -344,11 +344,11 @@ importers:
         version: 4.6.5
     devDependencies:
       '@types/node':
-        specifier: ^26.6.2
-        version: 26.6.2
+        specifier: ^26.6.3
+        version: 26.6.3
       '@vitest/coverage-v8':
-        specifier: 5.0.1
-        version: 5.0.1(vitest@5.0.1)
+        specifier: 5.0.2
+        version: 5.0.2(vitest@5.0.2)
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
@@ -356,8 +356,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/starknet-onboarding-utils:
     dependencies:
@@ -369,8 +369,8 @@ importers:
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       '@types/node':
-        specifier: ^26.6.2
-        version: 26.6.2
+        specifier: ^26.6.3
+        version: 26.6.3
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
@@ -378,8 +378,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/x402-starknet:
     dependencies:
@@ -394,8 +394,8 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.11.0(jiti@2.6.1))
       '@types/node':
-        specifier: ^26.6.2
-        version: 26.6.2
+        specifier: ^26.6.3
+        version: 26.6.3
       eslint:
         specifier: ^10.11.0
         version: 10.11.0(jiti@2.6.1)
@@ -406,8 +406,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: ^5.0.1
-        version: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   website:
     dependencies:
@@ -425,7 +425,7 @@ importers:
         version: 4.0.3
       next:
         specifier: ^16.3.6
-        version: 16.3.6(@babel/core@7.29.7)(@types/node@26.6.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 16.3.6(@babel/core@7.29.7)(@types/node@26.6.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-mdx-remote:
         specifier: ^6.0.0
         version: 6.0.0(@types/react@19.3.0)(react@19.3.0)
@@ -452,8 +452,8 @@ importers:
         specifier: ^2.0.14
         version: 2.0.14
       '@types/node':
-        specifier: ^26.6.2
-        version: 26.6.2
+        specifier: ^26.6.3
+        version: 26.6.3
       '@types/react':
         specifier: ^19.3.0
         version: 19.3.0
@@ -552,11 +552,6 @@ packages:
   '@babel/helpers@7.29.7':
     resolution: {integrity: sha512-1k2lAGRMfHTcwuNYcCNUmaUffmQv8KWMfh2iJUUeRlwlwH4FdNG7mfPI10NPfLHJFThE4Tyr4mv7kTNZOiPuBg==}
     engines: {node: '>=6.9.0'}
-
-  '@babel/parser@7.29.8':
-    resolution: {integrity: sha512-E8lTAYNB1KW+FH+VGJuZM1ioAx2E6oVlvQFRrf5P8ZZmsiJXYAD9vTFV7yyEURNzgh1dFqMZuO6tUwcARbqFCA==}
-    engines: {node: '>=6.0.0'}
-    hasBin: true
 
   '@babel/parser@7.29.9':
     resolution: {integrity: sha512-CjXrNHTnvqBVqHgdBysY3vk2T8tpJHb5/RMeHJBTyVa9xgugCB0CJTx/3oO8RV2QRQP391RWpB7D6hLjm8V9uA==}
@@ -1639,8 +1634,8 @@ packages:
   '@types/node@22.7.5':
     resolution: {integrity: sha512-jML7s2NAzMWc//QSJ1a3prpk78cOPchGvXJsC3C6R6PSMoooztvRVQEz89gmBTBY1SPMaqo5teB4uNHPdetShQ==}
 
-  '@types/node@26.6.2':
-    resolution: {integrity: sha512-X1P21scMv4zGKLYqjdGjaKa7COa0RKVYYZZN/NfvLQ1JegxFhdhpZG/Lyn8AXx6CDUavKAd11v6BvfpkDByK8g==}
+  '@types/node@26.6.3':
+    resolution: {integrity: sha512-dsqMQQoeTLqu9wynDD00q573mNzso3IdQOAfHRJqLCcmCFPoGo9A1bDpUcv/9tnKpErQWv9uKeGfl37EIS02Yg==}
 
   '@types/prompts@2.4.9':
     resolution: {integrity: sha512-qTxFi6Buiu8+50/+3DGIWLHM6QuWsEKugJnnP6iv2Mc4ncxE4A/OJkjuVOA+5X0X1S/nq5VJRa8Lu+nwcvbrKA==}
@@ -1841,11 +1836,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@vitest/coverage-v8@5.0.1':
-    resolution: {integrity: sha512-FRC8ACiudC3dI6MTplzRSYWHDRnIv2IPfbzs4FdoJNsMal/35sWV8hwIfV8ZcqzSPy+uXHeMVONt9CEqtOU17w==}
+  '@vitest/coverage-v8@5.0.2':
+    resolution: {integrity: sha512-3ffHBEi8DOOBLwIGBhOBZbRfYFYWjMUuxZicONdhuFEFEG5AVsMOSrVeuROskqnqpbOmEJwxM2eTVZ9N3a1t+A==}
     peerDependencies:
-      '@vitest/browser': 5.0.1
-      vitest: 5.0.1
+      '@vitest/browser': 5.0.2
+      vitest: 5.0.2
     peerDependenciesMeta:
       '@vitest/browser':
         optional: true
@@ -1858,8 +1853,8 @@ packages:
     resolution: {integrity: sha512-1EOLRfsTMnyAr3+kEAsP4o9dhaDlGPpD7H5iLBBeq//YpNB1VIahkPhB+eRp9N2Dkfw8oySROjE3yf9XDeaIkQ==}
     engines: {node: '>=22'}
 
-  '@vitest/mocker@5.0.1':
-    resolution: {integrity: sha512-6K1DoBNAPGvuOcSsGA4D6x+5zEEff/KmOOP3uetT2TrGpVfI+HRHRnJJfKi5ib/g1vx8IYHQD8s0pbJz8WQI7Q==}
+  '@vitest/mocker@5.0.2':
+    resolution: {integrity: sha512-Z5FS00Q1SJHkB35xATsmWGdQ5WA1/0MV3CDjqyv7GavHv1OfOj145MNfHOlHk7QLes21dKFDHr8EO2zvL+9WGA==}
     peerDependencies:
       msw: ^2.4.9
       vite: 8.3.1
@@ -1869,8 +1864,8 @@ packages:
       vite:
         optional: true
 
-  '@vitest/spy@5.0.1':
-    resolution: {integrity: sha512-rbto/mF/SGERxEgYOek7Xm6B9b+y+mVoo+f4b2LymYO8zM1b7uB5nHuhVMTP2hxdzgxvGiZYGxGIaMvL5y180Q==}
+  '@vitest/spy@5.0.2':
+    resolution: {integrity: sha512-Ijc7T1nT9efNb5LxvjaBrEqw3f/QwUv5EE0nKqZxgqsaV/FxAAZ8baGylA8X/Z2oS4Lp+K74Jr6dTJsDKxJDeg==}
 
   '@wallet-standard/base@1.1.1':
     resolution: {integrity: sha512-gggIHTtxicF9XFMQ12DkfS6NAG92Ak795JeSA7f2whAQ6Y3AkMWWuCMxSZXG2NIPN42kEaZSNVjqMsJRaJRxMQ==}
@@ -1993,8 +1988,8 @@ packages:
   ast-types-flow@0.0.8:
     resolution: {integrity: sha512-OH/2E5Fg20h2aPrbe+QL8JZQFko0YZaF+j4mnQ7BGhfavO7OpSLa8a0y9sBwomHdSbkhTS8TQNayBfnW5DwbvQ==}
 
-  ast-v8-to-istanbul@1.0.6:
-    resolution: {integrity: sha512-fvpl29helSO2w/z7utIbrkNXILdrLwDwAMH2I/zPKlGf5244+gf+B4cyS1sANcrPY2h+hWCGSgC8N61s/+AF9A==}
+  ast-v8-to-istanbul@1.0.7:
+    resolution: {integrity: sha512-kFL68AG6ajd8fg248zwM9GQrUWEp79gsmjum34OEXjs4yHuUMZfYKwOLW9GMmB4oNvVrj+EAGxsP7ye2UR9UlA==}
 
   astring@1.9.0:
     resolution: {integrity: sha512-LElXdjswlqjWrPpJFg1Fx4wpkOCxj1TDHlSV4PlaRxHGWko024xICaa97ZkMfs6DRKlCguiAI+rbXv5GWwXIkg==}
@@ -2279,8 +2274,8 @@ packages:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
 
-  dotenv@18.0.3:
-    resolution: {integrity: sha512-/8CJTyL817qPnfbQrJgOEcrU3fDrJkRIoXBE566wHuvIXKOCHUZhPqGPbCPi9SogjdGnreF0TlvnTgK6J/8zpA==}
+  dotenv@18.0.4:
+    resolution: {integrity: sha512-jGt9uI5BIxpVO15kvy+iEFqNAwxYClKWnkptLjSNPnFLC003Imd0ofr3aEVsbpHdSBdSsbcApNIlz4nbyGMwdA==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -3175,8 +3170,8 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
-  magic-string@1.4.1:
-    resolution: {integrity: sha512-8lyCu36ErXR0J9uaGKlKQoiLZKmtI63YGLE8G2o9jyRPdr4X47LusSOwgOJOzcVtp81fTAAjxR7BwKz682Jhow==}
+  magic-string@1.4.2:
+    resolution: {integrity: sha512-vG+rjFRj1PqdIBozIxAGMjPlOhaVe+GXpbttY/iSK7rGcJRMlwNJO7dcUwmUqkymsFLJiNGI06t4D7Fr7yRC9g==}
 
   magicast@0.5.5:
     resolution: {integrity: sha512-UicdXN8zQ3JHlxVq+28afMXPr1z7WNY6+7EJnzTdQWkTAlMLF5fNCCKxJHBQwGaNGR11581EiQmQzx73+MvszA==}
@@ -3916,9 +3911,6 @@ packages:
     resolution: {integrity: sha512-6x6dK6zJdpTzF4sQeNYxwtvBzf6Eg4GtlesS94HOvTudUeyK2WXAaIfmDgsyslYrRBeFIlsi54AYsFGUuhmvrQ==}
     engines: {node: '>= 0.4'}
 
-  siginfo@2.0.0:
-    resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
-
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
@@ -3938,9 +3930,6 @@ packages:
 
   stable-hash@0.0.5:
     resolution: {integrity: sha512-+L3ccpzibovGXFK+Ap/f8LOS0ahMrHTf3xu7mMLSpEGU0EO9ucaysSylKo9eRDFNhWve/y275iPmIZ4z39a9iA==}
-
-  stackback@0.0.2:
-    resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
 
   starknet@10.8.0:
     resolution: {integrity: sha512-skJ2tTmj/Qz/iXRRwDBmZQtymR020xZt4+4k3SBbPlHgELyiC3HnJjEO0hbUQsEsQVjjVbpWVQc9B+dLHvZvzQ==}
@@ -4080,16 +4069,12 @@ packages:
   thenify@3.3.1:
     resolution: {integrity: sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==}
 
-  tinybench@6.1.4:
-    resolution: {integrity: sha512-9APumHG7r4yOk4X4WlkmE71aZcv1gvin1czO3OQ1U9iJcFA5Ja/ygyb0vPOVHTthFozUYs8CLoLUlM8grb2lTQ==}
+  tinybench@6.2.0:
+    resolution: {integrity: sha512-78U2TlB2CnVenajOFzf3BKSm0J6oz5L0NV7g32LCPccvYc0lbWvys4d3uUUCS2B1N8PAf2+aekR8i1KbC3HO7Q==}
     engines: {node: '>=20.0.0'}
 
   tinyexec@0.3.2:
     resolution: {integrity: sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==}
-
-  tinyexec@1.3.0:
-    resolution: {integrity: sha512-QKAl9m8gWWGHV8jZcPeym6j+XULi6tOf1mT83WYJ4Lk2ytW/uwAWkrP0uFsdoYMdueVJ0qs26wZ+23xeB4ibNQ==}
-    engines: {node: '>=18'}
 
   tinyexec@1.3.1:
     resolution: {integrity: sha512-GCvB3aoys96IuDFBMcTB46JOR6mdMtAToqwiW8JlWhsoh1mhHi/xn9ss/Dg7N555GiJyEt2qzoG/NHCwM6h1EA==}
@@ -4322,20 +4307,20 @@ packages:
       yaml:
         optional: true
 
-  vitest@5.0.1:
-    resolution: {integrity: sha512-iA95lQbKEkvrtTkdAgnWbXfbipWiiWe/hDl2P5tMi6WFwD76G0NxXAGp/M9EOcYupeGJRr6wppMc7CoA41TQjg==}
+  vitest@5.0.2:
+    resolution: {integrity: sha512-7MQrx9pDv5aHiUcovIb/70Ys3tgtkUVgCtledvKdCmEO+/1Dicq5ZqoSxOW034m03oqC+oHOKui2dM6qtMLoJg==}
     engines: {node: ^22.12.0 || ^24.0.0 || >=26.0.0}
     hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@opentelemetry/api': ^1.9.0
       '@types/node': ^22.0.0 || >=24.0.0
-      '@vitest/browser-playwright': 5.0.1
-      '@vitest/browser-preview': 5.0.1
+      '@vitest/browser-playwright': 5.0.2
+      '@vitest/browser-preview': 5.0.2
       '@vitest/browser-webdriverio': ^5.0.0-beta.5 || >=5.0.0
-      '@vitest/coverage-istanbul': 5.0.1
-      '@vitest/coverage-v8': 5.0.1
-      '@vitest/ui': 5.0.1
+      '@vitest/coverage-istanbul': 5.0.2
+      '@vitest/coverage-v8': 5.0.2
+      '@vitest/ui': 5.0.2
       happy-dom: '*'
       jsdom: '*'
       vite: 8.3.1
@@ -4387,9 +4372,9 @@ packages:
     engines: {node: '>= 8'}
     hasBin: true
 
-  why-is-node-running@2.3.0:
-    resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
-    engines: {node: '>=8'}
+  why-is-node-running@3.2.2:
+    resolution: {integrity: sha512-NKUzAelcoCXhXL4dJzKIwXeR8iEVqsA0Lq6Vnd0UXvgaKbzVo4ZTHROF2Jidrv+SgxOQ03fMinnNhzZATxOD3A==}
+    engines: {node: '>=20.11'}
     hasBin: true
 
   word-wrap@1.2.5:
@@ -4555,10 +4540,6 @@ snapshots:
   '@babel/helpers@7.29.7':
     dependencies:
       '@babel/template': 7.29.7
-      '@babel/types': 7.29.8
-
-  '@babel/parser@7.29.8':
-    dependencies:
       '@babel/types': 7.29.8
 
   '@babel/parser@7.29.9':
@@ -5480,13 +5461,13 @@ snapshots:
     dependencies:
       undici-types: 6.19.8
 
-  '@types/node@26.6.2':
+  '@types/node@26.6.3':
     dependencies:
       undici-types: 8.9.0
 
   '@types/prompts@2.4.9':
     dependencies:
-      '@types/node': 26.6.2
+      '@types/node': 26.6.3
       kleur: 3.0.3
 
   '@types/react-dom@19.3.0(@types/react@19.3.0)':
@@ -5664,17 +5645,17 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
 
-  '@vitest/coverage-v8@5.0.1(vitest@5.0.1)':
+  '@vitest/coverage-v8@5.0.2(vitest@5.0.2)':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/istanbul-lib-coverage': 1.0.1
       '@vitest/istanbul-lib-report': 1.0.1
-      ast-v8-to-istanbul: 1.0.6
+      ast-v8-to-istanbul: 1.0.7
       magicast: 0.5.5
       obug: 2.2.1
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   '@vitest/istanbul-lib-coverage@1.0.1': {}
 
@@ -5682,16 +5663,16 @@ snapshots:
     dependencies:
       '@vitest/istanbul-lib-coverage': 1.0.1
 
-  '@vitest/mocker@5.0.1(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))':
+  '@vitest/mocker@5.0.2(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
-      '@vitest/spy': 5.0.1
+      '@vitest/spy': 5.0.2
       estree-walker: 3.0.3
-      magic-string: 1.4.1
+      magic-string: 1.4.2
     optionalDependencies:
-      vite: 8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1)
 
-  '@vitest/spy@5.0.1': {}
+  '@vitest/spy@5.0.2': {}
 
   '@wallet-standard/base@1.1.1': {}
 
@@ -5836,7 +5817,7 @@ snapshots:
 
   ast-types-flow@0.0.8: {}
 
-  ast-v8-to-istanbul@1.0.6:
+  ast-v8-to-istanbul@1.0.7:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       estree-walker: 3.0.3
@@ -6101,7 +6082,7 @@ snapshots:
     dependencies:
       esutils: 2.0.3
 
-  dotenv@18.0.3: {}
+  dotenv@18.0.4: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -7279,13 +7260,13 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  magic-string@1.4.1:
+  magic-string@1.4.2:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
   magicast@0.5.5:
     dependencies:
-      '@babel/parser': 7.29.8
+      '@babel/parser': 7.29.9
       '@babel/types': 7.29.8
       source-map-js: 1.2.1
 
@@ -7786,7 +7767,7 @@ snapshots:
       - '@types/react'
       - supports-color
 
-  next@16.3.6(@babel/core@7.29.7)(@types/node@26.6.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  next@16.3.6(@babel/core@7.29.7)(@types/node@26.6.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
     dependencies:
       '@next/env': 16.3.6
       '@swc/helpers': 0.5.23
@@ -7805,7 +7786,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 16.3.6
       '@next/swc-win32-arm64-msvc': 16.3.6
       '@next/swc-win32-x64-msvc': 16.3.6
-      sharp: 0.35.4(@types/node@26.6.2)
+      sharp: 0.35.4(@types/node@26.6.3)
     transitivePeerDependencies:
       - '@babel/core'
       - '@types/node'
@@ -8405,7 +8386,7 @@ snapshots:
 
   setprototypeof@1.2.0: {}
 
-  sharp@0.35.4(@types/node@26.6.2):
+  sharp@0.35.4(@types/node@26.6.3):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
@@ -8436,7 +8417,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.35.4
       '@img/sharp-win32-ia32': 0.35.4
       '@img/sharp-win32-x64': 0.35.4
-      '@types/node': 26.6.2
+      '@types/node': 26.6.3
     optional: true
 
   shebang-command@2.0.0:
@@ -8486,8 +8467,6 @@ snapshots:
       side-channel-map: 1.0.1
       side-channel-weakmap: 1.0.2
 
-  siginfo@2.0.0: {}
-
   sisteransi@1.0.5: {}
 
   source-map-js@1.2.1: {}
@@ -8499,8 +8478,6 @@ snapshots:
   sprintf-js@1.0.3: {}
 
   stable-hash@0.0.5: {}
-
-  stackback@0.0.2: {}
 
   starknet@10.8.0(typescript@6.0.3)(zod@4.6.5):
     dependencies:
@@ -8673,11 +8650,9 @@ snapshots:
     dependencies:
       any-promise: 1.3.0
 
-  tinybench@6.1.4: {}
+  tinybench@6.2.0: {}
 
   tinyexec@0.3.2: {}
-
-  tinyexec@1.3.0: {}
 
   tinyexec@1.3.1: {}
 
@@ -8938,7 +8913,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1):
+  vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -8946,32 +8921,32 @@ snapshots:
       rolldown: 1.2.11
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 26.6.2
+      '@types/node': 26.6.3
       esbuild: 0.28.1
       fsevents: 2.3.3
       jiti: 2.6.1
       tsx: 4.23.15
       yaml: 2.9.1
 
-  vitest@5.0.1(@types/node@26.6.2)(@vitest/coverage-v8@5.0.1)(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1)):
+  vitest@5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.1(vite@8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+      '@vitest/mocker': 5.0.2(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
       chai: 6.2.2
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
-      magic-string: 1.4.1
+      magic-string: 1.4.2
       obug: 2.2.1
       picomatch: 4.0.7
       std-env: 4.2.0
-      tinybench: 6.1.4
-      tinyexec: 1.3.0
+      tinybench: 6.2.0
+      tinyexec: 1.3.1
       tinyglobby: 0.2.17
-      vite: 8.3.1(@types/node@26.6.2)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1)
-      why-is-node-running: 2.3.0
+      vite: 8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1)
+      why-is-node-running: 3.2.2
     optionalDependencies:
-      '@types/node': 26.6.2
-      '@vitest/coverage-v8': 5.0.1(vitest@5.0.1)
+      '@types/node': 26.6.3
+      '@vitest/coverage-v8': 5.0.2(vitest@5.0.2)
     transitivePeerDependencies:
       - msw
 
@@ -9022,10 +8997,7 @@ snapshots:
     dependencies:
       isexe: 2.0.0
 
-  why-is-node-running@2.3.0:
-    dependencies:
-      siginfo: 2.0.0
-      stackback: 0.0.2
+  why-is-node-running@3.2.2: {}
 
   word-wrap@1.2.5: {}
 
