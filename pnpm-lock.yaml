@@ -64,8 +64,8 @@ importers:
   examples/carry-agent:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: ^1.30.1
-        version: 1.30.1(zod@4.6.5)
+        specifier: ^1.31.0
+        version: 1.31.0(zod@4.6.5)
       dotenv:
         specifier: ^18.0.4
         version: 18.0.4
@@ -152,8 +152,8 @@ importers:
   examples/full-stack-swarm:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: ^1.30.1
-        version: 1.30.1(zod@4.6.5)
+        specifier: ^1.31.0
+        version: 1.31.0(zod@4.6.5)
       dotenv:
         specifier: ^18.0.4
         version: 18.0.4
@@ -199,8 +199,8 @@ importers:
   examples/secure-defi-demo:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: ^1.30.1
-        version: 1.30.1(zod@4.6.5)
+        specifier: ^1.31.0
+        version: 1.31.0(zod@4.6.5)
       dotenv:
         specifier: ^18.0.4
         version: 18.0.4
@@ -331,8 +331,8 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(ethers@6.17.0)(starknet@10.8.0(typescript@6.0.3)(zod@4.6.5))
       '@modelcontextprotocol/sdk':
-        specifier: ^1.30.1
-        version: 1.30.1(zod@4.6.5)
+        specifier: ^1.31.0
+        version: 1.31.0(zod@4.6.5)
       '@starknetfoundation/starknet-agentic-x402-starknet':
         specifier: workspace:*
         version: link:../x402-starknet
@@ -862,8 +862,8 @@ packages:
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@hono/node-server@2.1.1':
-    resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
+  '@hono/node-server@2.1.3':
+    resolution: {integrity: sha512-TA//nWMqPhbfdfneACk6t5a9eqbS9lABEPyKn0/xZTah3H3U2XaVg85rJFl0/Fyit0I552YDHgXGVSf3GwqbUw==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: 4.13.5
@@ -1104,8 +1104,8 @@ packages:
       '@types/react': '>=16'
       react: '>=16'
 
-  '@modelcontextprotocol/sdk@1.30.1':
-    resolution: {integrity: sha512-H2HxLvC3HDNybePJaLdSrU1hhUK5iQw+WvV1b01myFyI7sdVGe1u/IPTE5D9fGCiJDVtgMV/lmFkQXLmQyIFYA==}
+  '@modelcontextprotocol/sdk@1.31.0':
+    resolution: {integrity: sha512-UvTMgnNlnIBO/22ob2RcVGDlcvOslQs8T59+FTGdA0L27a39fdGF/EDETNtDVK4DZGpwomlsYpRdA8UXcVL/pw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -3512,8 +3512,8 @@ packages:
       typescript:
         optional: true
 
-  ox@1.8.1:
-    resolution: {integrity: sha512-nL0n0fm9hhlozVdx49nRHNr14OgSZAv1FZ120aR6mSRjSMIrhcFx18FMYK8Fiit8UdA/N35drEPcPlLGI6Dfzg==}
+  ox@1.8.5:
+    resolution: {integrity: sha512-DPxDbU+6ut8z1OSbtyvSFqqkGAyUXX3C9aeeqhi2AAklEQzGR2Z16fM6uoAVRHKdAUzsw5FdsbJszMXWyrTwFg==}
     peerDependencies:
       typescript: '>=5.4.0'
     peerDependenciesMeta:
@@ -4842,7 +4842,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@hono/node-server@2.1.1(hono@4.13.5)':
+  '@hono/node-server@2.1.3(hono@4.13.5)':
     dependencies:
       hono: 4.13.5
 
@@ -5054,9 +5054,9 @@ snapshots:
       '@types/react': 19.3.0
       react: 19.3.0
 
-  '@modelcontextprotocol/sdk@1.30.1(zod@4.6.5)':
+  '@modelcontextprotocol/sdk@1.31.0(zod@4.6.5)':
     dependencies:
-      '@hono/node-server': 2.1.1(hono@4.13.5)
+      '@hono/node-server': 2.1.3(hono@4.13.5)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -5392,7 +5392,7 @@ snapshots:
       '@starknet-io/types-js': 0.10.4
       '@wallet-standard/base': 1.1.1
       '@wallet-standard/features': 1.1.1
-      ox: 1.8.1(typescript@6.0.3)
+      ox: 1.8.5(typescript@6.0.3)
     transitivePeerDependencies:
       - typescript
 
@@ -7897,7 +7897,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  ox@1.8.1(typescript@6.0.3):
+  ox@1.8.5(typescript@6.0.3):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 2.4.0
