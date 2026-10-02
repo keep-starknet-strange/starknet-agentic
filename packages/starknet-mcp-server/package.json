@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@avnu/avnu-sdk": "^4.2.0",
-    "@modelcontextprotocol/sdk": "^1.30.1",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*",
     "starknet": "^10.8.0",
     "zod": "^4.6.5"
