@@ -1,0 +1,21 @@
+{
+  "name": "@starknet-agentic/lucid-adapter",
+  "version": "0.1.0",
+  "description": "Scoped Lucid integration for Starknet-native STRK paid entrypoints with session-key operational wallet",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx example/sepolia-paid-tool.ts",
+    "test:smoke": "vitest run test/smoke.test.ts",
+    "lint": "eslint src example"
+  },
+  "dependencies": {
+    "starknet": "^7.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "vitest": "^1.0.0"
+  },
+  "peerDependencies": {
+    "@lucid-sdk/lucid": "*"
+  }
+}

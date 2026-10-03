@@ -1,0 +1,11 @@
+name: lucid-smoke
+on: [push, pull_request]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+      - run: pnpm install
+      - run: pnpm --filter @starknet-agentic/lucid-adapter test:smoke
+      - run: test -f packages/lucid-adapter/docs/runbook.md && test -f packages/lucid-adapter/docs/security.md
