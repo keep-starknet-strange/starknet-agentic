@@ -1,86 +1,127 @@
-use starknet::ContractAddress;
+// Identity Registry Interface
+// SPDX-License-Identifier: MIT
 
-#[derive(Drop, Serde, Debug, PartialEq)]
-pub struct MetadataEntry {
-    pub key: ByteArray,
-    pub value: ByteArray,
+use starknet::contract::ContractAddress;
+use starknet::snip6::snip6::SNIP6AuthPayload;
+use starknet::snip12::snip12::{SNIP12TypedData, SNIP12AuthPayload};
+use core::array::ArrayTrait;
+
+// ── Events ─────────────────────────────────────────────────────────────────────
+#[derive Drop, starknet::Event]
+enum IdentityRegistryEvents {
+    IdentityRegistered: IdentityRegistered,
+    AgentWalletSet: AgentWalletSet,
+    MetadataSet: MetadataSet,
+    UriHashSet: UriHashSet,
+    OperatorSet: OperatorSet,
+    InterfaceImplemented: InterfaceImplemented,
 }
 
-#[derive(Drop, Debug, PartialEq, starknet::Event)]
-pub struct Registered {
-    #[key]
-    pub agent_id: u256,
-    pub token_uri: ByteArray,
-    pub owner: ContractAddress,
+#[derive(Drop, starknet::Event)]
+struct IdentityRegistered {
+    token_id: u256,
+    owner: ContractAddress,
+    metadata: ByteArray,
+    uri: ByteArray,
 }
 
-#[derive(Drop, Debug, PartialEq, starknet::Event)]
-pub struct MetadataSet {
-    #[key]
-    pub agent_id: u256,
-    #[key]
-    pub indexed_key: ByteArray,
-    pub key: ByteArray,
-    pub value: ByteArray,
+#[derive(Drop, starknet::Event)]
+struct AgentWalletSet {
+    token_id: u256,
+    agent_wallet: ContractAddress,
 }
 
-#[derive(Drop, Debug, PartialEq, starknet::Event)]
-pub struct URIUpdated {
-    #[key]
-    pub agent_id: u256,
-    pub new_uri: ByteArray,
-    #[key]
-    pub updated_by: ContractAddress,
+#[derive(Drop, starknet::Event)]
+struct MetadataSet {
+    token_id: u256,
+    metadata: ByteArray,
+    lane: ByteArray,
 }
 
+#[derive(Drop, starknet::Event)]
+struct UriHashSet {
+    token_id: u256,
+    uri_hash: u256,
+}
+
+#[derive(Drop, starknet::Event)]
+struct OperatorSet {
+    token_id: u256,
+    operator: ContractAddress,
+    is_operator: bool,
+}
+
+#[derive(Drop, starknet::Event)]
+struct InterfaceImplemented {
+    interface_id: felt252,
+    implementation: ContractAddress,
+}
+
+// ── Trait ──────────────────────────────────────────────────────────────────────
 #[starknet::interface]
-pub trait IIdentityRegistry<TState> {
-    // Registration functions
-    fn register_with_metadata(
-        ref self: TState, token_uri: ByteArray, metadata: Array<MetadataEntry>,
-    ) -> u256;
-
-    fn register_with_token_uri(ref self: TState, token_uri: ByteArray) -> u256;
-
-    fn register(ref self: TState) -> u256;
-
-    // Metadata functions
-    fn set_metadata(ref self: TState, agent_id: u256, key: ByteArray, value: ByteArray);
-
-    fn get_metadata(self: @TState, agent_id: u256, key: ByteArray) -> ByteArray;
-
-    // URI management
-    fn set_agent_uri(ref self: TState, agent_id: u256, new_uri: ByteArray);
-
-    // Agent wallet management
-    fn get_agent_wallet(self: @TState, agent_id: u256) -> ContractAddress;
-    fn get_wallet_set_nonce(self: @TState, agent_id: u256) -> u64;
-
-    fn set_agent_wallet(
-        ref self: TState,
-        agent_id: u256,
-        new_wallet: ContractAddress,
-        deadline: u64,
-        signature: Array<felt252>,
+trait IdentityRegistryTrait<TContractState> {
+    // ── SNIP-6 Auth ──────────────────────────────────────────────────────────
+    fn set_agent_wallet_snip6(
+        ref self: TContractState,
+        token_id: u256,
+        agent_wallet: ContractAddress,
+        signature: SNIP6AuthPayload,
+        nonce: Option<u256>,
     );
 
-    fn set_agent_wallet_with_expected_nonce(
-        ref self: TState,
-        agent_id: u256,
-        new_wallet: ContractAddress,
-        deadline: u64,
-        expected_nonce: u64,
-        signature: Array<felt252>,
+    // ── SNIP-12 Typed Message Auth ───────────────────────────────────────────
+    fn set_agent_wallet_sip12(
+        ref self: TContractState,
+        token_id: u256,
+        agent_wallet: ContractAddress,
+        typed_data: SNIP12TypedData,
+        payload: SNIP12AuthPayload,
     );
 
-    fn unset_agent_wallet(ref self: TState, agent_id: u256);
+    // ── Dual Metadata ────────────────────────────────────────────────────────
+    fn set_byte_array_metadata(
+        ref self: TContractState,
+        token_id: u256,
+        metadata: ByteArray,
+        signature: SNIP6AuthPayload,
+    );
 
-    // Query functions
-    fn total_agents(self: @TState) -> u256;
+    fn set_felt_metadata(
+        ref self: TContractState,
+        token_id: u256,
+        metadata: felt252,
+        signature: SNIP6AuthPayload,
+    );
 
-    fn agent_exists(self: @TState, agent_id: u256) -> bool;
+    fn get_byte_array_metadata(&self: TContractState, token_id: u256) -> ByteArray;
+    fn get_felt_metadata(&self: TContractState, token_id: u256) -> felt252;
 
-    fn is_authorized_or_owner(self: @TState, spender: ContractAddress, agent_id: u256) -> bool;
+    // ── URI Hash ─────────────────────────────────────────────────────────────
+    fn set_uri_hash(
+        ref self: TContractState,
+        token_id: u256,
+        uri_hash: u256,
+        signature: SNIP6AuthPayload,
+    );
 
-    fn get_version(self: @TState) -> ByteArray;
+    fn get_uri_hash(&self: TContractState, token_id: u256) -> u256;
+
+    // ── Core ─────────────────────────────────────────────────────────────────
+    fn get_owner(&self: TContractState, token_id: u256) -> ContractAddress;
+    fn get_agent_wallet(&self: TContractState, token_id: u256) -> ContractAddress;
+    fn get_balance(&self: TContractState, owner: ContractAddress) -> u256;
+    fn get_supply(&self: TContractState) -> u256;
+    fn is_operator(
+        &self: TContractState,
+        token_id: u256,
+        operator: ContractAddress,
+    ) -> bool;
+    fn get_nonce(&self: TContractState, wallet: ContractAddress) -> u256;
+
+    // ── Pagination ───────────────────────────────────────────────────────────
+    fn get_summary_paginated(
+        &self: TContractState,
+        page: u256,
+        page_size: u256,
+    ) -> Array<(u256, ContractAddress, ByteArray)>;
 }
