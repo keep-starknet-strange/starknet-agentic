@@ -1,0 +1,19 @@
+[package]
+name = "time_lock_vault"
+version = "0.1.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = "2.8.4"
+openzeppelin = "0.19.0"
+
+[dev-dependencies]
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.31.0" }
+cairo_test = "2.8.4"
+time_lock_vault = { path = "." }
+
+[[target.starknet-contract]]
+sierra = true
+
+[scripts]
+test = "snforge test"
