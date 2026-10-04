@@ -1,3 +1,14 @@
 {
-  "advisories": []
+  "advisories": [
+    {
+      "id": "1240992",
+      "package": "braces",
+      "severity": "high",
+      "ghsa": "GHSA-vfj7-8cjw-p6xm",
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "path": "website>eslint-config-next>@next/eslint-plugin-next>fast-glob>micromatch>braces",
+      "reason": "Dev-only lint tooling (website devDependency); glob patterns come from repo config, not untrusted input. No patched braces release exists. See docs/security/DEPENDENCY_EXCEPTION_REGISTER.md (ADV-1240992-BRACES).",
+      "expiresOn": "2026-11-04"
+    }
+  ]
 }
