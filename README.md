@@ -161,7 +161,7 @@ The public catalog is maintained in [`skills/README.md`](./skills/README.md) and
 |---|---|
 | CLI scaffolder | Node.js `>=24.0.0` |
 | Source checkout | Node.js `>=24.0.0` (see [`.nvmrc`](./.nvmrc)), `pnpm` `10.28.2` via corepack (`packageManager` in `package.json`) |
-| Cairo contracts | Scarb `>=2.14.0`, Starknet Foundry `snforge` `>=0.54.1` |
+| Cairo contracts | Scarb `>=2.14.0`, Starknet Foundry `snforge` `>=0.64.0` |
 | Networked examples | Starknet RPC URL, account address, and signer configuration |
 
 Copy [`./.env.example`](./.env.example) where an example or package asks for local environment variables. Never commit private keys or funded credentials.

@@ -85,7 +85,7 @@ openzeppelin_upgrades = "3.0.0"
 openzeppelin_security = "3.0.0"
 
 [dev-dependencies]
-snforge_std = "0.54.1"
+snforge_std = "0.64.0"
 
 [cairo]
 sierra-replace-ids = true
@@ -96,7 +96,7 @@ sierra-replace-ids = true
 allow-prebuilt-plugins = ["snforge_std"]
 ```
 
-> **Version pinning:** This repo's deployed contracts pin `starknet = "2.14.0"` and `snforge_std = "0.54.1"`. Update only with an explicit migration plan across all contract packages.
+> **Version pinning:** This repo's deployed contracts pin `starknet = "2.14.0"` and `snforge_std = "0.64.0"`. Update only with an explicit migration plan across all contract packages.
 
 ## Contract Structure
 
