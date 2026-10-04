@@ -7,25 +7,22 @@ import type {
   GeneratedFiles,
 } from "./types.js";
 import { RPC_URLS, TOKEN_ADDRESSES, AVNU_URLS } from "./types.js";
+import type { TemplateDependencyVersions } from "./template-dependencies.js";
+
+/** Replaced at build/test time by tsup/vitest `define`; see scripts/template-versions.ts. */
+declare const __TEMPLATE_DEPENDENCY_VERSIONS__: TemplateDependencyVersions;
 
 /**
  * Version ranges written into generated projects' package.json.
  *
  * Generated projects live outside this workspace, so they cannot use
- * `catalog:` and need literal ranges. Each range must equal the root
- * `pnpm-workspace.yaml` catalog entry for the same package (or, for packages
- * not in the catalog, the range this workspace's packages declare).
- * `src/__tests__/template-versions.test.ts` fails when they drift.
+ * `catalog:` and need literal ranges. The ranges are not hardcoded: the build
+ * and the test run read them from this workspace (the root
+ * `pnpm-workspace.yaml` catalog, or for packages outside the catalog the
+ * workspace package named in `template-dependencies.ts`) and inline them, so
+ * they always match the versions this workspace uses.
  */
-export const TEMPLATE_DEPENDENCY_VERSIONS = {
-  "@avnu/avnu-sdk": "^4.2.0",
-  "@types/node": "^26.6.3",
-  dotenv: "^18.0.4",
-  starknet: "^10.8.0",
-  tsx: "^4.23.15",
-  typescript: "^6.0.3",
-  zod: "^4.6.5",
-} as const;
+export const TEMPLATE_DEPENDENCY_VERSIONS: TemplateDependencyVersions = __TEMPLATE_DEPENDENCY_VERSIONS__;
 
 /**
  * Minimum Node.js version for generated projects: the highest `engines.node`
