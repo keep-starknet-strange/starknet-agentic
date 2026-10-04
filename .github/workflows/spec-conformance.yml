@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: spec-conformance-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name || github.sha }}
+  group: spec-conformance-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref_name || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout current repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node.js (for schema validation)
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
