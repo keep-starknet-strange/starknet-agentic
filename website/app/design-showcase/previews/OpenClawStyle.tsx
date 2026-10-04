@@ -2,7 +2,7 @@ export default function OpenClawStyle() {
   return (
     <div className="h-full w-full bg-[#050810] relative overflow-hidden">
       {/* Layered gradient backgrounds for depth */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0a0f1a] via-[#050810] to-[#111827]" />
+      <div className="absolute inset-0 bg-linear-to-br from-[#0a0f1a] via-[#050810] to-[#111827]" />
 
       {/* Cyan glow orb - top right */}
       <div
@@ -67,7 +67,7 @@ export default function OpenClawStyle() {
         <div className="w-full max-w-lg grid grid-cols-3 gap-3">
           {/* Card 1 - MCP Server (larger) */}
           <div
-            className="col-span-2 bg-[#0a0f1a]/80 backdrop-blur-sm rounded-xl p-4 border border-[#00e5cc]/20"
+            className="col-span-2 bg-[#0a0f1a]/80 backdrop-blur-xs rounded-xl p-4 border border-[#00e5cc]/20"
             style={{
               boxShadow: "0 0 20px rgba(0, 229, 204, 0.1), inset 0 0 20px rgba(0, 229, 204, 0.02)",
             }}
@@ -90,7 +90,7 @@ export default function OpenClawStyle() {
 
           {/* Card 2 - ERC-8004 (small accent) */}
           <div
-            className="col-span-1 bg-gradient-to-br from-[#e63946]/20 to-[#e63946]/5 backdrop-blur-sm rounded-xl p-3 border border-[#e63946]/30"
+            className="col-span-1 bg-linear-to-br from-[#e63946]/20 to-[#e63946]/5 backdrop-blur-xs rounded-xl p-3 border border-[#e63946]/30"
             style={{
               boxShadow: "0 0 15px rgba(230, 57, 70, 0.15)",
             }}
@@ -106,7 +106,7 @@ export default function OpenClawStyle() {
 
           {/* Card 3 - DeFi (small) */}
           <div
-            className="col-span-1 bg-[#0a0f1a]/80 backdrop-blur-sm rounded-xl p-3 border border-[#14b8a6]/20"
+            className="col-span-1 bg-[#0a0f1a]/80 backdrop-blur-xs rounded-xl p-3 border border-[#14b8a6]/20"
             style={{
               boxShadow: "0 0 12px rgba(20, 184, 166, 0.1)",
             }}
@@ -122,13 +122,13 @@ export default function OpenClawStyle() {
 
           {/* Card 4 - A2A Protocol (wider) */}
           <div
-            className="col-span-2 bg-[#0a0f1a]/80 backdrop-blur-sm rounded-xl p-3 border border-[#00e5cc]/15 flex items-center gap-3"
+            className="col-span-2 bg-[#0a0f1a]/80 backdrop-blur-xs rounded-xl p-3 border border-[#00e5cc]/15 flex items-center gap-3"
             style={{
               boxShadow: "0 0 15px rgba(0, 229, 204, 0.08)",
             }}
           >
             <div
-              className="w-7 h-7 rounded-lg bg-[#00e5cc]/10 flex items-center justify-center flex-shrink-0"
+              className="w-7 h-7 rounded-lg bg-[#00e5cc]/10 flex items-center justify-center shrink-0"
               style={{ boxShadow: "0 0 8px rgba(0, 229, 204, 0.15)" }}
             >
               <svg className="w-3.5 h-3.5 text-[#00e5cc]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -145,7 +145,7 @@ export default function OpenClawStyle() {
 
       {/* Bottom accent bar with glow */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00e5cc] to-transparent"
+        className="absolute bottom-0 left-0 right-0 h-[2px] bg-linear-to-r from-transparent via-[#00e5cc] to-transparent"
         style={{
           boxShadow: "0 0 10px rgba(0, 229, 204, 0.4), 0 0 20px rgba(0, 229, 204, 0.2)",
         }}
@@ -153,7 +153,7 @@ export default function OpenClawStyle() {
 
       {/* Top corner accents */}
       <div
-        className="absolute top-0 left-1/3 w-24 h-[2px] bg-gradient-to-r from-transparent via-[#e63946] to-transparent"
+        className="absolute top-0 left-1/3 w-24 h-[2px] bg-linear-to-r from-transparent via-[#e63946] to-transparent"
         style={{
           boxShadow: "0 0 8px rgba(230, 57, 70, 0.3)",
         }}

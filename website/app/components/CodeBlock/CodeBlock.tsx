@@ -65,7 +65,7 @@ export async function CodeBlock({
         )}
         {showCopyButton && <CopyButton code={trimmedCode} />}
         <pre
-          className={`!bg-[#0d1117] !m-0 p-4 overflow-x-auto text-sm leading-relaxed text-gray-100 whitespace-pre border-2 border-black shadow-neo ${filename ? 'rounded-t-none' : 'rounded-lg'}`}
+          className={`bg-[#0d1117]! m-0! p-4 overflow-x-auto text-sm leading-relaxed text-gray-100 whitespace-pre border-2 border-black shadow-neo ${filename ? 'rounded-t-none' : 'rounded-lg'}`}
           style={{ fontFamily: 'var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace' }}
         >
           {trimmedCode}
@@ -89,7 +89,7 @@ export async function CodeBlock({
       {showCopyButton && <CopyButton code={trimmedCode} />}
       <div
         className={`
-          [&>pre]:!bg-[#0d1117] [&>pre]:!m-0 [&>pre]:p-4 [&>pre]:overflow-x-auto
+          [&>pre]:bg-[#0d1117]! [&>pre]:m-0! [&>pre]:p-4 [&>pre]:overflow-x-auto
           [&>pre]:text-sm [&>pre]:leading-relaxed [&>pre]:font-mono
           [&>pre]:border-2 [&>pre]:border-black [&>pre]:shadow-neo [&>pre]:rounded-lg
           [&_code]:font-mono

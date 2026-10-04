@@ -81,7 +81,7 @@ export function DocsSidebar({ onNavigate }: DocsSidebarProps) {
                       onClick={onNavigate}
                       className={`block py-1.5 px-3 text-sm rounded-r transition-colors ${
                         active
-                          ? "bg-neo-yellow/30 text-neo-dark font-medium border-l-2 border-neo-yellow -ml-[2px]"
+                          ? "bg-neo-yellow/30 text-neo-dark font-medium border-l-2 border-neo-yellow ml-[-2px]"
                           : "text-neo-dark/70 hover:text-neo-dark hover:bg-neo-dark/5"
                       }`}
                       aria-current={active ? "page" : undefined}

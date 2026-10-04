@@ -129,8 +129,8 @@ export default function CyberpunkNetStyle() {
       />
 
       {/* Side accent lines */}
-      <div className="absolute left-0 top-1/4 w-[3px] h-16 bg-gradient-to-b from-[#FCE300] to-transparent opacity-30" />
-      <div className="absolute right-0 bottom-1/4 w-[3px] h-16 bg-gradient-to-t from-[#FCE300] to-transparent opacity-30" />
+      <div className="absolute left-0 top-1/4 w-[3px] h-16 bg-linear-to-b from-[#FCE300] to-transparent opacity-30" />
+      <div className="absolute right-0 bottom-1/4 w-[3px] h-16 bg-linear-to-t from-[#FCE300] to-transparent opacity-30" />
     </div>
   );
 }

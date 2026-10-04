@@ -22,7 +22,7 @@ export function CopyButton({ code }: CopyButtonProps) {
   return (
     <button
       onClick={handleCopy}
-      className="absolute top-2 right-2 p-2 rounded bg-gray-700/50 hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+      className="absolute top-2 right-2 p-2 rounded-sm bg-gray-700/50 hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
       aria-label={copied ? "Copied!" : "Copy code"}
       title={copied ? "Copied!" : "Copy to clipboard"}
     >

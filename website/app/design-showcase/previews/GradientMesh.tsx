@@ -66,7 +66,7 @@ export default function GradientMesh() {
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-8 py-6">
         {/* Soft badge */}
         <div
-          className="mb-4 px-4 py-1.5 rounded-full backdrop-blur-sm"
+          className="mb-4 px-4 py-1.5 rounded-full backdrop-blur-xs"
           style={{
             background: 'linear-gradient(135deg, rgba(244, 114, 182, 0.3), rgba(167, 139, 250, 0.3))',
             border: '1px solid rgba(255, 255, 255, 0.5)',
@@ -107,7 +107,7 @@ export default function GradientMesh() {
             Begin Journey
           </button>
           <button
-            className="px-6 py-2.5 rounded-full font-medium text-sm backdrop-blur-sm transition-all duration-300 hover:scale-105"
+            className="px-6 py-2.5 rounded-full font-medium text-sm backdrop-blur-xs transition-all duration-300 hover:scale-105"
             style={{
               background: 'linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4))',
               border: '1px solid rgba(167, 139, 250, 0.3)',
@@ -121,7 +121,7 @@ export default function GradientMesh() {
         {/* Feature badges */}
         <div className="flex gap-3 mt-8">
           <div
-            className="px-3 py-1.5 rounded-full backdrop-blur-sm"
+            className="px-3 py-1.5 rounded-full backdrop-blur-xs"
             style={{
               background: 'linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(147, 197, 253, 0.2))',
               border: '1px solid rgba(52, 211, 153, 0.3)',
@@ -130,7 +130,7 @@ export default function GradientMesh() {
             <span className="text-xs font-medium" style={{ color: '#047857' }}>MCP Server</span>
           </div>
           <div
-            className="px-3 py-1.5 rounded-full backdrop-blur-sm"
+            className="px-3 py-1.5 rounded-full backdrop-blur-xs"
             style={{
               background: 'linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(251, 191, 36, 0.2))',
               border: '1px solid rgba(244, 114, 182, 0.3)',
@@ -139,7 +139,7 @@ export default function GradientMesh() {
             <span className="text-xs font-medium" style={{ color: '#be185d' }}>ERC-8004</span>
           </div>
           <div
-            className="px-3 py-1.5 rounded-full backdrop-blur-sm"
+            className="px-3 py-1.5 rounded-full backdrop-blur-xs"
             style={{
               background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(147, 197, 253, 0.2))',
               border: '1px solid rgba(167, 139, 250, 0.3)',

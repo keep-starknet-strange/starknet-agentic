@@ -89,7 +89,7 @@ async function CustomCode({
   // Inline code
   return (
     <code
-      className="px-1.5 py-0.5 bg-neo-dark/10 rounded text-sm font-mono text-neo-dark"
+      className="px-1.5 py-0.5 bg-neo-dark/10 rounded-sm text-sm font-mono text-neo-dark"
       {...props}
     >
       {children}

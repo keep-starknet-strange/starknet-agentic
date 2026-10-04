@@ -216,7 +216,7 @@ export default function AITechCyberpunk() {
 
       {/* Top gradient bar */}
       <div
-        className="absolute top-0 left-0 right-0 h-[1px]"
+        className="absolute top-0 left-0 right-0 h-px"
         style={{
           background: "linear-gradient(90deg, transparent 0%, #8b5cf6 25%, #3b82f6 50%, #06b6d4 75%, transparent 100%)",
           boxShadow: "0 0 15px rgba(139,92,246,0.5), 0 0 30px rgba(59,130,246,0.3)",
@@ -225,7 +225,7 @@ export default function AITechCyberpunk() {
 
       {/* Bottom gradient bar */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-[1px]"
+        className="absolute bottom-0 left-0 right-0 h-px"
         style={{
           background: "linear-gradient(90deg, transparent 0%, #06b6d4 25%, #3b82f6 50%, #8b5cf6 75%, transparent 100%)",
           boxShadow: "0 0 15px rgba(6,182,212,0.5), 0 0 30px rgba(59,130,246,0.3)",

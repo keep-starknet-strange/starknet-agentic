@@ -316,7 +316,7 @@ export default function RetroFuturism() {
       {/* Bottom label */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
         <div
-          className="w-8 h-[1px]"
+          className="w-8 h-px"
           style={{ background: 'linear-gradient(90deg, transparent, #ff6090)' }}
         />
         <span
@@ -331,7 +331,7 @@ export default function RetroFuturism() {
           Retro Futurism
         </span>
         <div
-          className="w-8 h-[1px]"
+          className="w-8 h-px"
           style={{ background: 'linear-gradient(90deg, #ff6090, transparent)' }}
         />
       </div>

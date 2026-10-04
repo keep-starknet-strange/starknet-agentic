@@ -64,7 +64,7 @@ export function SkillsGrid() {
               setSelectedKeyword(null);
             }}
             placeholder="Search skills by name, description, or keyword..."
-            className="w-full pl-10 pr-4 py-3 border-2 border-neo-dark/20 rounded-lg focus:border-neo-purple focus:outline-none transition-colors"
+            className="w-full pl-10 pr-4 py-3 border-2 border-neo-dark/20 rounded-lg focus:border-neo-purple focus:outline-hidden transition-colors"
             aria-label="Search skills"
           />
           {(query || selectedKeyword) && (
@@ -117,7 +117,7 @@ export function SkillsGrid() {
         {selectedKeyword && (
           <span className="flex items-center gap-2">
             Filtered by:{" "}
-            <span className="px-2 py-0.5 bg-neo-purple/10 text-neo-purple rounded text-xs font-medium">
+            <span className="px-2 py-0.5 bg-neo-purple/10 text-neo-purple rounded-sm text-xs font-medium">
               {selectedKeyword}
             </span>
           </span>

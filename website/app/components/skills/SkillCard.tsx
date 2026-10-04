@@ -35,7 +35,7 @@ export function SkillCard({ skill }: SkillCardProps) {
           {skill.keywords.slice(0, 4).map((keyword) => (
             <span
               key={keyword}
-              className="px-2 py-0.5 text-xs bg-neo-dark/5 text-neo-dark/70 rounded"
+              className="px-2 py-0.5 text-xs bg-neo-dark/5 text-neo-dark/70 rounded-sm"
             >
               {keyword}
             </span>

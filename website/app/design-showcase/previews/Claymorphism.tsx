@@ -1,16 +1,16 @@
 export default function Claymorphism() {
   return (
-    <div className="h-full w-full relative overflow-hidden bg-gradient-to-br from-pink-50 via-blue-50 to-yellow-50">
+    <div className="h-full w-full relative overflow-hidden bg-linear-to-br from-pink-50 via-blue-50 to-yellow-50">
       {/* Background soft shapes */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Large pastel blob - top left */}
-        <div className="absolute -top-16 -left-16 w-64 h-64 bg-gradient-to-br from-pink-200/50 to-pink-300/30 rounded-full blur-2xl" />
+        <div className="absolute -top-16 -left-16 w-64 h-64 bg-linear-to-br from-pink-200/50 to-pink-300/30 rounded-full blur-2xl" />
         {/* Blue blob - top right */}
-        <div className="absolute -top-8 right-20 w-48 h-48 bg-gradient-to-bl from-blue-200/50 to-sky-200/40 rounded-full blur-2xl" />
+        <div className="absolute -top-8 right-20 w-48 h-48 bg-linear-to-bl from-blue-200/50 to-sky-200/40 rounded-full blur-2xl" />
         {/* Yellow blob - bottom */}
-        <div className="absolute bottom-10 left-1/4 w-56 h-56 bg-gradient-to-tr from-yellow-200/40 to-amber-100/30 rounded-full blur-2xl" />
+        <div className="absolute bottom-10 left-1/4 w-56 h-56 bg-linear-to-tr from-yellow-200/40 to-amber-100/30 rounded-full blur-2xl" />
         {/* Mint blob - bottom right */}
-        <div className="absolute bottom-0 right-10 w-40 h-40 bg-gradient-to-tl from-emerald-200/50 to-mint-100/40 rounded-full blur-2xl" />
+        <div className="absolute bottom-0 right-10 w-40 h-40 bg-linear-to-tl from-emerald-200/50 to-mint-100/40 rounded-full blur-2xl" />
       </div>
 
       {/* Floating 3D clay shapes */}
@@ -78,7 +78,7 @@ export default function Claymorphism() {
               boxShadow: "inset -2px -2px 6px rgba(0,0,0,0.1), inset 2px 2px 6px rgba(255,255,255,0.5)",
             }}
           >
-            <span className="text-white text-xs font-bold drop-shadow-sm">S</span>
+            <span className="text-white text-xs font-bold drop-shadow-xs">S</span>
           </div>
           <span className="font-heading text-sm font-semibold text-slate-700">Starknet Agentic</span>
         </div>
@@ -154,7 +154,7 @@ export default function Claymorphism() {
                 boxShadow: "inset -2px -2px 6px rgba(0,0,0,0.12), inset 2px 2px 6px rgba(255,255,255,0.4)",
               }}
             >
-              <svg className="w-5 h-5 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-white drop-shadow-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
@@ -178,7 +178,7 @@ export default function Claymorphism() {
                 boxShadow: "inset -2px -2px 6px rgba(0,0,0,0.12), inset 2px 2px 6px rgba(255,255,255,0.4)",
               }}
             >
-              <svg className="w-5 h-5 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-white drop-shadow-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
             </div>
@@ -202,7 +202,7 @@ export default function Claymorphism() {
                 boxShadow: "inset -2px -2px 6px rgba(0,0,0,0.12), inset 2px 2px 6px rgba(255,255,255,0.4)",
               }}
             >
-              <svg className="w-5 h-5 text-white drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-white drop-shadow-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>

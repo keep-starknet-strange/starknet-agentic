@@ -57,10 +57,10 @@ export function QuickStartChecklist({
     return (
       <div className="neo-card p-6 bg-neo-yellow/5">
         <div className="animate-pulse">
-          <div className="h-4 bg-neo-dark/10 rounded w-1/3 mb-4" />
+          <div className="h-4 bg-neo-dark/10 rounded-sm w-1/3 mb-4" />
           <div className="space-y-3">
             {items.map((item) => (
-              <div key={item.id} className="h-6 bg-neo-dark/10 rounded" />
+              <div key={item.id} className="h-6 bg-neo-dark/10 rounded-sm" />
             ))}
           </div>
         </div>
@@ -154,7 +154,7 @@ export function QuickStartChecklist({
 
       {/* Completion message */}
       {allComplete && (
-        <div className="mt-4 p-3 bg-neo-green/20 rounded border-2 border-neo-green/50 text-center">
+        <div className="mt-4 p-3 bg-neo-green/20 rounded-sm border-2 border-neo-green/50 text-center">
           <span className="font-heading font-bold text-neo-dark">
             All done! You&apos;re ready to build.
           </span>
