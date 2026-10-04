@@ -9,6 +9,7 @@ Evaluation cases and scorecards for skill quality regression tracking.
 - `heldout/`: explicit hold-out policy and reserved sets excluded from distillation.
 - `reports/`: external repository scan reports and triage notes.
 - `scorecards/`: run outputs and aggregate metrics by version.
+- `scabench/`: external ground-truth target (SCAbench `code4rena_starknet-perpetual_2025_06`) with answer-key sanitization and a deterministic scorer. See `scabench/README.md`.
 
 ## Minimum Gate
 
@@ -17,6 +18,7 @@ For changes affecting security detection behavior:
 - Baseline is the latest `main` scorecard for the same module and case set.
 - High/Critical recall must not regress on `evals/cases/` + documented held-out set.
 - False-positive rate must not increase by more than +1.0 percentage point and must remain <= 2.0% absolute.
+- No new findings on the held-out false-positive corpus (`skills/cairo-auditor/tests/fixtures/held-out-fp/`). Enforced per-PR by `validate_precision_floor.py`, which fails on any finding outside the recorded baseline and also when a recorded finding stops firing.
 
 ## CI Tiers
 
