@@ -49,8 +49,8 @@ row and warns when a row is past its review-by date or its target no longer
 matches `package.json`.
 
 Why this exists: overrides are security pins that go stale silently. An
-**exact** pin (for example `"hono": "4.13.5"`) stops pnpm, and Dependabot,
-from resolving anything newer, including a later security fix. A **floor**
+**exact** pin stops pnpm, and Dependabot, from resolving anything newer,
+including a later security fix (the old `"hono": "4.13.5"` pin blocked alert #100 until #605). A **floor**
 (`^x.y.z`) only raises the minimum and still lets patch/minor updates through.
 
 How to maintain it:
@@ -81,7 +81,7 @@ target. Reasons quote only what the commit message or linked PR states.
 | `esbuild@>=0.17.0 <0.28.1` | `0.28.1` | exact | npm advisory 1120679 (blocked the audit gate on #459). | 2026-06-17 (329632c, #460) | 329632c (#460) | TBD | 2026-11-04 |
 | `fast-uri@<3.1.6` | `^3.1.6` | floor | Transitive via `@modelcontextprotocol/sdk > ajv`. Added for CVE-2026-6321 / GHSA-q3j6-qgpj-74h6 (626d12a); raised for GHSA-4c8g-83qw-93j6 and GHSA-v2hh-gcrm-f6hx (#498) and npm advisory 1130720 (#517). Reason for the 3.1.6 floor not recorded, see 4838a75 (#557). | 2026-05-08 (626d12a) | 4838a75 (#557) | TBD | 2027-01-04 |
 | `brace-expansion@>=4.0.0 <5.0.9` | `^5.0.9` | floor | npm advisory 1130734, via `eslint > minimatch`. | 2026-08-07 (7ae86c2, #517) | 7ae86c2 (#517) | TBD | 2027-01-04 |
-| `hono` | `4.13.5` | exact | Added as a patched pin in #288 (advisory ID not recorded). Current target clears Dependabot alerts #94–#96: GHSA-crvj-82cr-hjcx, GHSA-gqvv-2mrq-wpjv, GHSA-g6gw-c38x-mqfc (#558). | 2026-02-24 (84db0bd, #288) | a2215c2 (#558) | TBD | 2026-11-04 |
+| `hono@<4.13.7` | `^4.13.7` | floor | Added as a patched pin in #288 (advisory ID not recorded); later targets cleared Dependabot alerts #94–#96 (GHSA-crvj-82cr-hjcx, GHSA-gqvv-2mrq-wpjv, GHSA-g6gw-c38x-mqfc, #558). Converted from the exact pin `4.13.5` to a floor in #605 to clear alert #100 (GHSA-hxh3-vqpv-xpqv), which the exact pin was blocking. | 2026-02-24 (84db0bd, #288) | ccdd4c6 (#605) | TBD | 2027-01-04 |
 | `@hono/node-server` | `^2.0.5` | floor | GHSA-frvp-7c67-39w9. | 2026-07-24 (747f081, #498) | 747f081 (#498) | TBD | 2027-01-04 |
 | `ip-address` | `^10.1.1` | floor | CVE-2026-42338 / GHSA-v2v4-37r5-5v8g, via `@modelcontextprotocol/sdk > express-rate-limit`. | 2026-05-07 (e18ea9e, #430) | e18ea9e (#430) | TBD | 2027-01-04 |
 | `postcss` | `^8.5.12` | floor | Dependabot alert "XSS via unescaped `</style>` in CSS stringify" (patched 8.5.10) and dedupe of a transitive 8.4.31. Advisory ID not recorded, see 7bbaef6 (#411). | 2026-04-30 (7bbaef6, #411) | 7bbaef6 (#411) | TBD | 2027-01-04 |

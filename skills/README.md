@@ -69,9 +69,7 @@ For wallet or session-policy work:
 
 ### First useful result in less than or equal to 2 minutes
 
-Use the deterministic quickstart:
-
-- [`./QUICKSTART_2MIN.md`](./QUICKSTART_2MIN.md)
+Use the deterministic quickstart, [`../docs/SKILLS_QUICKSTART.md`](../docs/SKILLS_QUICKSTART.md) (short link: [`./QUICKSTART_2MIN.md`](./QUICKSTART_2MIN.md)).
 
 ### Fastest Path: `cairo-auditor`
 
@@ -141,7 +139,6 @@ Codex discovers repository skills from `.agents/skills/`, which symlink to canon
 Troubleshooting and recovery:
 
 - [`./TROUBLESHOOTING.md`](./TROUBLESHOOTING.md)
-- [`../docs/CLAUDE_MARKETPLACE_SUBMISSION.md`](../docs/CLAUDE_MARKETPLACE_SUBMISSION.md)
 
 ## Machine-Readable Index
 
@@ -151,9 +148,26 @@ Agent platforms and tooling should use:
 
 Generated manifest entries include skill names, descriptions, repo paths, raw `SKILL.md` URLs, and `npx skills add` install commands.
 
-Related migration notes:
+## Cairo Skill Cutover
 
-- [`../docs/CAIRO_SKILLS_MIGRATION.md`](../docs/CAIRO_SKILLS_MIGRATION.md)
+Cairo skills moved here from the deprecated `keep-starknet-strange/starknet-skills` repository, which receives no new content. Legacy names map as follows:
+
+| Legacy (`starknet-skills`) | Canonical (`starknet-agentic`) |
+| --- | --- |
+| `cairo-auditor` | [`skills/cairo-auditor`](./cairo-auditor/) |
+| `cairo-contract-authoring` | [`skills/cairo-contract-authoring`](./cairo-contract-authoring/) |
+| `cairo-testing` | [`skills/cairo-testing`](./cairo-testing/) |
+| `cairo-optimization` | [`skills/cairo-optimization`](./cairo-optimization/) |
+| `cairo-toolchain` | [`skills/cairo-deploy`](./cairo-deploy/) |
+| `account-abstraction` | [`skills/account-abstraction`](./account-abstraction/) |
+| `starknet-network-facts` | [`skills/starknet-network-facts`](./starknet-network-facts/) |
+
+Rules for Cairo-skill refactors:
+
+- Do not reintroduce `cairo-security` or `cairo-contracts` as top-level skills.
+- Keep routing stable via root `SKILL.md`, `llms.txt`, and `skills/manifest.json`.
+- Keep the `cairo-security` gap-diff reference at `skills/cairo-auditor/references/audit-findings/cairo-security-gap-diff.md`.
+- Run the cutover guards: `python3 scripts/check_cairo_skill_cutover.py`, `python3 scripts/skills_manifest.py --check`, and `python3 scripts/quick_validate_skill.py <cairo skill dirs...>`.
 
 ## Updating Skills
 
@@ -290,6 +304,13 @@ Only surfaces explicitly tested in this repository are marked as supported.
 ## Contributing
 
 See [`../CONTRIBUTING.md`](../CONTRIBUTING.md). Keep `SKILL.md` content focused, update [`./manifest.json`](./manifest.json) when adding skills, and keep installation docs compatible with distribution validation.
+
+### Releasing Plugin Updates (maintainers)
+
+1. Bump skill and plugin versions in one pass with `scripts/quality/sync_cairo_auditor_release.py` (see the maintainer reference in [`./cairo-auditor/README.md`](./cairo-auditor/README.md)).
+2. Run the validation commands under [Skill Format](#skill-format); any `.claude-plugin/**` change must pass `validate_marketplace.py`.
+3. Mirror public install-command changes in `README.md`, `skills/README.md`, and `skills/cairo-auditor/README.md` (enforced by `check_codex_distribution.py`).
+4. In release notes, point users to the hard refresh sequence in [`./TROUBLESHOOTING.md`](./TROUBLESHOOTING.md#claude-scope-selection) and have them confirm the version with `/plugin list`.
 
 ## Resources
 
