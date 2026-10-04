@@ -5,7 +5,7 @@ End-to-end runs against Starknet Sepolia. Two suites live in this repo:
 | Suite | What it covers | Where |
 |---|---|---|
 | ERC-8004 registries | Identity, Reputation, Validation registries (Node test runner) | [Part A](#part-a-erc-8004-registries) |
-| SessionAccount spending policy | Session keys + per-token spending limits on `contracts/session-account` (starkli) | [Part B](#part-b-sessionaccount-spending-policy) |
+| SessionAccount spending policy | Session keys + per-token spending limits on `contracts/session-account` (sncast + session-key helper) | [Part B](#part-b-sessionaccount-spending-policy) |
 
 Contract deployments, including Sepolia, require human review (see `CLAUDE.md` boundaries).
 Never commit keys, keystores, or `.env` files.
@@ -43,13 +43,12 @@ Full details: [`contracts/erc8004-cairo/e2e-tests/README.md`](../contracts/erc80
 ### Prerequisites
 
 Tools:
-- `starkli` (the deploy and runner scripts call it). Flags change between releases; check `starkli --help` if a command is rejected.
-- Scarb and Starknet Foundry at the versions CI installs (`.github/workflows/ci.yml`). `contracts/session-account/Scarb.toml` declares the matching `starknet` and `snforge_std` dependencies.
-- GNU grep. `scripts/deploy_sepolia.sh` uses `grep -P`, which macOS's BSD grep does not support. On macOS, install GNU grep (`brew install grep`) and put its `gnubin` directory first on `PATH`.
+- Scarb and Starknet Foundry (`snforge`, `sncast`) at the versions CI installs (`.github/workflows/ci.yml`, also pinned in `.tool-versions`). The deploy and runner scripts call `sncast`. `contracts/session-account/Scarb.toml` declares the matching `starknet` and `snforge_std` dependencies.
+- Node.js 24+ and `pnpm install` at the repo root, for the session-key helper in `packages/session-account-e2e` (see [Session-key transactions](#session-key-transactions)).
 
 Accounts:
 - **Deployer account**: deploys contracts, needs Sepolia STRK for fees ([faucet](https://starknet-faucet.vercel.app/)).
-- **Owner key**: master key for the SessionAccount (constructor argument `public_key`).
+- **Owner key**: master key for the SessionAccount (constructor argument `public_key`). Owner-only entrypoints (`add_or_update_session_key`, `set_spending_policy`, ...) require the SessionAccount to call itself, so owner steps are sent *from the SessionAccount* with this key, not from the deployer.
 - **Session keypair**: generated below.
 
 Environment:
@@ -59,12 +58,16 @@ export STARKNET_RPC=<your Sepolia RPC URL>
 export STARKNET_KEYSTORE=~/.starknet_accounts/deployer-keystore.json
 export STARKNET_ACCOUNT=~/.starknet_accounts/deployer-account.json
 
-# One-time, if you don't have a deployer account yet:
-starkli signer keystore new $STARKNET_KEYSTORE   # create the signer first
-starkli account oz init $STARKNET_ACCOUNT        # uses $STARKNET_KEYSTORE
+# One-time, if you don't have a deployer account yet. This writes both files and
+# prompts for a keystore password (or set CREATE_KEYSTORE_PASSWORD):
+sncast --keystore $STARKNET_KEYSTORE --account $STARKNET_ACCOUNT \
+  account create --type oz --url $STARKNET_RPC
 # Fund the printed address with Sepolia STRK, then:
-starkli account deploy $STARKNET_ACCOUNT
+sncast --keystore $STARKNET_KEYSTORE --account $STARKNET_ACCOUNT \
+  account deploy --url $STARKNET_RPC
 ```
+
+`sncast` prompts for the keystore password on every signed command unless `KEYSTORE_PASSWORD` is set. Existing starkli-format account JSON and keystore files work unchanged with `--account <file> --keystore <file>`. Without `STARKNET_KEYSTORE`, the deploy script treats `STARKNET_ACCOUNT` as an account name in sncast's accounts file (`sncast account create --name ...`).
 
 Tokens: use an existing Sepolia ERC-20 or deploy mock tokens (for example 6-decimal MockUSDC, 18-decimal MockWETH). Amounts below assume 6 decimals.
 
@@ -79,30 +82,32 @@ bash scripts/deploy_sepolia.sh
 
 The script prints `export` lines for `SESSION_ACCOUNT_ADDRESS` and `CLASS_HASH`; run them. It also writes a local `docs/DEPLOYED_CONTRACTS.md`. The canonical deployment record is [`DEPLOYMENT_TRUTH_SHEET.md`](./DEPLOYMENT_TRUTH_SHEET.md).
 
-**2. Generate a session key and its signer files:**
+**2. Create the owner and session-key credentials, and fund the SessionAccount:**
 
 ```bash
-starkli signer gen-keypair
-export SESSION_PUBKEY=0x...   # from output
-export SESSION_PRIVKEY=0x...  # from output; keep it secret
+# Owner: an sncast account whose address is the SessionAccount itself (type oz:
+# SessionAccount validates 2-felt owner signatures like an OZ account). sncast reads the
+# class hash from the deployed contract. This stores the owner key in plain text in
+# sncast's accounts file (~/.starknet_accounts/), so use a testnet-only key.
+read -rs OWNER_PRIVATE_KEY   # the private key of the owner public key passed to the deploy script
+sncast account import --name session-owner --type oz \
+  --address "$SESSION_ACCOUNT_ADDRESS" --private-key "$OWNER_PRIVATE_KEY" --url "$STARKNET_RPC"
+unset OWNER_PRIVATE_KEY
+export SESSION_OWNER_ACCOUNT=session-owner
+# Already have an account JSON + keystore for this address? Use them instead:
+#   export SESSION_OWNER_ACCOUNT=<account.json> SESSION_OWNER_KEYSTORE=<keystore.json>
 
-cat > ~/.starknet_accounts/session-key.json << EOF
-{
-  "version": 1,
-  "variant": { "type": "open_zeppelin", "version": 1, "public_key": "$SESSION_PUBKEY" },
-  "deployment": { "status": "deployed", "class_hash": "$CLASS_HASH", "address": "$SESSION_ACCOUNT_ADDRESS" }
-}
-EOF
+# Session key: the helper reads the private key from the environment only.
+# Generate a keypair with starknet.js (installed by pnpm install):
+(cd packages/session-account-e2e && node --input-type=module -e \
+  'import { ec, stark } from "starknet"; const k = stark.randomAddress(); console.log(`SESSION_PRIVATE_KEY=${k}\nSESSION_PUBKEY=${ec.starkCurve.getStarkKey(k)}`)')
+export SESSION_PUBKEY=0x...           # from output
+export SESSION_PRIVATE_KEY=0x...      # from output; testnet only, keep it secret
 
-starkli signer keystore from-key ~/.starknet_accounts/session-keystore.json
-# Enter SESSION_PRIVKEY and a password when prompted
-
-export SESSION_KEY_ACCOUNT=~/.starknet_accounts/session-key.json
-export SESSION_KEY_KEYSTORE=~/.starknet_accounts/session-keystore.json
-export TOKEN_ADDRESS=0x...    # Sepolia ERC-20 under test
+export TOKEN_ADDRESS=0x...            # Sepolia ERC-20 under test
 ```
 
-> **Session-key transactions need a session-aware signer.** SessionAccount accepts a session key only when the signature has four elements, `[session_pubkey, r, s, valid_until]`, signed over the account's session message hash. starkli's account signer produces the two-element owner signature `[r, s]`, so a starkli command signed with the session keystore is validated as an owner call and rejected. Use a starknet.js signer that produces the session format, such as `SessionKeySigner` in `packages/starknet-mcp-server/src/helpers/sessionKeySigner.ts` (check it matches the account's session signature mode; see [`SESSION_SIGNATURE_MODE_MIGRATION.md`](./security/SESSION_SIGNATURE_MODE_MIGRATION.md)). Owner-signed steps (adding keys, setting policies) and reads work with starkli as shown.
+Fund `$SESSION_ACCOUNT_ADDRESS` with Sepolia STRK (owner and session-key transactions are both sent from it and pay their own fees) and at least 3400 tokens of `$TOKEN_ADDRESS` (3400000000 base units at 6 decimals), which the happy-path rows transfer to `0xDEADBEEF` and `0xBEEF1..3`.
 
 **3. Run the scripted suite:**
 
@@ -114,25 +119,48 @@ bash scripts/e2e_test_runner.sh \
 # --skip-setup skips adding the session key and policy
 ```
 
-It adds a session key (7 days, 100 calls), sets a 1000/5000/24h policy, then checks two in-limit transfers succeed and that over-limit transfers and session-key calls to `set_spending_policy` / `remove_spending_policy` are rejected.
+Setup adds the session key (7 days, 100 calls, `transfer`-only whitelist) and sets a 1000/5000/24h policy with sncast as the owner. Every session-key row then runs through the helper, which asserts the row's outcome itself:
 
-**Known issue:** the runner's session-key steps pass `--account-session-key` to `starkli invoke`, an option starkli does not have, so those steps fail. Only the owner-signed setup (session key, policy) works. Until the runner uses a session-aware signer, run the session-key rows of the manual matrix below with one.
+| Row | Helper expectation | Passes only if |
+|---|---|---|
+| Transfer 500, transfer 1000 (cumulative 1500) | success | the transaction is submitted, `SUCCEEDED`, and SessionAccount emitted no `CallFailed` event |
+| Transfer 1500 | `revert` `Spending: exceeds per-call` | `__execute__` reverts with that reason |
+| Multicall 4 x 1000 (1500 + 4000 > 5000) | `revert` `Spending: exceeds window limit` | `__execute__` reverts with that reason; each transfer stays within the per-call cap, which is checked first |
+| Session key calls `set_spending_policy` / `remove_spending_policy` | `reject` | a control call (0-token `transfer`) validates with the same key and nonce, then `__validate__` rejects the target call |
+| Transfer exactly 1000; multicall 3 x 300 (cumulative 3400) | success | as above |
+
+Revert and reject rows run as fee estimates with validation enabled: the node runs `__validate__` and `__execute__` against current state with the real session signature, and nothing is submitted (no fee, no session call used, counters unchanged). A spending-policy reason can only appear after `__validate__` accepted the signature. A `__validate__` rejection has no reason string, and a bad signature produces the same node error, so the control call is what rules out a signature problem. `--skip-setup` continues from the current `spent_in_window`; re-run setup (setting the policy resets the counter) before repeating the suite inside one window.
+
+### Session-key transactions
+
+SessionAccount accepts a session key only when the signature has four elements, `[session_pubkey, r, s, valid_until]`, signed over the session message hash for the account's session signature mode (`get_session_signature_mode()`: v1 legacy or v2 SNIP-12, see [`SESSION_SIGNATURE_MODE_MIGRATION.md`](./security/SESSION_SIGNATURE_MODE_MIGRATION.md)). sncast (like any standard account signer) only produces the two-element owner signature `[r, s]`, so it cannot send session-key transactions. Use the helper instead:
+
+```bash
+# Run from the repo root; STARKNET_RPC and SESSION_PRIVATE_KEY must be exported.
+export RECIPIENT=0x...   # any address
+node packages/session-account-e2e/src/cli.ts \
+  --account "$SESSION_ACCOUNT_ADDRESS" --session-key "$SESSION_PUBKEY" \
+  --call "${TOKEN_ADDRESS}:transfer:${RECIPIENT},500000000,0"
+```
+
+- `--call <to>:<entrypoint>[:<felt>,...]` takes the function name, not a selector, and repeats for a multicall. u256 amounts are two felts (low, high). Write `${VAR}:` with braces: in zsh, `$VAR:t...` is a history modifier.
+- `--expect revert --reason "<panic string>"` and `--expect reject --control-call <spec>` check failure rows as described above. Exit code 0 means the expectation held, 1 that it did not, 2 a usage or precondition error (unregistered or expired key, wrong private key, mainnet RPC).
+- The helper reads the signature mode and the session's `valid_until` from the account, refuses a private key that does not match `--session-key`, and signs the exact `__execute__` calldata it submits. Its hashes are tested against `spec/session-signature-v2.json`, and the session-account snforge suite pins the contract to the same vectors.
 
 ### Manual test matrix
 
-Selectors used below: `transfer` = `0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e`, `approve` = `0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c`. Owner calls use `--account $STARKNET_ACCOUNT --keystore $STARKNET_KEYSTORE`. Session-key calls must be signed with a session-aware signer (see the note above); starkli cannot produce that signature.
+Selectors used below: `transfer` = `0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e`, `approve` = `0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c`. Owner calls are `sncast --account $SESSION_OWNER_ACCOUNT invoke ...` (add `--keystore $SESSION_OWNER_KEYSTORE` if you use one). sncast `--calldata` takes raw felts: a `u256` is two felts (low, high) and an `Array` is its length followed by the elements. Session-key rows go through the helper ([Session-key transactions](#session-key-transactions)); sncast cannot produce that signature.
 
 #### Setup
 
 Add the session key (owner):
 
 ```bash
-starkli invoke $SESSION_ACCOUNT_ADDRESS add_or_update_session_key \
-  $SESSION_PUBKEY \
-  u64:$(($(date +%s) + 604800)) \
-  u32:100 \
-  array:1:0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e \
-  --account $STARKNET_ACCOUNT --keystore $STARKNET_KEYSTORE
+# session_key, valid_until (u64, now + 7 days), max_calls (u32), allowed_entrypoints (1 x transfer)
+sncast --account $SESSION_OWNER_ACCOUNT --wait invoke --url $STARKNET_RPC \
+  --contract-address $SESSION_ACCOUNT_ADDRESS --function add_or_update_session_key \
+  --calldata $SESSION_PUBKEY $(($(date +%s) + 604800)) 100 \
+    1 0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e
 ```
 
 Verify with `get_session_data($SESSION_PUBKEY)`.
@@ -140,26 +168,30 @@ Verify with `get_session_data($SESSION_PUBKEY)`.
 Set the spending policy, 1000 per call / 5000 per 24h window (owner):
 
 ```bash
-starkli invoke $SESSION_ACCOUNT_ADDRESS set_spending_policy \
-  $SESSION_PUBKEY $TOKEN_ADDRESS \
-  u256:1000000000 u256:5000000000 u64:86400 \
-  --account $STARKNET_ACCOUNT --keystore $STARKNET_KEYSTORE
+# session_key, token, max_per_call (u256), max_per_window (u256), window_seconds (u64)
+sncast --account $SESSION_OWNER_ACCOUNT --wait invoke --url $STARKNET_RPC \
+  --contract-address $SESSION_ACCOUNT_ADDRESS --function set_spending_policy \
+  --calldata $SESSION_PUBKEY $TOKEN_ADDRESS 1000000000 0 5000000000 0 86400
 ```
 
 Expect a `SpendingPolicySet` event. Query state at any time:
 
 ```bash
-starkli call $SESSION_ACCOUNT_ADDRESS get_spending_policy $SESSION_PUBKEY $TOKEN_ADDRESS
-# -> max_per_call, max_per_window, window_seconds, spent_in_window, window_start
+sncast call --url $STARKNET_RPC --contract-address $SESSION_ACCOUNT_ADDRESS \
+  --function get_spending_policy --calldata $SESSION_PUBKEY $TOKEN_ADDRESS
+# Response: the decoded SpendingPolicy (max_per_call, max_per_window, window_seconds,
+# spent_in_window, window_start); Response Raw: the same as felts
 ```
 
-Transfer with the session key (500 tokens to `RECIPIENT`): execute this call from `$SESSION_ACCOUNT_ADDRESS` with a session-aware signer:
+Transfer with the session key (500 tokens to `RECIPIENT`):
 
-```text
-contractAddress: $TOKEN_ADDRESS
-entrypoint:      transfer
-calldata:        [$RECIPIENT, 500000000, 0]   # u256 amount = (low, high)
+```bash
+node packages/session-account-e2e/src/cli.ts \
+  --account "$SESSION_ACCOUNT_ADDRESS" --session-key "$SESSION_PUBKEY" \
+  --call "${TOKEN_ADDRESS}:transfer:${RECIPIENT},500000000,0"   # u256 amount = (low, high)
 ```
+
+The policy checks the per-call limit before the window limit, so a transfer above 1000 always fails with `Spending: exceeds per-call`. Window-limit rows below use transfers of at most 1000.
 
 #### Happy path
 
@@ -168,7 +200,7 @@ calldata:        [$RECIPIENT, 500000000, 0]   # u256 amount = (low, high)
 | 2.1 | Add session key | Succeeds; visible via `get_session_data` |
 | 2.2 | Set policy 1000/5000/24h | Succeeds; `SpendingPolicySet` emitted |
 | 2.3 | Transfer 500 | Succeeds; `spent_in_window = 500000000` |
-| 2.4 | Transfers of 500, 1000, 2000 in one window (3500 < 5000) | All succeed; `spent_in_window = 3500000000` |
+| 2.4 | Transfers of 500, 1000, 1000, 1000 in one window (3500 < 5000) | All succeed; `spent_in_window = 3500000000` |
 | 2.5 | After 24h + 1s, transfer 1000 | Succeeds; `spent_in_window` resets to `1000000000` |
 
 #### Failure path
@@ -176,9 +208,11 @@ calldata:        [$RECIPIENT, 500000000, 0]   # u256 amount = (low, high)
 | # | Scenario | Expected |
 |---|---|---|
 | 3.1 | Transfer 1500 (> per-call 1000) | Reverts with `Spending: exceeds per-call`; state unchanged |
-| 3.2 | After 3500 spent, transfer 2000 (5500 > 5000) | Reverts with `Spending: exceeds window limit`; `spent_in_window` stays 3500000000 |
-| 3.3 | Session key calls `set_spending_policy` | Rejected (blocklist); policy unchanged |
-| 3.4 | Session key calls `remove_spending_policy` | Rejected (blocklist); policy still active |
+| 3.2 | After 3500 spent, one multicall of two 1000 transfers (3500 + 2000 = 5500 > 5000) | Reverts with `Spending: exceeds window limit`; `spent_in_window` stays 3500000000 |
+| 3.3 | Session key calls `set_spending_policy` | Rejected by `__validate__`; policy unchanged |
+| 3.4 | Session key calls `remove_spending_policy` | Rejected by `__validate__`; policy still active |
+
+For 3.3 and 3.4, `__validate__` applies three session call checks in order: the admin-selector blocklist, the self-call guard (no session call may target the account), and the entrypoint whitelist. With the runner's setup all three reject these calls. The snforge suite (`test_blocklist_*`) covers each check on its own.
 
 #### Edge cases
 
@@ -189,6 +223,8 @@ calldata:        [$RECIPIENT, 500000000, 0]   # u256 amount = (low, high)
 | 4.3 | Transfer exactly 1000 (per-call) and exactly 5000 total (window) | Succeeds (limits are inclusive) |
 | 4.4 | Non-spending selector (`balanceOf`) via `__execute__` | Succeeds; `spent_in_window` unchanged |
 | 4.5 | `approve(spender, 1000)` via `__execute__` | Succeeds; counted as spending (+1000000000) |
+
+Rows 4.4 and 4.5 call selectors outside the runner's `transfer`-only whitelist. Re-add the session key with those selectors in `allowed_entrypoints` (or an empty whitelist, which allows any non-admin selector) first, otherwise `__validate__` rejects them.
 
 #### Policy management (owner)
 
@@ -206,10 +242,11 @@ No load-test script is checked in. A reasonable target is 100 transfers of 50 to
 #### Monitoring
 
 ```bash
-watch -n 300 'starkli call $SESSION_ACCOUNT_ADDRESS get_spending_policy $SESSION_PUBKEY $TOKEN_ADDRESS'
-starkli events $SESSION_ACCOUNT_ADDRESS --from-block <START_BLOCK>   # SpendingPolicySet / SpendingPolicyRemoved
-starkli call $TOKEN_ADDRESS balanceOf $SESSION_ACCOUNT_ADDRESS
+watch -n 300 'sncast call --url $STARKNET_RPC --contract-address $SESSION_ACCOUNT_ADDRESS --function get_spending_policy --calldata $SESSION_PUBKEY $TOKEN_ADDRESS'
+sncast call --url $STARKNET_RPC --contract-address $TOKEN_ADDRESS --function balanceOf --calldata $SESSION_ACCOUNT_ADDRESS
 ```
+
+sncast has no events command. Watch `SpendingPolicySet` / `SpendingPolicyRemoved` on the contract's Events tab in Voyager (`https://sepolia.voyager.online/contract/$SESSION_ACCOUNT_ADDRESS`).
 
 ### Security expectations
 
@@ -226,10 +263,13 @@ If a run contradicts the audit: stop, record exact reproduction steps and transa
 
 | Symptom | Fix |
 |---|---|
-| `Transaction reverted` | Check deployer fee balance, contract address, and that the session key is registered (`get_session_data`) |
+| `Transaction reverted` | Check the SessionAccount's STRK balance (it pays fees for owner and session-key transactions) and the contract address |
+| `Account: unauthorized` during setup | Owner steps were sent from another account. `SESSION_OWNER_ACCOUNT` must point at the SessionAccount address with the owner key |
 | `Spending: exceeds per-call` / `exceeds window limit` | Expected in failure-path tests; otherwise lower the amount or raise the policy |
-| `Account not found` | Check `SESSION_KEY_ACCOUNT` path and contents (class hash + address) |
-| `Invalid signature` | Session private key doesn't match the registered public key; regenerate and update the signer files |
+| Helper: `not registered`, `expired` or `call budget exhausted` | Re-run setup (`add_or_update_session_key`) for `$SESSION_PUBKEY` |
+| Helper: `Session private key does not match` | `SESSION_PRIVATE_KEY` is not the key for `--session-key` |
+| Helper: `control call did not validate` | The session signature itself is rejected: wrong key, key not whitelisted for `transfer`, or a client/contract signature-mode mismatch. Check `get_session_signature_mode` and `get_session_data` |
+| Helper: `succeeded but SessionAccount emitted CallFailed` | The inner call failed (for example insufficient token balance); SessionAccount does not revert on failed inner calls, so the spend still counts |
 | `Failed to extract class hash` from the deploy script | `grep -P` unsupported; use GNU grep (see prerequisites) |
 
 ### Exit criteria

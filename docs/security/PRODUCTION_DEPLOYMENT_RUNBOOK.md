@@ -35,6 +35,9 @@ the no-backend launch profile.
 export SEPOLIA_RPC_URL="<starknet-sepolia-rpc>"
 export RPC_URL="<starknet-mainnet-rpc>"
 export DEPLOYER_ACCOUNT="<account_address>"
+# Signer for DEPLOYER_ACCOUNT, used by sncast (Starknet Foundry). Keystore flow: the
+# account JSON for that address plus its encrypted keystore. Ledger flow: see Step 3.
+export DEPLOYER_ACCOUNT_FILE="<path_to_account_json>"
 export KEYSTORE_PATH="<path_to_encrypted_keystore>"
 
 export IDENTITY_REGISTRY="<identity_registry_addr>"
@@ -61,6 +64,24 @@ normalized_deployer="$(normalize_felt "$DEPLOYER_ACCOUNT")"
 normalized_expected_multisig="$(normalize_felt "$EXPECTED_MULTISIG")"
 test "$normalized_deployer" = "$normalized_expected_multisig" \
   || { echo "DEPLOYER_ACCOUNT must equal EXPECTED_MULTISIG"; exit 1; }
+
+# Keystore flow: the account file sncast signs with must be DEPLOYER_ACCOUNT.
+if [ -n "$DEPLOYER_ACCOUNT_FILE" ]; then
+  deployer_file_address="$(
+    grep -oE '"address": ?"0x[0-9a-fA-F]+"' "$DEPLOYER_ACCOUNT_FILE" | grep -oE '0x[0-9a-fA-F]+'
+  )"
+  test "$(normalize_felt "$deployer_file_address")" = "$normalized_deployer" \
+    || { echo "DEPLOYER_ACCOUNT_FILE address does not match DEPLOYER_ACCOUNT"; exit 1; }
+fi
+
+# Helpers for sncast --json output (one JSON object per line).
+json_hex_field() {  # last 0x value of field $1
+  grep -oE "\"$1\": ?\"0x[0-9a-fA-F]+\"" | tail -n 1 | grep -oE '0x[0-9a-fA-F]+'
+}
+call_felt() {  # first felt returned by view function $2 on contract $1
+  sncast --json call --url "$RPC_URL" --contract-address "$1" --function "$2" \
+    | grep -oE '"response_raw": ?\[[^]]*\]' | grep -oE '0x[0-9a-fA-F]+' | sed -n '1p'
+}
 ```
 
 ## Step 0: Mandatory Sepolia Dry-Run Gate
@@ -83,22 +104,26 @@ Mainnet deployment is blocked until this evidence is attached.
 ## Step 1: Build and Class Hash Verification
 
 ```bash
-scarb build --release
-COMPUTED_AGENT_ACCOUNT_CLASS_HASH="$(
-  starkli class-hash contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json
-)"
-COMPUTED_FACTORY_CLASS_HASH="$(
-  starkli class-hash contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json
-)"
+(cd contracts/agent-account && scarb --release build)
+COMPUTED_AGENT_ACCOUNT_CLASS_HASH="$(normalize_felt "$(
+  sncast --json utils class-hash \
+    --sierra-file contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json \
+    | json_hex_field class_hash
+)")"
+COMPUTED_FACTORY_CLASS_HASH="$(normalize_felt "$(
+  sncast --json utils class-hash \
+    --sierra-file contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json \
+    | json_hex_field class_hash
+)")"
 
 echo "Expected agent-account: $EXPECTED_AGENT_ACCOUNT_CLASS_HASH"
 echo "Computed agent-account: $COMPUTED_AGENT_ACCOUNT_CLASS_HASH"
-test "$COMPUTED_AGENT_ACCOUNT_CLASS_HASH" = "$EXPECTED_AGENT_ACCOUNT_CLASS_HASH" \
+test "$COMPUTED_AGENT_ACCOUNT_CLASS_HASH" = "$(normalize_felt "$EXPECTED_AGENT_ACCOUNT_CLASS_HASH")" \
   || { echo "AgentAccount class hash mismatch"; exit 1; }
 
 echo "Expected factory: $EXPECTED_FACTORY_CLASS_HASH"
 echo "Computed factory: $COMPUTED_FACTORY_CLASS_HASH"
-test "$COMPUTED_FACTORY_CLASS_HASH" = "$EXPECTED_FACTORY_CLASS_HASH" \
+test "$COMPUTED_FACTORY_CLASS_HASH" = "$(normalize_felt "$EXPECTED_FACTORY_CLASS_HASH")" \
   || { echo "Factory class hash mismatch"; exit 1; }
 ```
 
@@ -113,61 +138,55 @@ No mainnet declaration/deploy command should execute without this record.
 
 ## Step 3: Declare Classes (Mainnet)
 
-Use one signer flow only:
+Use one signer flow only. `sncast declare --contract-name` builds the package
+itself (release profile), so run it from `contracts/agent-account`.
 
 - keystore (recommended):
 
 ```bash
+SNCAST_SIGNER=(--account "$DEPLOYER_ACCOUNT_FILE" --keystore "$KEYSTORE_PATH")
+```
+
+- hardware wallet: register the Ledger-backed deployer in sncast's accounts file
+  once (no private key leaves the device), then sign with that account name and
+  confirm each transaction on the device:
+
+```bash
+sncast account import --name prod-deployer --address "$DEPLOYER_ACCOUNT" \
+  --type <account-type> --ledger-account-id <ledger-account-index> --url "$RPC_URL"
+SNCAST_SIGNER=(--account prod-deployer)
+```
+
+Declare both classes with the chosen signer:
+
+```bash
 declare_agent_output="$(
-  starkli declare contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json \
-    --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --keystore "$KEYSTORE_PATH" \
-    2>&1
+  cd contracts/agent-account && sncast --json "${SNCAST_SIGNER[@]}" --wait \
+    declare --contract-name AgentAccount --url "$RPC_URL" 2>&1
 )"
 printf '%s\n' "$declare_agent_output"
 DECLARED_AGENT_ACCOUNT_CLASS_HASH="$(
-  printf '%s\n' "$declare_agent_output" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -nE 's/.*class hash[^0-9a-f]*(0x[0-9a-f]+).*/\1/p' \
-    | tail -n 1
+  normalize_felt "$(printf '%s\n' "$declare_agent_output" | json_hex_field class_hash)"
 )"
-test -n "$DECLARED_AGENT_ACCOUNT_CLASS_HASH" \
+test "$DECLARED_AGENT_ACCOUNT_CLASS_HASH" != "0x0" \
   || { echo "Failed to parse AgentAccount class hash from declare output"; exit 1; }
 
 declare_factory_output="$(
-  starkli declare contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json \
-    --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --keystore "$KEYSTORE_PATH" \
-    2>&1
+  cd contracts/agent-account && sncast --json "${SNCAST_SIGNER[@]}" --wait \
+    declare --contract-name AgentAccountFactory --url "$RPC_URL" 2>&1
 )"
 printf '%s\n' "$declare_factory_output"
 DECLARED_FACTORY_CLASS_HASH="$(
-  printf '%s\n' "$declare_factory_output" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -nE 's/.*class hash[^0-9a-f]*(0x[0-9a-f]+).*/\1/p' \
-    | tail -n 1
+  normalize_felt "$(printf '%s\n' "$declare_factory_output" | json_hex_field class_hash)"
 )"
-test -n "$DECLARED_FACTORY_CLASS_HASH" \
+test "$DECLARED_FACTORY_CLASS_HASH" != "0x0" \
   || { echo "Failed to parse Factory class hash from declare output"; exit 1; }
 ```
 
-- hardware wallet:
-
-```bash
-starkli declare contracts/agent-account/target/release/agent_account_AgentAccount.contract_class.json \
-  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger
-# Confirm on Ledger device, then copy the printed class hash:
-export DECLARED_AGENT_ACCOUNT_CLASS_HASH="<class_hash_from_output>"
-test -n "$DECLARED_AGENT_ACCOUNT_CLASS_HASH" \
-  || { echo "Missing DECLARED_AGENT_ACCOUNT_CLASS_HASH"; exit 1; }
-
-starkli declare contracts/agent-account/target/release/agent_account_AgentAccountFactory.contract_class.json \
-  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger
-# Confirm on Ledger device, then copy the printed class hash:
-export DECLARED_FACTORY_CLASS_HASH="<class_hash_from_output>"
-test -n "$DECLARED_FACTORY_CLASS_HASH" \
-  || { echo "Missing DECLARED_FACTORY_CLASS_HASH"; exit 1; }
-```
-
-Do not use `--private-key` for production operations.
+Do not sign production operations with an sncast accounts-file entry that
+holds a private key (`account create`, or `account import --private-key`): the
+accounts file stores keys unencrypted. Ledger entries store only the derivation
+path.
 
 Assert declared class hashes match Step 1 computed hashes:
 
@@ -195,28 +214,24 @@ Example:
 keystore:
 
 ```bash
-starkli deploy "$DECLARED_FACTORY_CLASS_HASH" \
-  "$DECLARED_AGENT_ACCOUNT_CLASS_HASH" \
-  "$IDENTITY_REGISTRY" \
-  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --keystore "$KEYSTORE_PATH"
+deploy_factory_output="$(
+  sncast --json "${SNCAST_SIGNER[@]}" --wait deploy --url "$RPC_URL" \
+    --class-hash "$DECLARED_FACTORY_CLASS_HASH" \
+    --constructor-calldata "$DECLARED_AGENT_ACCOUNT_CLASS_HASH" "$IDENTITY_REGISTRY" 2>&1
+)"
+printf '%s\n' "$deploy_factory_output"
 ```
 
-hardware wallet:
-
-```bash
-starkli deploy "$DECLARED_FACTORY_CLASS_HASH" \
-  "$DECLARED_AGENT_ACCOUNT_CLASS_HASH" \
-  "$IDENTITY_REGISTRY" \
-  --rpc "$RPC_URL" --account "$DEPLOYER_ACCOUNT" --ledger
-```
+The same command works for both signer flows (`SNCAST_SIGNER` from Step 3).
 
 ## Step 5: Runtime Verification
 
 First, set `FACTORY_ADDRESS` to the deployed factory address returned by the
-Step 4 deployment output/receipt:
+Step 4 deployment output (`contract_address`):
 
 ```bash
-export FACTORY_ADDRESS="<deployed_factory_address_from_step4>"
+export FACTORY_ADDRESS="$(printf '%s\n' "$deploy_factory_output" | json_hex_field contract_address)"
+test -n "$FACTORY_ADDRESS" || { echo "Failed to parse factory address from Step 4"; exit 1; }
 ```
 
 ```bash
@@ -229,28 +244,33 @@ normalize_felt() {
   printf '0x%s\n' "$value"
 }
 
+call_felt() {  # first felt returned by view function $2 on contract $1
+  sncast --json call --url "$RPC_URL" --contract-address "$1" --function "$2" \
+    | grep -oE '"response_raw": ?\[[^]]*\]' | grep -oE '0x[0-9a-fA-F]+' | sed -n '1p'
+}
+
 normalized_expected_multisig="$(normalize_felt "$EXPECTED_MULTISIG")"
 normalized_deployer="$(normalize_felt "$DEPLOYER_ACCOUNT")"
 normalized_expected_identity_registry="$(normalize_felt "$IDENTITY_REGISTRY")"
 normalized_expected_agent_class_hash="$(normalize_felt "$DECLARED_AGENT_ACCOUNT_CLASS_HASH")"
 
 factory_owner="$(
-  normalize_felt "$(starkli call "$FACTORY_ADDRESS" get_owner --rpc "$RPC_URL")"
+  normalize_felt "$(call_felt "$FACTORY_ADDRESS" get_owner)"
 )"
 factory_identity_registry="$(
-  normalize_felt "$(starkli call "$FACTORY_ADDRESS" get_identity_registry --rpc "$RPC_URL")"
+  normalize_felt "$(call_felt "$FACTORY_ADDRESS" get_identity_registry)"
 )"
 factory_account_class_hash="$(
-  normalize_felt "$(starkli call "$FACTORY_ADDRESS" get_account_class_hash --rpc "$RPC_URL")"
+  normalize_felt "$(call_felt "$FACTORY_ADDRESS" get_account_class_hash)"
 )"
 identity_owner="$(
-  normalize_felt "$(starkli call "$IDENTITY_REGISTRY" owner --rpc "$RPC_URL")"
+  normalize_felt "$(call_felt "$IDENTITY_REGISTRY" owner)"
 )"
 reputation_owner="$(
-  normalize_felt "$(starkli call "$REPUTATION_REGISTRY" owner --rpc "$RPC_URL")"
+  normalize_felt "$(call_felt "$REPUTATION_REGISTRY" owner)"
 )"
 validation_owner="$(
-  normalize_felt "$(starkli call "$VALIDATION_REGISTRY" owner --rpc "$RPC_URL")"
+  normalize_felt "$(call_felt "$VALIDATION_REGISTRY" owner)"
 )"
 
 echo "factory_owner=$factory_owner expected_multisig=$normalized_expected_multisig"

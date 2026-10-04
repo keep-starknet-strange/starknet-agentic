@@ -245,7 +245,7 @@ src/
 │   ├── index.ts      # Registry: TOOL_MODULES (order = tools/list order), listTools, getToolHandler
 │   ├── _shared.ts    # ToolContext / ToolModule types and shared input validators
 │   └── <tool>.ts     # One module per tool: definition + handler (+ optional isListed)
-├── helpers/          # Balance, Vesu, keyring proxy signer, session keys, tx receipts, ...
+├── helpers/          # Balance, Vesu, keyring proxy signer, tx receipts, ...
 ├── middleware/       # policyGuard (evaluated before every tool call)
 └── services/         # TokenService (symbol and decimals resolution)
 ```

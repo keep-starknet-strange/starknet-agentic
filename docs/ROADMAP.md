@@ -261,7 +261,7 @@ Features that enhance the platform but are not required for v1.0 release.
 - Tests: test_agent_account (43), test_execute_validate (20), test_security (33), test_agent_account_factory (14)
 - Uses OpenZeppelin AccountComponent
 - Single-level session keys (owner -> agent, no nested delegation)
-- Use starkli in the deployment script. Follow this as an example: https://github.com/keep-starknet-strange/pow/tree/main/onchain/scripts ( see deploy-sepolia.sh, deploy-mainnet.sh, ... )
+- Use sncast (Starknet Foundry) in the deployment script. For script structure, follow this example: https://github.com/keep-starknet-strange/pow/tree/main/onchain/scripts ( see deploy-sepolia.sh, deploy-mainnet.sh, ... )
 
 ---
 

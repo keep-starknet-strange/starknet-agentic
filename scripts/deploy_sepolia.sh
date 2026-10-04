@@ -1,6 +1,13 @@
 #!/bin/bash
 # Deployment script for SessionAccount with Spending Policy on Sepolia
-# Usage: ./deploy_sepolia.sh
+# Usage: bash scripts/deploy_sepolia.sh   (from the repo root)
+#
+# Environment:
+#   STARKNET_ACCOUNT   either a starkli-format account JSON file (with STARKNET_KEYSTORE),
+#                      or an account name from sncast's accounts file (without it)
+#   STARKNET_KEYSTORE  optional encrypted keystore for STARKNET_ACCOUNT; sncast prompts for
+#                      its password unless KEYSTORE_PASSWORD is set
+#   STARKNET_RPC       optional RPC URL; defaults to sncast's built-in Sepolia provider
 
 set -e
 
@@ -17,7 +24,7 @@ echo ""
 
 # Check prerequisites
 echo -e "${YELLOW}Checking prerequisites...${NC}"
-command -v starkli >/dev/null 2>&1 || { echo -e "${RED}starkli is required but not installed${NC}"; exit 1; }
+command -v sncast >/dev/null 2>&1 || { echo -e "${RED}sncast (Starknet Foundry) is required but not installed${NC}"; exit 1; }
 command -v scarb >/dev/null 2>&1 || { echo -e "${RED}scarb is required but not installed${NC}"; exit 1; }
 
 # Check environment variables
@@ -26,15 +33,24 @@ if [ -z "$STARKNET_ACCOUNT" ]; then
     exit 1
 fi
 
-if [ -z "$STARKNET_KEYSTORE" ]; then
-    echo -e "${RED}STARKNET_KEYSTORE environment variable not set${NC}"
-    exit 1
+ACCOUNT_ARGS=(--account "$STARKNET_ACCOUNT")
+if [ -n "$STARKNET_KEYSTORE" ]; then
+    ACCOUNT_ARGS+=(--keystore "$STARKNET_KEYSTORE")
 fi
 
-if [ -z "$STARKNET_RPC" ]; then
-    echo -e "${YELLOW}STARKNET_RPC not set, using default Sepolia RPC${NC}"
-    export STARKNET_RPC="https://starknet-sepolia.public.blastapi.io/rpc/v0_7"
+if [ -n "$STARKNET_RPC" ]; then
+    NETWORK_ARGS=(--url "$STARKNET_RPC")
+    NETWORK_HINT="--url $STARKNET_RPC"
+else
+    echo -e "${YELLOW}STARKNET_RPC not set, using sncast's default Sepolia provider${NC}"
+    NETWORK_ARGS=(--network sepolia)
+    NETWORK_HINT="--network sepolia"
 fi
+
+# Last 0x value of a field in sncast --json output (one JSON object per line).
+json_field() {
+    grep -oE "\"$1\": ?\"0x[0-9a-fA-F]+\"" | tail -n 1 | grep -oE '0x[0-9a-fA-F]+'
+}
 
 echo -e "${GREEN}✓ Prerequisites checked${NC}"
 echo ""
@@ -48,40 +64,33 @@ if [ -z "$OWNER_PUBKEY" ]; then
     exit 1
 fi
 
-# Step 1: Compile contracts
-echo -e "${YELLOW}Step 1: Compiling contracts...${NC}"
-cd contracts/session-account
-scarb build
-cd ../..
+# Step 1: Compile and compute the class hash (sncast builds the package with scarb)
+echo -e "${YELLOW}Step 1: Compiling SessionAccount and computing its class hash...${NC}"
+CLASS_HASH=$(cd contracts/session-account && sncast --json utils class-hash --contract-name SessionAccount | json_field class_hash || true)
 
-if [ ! -f "contracts/session-account/target/dev/session_account_SessionAccount.contract_class.json" ]; then
-    echo -e "${RED}Compilation failed - contract class not found${NC}"
+if [ -z "$CLASS_HASH" ]; then
+    echo -e "${RED}Compilation failed - could not compute the SessionAccount class hash${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Contracts compiled${NC}"
+echo -e "${GREEN}✓ Contracts compiled (class hash $CLASS_HASH)${NC}"
 echo ""
 
 # Step 2: Declare contract
 echo -e "${YELLOW}Step 2: Declaring SessionAccount contract...${NC}"
-DECLARE_OUTPUT=$(starkli declare \
-    contracts/session-account/target/dev/session_account_SessionAccount.contract_class.json \
-    --account $STARKNET_ACCOUNT \
-    --keystore $STARKNET_KEYSTORE \
-    --rpc $STARKNET_RPC 2>&1)
-
-echo "$DECLARE_OUTPUT"
-
-# Extract class hash
-CLASS_HASH=$(echo "$DECLARE_OUTPUT" | grep -oP 'Class hash declared: \K0x[0-9a-fA-F]+' || echo "")
-
-if [ -z "$CLASS_HASH" ]; then
-    # Check if already declared
-    CLASS_HASH=$(echo "$DECLARE_OUTPUT" | grep -oP 'Class hash: \K0x[0-9a-fA-F]+' || echo "")
-fi
-
-if [ -z "$CLASS_HASH" ]; then
-    echo -e "${RED}Failed to extract class hash${NC}"
+if DECLARE_OUTPUT=$(cd contracts/session-account && sncast --json "${ACCOUNT_ARGS[@]}" --wait \
+    declare --contract-name SessionAccount "${NETWORK_ARGS[@]}" 2>&1); then
+    echo "$DECLARE_OUTPUT"
+    DECLARED_HASH=$(echo "$DECLARE_OUTPUT" | json_field class_hash || true)
+    if [ -n "$DECLARED_HASH" ] && [ "$DECLARED_HASH" != "$CLASS_HASH" ]; then
+        echo -e "${RED}Declared class hash $DECLARED_HASH does not match local $CLASS_HASH${NC}"
+        exit 1
+    fi
+elif echo "$DECLARE_OUTPUT" | grep -qi "already declared"; then
+    echo -e "${YELLOW}Class already declared; reusing it${NC}"
+else
+    echo "$DECLARE_OUTPUT"
+    echo -e "${RED}Declare failed${NC}"
     exit 1
 fi
 
@@ -90,17 +99,17 @@ echo ""
 
 # Step 3: Deploy contract
 echo -e "${YELLOW}Step 3: Deploying SessionAccount instance...${NC}"
-DEPLOY_OUTPUT=$(starkli deploy \
-    $CLASS_HASH \
-    $OWNER_PUBKEY \
-    --account $STARKNET_ACCOUNT \
-    --keystore $STARKNET_KEYSTORE \
-    --rpc $STARKNET_RPC 2>&1)
+DEPLOY_OUTPUT=$(sncast --json "${ACCOUNT_ARGS[@]}" --wait \
+    deploy --class-hash "$CLASS_HASH" --constructor-calldata "$OWNER_PUBKEY" "${NETWORK_ARGS[@]}" 2>&1) || {
+    echo "$DEPLOY_OUTPUT"
+    echo -e "${RED}Deploy failed${NC}"
+    exit 1
+}
 
 echo "$DEPLOY_OUTPUT"
 
 # Extract contract address
-CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Contract deployed: \K0x[0-9a-fA-F]+' || echo "")
+CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | json_field contract_address || true)
 
 if [ -z "$CONTRACT_ADDRESS" ]; then
     echo -e "${RED}Failed to extract contract address${NC}"
@@ -168,14 +177,10 @@ Verify contract on Voyager:
 
 \`\`\`bash
 # Query contract info
-starkli call $CONTRACT_ADDRESS get_contract_info
+sncast call $NETWORK_HINT --contract-address $CONTRACT_ADDRESS --function get_contract_info
 
-# Expected output:
-# [
-#   0x..., # contract name
-#   0x32,  # version (50 = v3.2)
-#   0x...  # agent ID (0 initially)
-# ]
+# Expected: the short string 'v32-agent'
+# (Response Raw: [0x7633322d6167656e74])
 \`\`\`
 
 ---

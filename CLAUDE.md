@@ -48,6 +48,7 @@ starknet-agentic/
 │   ├── starknet-onboarding-utils/ # Preflight, factory deploy, first-action helpers
 │   ├── x402-starknet/             # x402 payment header helpers
 │   ├── prediction-arb-scanner/    # Signals-only prediction-market arb scanner
+│   ├── session-account-e2e/       # Session-key signer/invoke helper for scripts/e2e_test_runner.sh (private)
 │   └── shared/                    # Internal shared utilities (private)
 ├── contracts/                     # Independent Scarb packages
 │   ├── erc8004-cairo/             # ERC-8004 registries, e2e-tests/, deploy scripts/
