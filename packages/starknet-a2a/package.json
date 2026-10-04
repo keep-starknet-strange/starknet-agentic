@@ -19,13 +19,13 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "starknet": "^10.8.0",
-    "zod": "^4.6.5"
+    "starknet": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3",
-    "typescript": "^6.0.3",
-    "tsup": "^8.5.0",
-    "vitest": "^5.0.2"
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "tsup": "catalog:",
+    "vitest": "catalog:"
   }
 }

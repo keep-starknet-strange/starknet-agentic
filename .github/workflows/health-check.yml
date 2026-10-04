@@ -31,6 +31,14 @@ jobs:
           node-version: "24"
           cache: "pnpm"
 
+      # Every pnpm.overrides entry needs a row in
+      # docs/security/DEPENDENCY_EXCEPTION_REGISTER.md (and vice versa).
+      # Rows past their review-by date are reported as warnings.
+      - name: Override register
+        id: overrides
+        run: pnpm deps:check-overrides
+        continue-on-error: true
+
       - name: Install dependencies
         run: pnpm install
 
@@ -70,6 +78,7 @@ jobs:
         id: status
         run: |
           status=success
+          if [ "${{ steps.overrides.outcome }}" != "success" ]; then status=failure; fi
           if [ "${{ steps.js_build.outcome }}" != "success" ]; then status=failure; fi
           if [ "${{ steps.js_test.outcome }}" != "success" ]; then status=failure; fi
           if [ "${{ steps.cairo_identity.outcome }}" != "success" ]; then status=failure; fi
@@ -111,6 +120,7 @@ jobs:
             });
 
             const summary = [
+              `- Override register: ${{ steps.overrides.outcome }}`,
               `- JS build: ${{ steps.js_build.outcome }}`,
               `- JS test: ${{ steps.js_test.outcome }}`,
               `- Cairo (erc8004): ${{ steps.cairo_identity.outcome }}`,

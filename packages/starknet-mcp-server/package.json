@@ -22,16 +22,16 @@
   },
   "dependencies": {
     "@avnu/avnu-sdk": "^4.2.0",
-    "@modelcontextprotocol/sdk": "^1.31.0",
+    "@modelcontextprotocol/sdk": "catalog:",
     "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*",
-    "starknet": "^10.8.0",
-    "zod": "^4.6.5"
+    "starknet": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3",
+    "@types/node": "catalog:",
     "@vitest/coverage-v8": "5.0.2",
-    "tsup": "^8.5.0",
-    "typescript": "^6.0.3",
-    "vitest": "^5.0.2"
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

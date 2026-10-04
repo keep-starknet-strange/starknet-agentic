@@ -702,7 +702,7 @@ Launch-gate execution tracking for this section is maintained in
 
 **Documentation:**
 - [x] Threat model published (Section 1)
-- [x] User guide with examples (`docs/E2E_TESTING_GUIDE.md`, `docs/QUICK_START_E2E.md`)
+- [x] User guide with examples (`docs/E2E_TESTING_GUIDE.md`)
 - [x] Known limitations documented (Section 3 + Conclusion)
 - [ ] Audit report finalized
 
