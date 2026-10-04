@@ -1,7 +1,7 @@
 # session-account-e2e (private)
 
 Session-key signer and invoke helper for the SessionAccount spending-policy E2E runner
-(`scripts/e2e_test_runner.sh`). starkli can only send owner-signed transactions; this helper
+(`scripts/e2e_test_runner.sh`). sncast and other standard account signers can only send owner-signed transactions; this helper
 sends session-key transactions with the 4-felt signature `[session_pubkey, r, s, valid_until]`
 for the account's session signature mode (v1 or v2), and asserts each step's expected outcome.
 

@@ -17,7 +17,7 @@ describe("parseCallSpec", () => {
     expect(parseCallSpec("0x1:get_agent_id")).toEqual({ contractAddress: "0x1", entrypoint: "get_agent_id", calldata: [] });
   });
 
-  it("rejects selectors, starkli-style prefixes and malformed felts", () => {
+  it("rejects selectors, typed prefixes such as u256: and malformed felts", () => {
     expect(() => parseCallSpec("0x1:0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e:0x1")).toThrow(
       /function name/,
     );

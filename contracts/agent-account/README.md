@@ -21,10 +21,21 @@ scarb test
 
 ### Deploy Agent Account
 
+Accounts are normally deployed through `AgentAccountFactory`. To deploy one
+directly with Starknet Foundry's `sncast` (Sepolia shown):
+
 ```bash
-starkli account oz init --keystore keystore.json
-starkli declare target/dev/agent_account_AgentAccount.contract_class.json
-starkli deploy <class_hash> <public_key>
+# One-time deployer: creates account.json + an encrypted keystore.json, fund it, deploy it
+sncast --keystore keystore.json --account account.json account create --type oz --network sepolia
+sncast --keystore keystore.json --account account.json account deploy --network sepolia
+
+# Declare AgentAccount (sncast builds the package; run from contracts/agent-account)
+sncast --keystore keystore.json --account account.json --wait declare \
+  --contract-name AgentAccount --network sepolia
+
+# Deploy: constructor(public_key: felt252, factory: ContractAddress)
+sncast --keystore keystore.json --account account.json --wait deploy \
+  --class-hash <class_hash> --constructor-calldata <public_key> <factory_address> --network sepolia
 ```
 
 ### Register Session Key

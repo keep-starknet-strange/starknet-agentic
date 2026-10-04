@@ -82,14 +82,22 @@ felt_to_u64() {
   printf '%u\n' "$((16#${normalized#0x}))"
 }
 
+# Raw felts returned by view function $2 on contract $1, one per line
+# (sncast --json call -> response_raw).
+call_felts() {
+  sncast --json call --url "$RPC_URL" --contract-address "$1" --function "$2" \
+    | grep -oE '"response_raw": ?\[[^]]*\]' | grep -oE '0x[0-9a-fA-F]+'
+}
+call_felt() { call_felts "$1" "$2" | sed -n '1p'; }
+
 normalized_expected_multisig="$(normalize_felt "$EXPECTED_MULTISIG")"
 normalized_expected_session_public_key="$(normalize_felt "$EXPECTED_SESSION_PUBLIC_KEY")"
 allow_pending_upgrade="${ALLOW_PENDING_UPGRADE:-0}"
 
-identity_owner="$(normalize_felt "$(starkli call "$IDENTITY_REGISTRY" owner --rpc "$RPC_URL")")"
-reputation_owner="$(normalize_felt "$(starkli call "$REPUTATION_REGISTRY" owner --rpc "$RPC_URL")")"
-validation_owner="$(normalize_felt "$(starkli call "$VALIDATION_REGISTRY" owner --rpc "$RPC_URL")")"
-factory_owner="$(normalize_felt "$(starkli call "$FACTORY_ADDRESS" get_owner --rpc "$RPC_URL")")"
+identity_owner="$(normalize_felt "$(call_felt "$IDENTITY_REGISTRY" owner)")"
+reputation_owner="$(normalize_felt "$(call_felt "$REPUTATION_REGISTRY" owner)")"
+validation_owner="$(normalize_felt "$(call_felt "$VALIDATION_REGISTRY" owner)")"
+factory_owner="$(normalize_felt "$(call_felt "$FACTORY_ADDRESS" get_owner)")"
 
 echo "identity_owner=$identity_owner expected_multisig=$normalized_expected_multisig"
 echo "reputation_owner=$reputation_owner expected_multisig=$normalized_expected_multisig"
@@ -106,15 +114,16 @@ test "$factory_owner" = "$normalized_expected_multisig" \
   || { echo "Factory owner mismatch"; exit 1; }
 
 session_public_key="$(
-  normalize_felt "$(starkli call "$SESSION_ACCOUNT_ADDR" get_public_key --rpc "$RPC_URL")"
+  normalize_felt "$(call_felt "$SESSION_ACCOUNT_ADDR" get_public_key)"
 )"
 echo "session_public_key=$session_public_key expected_session_public_key=$normalized_expected_session_public_key"
 test "$session_public_key" = "$normalized_expected_session_public_key" \
   || { echo "Session public key mismatch"; exit 1; }
 
-upgrade_info_raw="$(starkli call "$SESSION_ACCOUNT_ADDR" get_upgrade_info --rpc "$RPC_URL")"
-pending_upgrade_hex="$(printf '%s\n' "$upgrade_info_raw" | grep -Eo '0x[0-9a-fA-F]+' | sed -n '1p')"
-upgrade_delay_hex="$(printf '%s\n' "$upgrade_info_raw" | grep -Eo '0x[0-9a-fA-F]+' | sed -n '3p')"
+# get_upgrade_info -> (pending_upgrade, scheduled_at, upgrade_delay, now)
+upgrade_info_raw="$(call_felts "$SESSION_ACCOUNT_ADDR" get_upgrade_info)"
+pending_upgrade_hex="$(printf '%s\n' "$upgrade_info_raw" | sed -n '1p')"
+upgrade_delay_hex="$(printf '%s\n' "$upgrade_info_raw" | sed -n '3p')"
 test -n "$pending_upgrade_hex" || { echo "Could not parse pending_upgrade from get_upgrade_info"; exit 1; }
 test -n "$upgrade_delay_hex" || { echo "Could not parse upgrade_delay from get_upgrade_info"; exit 1; }
 

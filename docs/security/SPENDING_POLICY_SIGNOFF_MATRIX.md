@@ -63,35 +63,41 @@ Shared network/account configuration (see
 QA-specific variables:
 
 - `SESSION_ACCOUNT_ADDR` (deployed session account used for tests)
-- `SESSION_KEY_KEYSTORE_PATH` (keystore path for the session signer)
+- `SESSION_PUBKEY` (registered session public key)
+- `SESSION_PRIVATE_KEY` (its private key; read from the environment only, testnet keys only)
 - `ERC20_TOKEN_ADDR` (token contract used by transfer checks)
 - `RECIPIENT_ADDR` (test recipient address)
+
+Session-key transfers need the SessionAccount's 4-felt session signature
+`[session_pubkey, r, s, valid_until]`, which standard account signers (sncast,
+starknet.js `Account` with a plain key) do not produce. The snippets use the
+session-key helper in `packages/session-account-e2e` (Node 24+, `pnpm install`
+at the repo root; run from the repo root). It refuses Starknet mainnet. Exit
+code 0 means the asserted outcome held, 1 that it did not, 2 a usage or
+precondition error; see `docs/E2E_TESTING_GUIDE.md` ("Session-key transactions").
+
+```bash
+export STARKNET_RPC="$SEPOLIA_RPC_URL"   # the helper reads STARKNET_RPC
+session_invoke() {
+  node packages/session-account-e2e/src/cli.ts \
+    --account "$SESSION_ACCOUNT_ADDR" --session-key "$SESSION_PUBKEY" "$@"
+}
+```
 
 ## Suggested Command Evidence Snippets
 
 ```bash
-# SP-06: policy-denied transfer (exceeds per-call limit)
-sp06_output="$(
-  starkli invoke "$ERC20_TOKEN_ADDR" transfer "$RECIPIENT_ADDR" u256:99999999999 \
-    --rpc "$SEPOLIA_RPC_URL" \
-    --account "$SESSION_ACCOUNT_ADDR" \
-    --keystore "$SESSION_KEY_KEYSTORE_PATH" \
-    2>&1
-)"
-sp06_status=$?
-printf '%s\n' "$sp06_output"
-
-if [ "$sp06_status" -eq 0 ]; then
-  echo "SP-06 FAIL: command succeeded but policy denial was expected."
-  exit 1
-fi
-
-sp06_expected_pattern="${SP06_EXPECTED_REVERT_PATTERN:-spending|policy|limit|deny|revert|assert|panic}"
-if printf '%s\n' "$sp06_output" | grep -Eiq "$sp06_expected_pattern"; then
-  echo "SP-06 PASS: policy-denied transfer confirmed."
+# SP-06: policy-denied transfer (exceeds per-call limit). The helper estimates the
+# transaction with the real session signature (nothing is submitted) and passes
+# only if __execute__ reverts with this exact reason, so a signature or
+# __validate__ rejection cannot be mistaken for a policy denial.
+sp06_expected_reason="${SP06_EXPECTED_REASON:-Spending: exceeds per-call}"
+if session_invoke \
+  --call "${ERC20_TOKEN_ADDR}:transfer:${RECIPIENT_ADDR},99999999999,0" \
+  --expect revert --reason "$sp06_expected_reason"; then
+  echo "SP-06 PASS: policy-denied transfer confirmed ($sp06_expected_reason)."
 else
-  echo "SP-06 FAIL: invoke failed, but output did not match policy-denial pattern."
-  echo "Set SP06_EXPECTED_REVERT_PATTERN to your chain-specific revert text if needed."
+  echo "SP-06 FAIL: transfer did not revert with \"$sp06_expected_reason\" (helper exit $?)."
   exit 1
 fi
 ```
@@ -118,12 +124,9 @@ success=0
 policy_denied=0
 other_failed=0
 for i in $(seq 1 "$sp08_tx_count"); do
+  # u256 amount = (low, high); the helper submits and asserts SUCCEEDED with no CallFailed.
   tx_output="$(
-    starkli invoke "$ERC20_TOKEN_ADDR" transfer "$RECIPIENT_ADDR" "u256:$sp08_transfer_amount" \
-      --rpc "$SEPOLIA_RPC_URL" \
-      --account "$SESSION_ACCOUNT_ADDR" \
-      --keystore "$SESSION_KEY_KEYSTORE_PATH" \
-      2>&1
+    session_invoke --call "${ERC20_TOKEN_ADDR}:transfer:${RECIPIENT_ADDR},${sp08_transfer_amount},0" 2>&1
   )"
   tx_status=$?
   if [ "$tx_status" -eq 0 ]; then
@@ -151,7 +154,7 @@ echo "success=$success policy_denied=$policy_denied other_failed=$other_failed f
 # include tx_count_per_hour, success_rate_pct, failure_rate_pct, and elapsed_seconds in evidence bundle
 
 test "$other_failed" -eq 0 \
-  || { echo "SP-08 FAIL: non-policy failures observed (RPC/keystore/network)."; exit 1; }
+  || { echo "SP-08 FAIL: non-policy failures observed (RPC/session key/network)."; exit 1; }
 test "$policy_denied" -eq 0 \
   || { echo "SP-08 FAIL: spending-policy denials observed; check window-limit precondition."; exit 1; }
 echo "SP-08 PASS: sustained-load run completed with no policy denials and no infra errors."
