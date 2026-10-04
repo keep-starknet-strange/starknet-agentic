@@ -53,13 +53,15 @@ jobs:
       - name: Build packages
         run: pnpm run build
 
+      # pnpm pack (not npm pack) rewrites `catalog:` and `workspace:` specifiers
+      # to concrete ranges in the packed package.json.
       - name: Pack publish artifacts
         run: |
           set -euo pipefail
           mkdir -p dist-release
-          cd packages/starknet-mcp-server && npm pack --pack-destination ../../dist-release
-          cd ../starknet-a2a && npm pack --pack-destination ../../dist-release
-          cd ../starknet-agent-passport && npm pack --pack-destination ../../dist-release
+          cd packages/starknet-mcp-server && pnpm pack --pack-destination ../../dist-release
+          cd ../starknet-a2a && pnpm pack --pack-destination ../../dist-release
+          cd ../starknet-agent-passport && pnpm pack --pack-destination ../../dist-release
 
       - name: Generate release checksums
         run: |
@@ -145,15 +147,17 @@ jobs:
           set -euo pipefail
           gh release upload "$RELEASE_TAG" dist-release/*.tgz dist-release/checksums.txt
 
+      # Publish the exact tarballs packed (and attested) above. Publishing from
+      # the package directories with npm would re-pack them and ship literal
+      # `catalog:` / `workspace:` specifiers.
       - name: Publish to npm
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.publish_to_npm == true) }}
         run: |
-          cd packages/starknet-mcp-server
-          npm publish --provenance --access public
-          cd ../starknet-a2a
-          npm publish --provenance --access public
-          cd ../starknet-agent-passport
-          npm publish --provenance --access public
+          set -euo pipefail
+          shopt -s failglob
+          for tarball in dist-release/*.tgz; do
+            npm publish "$tarball" --provenance --access public
+          done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

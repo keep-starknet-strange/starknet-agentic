@@ -1,110 +1,84 @@
 # Getting Started with Starknet Agentic
 
-Get your AI agent running on Starknet in **less than 10 minutes**. This guide walks you through setup, your first balance query, and deploying a simple autonomous agent.
+This is the entry point for new users. Pick the path that matches what you want to do:
 
-## Prerequisites
+| Goal | Start here |
+|---|---|
+| Use Starknet skills in Claude Code, Codex, or another agent host | [Skills Quickstart](./SKILLS_QUICKSTART.md) |
+| Scaffold a new agent project | `npx @starknetfoundation/create-starknet-agent@latest` ([README](../packages/create-starknet-agent/README.md)) |
+| Give an MCP client (Claude Desktop, Cursor, ...) Starknet tools | [MCP server README](../packages/starknet-mcp-server/README.md) |
+| Build from source, run examples, or contribute | [Build from source](#build-from-source) below |
 
-- Node.js 24+ installed
-- A Starknet wallet with some testnet ETH/STRK ([get testnet tokens](https://starknet-faucet.vercel.app/))
+## Build from Source
+
+### Prerequisites
+
+- Node.js 24+ (see [`.nvmrc`](../.nvmrc)) and pnpm via corepack (`corepack enable`; version pinned in root `package.json`)
+- A Starknet Sepolia account with some STRK for fees ([faucet](https://starknet-faucet.vercel.app/))
 - Basic familiarity with TypeScript
 
-## Quick Start (5 Minutes)
-
-### 1. Clone and Install
+### 1. Clone and install
 
 ```bash
-# Clone the repository
 git clone https://github.com/keep-starknet-strange/starknet-agentic.git
 cd starknet-agentic
-
-# Install dependencies
 pnpm install
-
-# Build packages
 pnpm build
 ```
 
-### 2. Set Up Environment
-
-Create a `.env` file in the repository root:
+### 2. Configure environment
 
 ```bash
-# Copy example environment file
 cp .env.example .env
 ```
 
-Edit `.env` with your Starknet credentials:
+`.env.example` uses mainnet endpoints. For Sepolia, set:
 
 ```env
-# Starknet RPC endpoint (get free key from Alchemy/Infura)
 STARKNET_RPC_URL=https://starknet-sepolia.g.alchemy.com/v2/YOUR_KEY
-
-# Your Starknet account address
 STARKNET_ACCOUNT_ADDRESS=0x...
+STARKNET_PRIVATE_KEY=0x...   # local development only; never commit
 
-# Your account private key (DO NOT share or commit this!)
-STARKNET_PRIVATE_KEY=0x...
-
-# Optional: AVNU API for DeFi operations
+# Optional: avnu for swaps and paymaster
 AVNU_BASE_URL=https://sepolia.api.avnu.fi
 AVNU_PAYMASTER_URL=https://sepolia.paymaster.avnu.fi
 ```
 
-**Getting Your Credentials:**
+Direct private keys are for local development. Production runtimes should use the proxy signer boundary (`STARKNET_SIGNER_MODE=proxy`, see [`security/SIGNER_API_SPEC.md`](./security/SIGNER_API_SPEC.md)).
 
 <details>
-<summary>Click to expand: How to get Starknet credentials</summary>
+<summary>Where to get an account</summary>
 
-#### Option 1: Use ArgentX Wallet (Recommended)
-1. Install [ArgentX browser extension](https://www.argent.xyz/argent-x/)
-2. Create a new wallet or import existing one
-3. Switch to Sepolia testnet in settings
-4. Export private key: Settings → Account → Export Private Key
-5. Copy your account address from the wallet
-
-#### Option 2: Use Starknet CLI
-```bash
-# Install starknet CLI
-pip install cairo-lang
-
-# Create new account
-starknet new_account --network sepolia
-
-# Follow prompts to get address and private key
-```
+- **Dedicated agent account (recommended):** [`examples/onboard-agent`](../examples/onboard-agent/README.md) deploys an agent account through `AgentAccountFactory` and registers its ERC-8004 identity in one command.
+- **Starknet Foundry:** `sncast account create` then `sncast account deploy` (see the account setup section of the [`cairo-deploy` skill](../skills/cairo-deploy/SKILL.md)).
+- **Browser wallet:** export the private key of a Sepolia account from your wallet's settings. Use a throwaway account, not one holding real funds.
 
 </details>
 
-### 3. Run Your First Example
+### 3. Run a first example
 
-Check your ETH balance:
+Minimal end-to-end check (RPC read + a 0-value self-transfer). Configure `examples/hello-agent/.env` as described in its [README](../examples/hello-agent/README.md), then:
+
+```bash
+pnpm demo:hello-agent
+```
+
+Or check a balance with the wallet skill scripts (they read exported variables or a `.env` in `skills/starknet-wallet/`):
 
 ```bash
 cd skills/starknet-wallet
 npm install
-npm run check-balance
+set -a; source ../../.env; set +a
+npm run check-balance            # TOKEN=STRK npm run check-balance for STRK
 ```
-
-You should see output like:
-
-```
-✅ Balance: 0.5 ETH
-Raw: 500000000000000000
-Token: 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7
-```
-
-**🎉 Congratulations!** Your agent can now interact with Starknet.
 
 ---
 
 ## What You Can Build
 
-### 1. Wallet Agent (5 minutes)
-
-Create an agent that manages token balances:
+### Wallet agent
 
 ```typescript
-// examples/simple-wallet-agent.ts
 import { RpcProvider, Account } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
@@ -114,229 +88,119 @@ const account = new Account({
   address: process.env.STARKNET_ACCOUNT_ADDRESS!,
   signer: process.env.STARKNET_PRIVATE_KEY!,
 });
-
-// Check multiple balances efficiently
-async function checkPortfolio() {
-  const tokens = ["ETH", "STRK", "USDC", "USDT"];
-  console.log("📊 Portfolio:");
-
-  // Uses starknet_get_balances MCP tool (batch query)
-  // Implementation in skills/starknet-wallet/scripts/check-balances.ts
-}
-
-checkPortfolio();
 ```
 
-### 2. DeFi Agent (15 minutes)
+Batch balance checks: `skills/starknet-wallet/scripts/check-balances.ts` or the `starknet_get_balances` MCP tool.
 
-Create an agent that monitors prices and executes swaps:
+### DeFi agent
 
 ```typescript
-// examples/defi-agent.ts
 import { getQuotes, executeSwap } from "@avnu/avnu-sdk";
 
-// Get best quote for swapping 1 ETH to STRK
+// Best quote for swapping 1 ETH to STRK
 const quotes = await getQuotes({
   sellTokenAddress: ETH_ADDRESS,
   buyTokenAddress: STRK_ADDRESS,
-  sellAmount: BigInt(1e18), // 1 ETH
+  sellAmount: BigInt(1e18),
+  takerAddress: account.address,
 });
 
-const bestQuote = quotes[0];
-console.log(`Best rate: 1 ETH = ${bestQuote.buyAmount} STRK`);
-
-// Execute swap
 const result = await executeSwap({
   provider: account,
-  quote: bestQuote,
-  slippage: 0.01, // 1% slippage
+  quote: quotes[0],
+  slippage: 0.01, // 1%
   executeApprove: true,
 });
 
-console.log(`✅ Swap complete: ${result.transactionHash}`);
+console.log(`Swap complete: ${result.transactionHash}`);
 ```
 
-**Full example:** See `examples/defi-agent/` for a production-ready arbitrage bot.
+Full example: [`examples/defi-agent/`](../examples/defi-agent/README.md).
 
-### 3. Identity Agent (Coming Soon)
+### Identity agent (ERC-8004)
 
-Register your agent on-chain with ERC-8004:
+The MCP server exposes `starknet_register_agent`, `starknet_set_agent_metadata`, and `starknet_get_agent_metadata` when `ERC8004_IDENTITY_REGISTRY_ADDRESS` is set. To call the registry directly:
 
 ```typescript
-// Note: MCP identity tools are planned (see ROADMAP 2.2)
-// For now, interact with ERC-8004 contracts directly:
-import { Contract } from "starknet";
+import { Contract, hash } from "starknet";
 
-const identityRegistry = new Contract(
-  IdentityRegistryABI,
-  IDENTITY_REGISTRY_ADDRESS,
-  account
+const identityRegistry = new Contract({
+  abi: IdentityRegistryABI,
+  address: IDENTITY_REGISTRY_ADDRESS, // see docs/DEPLOYMENT_TRUTH_SHEET.md
+  providerOrAccount: account,
+});
+
+// Mint the agent identity NFT
+const { transaction_hash } = await identityRegistry.register();
+const receipt = await provider.waitForTransaction(transaction_hash);
+
+// Read the new agent id from the Registered event: keys = [selector, agent_id.low, agent_id.high]
+const registeredSelector = BigInt(hash.getSelectorFromName("Registered"));
+const event = (receipt as { events?: { from_address: string; keys: string[] }[] }).events?.find(
+  (e) =>
+    BigInt(e.from_address) === BigInt(IDENTITY_REGISTRY_ADDRESS) &&
+    BigInt(e.keys[0]) === registeredSelector
 );
+if (!event) throw new Error("Registered event not found");
+const agentId = BigInt(event.keys[1]) + (BigInt(event.keys[2]) << 128n);
 
-// Mint agent identity NFT
-const tx = await identityRegistry.register_agent(account.address);
-console.log(`✅ Agent registered: ${tx.transaction_hash}`);
-
-// Set metadata
-await identityRegistry.setMetadata(agentId, "agentName", "My Trading Bot");
-await identityRegistry.setMetadata(agentId, "capabilities", "swap,arbitrage");
+await identityRegistry.set_metadata(agentId, "agentName", "My Trading Bot");
+await identityRegistry.set_metadata(agentId, "capabilities", "swap,arbitrage");
 ```
 
-**Full example:** See `skills/starknet-identity/` for ERC-8004 integration patterns.
+More patterns: [`skills/starknet-identity/`](../skills/starknet-identity/SKILL.md).
 
 ---
 
-## Using MCP Tools (Claude, ChatGPT, Cursor)
-
-The Starknet MCP Server lets AI assistants interact with Starknet directly.
-
-### Setup MCP Server
+## Using MCP Tools
 
 ```bash
-cd packages/starknet-mcp-server
-pnpm build
-
-# Run the server
-node dist/index.js
+pnpm --filter @starknetfoundation/starknet-agentic-mcp-server build
+node packages/starknet-mcp-server/dist/index.js
 ```
 
-### Configure with Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "starknet": {
-      "command": "node",
-      "args": ["/path/to/starknet-agentic/packages/starknet-mcp-server/dist/index.js"],
-      "env": {
-        "STARKNET_RPC_URL": "https://starknet-sepolia.g.alchemy.com/v2/YOUR_KEY",
-        "STARKNET_ACCOUNT_ADDRESS": "0x...",
-        "STARKNET_PRIVATE_KEY": "0x..."
-      }
-    }
-  }
-}
-```
-
-**Available Tools (9 implemented):**
-
-| Tool | What It Does |
-|------|-------------|
-| `starknet_get_balance` | Check single token balance |
-| `starknet_get_balances` | Check multiple balances (batch) |
-| `starknet_transfer` | Send tokens (with gasfree option) |
-| `starknet_swap` | Execute token swaps via AVNU |
-| `starknet_get_quote` | Get swap price quotes |
-| `starknet_call_contract` | Read contract state |
-| `starknet_invoke_contract` | Call contract functions |
-| `starknet_estimate_fee` | Estimate transaction fees |
-| `x402_starknet_sign_payment_required` | Sign X-402 payment headers |
-
-**Example Claude conversation:**
-
-```
-You: Check my STRK balance
-Claude: [calls starknet_get_balance]
-Claude: You have 100.5 STRK
-
-You: Swap 10 STRK for ETH
-Claude: [calls starknet_get_quote, then starknet_swap]
-Claude: ✅ Swapped 10 STRK for 0.023 ETH. Transaction: 0xabc...
-```
-
----
-
-## Project Structure
-
-```
-starknet-agentic/
-├── packages/
-│   ├── starknet-mcp-server/     # MCP tools for AI agents
-│   ├── starknet-a2a/            # Agent-to-Agent protocol
-│   └── starknet-agent-passport/  # ERC-8004 client library
-│
-├── skills/                      # Reusable agent skills
-│   ├── starknet-wallet/        # Wallet management
-│   ├── starknet-defi/          # DeFi operations
-│   └── starknet-identity/      # On-chain identity
-│
-├── examples/
-│   └── defi-agent/             # Production DeFi bot example
-│
-├── docs/
-│   ├── GETTING_STARTED.md      # This file
-│   ├── SPECIFICATION.md        # Technical architecture
-│   └── TROUBLESHOOTING.md      # Common issues & solutions
-│
-└── contracts/                   # Agent Account contracts
-```
-
----
-
-## Next Steps
-
-### Learn More
-
-1. **[Skills Documentation](../skills/README.md)** - Discover reusable agent capabilities
-2. **[MCP Tools Reference](../skills/starknet-wallet/SKILL.md)** - All available operations
-3. **[DeFi Agent Example](../examples/defi-agent/README.md)** - Production-ready bot
-4. **[Architecture Spec](SPECIFICATION.md)** - Deep dive into design
-
-### Build Your Agent
-
-1. **Clone an example** - Start from `examples/defi-agent/`
-2. **Customize behavior** - Modify trading strategy
-3. **Add session keys** - Enable autonomous execution
-4. **Deploy to mainnet** - Switch RPC endpoint to mainnet
-
-### Get Help
-
-- **Issues:** [GitHub Issues](https://github.com/keep-starknet-strange/starknet-agentic/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/keep-starknet-strange/starknet-agentic/discussions)
-- **Discord:** Join #starknet-agentic channel
+Client configuration (Claude Desktop and others), signer modes, and the current tool list are in the [MCP server README](../packages/starknet-mcp-server/README.md).
 
 ---
 
 ## Common Patterns
 
-### Error Handling
+### Error handling
 
 ```typescript
 try {
   const result = await transfer(recipient, "ETH", "1.0");
-  console.log("✅ Transfer successful:", result.transactionHash);
+  console.log("Transfer successful:", result.transactionHash);
 } catch (error) {
-  if (error.message.includes("INSUFFICIENT_BALANCE")) {
-    console.error("❌ Not enough tokens");
-  } else if (error.message.includes("INVALID_NONCE")) {
-    console.error("❌ Nonce mismatch - retrying...");
-    // Retry with fresh nonce
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("INSUFFICIENT_BALANCE")) {
+    console.error("Not enough tokens");
+  } else if (message.includes("INVALID_NONCE")) {
+    console.error("Nonce mismatch - fetch a fresh nonce and retry the transfer");
   } else {
-    console.error("❌ Transfer failed:", error.message);
+    console.error("Transfer failed:", message);
   }
 }
 ```
 
-### Gas Optimization
+### Multicall instead of separate transactions
 
 ```typescript
-// ❌ Bad: Multiple separate transactions
+// Bad: two transactions
 await account.execute({ contractAddress: token, entrypoint: "approve", ... });
 await account.execute({ contractAddress: router, entrypoint: "swap", ... });
 
-// ✅ Good: Single multi-call transaction
+// Good: one multicall transaction
 await account.execute([
   { contractAddress: token, entrypoint: "approve", ... },
   { contractAddress: router, entrypoint: "swap", ... },
 ]);
 ```
 
-### Gasless Transactions
+### Gasless transactions
 
 ```typescript
-// Pay gas in USDC instead of ETH/STRK
+// Pay gas in USDC through the avnu paymaster
 const result = await mcpClient.callTool({
   name: "starknet_transfer",
   arguments: {
@@ -344,8 +208,8 @@ const result = await mcpClient.callTool({
     token: "STRK",
     amount: "100",
     gasfree: true,
-    gasToken: "USDC",  // Agent pays gas in USDC
-  }
+    gasToken: "USDC",
+  },
 });
 ```
 
@@ -354,55 +218,46 @@ const result = await mcpClient.callTool({
 ## FAQs
 
 <details>
-<summary><b>Q: Can I use this on mainnet?</b></summary>
+<summary><b>Can I use this on mainnet?</b></summary>
 
-Yes! Just change your `STARKNET_RPC_URL` to a mainnet endpoint and use mainnet account credentials. **Start with small amounts on testnet first.**
-
-</details>
-
-<details>
-<summary><b>Q: How much does it cost to run an agent?</b></summary>
-
-Gas costs on Starknet are very low:
-- Balance query: Free (read-only)
-- Token transfer: ~$0.01-0.05
-- Swap: ~$0.05-0.20
-
-Use gasless mode to pay gas in tokens instead of ETH.
+Yes. Point `STARKNET_RPC_URL` at a mainnet endpoint and use mainnet credentials, ideally behind the proxy signer. Start on Sepolia with small amounts first.
 
 </details>
 
 <details>
-<summary><b>Q: Is this production-ready?</b></summary>
+<summary><b>What does it cost to run an agent?</b></summary>
 
-**Smart contracts:** Yes, ERC-8004 contracts are tested (131+ unit tests + 47 E2E tests).
-
-**MCP Server:** Yes, but always test thoroughly before mainnet.
-
-**Examples:** The DeFi agent example is production-ready with risk management.
+Reads are free. Writes pay a transaction fee in STRK, or in a paymaster-supported token in gasless mode. Use `starknet_estimate_fee` (or `account.estimateInvokeFee`) before sending.
 
 </details>
 
 <details>
-<summary><b>Q: How do I debug issues?</b></summary>
+<summary><b>Is this production-ready?</b></summary>
 
-1. Check the [Troubleshooting Guide](TROUBLESHOOTING.md)
+The ERC-8004 registries are deployed on mainnet ([`DEPLOYMENT_TRUTH_SHEET.md`](./DEPLOYMENT_TRUTH_SHEET.md)). Launch gates and open items are tracked in [`security/LAUNCH_READINESS_TRACKER.md`](./security/LAUNCH_READINESS_TRACKER.md). Examples are reference implementations: review and test them before using real funds.
+
+</details>
+
+<details>
+<summary><b>How do I debug issues?</b></summary>
+
+1. Check the [Troubleshooting Guide](./TROUBLESHOOTING.md) (skill install issues: [`skills/TROUBLESHOOTING.md`](../skills/TROUBLESHOOTING.md))
 2. Enable debug logging: `export DEBUG=starknet:*`
-3. Verify RPC endpoint is working: `curl $STARKNET_RPC_URL`
-4. Check account balance has enough gas
+3. Verify the RPC endpoint responds (see Quick Diagnostics in the troubleshooting guide)
+4. Check the account has enough balance for fees
 
 </details>
 
 <details>
-<summary><b>Q: Can my agent execute transactions autonomously?</b></summary>
+<summary><b>Can my agent execute transactions autonomously?</b></summary>
 
-Yes! Use **session keys** to grant your agent pre-approved transaction permissions:
+Yes. Use **session keys** to grant pre-approved permissions:
 
 1. Create a session key with spending limits
-2. Agent uses session key for autonomous operations
-3. Owner can revoke at any time
+2. The agent uses the session key for autonomous operations
+3. The owner can revoke it at any time
 
-See [Agent Account documentation](../contracts/agent-account/README.md) for details.
+See [`contracts/agent-account`](../contracts/agent-account/README.md) and the [E2E guide](./E2E_TESTING_GUIDE.md#part-b-sessionaccount-spending-policy).
 
 </details>
 
@@ -410,18 +265,19 @@ See [Agent Account documentation](../contracts/agent-account/README.md) for deta
 
 ## Security Best Practices
 
-⚠️ **Never commit private keys to version control**
-
-✅ Use environment variables for secrets
-
-✅ Start with testnet and small amounts
-
-✅ Set spending limits on session keys
-
-✅ Monitor agent activity regularly
-
-✅ Use hardware wallets for large amounts
+- Never commit private keys or `.env` files
+- Use the proxy signer boundary in production
+- Start on Sepolia with small amounts
+- Set spending limits on session keys
+- Monitor agent activity regularly
+- Use hardware wallets for large amounts
 
 ---
 
-**Ready to build?** Start with the [wallet examples](../skills/starknet-wallet/scripts/) and scale up from there! 🚀
+## Next Steps
+
+- [Skills catalog](../skills/README.md): reusable agent capabilities
+- [MCP server README](../packages/starknet-mcp-server/README.md): available tools and configuration
+- [DeFi agent example](../examples/defi-agent/README.md)
+- [Architecture spec](./SPECIFICATION.md)
+- Questions and bugs: [GitHub Issues](https://github.com/keep-starknet-strange/starknet-agentic/issues) and [Discussions](https://github.com/keep-starknet-strange/starknet-agentic/discussions)

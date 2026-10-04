@@ -10,13 +10,13 @@
     "dev": "tsx watch index.ts"
   },
   "dependencies": {
-    "starknet": "^10.8.0",
+    "starknet": "catalog:",
     "@avnu/avnu-sdk": "^4.2.0",
-    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
-    "dotenv": "^18.0.4"
+    "dotenv": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "devDependencies": {
-    "tsx": "^4.23.15",
-    "typescript": "^6.0.3"
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }

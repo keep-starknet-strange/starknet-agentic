@@ -39,12 +39,12 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
-    "@types/node": "^26.6.3",
+    "@types/node": "catalog:",
     "@types/prompts": "^2.4.9",
-    "tsup": "^8.5.0",
-    "typescript": "^6.0.3",
-    "vitest": "^5.0.2"
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "engines": {
     "node": ">=24.0.0"

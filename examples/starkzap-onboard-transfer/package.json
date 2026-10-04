@@ -13,13 +13,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
-    "dotenv": "^18.0.4",
-    "starkzap": "^4.0.0"
+    "dotenv": "catalog:",
+    "starkzap": "^4.0.0",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "devDependencies": {
-    "tsx": "^4.23.15",
-    "typescript": "^6.0.3",
-    "vitest": "^5.0.2"
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

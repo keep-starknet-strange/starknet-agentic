@@ -13,12 +13,12 @@
   },
   "dependencies": {
     "@starknetfoundation/starknet-agentic-onboarding-utils": "workspace:*",
-    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
-    "dotenv": "^18.0.4",
-    "starknet": "^10.8.0"
+    "dotenv": "catalog:",
+    "starknet": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "devDependencies": {
-    "tsx": "^4.23.15",
-    "typescript": "^6.0.3"
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }

@@ -1,35 +1,46 @@
 # Skills Quickstart (2 Minutes)
 
-Use this page when you want the fastest path to a first useful output from Starknet skills.
+Fastest path to a first useful result from Starknet skills: a `security-review-*.md`
+report from `cairo-auditor`. The same install paths work for every skill in
+[`skills/`](../skills/README.md).
+
+Run it on your own Cairo project. If you don't have one handy, create a temporary
+`.cairo` file from the [demo file instructions](../skills/cairo-auditor/README.md#no-cairo-project-handy)
+and use that path instead of `path/to/your_contract.cairo`.
 
 ## 1) Codex
 
-Install:
+Option A, clone the repo (all skills are auto-discovered from `.agents/skills`):
 
 ```bash
 git clone https://github.com/keep-starknet-strange/starknet-agentic.git && cd starknet-agentic
-# Skills are auto-discovered from .agents/skills in this repo.
 ```
 
-Open Codex from this repo root (`starknet-agentic`) so discovery picks up `.agents/skills`.
+Open Codex from the repo root so discovery picks up `.agents/skills`.
 
-Windows prerequisite:
-- Enable symlink checkout before cloning: `git config --global core.symlinks true`
-- Ensure Windows Developer Mode (or elevated privileges) is enabled, then clone/re-clone the repo.
+Windows prerequisite: enable symlink checkout before cloning (`git config --global core.symlinks true`) and enable Developer Mode (or elevated privileges), then clone or re-clone.
 
-Run prompt:
+Option B, install one skill from GitHub:
+
+```bash
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+python3 "$CODEX_HOME/skills/.system/skill-installer/scripts/install-skill-from-github.py" \
+  --repo keep-starknet-strange/starknet-agentic \
+  --path skills/cairo-auditor \
+  --ref main
+```
+
+Restart Codex and open `/skills`. For an immutable install, replace `main` with a commit SHA you trust.
+
+Prompt:
 
 ```text
-Use cairo-auditor on ./contracts with --file-output.
-Output only the final report with concrete exploitable findings, file:line evidence, impact, and fix diff.
+Run cairo-auditor on path/to/your_contract.cairo with --file-output.
+Output only the final report.
+Report only concrete exploitable issues with severity and file:line references.
 ```
 
-Expected artifact:
-- A markdown finding list with severity, evidence, exploit path, and remediation snippet.
-
 ## 2) Claude Code
-
-Install:
 
 ```bash
 /plugin marketplace add keep-starknet-strange/starknet-agentic
@@ -37,41 +48,23 @@ Install:
 /reload-plugins
 ```
 
-Run command:
+Marketplace installs resolve published bundle metadata, not a Git ref.
 
-```bash
-/starknet-agentic-skills:cairo-auditor contracts/src/account.cairo --file-output
-```
-
-Expected artifact:
-- `security-review-*.md` with actionable secure patch guidance for the target file.
-
-## 3) Agent Skills CLI (Cursor/Copilot/Roo/Windsurf/Goose)
-
-Install:
-
-```bash
-npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
-```
-
-Run prompt:
+Prompt:
 
 ```text
-Audit ./contracts with cairo-auditor and --file-output.
-Output only the final report with file:line, exploitability, and safe patch.
+/starknet-agentic-skills:cairo-auditor path/to/your_contract.cairo --file-output
+Output only the final report with severity, exploit path, and patch guidance.
 ```
 
-Expected artifact:
-- `security-review-*.md` in your workspace, suitable for PR review.
-
-## Install Scope Guidance (Claude)
+### Install scope
 
 | Scope | Command | When to use |
 |---|---|---|
 | User (recommended) | `/plugin install starknet-agentic-skills@starknet-agentic-skills --scope user` | Daily workflow, one install for all repos |
 | Local | `/plugin install starknet-agentic-skills@starknet-agentic-skills --scope local` | Pin a repo to a specific plugin state |
 
-If both scopes exist and skill resolution is inconsistent, remove local scope and keep user scope only.
+If both scopes exist and skill resolution is inconsistent, remove the local scope and keep user scope:
 
 ```bash
 /plugin uninstall starknet-agentic-skills@starknet-agentic-skills --scope local
@@ -79,23 +72,48 @@ If both scopes exist and skill resolution is inconsistent, remove local scope an
 /reload-plugins
 ```
 
+## 3) Agent Skills CLI (skill-hosted runtimes)
+
+```bash
+npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor
+```
+
+This command is not pinned to a Git ref.
+
+Prompt (in your host after install):
+
+```text
+Use cairo-auditor on path/to/your_contract.cairo with --file-output.
+Output only the final report.
+Only include defensible findings with file:line references.
+```
+
+## Verify the result
+
+- The skill loads in your host and the run completes without tool/runtime errors.
+- `./security-review-*.md` exists and includes, per finding:
+  - severity (`P0`..`P3`)
+  - vulnerability class
+  - file and line reference
+  - actionable remediation guidance
+
 ## Compatibility Matrix
 
 Verification recency is published on each site build in `starkskills.org/data/site-data.json` (`generated_at_utc`).
 
 | Surface | Status | Install Path |
 |---|---|---|
-| Codex | Supported | `.agents/skills` auto-discovery from repo root |
+| Codex | Supported | `.agents/skills` auto-discovery from repo root, or the GitHub skill installer |
 | Claude Code | Supported | Plugin marketplace bundle (`--scope user` recommended) |
 | Agent Skills CLI | Supported | `npx skills add ...` |
-| Cursor / Copilot / Roo / Windsurf / Goose | Supported via Agent Skills format | Use Agent Skills CLI import flow |
+| Other Agent Skills hosts (Cursor, Copilot, Roo, Windsurf, Goose) | Not verified here | Agent Skills CLI import flow |
 
 ## Troubleshooting Matrix
 
-| Problem | Why it happens | Fix |
-|---|---|---|
-| `Unknown skill: ...cairo-auditor` in Claude | Stale local-scope plugin overrides user scope | `/plugin uninstall starknet-agentic-skills@starknet-agentic-skills --scope local` then reinstall with `--scope user` and `/reload-plugins` |
-| Skill not discovered in Codex | Session started outside repo root or stale discovery cache | Open Codex from repo root (`starknet-agentic`) so `.agents/skills` is indexed, then restart session |
-| Install succeeds but old content remains | Cached install or old revision | Reinstall with force: `npx skills add keep-starknet-strange/starknet-agentic/skills/cairo-auditor --force` |
-| Marketplace install works but slash command fails | Plugin registry not reloaded in active session | Run `/reload-plugins` |
-| Audit output too broad/noisy | Full-repo scan on large codebase | Run path-targeted scan: `/starknet-agentic-skills:cairo-auditor contracts/src/account.cairo` |
+Install, scope, cache, and sync problems are covered in the skills recovery matrix:
+[`skills/TROUBLESHOOTING.md`](../skills/TROUBLESHOOTING.md).
+
+## Next steps
+
+- Pick other skills from the catalog: [`skills/README.md`](../skills/README.md)
+- Build or run agents from source: [`GETTING_STARTED.md`](./GETTING_STARTED.md)
