@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { describe, it, expect, beforeEach } from "vitest";
 import { ec, hash, num, stark } from "starknet";
 import { SessionKeySigner } from "../../src/helpers/sessionKeySigner.js";
@@ -429,6 +430,68 @@ describe("SessionKeySigner", () => {
       const sig = await zeroSigner.signTransaction(calls, detail as any);
       expect(sig).toHaveLength(4);
       expect(sig[3]).toBe(num.toHex(0));
+    });
+  });
+
+  // ── Session signature mode (spec/session-signature-v2.json) ──────────
+
+  describe("session signature mode", () => {
+    const vectors = JSON.parse(
+      fs.readFileSync(new URL("../../../../spec/session-signature-v2.json", import.meta.url), "utf8"),
+    ) as {
+      sessionVectors: Array<{
+        id: string;
+        signingPayload: {
+          accountAddress: string;
+          chainId: string;
+          nonce: string;
+          validUntil: string;
+          calls: Array<{ to: string; selector: string; calldata: string[] }>;
+        };
+        expected: { signingMessageHash: string };
+      }>;
+    };
+    const vector = (id: string) => vectors.sessionVectors.find((v) => v.id === id)!;
+
+    async function signVectorPayload(id: string) {
+      const { signingPayload: payload } = vector(id);
+      const vectorSigner = new SessionKeySigner(kp.privateKey, kp.publicKey, Number(payload.validUntil));
+      return vectorSigner.signTransaction(
+        payload.calls.map((call) => makeVectorCall(call)),
+        {
+          accountAddress: payload.accountAddress,
+          chainId: payload.chainId,
+          nonce: payload.nonce,
+          version: "0x3",
+        } as any,
+      );
+    }
+
+    // The vector selector is raw hex; this signer passes 0x-prefixed entrypoints through.
+    function makeVectorCall(call: { to: string; selector: string; calldata: string[] }) {
+      return { contractAddress: call.to, entrypoint: call.selector, calldata: call.calldata };
+    }
+
+    function verifiesAgainst(sig: string[], msgHash: string) {
+      return ec.starkCurve.verify(
+        new ec.starkCurve.Signature(BigInt(sig[1]), BigInt(sig[2])),
+        msgHash,
+        ec.starkCurve.getPublicKey(kp.privateKey, false),
+      );
+    }
+
+    it("signs the v1 (legacy) session hash", async () => {
+      const sig = (await signVectorPayload("session_v1_valid_single_call")) as string[];
+      expect(
+        verifiesAgainst(sig, vector("session_v1_valid_single_call").expected.signingMessageHash),
+      ).toBe(true);
+    });
+
+    it("does not sign the v2 (SNIP-12) session hash, so it fails on accounts in mode 2", async () => {
+      const sig = (await signVectorPayload("session_v2_valid_single_call")) as string[];
+      expect(
+        verifiesAgainst(sig, vector("session_v2_valid_single_call").expected.signingMessageHash),
+      ).toBe(false);
     });
   });
 });
