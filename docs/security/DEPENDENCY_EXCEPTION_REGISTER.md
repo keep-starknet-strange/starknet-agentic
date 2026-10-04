@@ -21,7 +21,7 @@ excepted advisory ID is listed in `security/audit-allowlist.json` with an expiry
 - Scope: Transitive dependency of `eslint-config-next`, a `website` **devDependency** used only for linting. Not part of any published package or the deployed website runtime.
 - Justification: No upstream fix is available, so an override cannot resolve it. The vulnerable code expands glob patterns; on this path the patterns come from the repository's own lint configuration, not from untrusted input.
 - Allowlist expiry: `2026-11-04` (the gate blocks again after this date; re-assess then)
-- Owner: Security maintainers (to be confirmed in review)
+- Owner: `@adrienlacombe`
 - Linked allowlist entry: `security/audit-allowlist.json` → `id: "1240992"`
 
 ### Residual Risk
@@ -37,7 +37,7 @@ A contributor or CI job running ESLint on the website could hit excessive recurs
 
 ### Review Sign-off
 
-- Exception sign-off: pending maintainer sign-off on this PR.
+- Exception sign-off: `@adrienlacombe` on `2026-10-04` (#607).
 
 ## pnpm override register
 
@@ -68,38 +68,39 @@ Columns: **Pin** is `exact` (a single version) or `floor` (a `^` range).
 **Added** is the first commit that introduced an override for that package
 or selector; **Last changed** is the commit that set the current selector or
 target. Reasons quote only what the commit message or linked PR states.
-**Owner** and **Review by** are proposed defaults (exact pins 30 days, floors
-90 days) pending maintainer sign-off.
+**Owner** is the maintainer who acts on the review-by date (`@adrienlacombe`,
+assigned 2026-10-04). **Review by** defaults to 30 days for exact pins and
+90 days for floors.
 
 <!-- override-register:start -->
 | Selector | Target | Pin | Reason (as recorded) | Added | Last changed | Owner | Review by |
 |---|---|---|---|---|---|---|---|
-| `ajv@^6.0.0` | `6.14.0` | exact | Patch vulnerable transitive `ajv` 6.x. Advisory ID not recorded, see 84db0bd (#288). | 2026-02-24 (84db0bd, #288) | 84db0bd (#288) | TBD | 2026-11-04 |
-| `ajv@^8.0.0` | `8.18.0` | exact | Patch vulnerable transitive `ajv` 8.x. Advisory ID not recorded, see 84db0bd (#288). | 2026-02-24 (84db0bd, #288) | 84db0bd (#288) | TBD | 2026-11-04 |
-| `browserslist@<=4.28.6` | `^4.28.7` | floor | "Newly reported high-severity audit findings". Advisory ID not recorded, see 4838a75 (#557). | 2026-09-11 (4838a75, #557) | 4838a75 (#557) | TBD | 2027-01-04 |
-| `express-rate-limit` | `8.3.0` | exact | "Pin patched express-rate-limit for audit gate". Advisory ID not recorded, see 071df36 (#338). | 2026-03-06 (071df36, #338) | 071df36 (#338) | TBD | 2026-11-04 |
-| `esbuild@>=0.17.0 <0.28.1` | `0.28.1` | exact | npm advisory 1120679 (blocked the audit gate on #459). | 2026-06-17 (329632c, #460) | 329632c (#460) | TBD | 2026-11-04 |
-| `fast-uri@<3.1.6` | `^3.1.6` | floor | Transitive via `@modelcontextprotocol/sdk > ajv`. Added for CVE-2026-6321 / GHSA-q3j6-qgpj-74h6 (626d12a); raised for GHSA-4c8g-83qw-93j6 and GHSA-v2hh-gcrm-f6hx (#498) and npm advisory 1130720 (#517). Reason for the 3.1.6 floor not recorded, see 4838a75 (#557). | 2026-05-08 (626d12a) | 4838a75 (#557) | TBD | 2027-01-04 |
-| `brace-expansion@>=4.0.0 <5.0.9` | `^5.0.9` | floor | npm advisory 1130734, via `eslint > minimatch`. | 2026-08-07 (7ae86c2, #517) | 7ae86c2 (#517) | TBD | 2027-01-04 |
-| `hono@<4.13.7` | `^4.13.7` | floor | Added as a patched pin in #288 (advisory ID not recorded); later targets cleared Dependabot alerts #94–#96 (GHSA-crvj-82cr-hjcx, GHSA-gqvv-2mrq-wpjv, GHSA-g6gw-c38x-mqfc, #558). Converted from the exact pin `4.13.5` to a floor in #605 to clear alert #100 (GHSA-hxh3-vqpv-xpqv), which the exact pin was blocking. | 2026-02-24 (84db0bd, #288) | ccdd4c6 (#605) | TBD | 2027-01-04 |
-| `@hono/node-server` | `^2.0.5` | floor | GHSA-frvp-7c67-39w9. | 2026-07-24 (747f081, #498) | 747f081 (#498) | TBD | 2027-01-04 |
-| `ip-address` | `^10.1.1` | floor | CVE-2026-42338 / GHSA-v2v4-37r5-5v8g, via `@modelcontextprotocol/sdk > express-rate-limit`. | 2026-05-07 (e18ea9e, #430) | e18ea9e (#430) | TBD | 2027-01-04 |
-| `postcss` | `^8.5.12` | floor | Dependabot alert "XSS via unescaped `</style>` in CSS stringify" (patched 8.5.10) and dedupe of a transitive 8.4.31. Advisory ID not recorded, see 7bbaef6 (#411). | 2026-04-30 (7bbaef6, #411) | 7bbaef6 (#411) | TBD | 2027-01-04 |
-| `qs` | `6.16.0` | exact | Added for CVE-2026-2391 (5f0008e, #237); raised for GHSA-q8mj-m7cp-5q26 (#498). Current target clears Dependabot alerts #89/#90: GHSA-4mjr-xmp4-gh2g, GHSA-x5fp-wj9c-mxmx (#558). | 2026-02-13 (5f0008e, #237) | a2215c2 (#558) | TBD | 2026-11-04 |
-| `minimatch` | `10.2.3` | exact | npm advisory 1113371 (see ADV-1113371-MINIMATCH below; removal tracked in #277). Unscoped, so every `minimatch` major resolves to 10.2.3. | 2026-02-21 (414d5ea, #274) | 71a2f02 (#288) | TBD | 2026-11-04 |
-| `rollup` | `4.59.0` | exact | "Patch transitive rollup and minimatch advisories". Advisory ID not recorded, see 71a2f02 (#288). | 2026-02-27 (71a2f02, #288) | 71a2f02 (#288) | TBD | 2026-11-04 |
-| `sharp` | `^0.35.0` | floor | GHSA-f88m-g3jw-g9cj (libvips CVEs). | 2026-07-24 (747f081, #498) | 747f081 (#498) | TBD | 2027-01-04 |
-| `flatted` | `^3.4.2` | floor | npm advisory 1115357 (prototype pollution). | 2026-04-21 (2679dd7, #393) | 2679dd7 (#393) | TBD | 2027-01-04 |
-| `js-yaml@>=3.0.0 <3.15.2` | `^3.15.2` | floor | Added for GHSA-52cp-r559-cp3m and GHSA-h67p-54hq-rp68 (#498); raised for npm advisories 1138114 / 1138115 (#517). Reason for the 3.15.2 floor not recorded, see 4838a75 (#557). | 2026-07-24 (747f081, #498) | 4838a75 (#557) | TBD | 2027-01-04 |
-| `js-yaml@>=4.0.0 <4.3.1` | `^4.3.1` | floor | npm advisories 1138114 / 1138115, via `@changesets/cli`. | 2026-08-07 (7ae86c2, #517) | 7ae86c2 (#517) | TBD | 2027-01-04 |
-| `postcss-selector-parser@>=6.1.0 <6.1.3` | `^6.1.3` | floor | Dependabot alert #84: GHSA-w9m9-85wc-3x92 / CVE-2026-9358. | 2026-09-11 (a2215c2, #558) | a2215c2 (#558) | TBD | 2027-01-04 |
-| `body-parser@>=2.0.0 <2.3.0` | `^2.3.0` | floor | GHSA-v422-hmwv-36x6. | 2026-07-24 (747f081, #498) | 747f081 (#498) | TBD | 2027-01-04 |
-| `picomatch@<2.3.2` | `^2.3.2` | floor | npm advisory 1115552 (ReDoS). | 2026-04-21 (2679dd7, #393) | 2679dd7 (#393) | TBD | 2027-01-04 |
-| `picomatch@>=4.0.0 <4.0.4` | `^4.0.4` | floor | npm advisory 1115554 (ReDoS). | 2026-04-21 (2679dd7, #393) | 2679dd7 (#393) | TBD | 2027-01-04 |
-| `path-to-regexp@>=8.0.0 <8.4.0` | `^8.4.0` | floor | npm advisory 1115573 (DoS). | 2026-04-21 (2679dd7, #393) | 2679dd7 (#393) | TBD | 2027-01-04 |
-| `vite` | `8.3.1` | exact | Replaced the scoped `vite@>=7.0.0 <7.3.2` override (npm advisories 1116232 / 1116235, #393) with an unscoped pin for "high findings for vite" (IDs not recorded, see 329632c, #460). Tracks the root `vite` devDependency; Dependabot bumps both. | 2026-06-17 (329632c, #460) | 6e47b6b (#577) | TBD | 2026-11-04 |
-| `ws@>=8.0.0 <8.21.0` | `8.21.0` | exact | "High findings for ws". Advisory ID not recorded, see 329632c (#460). | 2026-06-17 (329632c, #460) | 329632c (#460) | TBD | 2026-11-04 |
-| `yaml@>=2.0.0 <2.8.3` | `^2.8.3` | floor | GHSA-48c2-rrv3-qjmp. | 2026-04-30 (e0a32bd, #412) | e0a32bd (#412) | TBD | 2027-01-04 |
+| `ajv@^6.0.0` | `6.14.0` | exact | Patch vulnerable transitive `ajv` 6.x. Advisory ID not recorded, see 84db0bd (#288). | 2026-02-24 (84db0bd, #288) | 84db0bd (#288) | `@adrienlacombe` | 2026-11-04 |
+| `ajv@^8.0.0` | `8.18.0` | exact | Patch vulnerable transitive `ajv` 8.x. Advisory ID not recorded, see 84db0bd (#288). | 2026-02-24 (84db0bd, #288) | 84db0bd (#288) | `@adrienlacombe` | 2026-11-04 |
+| `browserslist@<=4.28.6` | `^4.28.7` | floor | "Newly reported high-severity audit findings". Advisory ID not recorded, see 4838a75 (#557). | 2026-09-11 (4838a75, #557) | 4838a75 (#557) | `@adrienlacombe` | 2027-01-04 |
+| `express-rate-limit` | `8.3.0` | exact | "Pin patched express-rate-limit for audit gate". Advisory ID not recorded, see 071df36 (#338). | 2026-03-06 (071df36, #338) | 071df36 (#338) | `@adrienlacombe` | 2026-11-04 |
+| `esbuild@>=0.17.0 <0.28.1` | `0.28.1` | exact | npm advisory 1120679 (blocked the audit gate on #459). | 2026-06-17 (329632c, #460) | 329632c (#460) | `@adrienlacombe` | 2026-11-04 |
+| `fast-uri@<3.1.6` | `^3.1.6` | floor | Transitive via `@modelcontextprotocol/sdk > ajv`. Added for CVE-2026-6321 / GHSA-q3j6-qgpj-74h6 (626d12a); raised for GHSA-4c8g-83qw-93j6 and GHSA-v2hh-gcrm-f6hx (#498) and npm advisory 1130720 (#517). Reason for the 3.1.6 floor not recorded, see 4838a75 (#557). | 2026-05-08 (626d12a) | 4838a75 (#557) | `@adrienlacombe` | 2027-01-04 |
+| `brace-expansion@>=4.0.0 <5.0.9` | `^5.0.9` | floor | npm advisory 1130734, via `eslint > minimatch`. | 2026-08-07 (7ae86c2, #517) | 7ae86c2 (#517) | `@adrienlacombe` | 2027-01-04 |
+| `hono@<4.13.7` | `^4.13.7` | floor | Added as a patched pin in #288 (advisory ID not recorded); later targets cleared Dependabot alerts #94–#96 (GHSA-crvj-82cr-hjcx, GHSA-gqvv-2mrq-wpjv, GHSA-g6gw-c38x-mqfc, #558). Converted from the exact pin `4.13.5` to a floor in #605 to clear alert #100 (GHSA-hxh3-vqpv-xpqv), which the exact pin was blocking. | 2026-02-24 (84db0bd, #288) | ccdd4c6 (#605) | `@adrienlacombe` | 2027-01-04 |
+| `@hono/node-server` | `^2.0.5` | floor | GHSA-frvp-7c67-39w9. | 2026-07-24 (747f081, #498) | 747f081 (#498) | `@adrienlacombe` | 2027-01-04 |
+| `ip-address` | `^10.1.1` | floor | CVE-2026-42338 / GHSA-v2v4-37r5-5v8g, via `@modelcontextprotocol/sdk > express-rate-limit`. | 2026-05-07 (e18ea9e, #430) | e18ea9e (#430) | `@adrienlacombe` | 2027-01-04 |
+| `postcss` | `^8.5.12` | floor | Dependabot alert "XSS via unescaped `</style>` in CSS stringify" (patched 8.5.10) and dedupe of a transitive 8.4.31. Advisory ID not recorded, see 7bbaef6 (#411). | 2026-04-30 (7bbaef6, #411) | 7bbaef6 (#411) | `@adrienlacombe` | 2027-01-04 |
+| `qs` | `6.16.0` | exact | Added for CVE-2026-2391 (5f0008e, #237); raised for GHSA-q8mj-m7cp-5q26 (#498). Current target clears Dependabot alerts #89/#90: GHSA-4mjr-xmp4-gh2g, GHSA-x5fp-wj9c-mxmx (#558). | 2026-02-13 (5f0008e, #237) | a2215c2 (#558) | `@adrienlacombe` | 2026-11-04 |
+| `minimatch` | `10.2.3` | exact | npm advisory 1113371 (see ADV-1113371-MINIMATCH below; removal tracked in #277). Unscoped, so every `minimatch` major resolves to 10.2.3. | 2026-02-21 (414d5ea, #274) | 71a2f02 (#288) | `@adrienlacombe` | 2026-11-04 |
+| `rollup` | `4.59.0` | exact | "Patch transitive rollup and minimatch advisories". Advisory ID not recorded, see 71a2f02 (#288). | 2026-02-27 (71a2f02, #288) | 71a2f02 (#288) | `@adrienlacombe` | 2026-11-04 |
+| `sharp` | `^0.35.0` | floor | GHSA-f88m-g3jw-g9cj (libvips CVEs). | 2026-07-24 (747f081, #498) | 747f081 (#498) | `@adrienlacombe` | 2027-01-04 |
+| `flatted` | `^3.4.2` | floor | npm advisory 1115357 (prototype pollution). | 2026-04-21 (2679dd7, #393) | 2679dd7 (#393) | `@adrienlacombe` | 2027-01-04 |
+| `js-yaml@>=3.0.0 <3.15.2` | `^3.15.2` | floor | Added for GHSA-52cp-r559-cp3m and GHSA-h67p-54hq-rp68 (#498); raised for npm advisories 1138114 / 1138115 (#517). Reason for the 3.15.2 floor not recorded, see 4838a75 (#557). | 2026-07-24 (747f081, #498) | 4838a75 (#557) | `@adrienlacombe` | 2027-01-04 |
+| `js-yaml@>=4.0.0 <4.3.1` | `^4.3.1` | floor | npm advisories 1138114 / 1138115, via `@changesets/cli`. | 2026-08-07 (7ae86c2, #517) | 7ae86c2 (#517) | `@adrienlacombe` | 2027-01-04 |
+| `postcss-selector-parser@>=6.1.0 <6.1.3` | `^6.1.3` | floor | Dependabot alert #84: GHSA-w9m9-85wc-3x92 / CVE-2026-9358. | 2026-09-11 (a2215c2, #558) | a2215c2 (#558) | `@adrienlacombe` | 2027-01-04 |
+| `body-parser@>=2.0.0 <2.3.0` | `^2.3.0` | floor | GHSA-v422-hmwv-36x6. | 2026-07-24 (747f081, #498) | 747f081 (#498) | `@adrienlacombe` | 2027-01-04 |
+| `picomatch@<2.3.2` | `^2.3.2` | floor | npm advisory 1115552 (ReDoS). | 2026-04-21 (2679dd7, #393) | 2679dd7 (#393) | `@adrienlacombe` | 2027-01-04 |
+| `picomatch@>=4.0.0 <4.0.4` | `^4.0.4` | floor | npm advisory 1115554 (ReDoS). | 2026-04-21 (2679dd7, #393) | 2679dd7 (#393) | `@adrienlacombe` | 2027-01-04 |
+| `path-to-regexp@>=8.0.0 <8.4.0` | `^8.4.0` | floor | npm advisory 1115573 (DoS). | 2026-04-21 (2679dd7, #393) | 2679dd7 (#393) | `@adrienlacombe` | 2027-01-04 |
+| `vite` | `8.3.1` | exact | Replaced the scoped `vite@>=7.0.0 <7.3.2` override (npm advisories 1116232 / 1116235, #393) with an unscoped pin for "high findings for vite" (IDs not recorded, see 329632c, #460). Tracks the root `vite` devDependency; Dependabot bumps both. | 2026-06-17 (329632c, #460) | 6e47b6b (#577) | `@adrienlacombe` | 2026-11-04 |
+| `ws@>=8.0.0 <8.21.0` | `8.21.0` | exact | "High findings for ws". Advisory ID not recorded, see 329632c (#460). | 2026-06-17 (329632c, #460) | 329632c (#460) | `@adrienlacombe` | 2026-11-04 |
+| `yaml@>=2.0.0 <2.8.3` | `^2.8.3` | floor | GHSA-48c2-rrv3-qjmp. | 2026-04-30 (e0a32bd, #412) | e0a32bd (#412) | `@adrienlacombe` | 2027-01-04 |
 <!-- override-register:end -->
 
 ## ADV-1113371-MINIMATCH (Closed)
