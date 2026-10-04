@@ -12,10 +12,19 @@ An MCP (Model Context Protocol) server that exposes Starknet blockchain operatio
 
 ## Installation
 
+From npm, run the published server with `npx` (this is the command
+`create-starknet-agent` writes into MCP client configs):
+
 ```bash
-cd packages/starknet-mcp-server
-npm install
-npm run build
+npx -y @starknetfoundation/starknet-agentic-mcp-server
+```
+
+From source (pnpm workspace, run at the repository root):
+
+```bash
+pnpm install
+pnpm --filter @starknetfoundation/starknet-agentic-mcp-server build
+# then: node packages/starknet-mcp-server/dist/index.js
 ```
 
 ## Configuration

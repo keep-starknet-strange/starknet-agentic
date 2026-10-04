@@ -1,6 +1,6 @@
 {
   "name": "@starknetfoundation/starknet-agentic-mcp-server",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "MCP server exposing Starknet operations as tools for AI agents",
   "author": "Starknet Agentic Contributors",
   "license": "MIT",
@@ -11,8 +11,11 @@
   },
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "starknet-agentic-mcp-server": "./dist/index.js"
+  },
   "scripts": {
-    "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
+    "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared --filter @starknetfoundation/starknet-agentic-x402-starknet build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
     "pretest": "pnpm --filter @starknetfoundation/starknet-agentic-x402-starknet build",
     "test": "vitest run",
@@ -23,7 +26,6 @@
   "dependencies": {
     "@avnu/avnu-sdk": "^4.2.0",
     "@modelcontextprotocol/sdk": "catalog:",
-    "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*",
     "starknet": "catalog:",
     "zod": "catalog:"
   },
@@ -33,6 +35,7 @@
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
+    "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*"
   }
 }

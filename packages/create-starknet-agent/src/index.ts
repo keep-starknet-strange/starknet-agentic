@@ -7,6 +7,7 @@
  */
 
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import prompts from "prompts";
@@ -31,7 +32,10 @@ import { AVAILABLE_SKILLS, runWizard } from "./wizards.js";
 import { parseCredentialsArgs, runCredentialsSetup } from "./credentials.js";
 import { parseVerifyArgs, runVerification } from "./verify.js";
 
-const VERSION = "0.5.0";
+// Read from package.json so `--version` and the banner follow Changesets
+// version bumps. Both src/index.ts and the bundled dist/index.js sit one level
+// below the package root, and npm always ships package.json.
+export const VERSION: string = createRequire(import.meta.url)("../package.json").version;
 
 // CLI banner
 function printBanner() {

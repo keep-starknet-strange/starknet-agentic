@@ -55,11 +55,14 @@ jobs:
 
       # pnpm pack (not npm pack) rewrites `catalog:` and `workspace:` specifiers
       # to concrete ranges in the packed package.json.
+      # mcp-server and onboarding-utils are in the Changesets `ignore` list, so
+      # this workflow is their only publish path.
       - name: Pack publish artifacts
         run: |
           set -euo pipefail
           mkdir -p dist-release
           cd packages/starknet-mcp-server && pnpm pack --pack-destination ../../dist-release
+          cd ../starknet-onboarding-utils && pnpm pack --pack-destination ../../dist-release
           cd ../starknet-a2a && pnpm pack --pack-destination ../../dist-release
           cd ../starknet-agent-passport && pnpm pack --pack-destination ../../dist-release
 
@@ -150,12 +153,24 @@ jobs:
       # Publish the exact tarballs packed (and attested) above. Publishing from
       # the package directories with npm would re-pack them and ship literal
       # `catalog:` / `workspace:` specifiers.
+      # Versions already on npm are skipped: npm refuses to republish a
+      # version, and the packages released through Changesets (a2a, passport)
+      # are usually already published at their current version, which would
+      # otherwise abort the loop before the remaining tarballs are published.
       - name: Publish to npm
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.publish_to_npm == true) }}
         run: |
           set -euo pipefail
           shopt -s failglob
           for tarball in dist-release/*.tgz; do
+            manifest="$(tar -xOzf "$tarball" package/package.json)"
+            name="$(jq -r .name <<<"$manifest")"
+            version="$(jq -r .version <<<"$manifest")"
+            published="$(npm view "${name}@${version}" version 2>/dev/null || true)"
+            if [ "$published" = "$version" ]; then
+              echo "Skipping ${name}@${version}: already published"
+              continue
+            fi
             npm publish "$tarball" --provenance --access public
           done
         env:

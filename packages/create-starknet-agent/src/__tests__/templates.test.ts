@@ -94,6 +94,44 @@ describe("generateProject", () => {
     expect(mainnetFiles[".env.example"]).toContain("mainnet");
   });
 
+  it("emits a tsconfig that builds with TypeScript 6", () => {
+    const files = generateProject({
+      projectName: "test",
+      network: "sepolia",
+      template: "full",
+      defiProtocols: ["avnu"],
+      includeExample: "none",
+      installDeps: false,
+    });
+
+    const tsconfig = JSON.parse(files["tsconfig.json"]);
+    // TS 6 errors (TS5011) without an explicit rootDir when outDir is set.
+    expect(tsconfig.compilerOptions.rootDir).toBe("./src");
+    expect(tsconfig.compilerOptions.types).toEqual(["node"]);
+  });
+
+  it.each(["defi", "full"] as const)(
+    "%s template loads .env before CONFIG reads process.env",
+    (template) => {
+      const files = generateProject({
+        projectName: "test",
+        network: "sepolia",
+        template,
+        defiProtocols: ["avnu"],
+        includeExample: "none",
+        installDeps: false,
+      });
+
+      // index.ts imports config.ts, and ES module imports are evaluated before
+      // the importing module's body, so config.ts must load .env itself.
+      const configTs = files["src/config.ts"];
+      const loadAt = configTs.indexOf("dotenv.config(");
+      expect(loadAt).toBeGreaterThan(-1);
+      expect(loadAt).toBeLessThan(configTs.indexOf("export const CONFIG"));
+      expect(files["src/index.ts"]).not.toContain("dotenv.config(");
+    }
+  );
+
   it("includes custom RPC URL when provided", () => {
     const config: ProjectConfig = {
       projectName: "test",
