@@ -12,14 +12,14 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
+    "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "test": "vitest run"
   },
   "dependencies": {
-    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
     "starknet": "^10.8.0"
   },
   "devDependencies": {
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
     "@types/node": "^26.6.3",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3",

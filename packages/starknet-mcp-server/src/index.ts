@@ -34,6 +34,7 @@ import {
 import { getTokenService, configureTokenServiceProvider, TOKENS } from "./services/index.js";
 import { VESU_POOL_FACTORY } from "./helpers/vesu.js";
 import { z } from "zod";
+import { AVNU_API_URLS, AVNU_PAYMASTER_URLS } from "@starknetfoundation/starknet-agentic-shared/constants";
 import { formatErrorMessage } from "./utils/formatter.js";
 import { PolicyGuard, loadPolicyConfig } from "./middleware/policyGuard.js";
 import { KeyringProxySigner } from "./helpers/keyringProxySigner.js";
@@ -77,11 +78,11 @@ const envSchema = z.object({
 
 const isSepoliaRpc = (process.env.STARKNET_RPC_URL || "").toLowerCase().includes("sepolia");
 const defaultAvnuApiUrl = isSepoliaRpc
-  ? "https://sepolia.api.avnu.fi"
-  : "https://starknet.api.avnu.fi";
+  ? AVNU_API_URLS.sepolia
+  : AVNU_API_URLS.mainnet;
 const defaultAvnuPaymasterUrl = isSepoliaRpc
-  ? "https://sepolia.paymaster.avnu.fi"
-  : "https://starknet.paymaster.avnu.fi";
+  ? AVNU_PAYMASTER_URLS.sepolia
+  : AVNU_PAYMASTER_URLS.mainnet;
 
 const env = envSchema.parse({
   STARKNET_RPC_URL: process.env.STARKNET_RPC_URL,

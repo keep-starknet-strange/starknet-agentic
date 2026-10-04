@@ -2,6 +2,13 @@
  * Types for create-starknet-agent CLI
  */
 
+import {
+  AVNU_API_URLS,
+  AVNU_PAYMASTER_URLS,
+  MAINNET_TOKENS,
+  SEPOLIA_TOKENS,
+} from "@starknetfoundation/starknet-agentic-shared/constants";
+
 export type Network = "mainnet" | "sepolia" | "custom";
 
 export type Template = "minimal" | "defi" | "full";
@@ -69,26 +76,28 @@ export const RPC_URLS: Record<Exclude<Network, "custom">, string> = {
   sepolia: "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY",
 };
 
+// Interpolated into generated projects at generation time, so generated code
+// keeps literal addresses and never imports the (private) shared package.
 export const TOKEN_ADDRESSES = {
   mainnet: {
-    ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-    STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-    USDC: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
-    USDT: "0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8",
+    ETH: MAINNET_TOKENS.ETH,
+    STRK: MAINNET_TOKENS.STRK,
+    USDC: MAINNET_TOKENS.USDC,
+    USDT: MAINNET_TOKENS.USDT,
   },
   sepolia: {
-    ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-    STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+    ETH: SEPOLIA_TOKENS.ETH,
+    STRK: SEPOLIA_TOKENS.STRK,
   },
 };
 
 export const AVNU_URLS = {
   mainnet: {
-    api: "https://starknet.api.avnu.fi",
-    paymaster: "https://starknet.paymaster.avnu.fi",
+    api: AVNU_API_URLS.mainnet,
+    paymaster: AVNU_PAYMASTER_URLS.mainnet,
   },
   sepolia: {
-    api: "https://sepolia.api.avnu.fi",
-    paymaster: "https://sepolia.paymaster.avnu.fi",
+    api: AVNU_API_URLS.sepolia,
+    paymaster: AVNU_PAYMASTER_URLS.sepolia,
   },
 };

@@ -12,6 +12,7 @@
   "dependencies": {
     "starknet": "^10.8.0",
     "@avnu/avnu-sdk": "^4.2.0",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
     "dotenv": "^18.0.4"
   },
   "devDependencies": {

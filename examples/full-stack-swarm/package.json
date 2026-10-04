@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
     "dotenv": "^18.0.4",
     "starknet": "^10.8.0"
   },

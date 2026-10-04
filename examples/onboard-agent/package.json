@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@starknetfoundation/starknet-agentic-onboarding-utils": "workspace:*",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
     "dotenv": "^18.0.4",
     "starknet": "^10.8.0"
   },
