@@ -414,6 +414,7 @@ jobs:
         run: |
           python3 skills/cairo-auditor/tests/validate_preflight.py
           python3 skills/cairo-auditor/tests/validate_deep_smoke.py
+          python3 skills/cairo-auditor/tests/validate_report_merge.py
 
       - name: Validate skills manifest
         run: |
