@@ -19,7 +19,7 @@ Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (
 | DeFi aggregation | `@avnu/avnu-sdk` | ^4.0.1 |
 | Schema validation | zod | ^3.23.0 |
 | TS testing | Vitest | -- |
-| Cairo testing | snforge | 0.54.1 |
+| Cairo testing | snforge | 0.64.0 |
 | Skills format | SKILL.md (YAML frontmatter + markdown) | AgentSkills spec |
 | Website | Next.js 16 + React 19 + Tailwind | -- |
 

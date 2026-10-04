@@ -12,8 +12,8 @@
 ```bash
 # Required tools
 - starkli (latest version)
-- scarb 2.8.4
-- snforge 0.33.0
+- scarb 2.14.0
+- snforge 0.64.0
 - sncast (for deployments)
 
 # Environment variables
