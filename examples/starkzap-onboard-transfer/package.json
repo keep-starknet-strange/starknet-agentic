@@ -13,12 +13,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "dotenv": "^18.0.4",
+    "dotenv": "catalog:",
     "starkzap": "^4.0.0"
   },
   "devDependencies": {
-    "tsx": "^4.23.15",
-    "typescript": "^6.0.3",
-    "vitest": "^5.0.2"
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

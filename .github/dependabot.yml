@@ -1,21 +1,91 @@
 version: 2
 updates:
+  # npm (pnpm workspace). Version updates run weekly and minor/patch bumps are
+  # grouped, so a normal week produces at most three PRs: runtime
+  # (production) dependencies, development dependencies, and the shared
+  # build/test toolchain. Major updates match no group, so each one gets its
+  # own PR and a failure stays isolated.
+  #
+  # Notes:
+  # - Shared ranges live in the `catalog:` block of pnpm-workspace.yaml.
+  #   Dependabot updates catalog entries in place, but currently classifies
+  #   every catalog entry as a production dependency
+  #   (dependabot/dependabot-core#14824). The `npm-toolchain` group therefore
+  #   matches the catalogued dev tools by name (plus vite and @vitest/*, which
+  #   must move in lockstep with vitest) and the other two groups exclude
+  #   them, so the groups never overlap. Keep the three lists in sync.
+  # - `cooldown` delays version updates until a release has been public for a
+  #   few days. It does not apply to security updates, which still open
+  #   immediately and ungrouped.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 5
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     groups:
-      all-dependencies:
+      npm-toolchain:
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "@types/node"
+          - "@vitest/*"
+          - "tsup"
+          - "tsx"
+          - "typescript"
+          - "vite"
+          - "vitest"
+      npm-production:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
         patterns:
           - "*"
+        exclude-patterns:
+          - "@types/node"
+          - "@vitest/*"
+          - "tsup"
+          - "tsx"
+          - "typescript"
+          - "vite"
+          - "vitest"
+      npm-development:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@types/node"
+          - "@vitest/*"
+          - "tsup"
+          - "tsx"
+          - "typescript"
+          - "vite"
+          - "vitest"
     labels:
       - "dependencies"
 
+  # GitHub Actions: one grouped PR per week for all action bumps.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     labels:
       - "dependencies"

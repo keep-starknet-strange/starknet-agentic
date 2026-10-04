@@ -17,12 +17,12 @@
   },
   "dependencies": {
     "@starknetfoundation/starknet-agentic-shared": "workspace:*",
-    "starknet": "^10.8.0"
+    "starknet": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3",
-    "tsup": "^8.5.0",
-    "typescript": "^6.0.3",
-    "vitest": "^5.0.2"
+    "@types/node": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

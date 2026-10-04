@@ -11,12 +11,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.31.0",
-    "dotenv": "^18.0.4",
-    "zod": "^4.6.5"
+    "@modelcontextprotocol/sdk": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "tsx": "^4.23.15",
-    "typescript": "^6.0.3"
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }
