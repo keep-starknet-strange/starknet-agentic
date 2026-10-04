@@ -17,7 +17,7 @@ Selected versions for orientation; the source-of-truth files define the exact pi
 
 | Component | Technology | Source of truth |
 |-----------|-----------|-----------------|
-| Smart contracts | Cairo 2.14 (Scarb 2.14.0), Starknet Foundry 0.54.1 | `contracts/*/Scarb.toml`, CI workflow |
+| Smart contracts | Cairo 2.14 (Scarb 2.14.0), Starknet Foundry 0.64.0 | `contracts/*/Scarb.toml`, CI workflow |
 | Contract deps | OpenZeppelin Cairo v3.0.0 | `contracts/*/Scarb.toml` |
 | Runtime | Node.js 24+, pnpm 10 (corepack) | `.nvmrc`, root `package.json` |
 | TS toolchain | TypeScript 6, tsup (ESM + `.d.ts`), Vitest 5 | `package.json` files |
@@ -195,7 +195,7 @@ Deployed addresses and class hashes: `docs/DEPLOYMENT_TRUTH_SHEET.md`.
 See `packages/starknet-mcp-server/README.md` for where tool definitions live.
 
 ### Adding a new Cairo contract
-1. Create a Scarb package under `contracts/<contract-name>/` matching existing pins (starknet 2.14.0, OpenZeppelin v3.0.0, snforge_std 0.54.1)
+1. Create a Scarb package under `contracts/<contract-name>/` matching existing pins (starknet 2.14.0, OpenZeppelin v3.0.0, snforge_std 0.64.0)
 2. Implement with the `#[starknet::contract]` pattern
 3. Write snforge tests (aim for >90% coverage)
 4. Add a CI build/test job and a Sepolia deployment script

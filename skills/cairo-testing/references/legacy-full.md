@@ -33,7 +33,7 @@ For security regression tests, prefer templates under:
 
 ```toml
 [dev-dependencies]
-snforge_std = "0.57.0"
+snforge_std = "0.64.0"
 
 [tool.scarb]
 allow-prebuilt-plugins = ["snforge_std"]
@@ -43,7 +43,7 @@ sierra = true
 casm = true
 ```
 
-> **Note:** snforge 0.57.0 requires Scarb >= 2.12.0 (recommended: 2.16.x). Check [scarbs.dev/packages/snforge_std](https://scarbs.dev/packages/snforge_std) for the latest version.
+> **Note:** snforge 0.64.0 requires Scarb >= 2.13.1 (recommended: >= 2.18.0). Check [scarbs.dev/packages/snforge_std](https://scarbs.dev/packages/snforge_std) for the latest version.
 
 ### Running Tests
 

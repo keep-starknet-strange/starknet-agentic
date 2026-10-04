@@ -7,7 +7,7 @@ edition = "2024_07"
 starknet = ">=2.14.0"
 
 [dev-dependencies]
-snforge_std = "0.57.0"
+snforge_std = "0.64.0"
 
 [cairo]
 sierra-replace-ids = true

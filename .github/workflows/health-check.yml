@@ -60,7 +60,7 @@ jobs:
       - name: Setup Starknet Foundry
         uses: foundry-rs/setup-snfoundry@16e23ddd0e2845f38727c92f4b913a7b728cda9e # v3
         with:
-          starknet-foundry-version: "0.54.1"
+          starknet-foundry-version: "0.64.0"
 
       - name: Cairo tests (erc8004)
         id: cairo_identity
