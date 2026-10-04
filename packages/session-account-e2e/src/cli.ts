@@ -91,11 +91,24 @@ async function expectSuccess(account: Account, options: CliOptions): Promise<num
     return EXIT_FAIL;
   }
 
-  const { transaction_hash } = await account.execute(options.calls, {
-    resourceBounds: estimated.resourceBounds,
-  });
+  let transaction_hash: string;
+  try {
+    ({ transaction_hash } = await account.execute(options.calls, {
+      resourceBounds: estimated.resourceBounds,
+    }));
+  } catch (error) {
+    log(`FAIL: expected success, but submission failed: ${errorDetail(error)}`);
+    return EXIT_FAIL;
+  }
   log(`submitted ${transaction_hash}`);
-  const receipt = await account.provider.waitForTransaction(transaction_hash);
+
+  let receipt;
+  try {
+    receipt = await account.provider.waitForTransaction(transaction_hash);
+  } catch (error) {
+    log(`FAIL: ${transaction_hash} was not confirmed: ${errorDetail(error)}`);
+    return EXIT_FAIL;
+  }
   if (receipt.isReverted()) {
     log(`FAIL: ${transaction_hash} reverted: ${receipt.revert_reason ?? "(no reason)"}`);
     return EXIT_FAIL;
