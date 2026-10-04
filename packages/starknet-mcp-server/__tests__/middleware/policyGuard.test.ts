@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   PolicyGuard,
   compareDecimalStrings,
-  type PolicyConfig,
 } from "../../src/middleware/policyGuard.js";
 
 describe("PolicyGuard", () => {

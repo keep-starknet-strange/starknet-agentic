@@ -10,7 +10,8 @@
     "demo:verify": "npx tsx run.ts --gasfree --verify-tx",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "pretest": "pnpm --filter @starknetfoundation/starknet-agentic-onboarding-utils build"
+    "pretest": "pnpm --filter @starknetfoundation/starknet-agentic-onboarding-utils build",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@starknetfoundation/starknet-agentic-onboarding-utils": "workspace:*",

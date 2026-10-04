@@ -2,6 +2,7 @@ import { createHash, createHmac, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import https from "node:https";
 import {
+  type BigNumberish,
   type Call,
   type DeclareSignerDetails,
   type DeployAccountSignerDetails,
@@ -158,7 +159,8 @@ export class KeyringProxySigner extends SignerInterface {
     headers: Record<string, string>,
     body: string
   ): Promise<{ status: number; bodyText: string }> {
-    if (!this.mtlsClientMaterial) {
+    const mtlsClientMaterial = this.mtlsClientMaterial;
+    if (!mtlsClientMaterial) {
       throw new Error("Internal error: mTLS material not initialized");
     }
 
@@ -171,9 +173,9 @@ export class KeyringProxySigner extends SignerInterface {
           path: `${url.pathname}${url.search}`,
           method: "POST",
           headers,
-          cert: this.mtlsClientMaterial.cert,
-          key: this.mtlsClientMaterial.key,
-          ca: this.mtlsClientMaterial.ca,
+          cert: mtlsClientMaterial.cert,
+          key: mtlsClientMaterial.key,
+          ca: mtlsClientMaterial.ca,
           rejectUnauthorized: true,
         },
         (response) => {
@@ -231,7 +233,8 @@ export class KeyringProxySigner extends SignerInterface {
       calls: transactions.map((call) => ({
         contractAddress: call.contractAddress,
         entrypoint: call.entrypoint,
-        calldata: (call.calldata ?? []).map((value) =>
+        // Calldata is forwarded as a flat felt array; object-form RawArgs are not supported here.
+        calldata: ((call.calldata ?? []) as BigNumberish[]).map((value) =>
           typeof value === "string" ? value : num.toHex(value)
         ),
       })),

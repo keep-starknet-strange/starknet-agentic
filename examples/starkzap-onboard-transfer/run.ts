@@ -34,7 +34,7 @@ const dotenv = await import("dotenv");
 dotenv.config({ path: path.join(__dirname, ".env"), quiet: true });
 
 const {
-  StarkSDK,
+  StarkZap,
   StarkSigner,
   OnboardStrategy,
   Amount,
@@ -144,7 +144,7 @@ async function main() {
   if (evidence) console.log("Evidence: logging to", EVIDENCE_FILE);
   console.log("");
 
-  const sdk = new StarkSDK(
+  const sdk = new StarkZap(
     sponsored && paymasterApiKey
       ? {
           network: "sepolia",

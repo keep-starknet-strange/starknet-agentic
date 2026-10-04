@@ -93,7 +93,7 @@ vi.mock("starknet", () => ({
       pending_word: "0x0",
       pending_word_len: 0,
     })),
-    stringFromByteArray: vi.fn((ba) => "TEST"),
+    stringFromByteArray: vi.fn(() => "TEST"),
   },
   // Minimal selector helper used by receipt parsers.
   hash: {
@@ -1795,7 +1795,7 @@ describe("Tool list", () => {
     process.env.AGENT_ACCOUNT_FACTORY_ADDRESS =
       "0x0fabcde01234567890abcdef01234567890abcdef01234567890abcdef01234";
 
-    let spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     vi.resetModules();
     await import("../../src/index.js");
     spy.mockRestore();
@@ -1816,7 +1816,7 @@ describe("Tool list", () => {
     process.env.STARKNET_SIGNER_MODE = "proxy";
     delete process.env.STARKNET_PRIVATE_KEY;
 
-    let spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     vi.resetModules();
     await import("../../src/index.js");
     spy.mockRestore();

@@ -119,7 +119,7 @@ describe("@starknetfoundation/starknet-agentic-onboarding-utils", () => {
   describe("deployAccountViaFactory", () => {
     it("calls account.execute in non-gasfree mode and parses event", async () => {
       const factoryAddress = "0x3583";
-      let executeCalls: unknown[] = [];
+      const executeCalls: unknown[] = [];
 
       const deterministicPrivateKey = Uint8Array.from(new Array(32).fill(1));
       const originalRandomPrivateKey = ec.starkCurve.utils.randomPrivateKey;

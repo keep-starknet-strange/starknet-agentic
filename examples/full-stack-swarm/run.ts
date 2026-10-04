@@ -250,7 +250,7 @@ class McpSidecar {
     const transport = new StdioClientTransport({
       command: "node",
       args: [mcpEntry],
-      env: { ...process.env, ...this.env },
+      env: { ...process.env, ...this.env } as Record<string, string>,
     });
 
     const client = new Client(
@@ -270,7 +270,8 @@ class McpSidecar {
     if (!this.client) throw new Error("MCP client not connected");
     const res = await this.client.callTool({ name, arguments: args });
     if (res?.isError) {
-      const msg = res?.content?.[0]?.text || `Tool error: ${name}`;
+      const content = res?.content as Array<{ text?: string }> | undefined;
+      const msg = content?.[0]?.text || `Tool error: ${name}`;
       throw new Error(msg);
     }
     return res;
@@ -533,7 +534,7 @@ async function main() {
   }
 
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-  try { fs.chmodSync(statePath, 0o600); } catch {}
+  try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
 
   // 1.5) Fund accounts if using paymaster default fees or if swaps need sell token.
   // This is intentionally simple: transfer ETH (for the swap) + paymaster gas token (for fees).
@@ -578,7 +579,7 @@ async function main() {
       ),
     );
     fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-    try { fs.chmodSync(statePath, 0o600); } catch {}
+    try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
   }
 
   // 2) Configure each agent (owner-signed direct mode)
@@ -687,7 +688,7 @@ async function main() {
   );
 
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-  try { fs.chmodSync(statePath, 0o600); } catch {}
+  try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
 
   // 3) Start SISNA (optional)
   let sisna: any = null;
@@ -926,7 +927,7 @@ async function main() {
       )
     );
     fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-    try { fs.chmodSync(statePath, 0o600); } catch {}
+    try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
   }
 
   const ok =

@@ -10,7 +10,8 @@
     "demo:address": "npx tsx run.ts --address-only",
     "demo:evidence": "npx tsx run.ts --evidence",
     "test": "vitest run lib.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
   },
   "dependencies": {
     "dotenv": "catalog:",

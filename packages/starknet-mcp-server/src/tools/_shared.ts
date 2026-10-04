@@ -125,6 +125,7 @@ export function validateEntrypoint(name: string, value: string): string {
   if (!value || value.trim().length === 0) {
     throw new Error(`${name} is required and must be non-empty`);
   }
+  // eslint-disable-next-line no-control-regex -- intentionally rejects ASCII control characters
   if (/[\x00-\x1f\x7f]/.test(value)) {
     throw new Error(`${name} contains invalid control characters`);
   }

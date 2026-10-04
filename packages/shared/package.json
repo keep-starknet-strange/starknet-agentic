@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsup src/string.ts src/constants.ts --format esm --outDir dist && tsc -p tsconfig.build.json --noCheck"
+    "build": "tsup src/string.ts src/constants.ts --format esm --outDir dist && tsc -p tsconfig.build.json --noCheck",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.build.json"
   },
   "exports": {
     "./constants": {

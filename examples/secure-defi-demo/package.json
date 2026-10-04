@@ -9,7 +9,9 @@
     "run:execute": "npx tsx run.ts --mode execute",
     "run:withdraw": "npx tsx run.ts --mode execute --with-withdraw",
     "run:strict": "STRICT_SECURITY_PROOF=1 npx tsx run.ts --mode execute",
-    "test": "node --test --import tsx test/*.test.ts"
+    "test": "node --test --import tsx test/*.test.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "catalog:",

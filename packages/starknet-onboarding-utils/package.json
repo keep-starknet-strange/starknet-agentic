@@ -13,7 +13,9 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "starknet": "catalog:"

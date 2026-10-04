@@ -10,7 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",

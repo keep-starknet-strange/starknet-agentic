@@ -7,7 +7,9 @@
   "main": "index.ts",
   "scripts": {
     "start": "tsx index.ts",
-    "dev": "tsx watch index.ts"
+    "dev": "tsx watch index.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "starknet": "catalog:",

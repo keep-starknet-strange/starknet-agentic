@@ -226,7 +226,7 @@ function createCancelHandler(): () => void {
 /**
  * Prompt for setup mode
  */
-async function promptSetupMode(platform: DetectedPlatform): Promise<SetupMode> {
+async function promptSetupMode(_platform: DetectedPlatform): Promise<SetupMode> {
   const response = await prompts(
     {
       type: "select",
@@ -303,7 +303,7 @@ async function promptNetwork(): Promise<Network> {
 /**
  * Prompt for config scope (local vs global)
  */
-async function promptConfigScope(platformName: string): Promise<ConfigScope> {
+async function promptConfigScope(_platformName: string): Promise<ConfigScope> {
   const response = await prompts(
     {
       type: "select",
@@ -898,9 +898,8 @@ export async function claudeCodeWizard(
     const claudeMdPath = path.join(cwd, "CLAUDE.md");
 
     // Check if CLAUDE.md exists and append/merge
-    let existingContent = "";
     if (fs.existsSync(claudeMdPath)) {
-      existingContent = fs.readFileSync(claudeMdPath, "utf-8");
+      const existingContent = fs.readFileSync(claudeMdPath, "utf-8");
       // Only add if not already configured
       if (!existingContent.includes("Starknet Agent Configuration")) {
         files[claudeMdPath] = existingContent + "\n\n" + generateClaudeMd(selectedSkills, network);

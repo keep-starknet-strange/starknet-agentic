@@ -32,7 +32,9 @@
     "dev": "tsup src/index.ts --format esm --watch",
     "prepublishOnly": "pnpm build",
     "test": "vitest run",
-    "link:local": "pnpm build && npm link"
+    "link:local": "pnpm build && npm link",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "prompts": "^2.4.2",

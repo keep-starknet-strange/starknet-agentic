@@ -19,15 +19,6 @@ import { EXIT_CODES } from "./index.js";
 import { AVAILABLE_SKILLS } from "./wizards.js";
 
 /**
- * Verification check result
- */
-interface CheckResult {
-  passed: boolean;
-  message: string;
-  details?: string;
-}
-
-/**
  * MCP server check result
  */
 interface McpCheckResult {

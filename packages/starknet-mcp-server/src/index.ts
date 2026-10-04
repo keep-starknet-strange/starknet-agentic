@@ -180,7 +180,6 @@ if (isProductionRuntime) {
 
 // Initialize Starknet provider and account
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL, batch: 0 });
-let vesuPoolFactoryAddress = env.STARKNET_VESU_POOL_FACTORY ?? VESU_POOL_FACTORY;
 
 // Fee mode:
 // - sponsored: dApp pays all gas (requires AVNU paymaster to authorize the API key)
@@ -227,7 +226,7 @@ configureTokenServiceProvider(provider);
 const policyConfig = loadPolicyConfig();
 const policyGuard = new PolicyGuard(policyConfig);
 
-vesuPoolFactoryAddress = parseAddress(
+const vesuPoolFactoryAddress = parseAddress(
   "STARKNET_VESU_POOL_FACTORY",
   env.STARKNET_VESU_POOL_FACTORY ?? VESU_POOL_FACTORY
 );

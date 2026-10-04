@@ -9,7 +9,8 @@
     "onboard:sepolia": "npx tsx run.ts --network sepolia",
     "onboard:gasfree": "npx tsx run.ts --network sepolia --gasfree",
     "onboard:verify": "npx tsx run.ts --network sepolia --verify-tx",
-    "smoke": "npx tsx smoke.ts"
+    "smoke": "npx tsx smoke.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@starknetfoundation/starknet-agentic-onboarding-utils": "workspace:*",

@@ -16,7 +16,9 @@
     "dev": "tsup src/index.ts --format esm --watch",
     "pretest": "pnpm --filter @starknetfoundation/starknet-agentic-x402-starknet build",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@avnu/avnu-sdk": "^4.2.0",
