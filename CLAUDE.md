@@ -1,8 +1,11 @@
 # Starknet Agentic -- Development Context
 
-Canonical behavioral instructions live in `AGENTS.md`. This file provides
-repository implementation context and operational references. Keep it factual:
-no line/test/tool counts or status labels; point at the source of truth instead.
+Canonical behavioral instructions live in `AGENTS.md`, imported here so Claude
+Code loads them: @AGENTS.md
+
+This file provides repository implementation context and operational references.
+Keep it factual: no line/test/tool counts or status labels; point at the source
+of truth instead.
 
 <identity>
 Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (ERC-8004 identity/reputation/validation, agent and session-key accounts), an MCP server, an A2A adapter, and installable skills that let any AI agent hold wallets, transact, build reputation, and access DeFi on Starknet.
@@ -10,7 +13,7 @@ Infrastructure layer for AI agents on Starknet. Provides Cairo smart contracts (
 
 <stack>
 
-Majors only; exact pins live in the source-of-truth files.
+Selected versions for orientation; the source-of-truth files define the exact pins.
 
 | Component | Technology | Source of truth |
 |-----------|-----------|-----------------|
@@ -114,9 +117,8 @@ Examples: `hello-agent`, `onboard-agent`, `crosschain-demo`, `defi-agent`, `carr
 - Name format: lowercase, hyphens only, 1-64 chars
 - Include starknet.js code examples, reference the avnu SDK for DeFi, list error codes with recovery steps
 
-### Git
-- Conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`, `ci:`)
-- Branch from main; Sepolia testing before any mainnet deployment
+### Git and deployment
+See `AGENTS.md` ("Git and Deployment").
 
 </conventions>
 

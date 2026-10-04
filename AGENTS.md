@@ -90,6 +90,12 @@ Conflict resolution:
 3. Land interface change first with tests.
 4. Rebase/adjust dependents, then re-verify.
 
+## Git and Deployment
+
+- Use conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`, `ci:`).
+- Branch from `main` for every change.
+- Test on Sepolia before any mainnet deployment.
+
 ## Required Validation by Change Type
 
 Skills/install UX changes:

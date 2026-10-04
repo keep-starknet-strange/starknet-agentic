@@ -44,7 +44,7 @@ Full details: [`contracts/erc8004-cairo/e2e-tests/README.md`](../contracts/erc80
 
 Tools:
 - `starkli` (the deploy and runner scripts call it). Flags change between releases; check `starkli --help` if a command is rejected.
-- Scarb and Starknet Foundry at the versions pinned in `contracts/session-account/Scarb.toml` (currently Scarb 2.14.0, snforge 0.54.1).
+- Scarb and Starknet Foundry at the versions CI installs (`.github/workflows/ci.yml`). `contracts/session-account/Scarb.toml` declares the matching `starknet` and `snforge_std` dependencies.
 - GNU grep. `scripts/deploy_sepolia.sh` uses `grep -P`, which macOS's BSD grep does not support. On macOS, install GNU grep (`brew install grep`) and put its `gnubin` directory first on `PATH`.
 
 Accounts:
@@ -55,12 +55,15 @@ Accounts:
 Environment:
 
 ```bash
-# One-time: create a deployer account with starkli if you don't have one
-starkli account oz init ~/.starknet_accounts/deployer-account.json
-
-export STARKNET_ACCOUNT=~/.starknet_accounts/deployer-account.json
-export STARKNET_KEYSTORE=~/.starknet_accounts/deployer-keystore.json
 export STARKNET_RPC=<your Sepolia RPC URL>
+export STARKNET_KEYSTORE=~/.starknet_accounts/deployer-keystore.json
+export STARKNET_ACCOUNT=~/.starknet_accounts/deployer-account.json
+
+# One-time, if you don't have a deployer account yet:
+starkli signer keystore new $STARKNET_KEYSTORE   # create the signer first
+starkli account oz init $STARKNET_ACCOUNT        # uses $STARKNET_KEYSTORE
+# Fund the printed address with Sepolia STRK, then:
+starkli account deploy $STARKNET_ACCOUNT
 ```
 
 Tokens: use an existing Sepolia ERC-20 or deploy mock tokens (for example 6-decimal MockUSDC, 18-decimal MockWETH). Amounts below assume 6 decimals.
@@ -99,6 +102,8 @@ export SESSION_KEY_KEYSTORE=~/.starknet_accounts/session-keystore.json
 export TOKEN_ADDRESS=0x...    # Sepolia ERC-20 under test
 ```
 
+> **Session-key transactions need a session-aware signer.** SessionAccount accepts a session key only when the signature has four elements, `[session_pubkey, r, s, valid_until]`, signed over the account's session message hash. starkli's account signer produces the two-element owner signature `[r, s]`, so a starkli command signed with the session keystore is validated as an owner call and rejected. Use a starknet.js signer that produces the session format, such as `SessionKeySigner` in `packages/starknet-mcp-server/src/helpers/sessionKeySigner.ts` (check it matches the account's session signature mode; see [`SESSION_SIGNATURE_MODE_MIGRATION.md`](./security/SESSION_SIGNATURE_MODE_MIGRATION.md)). Owner-signed steps (adding keys, setting policies) and reads work with starkli as shown.
+
 **3. Run the scripted suite:**
 
 ```bash
@@ -111,9 +116,11 @@ bash scripts/e2e_test_runner.sh \
 
 It adds a session key (7 days, 100 calls), sets a 1000/5000/24h policy, then checks two in-limit transfers succeed and that over-limit transfers and session-key calls to `set_spending_policy` / `remove_spending_policy` are rejected.
 
+**Known issue:** the runner's session-key steps pass `--account-session-key` to `starkli invoke`, an option starkli does not have, so those steps fail. Only the owner-signed setup (session key, policy) works. Until the runner uses a session-aware signer, run the session-key rows of the manual matrix below with one.
+
 ### Manual test matrix
 
-Selectors used below: `transfer` = `0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e`, `approve` = `0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c`. Owner calls use `--account $STARKNET_ACCOUNT --keystore $STARKNET_KEYSTORE`; session-key calls use `--account $SESSION_KEY_ACCOUNT --keystore $SESSION_KEY_KEYSTORE`.
+Selectors used below: `transfer` = `0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e`, `approve` = `0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c`. Owner calls use `--account $STARKNET_ACCOUNT --keystore $STARKNET_KEYSTORE`. Session-key calls must be signed with a session-aware signer (see the note above); starkli cannot produce that signature.
 
 #### Setup
 
@@ -146,12 +153,12 @@ starkli call $SESSION_ACCOUNT_ADDRESS get_spending_policy $SESSION_PUBKEY $TOKEN
 # -> max_per_call, max_per_window, window_seconds, spent_in_window, window_start
 ```
 
-Transfer with the session key (500 tokens to `RECIPIENT`):
+Transfer with the session key (500 tokens to `RECIPIENT`): execute this call from `$SESSION_ACCOUNT_ADDRESS` with a session-aware signer:
 
-```bash
-starkli invoke $SESSION_ACCOUNT_ADDRESS __execute__ \
-  array:1:struct:$TOKEN_ADDRESS:0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e:array:3:$RECIPIENT:500000000:0 \
-  --account $SESSION_KEY_ACCOUNT --keystore $SESSION_KEY_KEYSTORE
+```text
+contractAddress: $TOKEN_ADDRESS
+entrypoint:      transfer
+calldata:        [$RECIPIENT, 500000000, 0]   # u256 amount = (low, high)
 ```
 
 #### Happy path
@@ -177,7 +184,7 @@ starkli invoke $SESSION_ACCOUNT_ADDRESS __execute__ \
 
 | # | Scenario | Expected |
 |---|---|---|
-| 4.1 | At exactly `window_start + 86400`, spend `max_per_window`, then spend again at the same timestamp; then again at +1s | First succeeds, second fails (window not reset yet), third succeeds (strict `>` window reset) |
+| 4.1 | Seed `spent_in_window = 4500000000` (e.g. 1000 x 4 + 500). At exactly `window_start + 86400`, transfer 1000; then transfer 1000 at +1s | At the boundary it reverts (window not reset; 5500 > 5000); at +1s it succeeds and `spent_in_window` resets to `1000000000`. This separates strict `>` from `>=`; exact timestamps are only practical in snforge tests |
 | 4.2 | Multicall of 5 x 500 transfers in one tx | All succeed; `spent_in_window = 2500000000` (cumulative tracking) |
 | 4.3 | Transfer exactly 1000 (per-call) and exactly 5000 total (window) | Succeeds (limits are inclusive) |
 | 4.4 | Non-spending selector (`balanceOf`) via `__execute__` | Succeeds; `spent_in_window` unchanged |

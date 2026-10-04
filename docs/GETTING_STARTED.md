@@ -122,7 +122,7 @@ Full example: [`examples/defi-agent/`](../examples/defi-agent/README.md).
 The MCP server exposes `starknet_register_agent`, `starknet_set_agent_metadata`, and `starknet_get_agent_metadata` when `ERC8004_IDENTITY_REGISTRY_ADDRESS` is set. To call the registry directly:
 
 ```typescript
-import { Contract } from "starknet";
+import { Contract, hash } from "starknet";
 
 const identityRegistry = new Contract({
   abi: IdentityRegistryABI,
@@ -130,9 +130,19 @@ const identityRegistry = new Contract({
   providerOrAccount: account,
 });
 
-// Mint the agent identity NFT; read the new agent id from the Registered event
+// Mint the agent identity NFT
 const { transaction_hash } = await identityRegistry.register();
-await account.waitForTransaction(transaction_hash);
+const receipt = await provider.waitForTransaction(transaction_hash);
+
+// Read the new agent id from the Registered event: keys = [selector, agent_id.low, agent_id.high]
+const registeredSelector = BigInt(hash.getSelectorFromName("Registered"));
+const event = (receipt as { events?: { from_address: string; keys: string[] }[] }).events?.find(
+  (e) =>
+    BigInt(e.from_address) === BigInt(IDENTITY_REGISTRY_ADDRESS) &&
+    BigInt(e.keys[0]) === registeredSelector
+);
+if (!event) throw new Error("Registered event not found");
+const agentId = BigInt(event.keys[1]) + (BigInt(event.keys[2]) << 128n);
 
 await identityRegistry.set_metadata(agentId, "agentName", "My Trading Bot");
 await identityRegistry.set_metadata(agentId, "capabilities", "swap,arbitrage");
@@ -162,13 +172,13 @@ try {
   const result = await transfer(recipient, "ETH", "1.0");
   console.log("Transfer successful:", result.transactionHash);
 } catch (error) {
-  if (error.message.includes("INSUFFICIENT_BALANCE")) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("INSUFFICIENT_BALANCE")) {
     console.error("Not enough tokens");
-  } else if (error.message.includes("INVALID_NONCE")) {
-    console.error("Nonce mismatch - retrying...");
-    // Retry with fresh nonce
+  } else if (message.includes("INVALID_NONCE")) {
+    console.error("Nonce mismatch - fetch a fresh nonce and retry the transfer");
   } else {
-    console.error("Transfer failed:", error.message);
+    console.error("Transfer failed:", message);
   }
 }
 ```
