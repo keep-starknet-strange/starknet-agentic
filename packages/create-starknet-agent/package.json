@@ -39,11 +39,11 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3",
+    "@types/node": "catalog:",
     "@types/prompts": "^2.4.9",
-    "tsup": "^8.5.0",
-    "typescript": "^6.0.3",
-    "vitest": "^5.0.2"
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "engines": {
     "node": ">=24.0.0"

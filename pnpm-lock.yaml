@@ -4,6 +4,36 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@modelcontextprotocol/sdk':
+      specifier: ^1.31.0
+      version: 1.31.0
+    '@types/node':
+      specifier: ^26.6.3
+      version: 26.6.3
+    dotenv:
+      specifier: ^18.0.4
+      version: 18.0.4
+    starknet:
+      specifier: ^10.8.0
+      version: 10.8.0
+    tsup:
+      specifier: ^8.5.0
+      version: 8.5.1
+    tsx:
+      specifier: ^4.23.15
+      version: 4.23.15
+    typescript:
+      specifier: ^6.0.3
+      version: 6.0.3
+    vitest:
+      specifier: ^5.0.2
+      version: 5.0.2
+    zod:
+      specifier: ^4.6.5
+      version: 4.6.5
+
 overrides:
   ajv@^6.0.0: 6.14.0
   ajv@^8.0.0: 8.18.0
@@ -43,47 +73,47 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.11.0(jiti@2.6.1))
       '@types/node':
-        specifier: ^26.6.3
+        specifier: 'catalog:'
         version: 26.6.3
       eslint:
         specifier: ^10.11.0
         version: 10.11.0(jiti@2.6.1)
       tsup:
-        specifier: ^8.5.0
+        specifier: 'catalog:'
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vite:
         specifier: 8.3.1
         version: 8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1)
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/carry-agent:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: ^1.31.0
+        specifier: 'catalog:'
         version: 1.31.0(zod@4.6.5)
       dotenv:
-        specifier: ^18.0.4
+        specifier: 'catalog:'
         version: 18.0.4
       zod:
-        specifier: ^4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
 
   examples/controller-calls:
     dependencies:
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
 
   examples/crosschain-demo:
@@ -92,23 +122,23 @@ importers:
         specifier: workspace:*
         version: link:../../packages/starknet-onboarding-utils
       dotenv:
-        specifier: ^18.0.4
+        specifier: 'catalog:'
         version: 18.0.4
       ethers:
         specifier: ^6.17.0
         version: 6.17.0
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/defi-agent:
@@ -117,64 +147,64 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(ethers@6.17.0)(starknet@10.8.0(typescript@6.0.3)(zod@4.6.5))
       dotenv:
-        specifier: ^18.0.4
+        specifier: 'catalog:'
         version: 18.0.4
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
 
   examples/erc8004-validation-demo:
     dependencies:
       dotenv:
-        specifier: ^18.0.4
+        specifier: 'catalog:'
         version: 18.0.4
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/full-stack-swarm:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: ^1.31.0
+        specifier: 'catalog:'
         version: 1.31.0(zod@4.6.5)
       dotenv:
-        specifier: ^18.0.4
+        specifier: 'catalog:'
         version: 18.0.4
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
 
   examples/hello-agent:
     dependencies:
       dotenv:
-        specifier: ^18.0.4
+        specifier: 'catalog:'
         version: 18.0.4
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
 
   examples/onboard-agent:
@@ -183,55 +213,55 @@ importers:
         specifier: workspace:*
         version: link:../../packages/starknet-onboarding-utils
       dotenv:
-        specifier: ^18.0.4
+        specifier: 'catalog:'
         version: 18.0.4
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
 
   examples/secure-defi-demo:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: ^1.31.0
+        specifier: 'catalog:'
         version: 1.31.0(zod@4.6.5)
       dotenv:
-        specifier: ^18.0.4
+        specifier: 'catalog:'
         version: 18.0.4
       zod:
-        specifier: ^4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
 
   examples/starkzap-onboard-transfer:
     dependencies:
       dotenv:
-        specifier: ^18.0.4
+        specifier: 'catalog:'
         version: 18.0.4
       starkzap:
         specifier: ^4.0.0
         version: 4.0.0(@avnu/avnu-sdk@4.2.0(ethers@6.17.0)(starknet@10.8.0(typescript@6.0.3)(zod@4.6.5)))(ethers@6.17.0)(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       tsx:
-        specifier: ^4.23.15
+        specifier: 'catalog:'
         version: 4.23.15
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/create-starknet-agent:
@@ -244,85 +274,85 @@ importers:
         version: 2.4.2
     devDependencies:
       '@types/node':
-        specifier: ^26.6.3
+        specifier: 'catalog:'
         version: 26.6.3
       '@types/prompts':
         specifier: ^2.4.9
         version: 2.4.9
       tsup:
-        specifier: ^8.5.0
+        specifier: 'catalog:'
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/prediction-arb-scanner:
     dependencies:
       zod:
-        specifier: ^4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@types/node':
-        specifier: ^26.6.3
+        specifier: 'catalog:'
         version: 26.6.3
       tsup:
-        specifier: ^8.5.0
+        specifier: 'catalog:'
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/shared:
     devDependencies:
       tsup:
-        specifier: ^8.5.0
+        specifier: 'catalog:'
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
 
   packages/starknet-a2a:
     dependencies:
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
       zod:
-        specifier: ^4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@types/node':
-        specifier: ^26.6.3
+        specifier: 'catalog:'
         version: 26.6.3
       tsup:
-        specifier: ^8.5.0
+        specifier: 'catalog:'
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/starknet-agent-passport:
     dependencies:
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       tsup:
-        specifier: ^8.5.0
+        specifier: 'catalog:'
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/starknet-mcp-server:
@@ -331,32 +361,32 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0(ethers@6.17.0)(starknet@10.8.0(typescript@6.0.3)(zod@4.6.5))
       '@modelcontextprotocol/sdk':
-        specifier: ^1.31.0
+        specifier: 'catalog:'
         version: 1.31.0(zod@4.6.5)
       '@starknetfoundation/starknet-agentic-x402-starknet':
         specifier: workspace:*
         version: link:../x402-starknet
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
       zod:
-        specifier: ^4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@types/node':
-        specifier: ^26.6.3
+        specifier: 'catalog:'
         version: 26.6.3
       '@vitest/coverage-v8':
         specifier: 5.0.2
         version: 5.0.2(vitest@5.0.2)
       tsup:
-        specifier: ^8.5.0
+        specifier: 'catalog:'
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/starknet-onboarding-utils:
@@ -365,20 +395,20 @@ importers:
         specifier: workspace:*
         version: link:../shared
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       '@types/node':
-        specifier: ^26.6.3
+        specifier: 'catalog:'
         version: 26.6.3
       tsup:
-        specifier: ^8.5.0
+        specifier: 'catalog:'
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/x402-starknet:
@@ -387,26 +417,26 @@ importers:
         specifier: workspace:*
         version: link:../shared
       starknet:
-        specifier: ^10.8.0
+        specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.11.0(jiti@2.6.1))
       '@types/node':
-        specifier: ^26.6.3
+        specifier: 'catalog:'
         version: 26.6.3
       eslint:
         specifier: ^10.11.0
         version: 10.11.0(jiti@2.6.1)
       tsup:
-        specifier: ^8.5.0
+        specifier: 'catalog:'
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.28)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   website:
@@ -452,7 +482,7 @@ importers:
         specifier: ^2.0.14
         version: 2.0.14
       '@types/node':
-        specifier: ^26.6.3
+        specifier: 'catalog:'
         version: 26.6.3
       '@types/react':
         specifier: ^19.3.0
@@ -476,7 +506,7 @@ importers:
         specifier: ^3.4.19
         version: 3.4.19(tsx@4.23.15)(yaml@2.9.1)
       typescript:
-        specifier: ^6.0.3
+        specifier: 'catalog:'
         version: 6.0.3
 
 packages:
