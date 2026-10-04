@@ -7,7 +7,8 @@
   "scripts": {
     "run": "npx tsx run.ts",
     "run:sepolia": "npx tsx run.ts --network sepolia",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",

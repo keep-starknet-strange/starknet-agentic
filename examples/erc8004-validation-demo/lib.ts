@@ -13,7 +13,7 @@ export type StarknetTxReceipt = {
 export function toU256Calldata(value: bigint): string[] {
   const u = cairo.uint256(value);
   // CallData.compile flattens to string[].
-  return CallData.compile(u);
+  return CallData.compile({ low: u.low, high: u.high });
 }
 
 export function parseU256FromFelts(low: string, high: string): bigint {
@@ -64,7 +64,7 @@ export async function readTotalAgents(args: {
   });
 
   // total_agents() -> u256 (low, high)
-  return parseU256FromFelts(res.result[0], res.result[1]);
+  return parseU256FromFelts(res[0], res[1]);
 }
 
 export async function readAgentExists(args: {
@@ -78,7 +78,7 @@ export async function readAgentExists(args: {
     calldata: toU256Calldata(args.agentId),
   });
 
-  return BigInt(res.result[0]) !== 0n;
+  return BigInt(res[0]) !== 0n;
 }
 
 export async function readValidationSummary(args: {
@@ -102,5 +102,5 @@ export async function readValidationSummary(args: {
   });
 
   // returns (u64 count, u8 avg)
-  return { count: BigInt(res.result[0]), avg: BigInt(res.result[1]) };
+  return { count: BigInt(res[0]), avg: BigInt(res[1]) };
 }

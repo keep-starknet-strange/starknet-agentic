@@ -60,6 +60,7 @@ const STATIC_TOKEN_DATA = [
  */
 export const STATIC_TOKENS: CachedToken[] = STATIC_TOKEN_DATA.map((token) => ({
   ...STATIC_TOKEN_DEFAULTS,
+  tags: [...STATIC_TOKEN_DEFAULTS.tags],
   ...token,
 }));
 
@@ -297,7 +298,7 @@ export class TokenService {
 
     try {
       // Unwrap { symbol: ... } or { name: ... } responses, unless it's a direct ByteArray
-      let value = result;
+      let value: unknown = result;
       if (typeof result === "object" && !Array.isArray(result) && !this.isByteArray(result)) {
         const record = result as Record<string, unknown>;
         if ("symbol" in record) value = record.symbol;
@@ -338,6 +339,9 @@ export class TokenService {
     // Fetch from avnu (verified tokens only)
     try {
       const token = await fetchVerifiedTokenBySymbol(symbol, { baseUrl: this.baseUrl });
+      if (!token) {
+        throw new Error("token not found");
+      }
       return this.addToCache(token, false);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

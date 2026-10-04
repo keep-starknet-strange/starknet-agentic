@@ -246,7 +246,7 @@ class McpSidecar {
     const transport = new StdioClientTransport({
       command: "node",
       args: [mcpEntry],
-      env: { ...process.env, ...this.env },
+      env: { ...process.env, ...this.env } as Record<string, string>,
     });
 
     const client = new Client(
@@ -266,7 +266,8 @@ class McpSidecar {
     if (!this.client) throw new Error("MCP client not connected");
     const res = await this.client.callTool({ name, arguments: args });
     if (res?.isError) {
-      const msg = res?.content?.[0]?.text || `Tool error: ${name}`;
+      const content = res?.content as Array<{ text?: string }> | undefined;
+      const msg = content?.[0]?.text || `Tool error: ${name}`;
       throw new Error(msg);
     }
     return res;

@@ -6,7 +6,8 @@
   "scripts": {
     "demo": "npx tsx run.ts",
     "test": "vitest run --silent",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "dotenv": "^18.0.4",

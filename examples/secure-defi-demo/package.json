@@ -10,7 +10,8 @@
     "run:withdraw": "npx tsx run.ts --mode execute --with-withdraw",
     "run:strict": "STRICT_SECURITY_PROOF=1 npx tsx run.ts --mode execute",
     "test": "node --test --import tsx test/*.test.ts",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",

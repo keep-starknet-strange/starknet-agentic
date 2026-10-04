@@ -133,8 +133,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # Package builds use `tsc --noCheck` (declarations only), so they do not
+      # type-check. They are still needed: dependents resolve workspace
+      # packages through the emitted dist/*.d.ts.
+      - name: Build workspace packages
+        run: pnpm -r --filter './packages/*' build
+
+      # Runs `tsc --noEmit` in every package, example and the website that
+      # defines a `typecheck` script.
       - name: Type check
-        run: pnpm run build
+        run: pnpm -r --if-present typecheck
 
   lint:
     name: Lint

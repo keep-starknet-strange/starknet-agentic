@@ -17,6 +17,7 @@ import {
   readTotalAgents,
   readValidationSummary,
   toU256Calldata,
+  type StarknetTxReceipt,
 } from "./lib.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -105,7 +106,7 @@ async function main() {
   const requestReceipt = await provider.waitForTransaction(requestTx.transaction_hash);
 
   const requestHash = parseValidationRequestHashFromReceipt({
-    receipt: requestReceipt,
+    receipt: requestReceipt as StarknetTxReceipt,
     expectedValidator: accountAddress,
     expectedAgentId: predictedAgentId,
   });
