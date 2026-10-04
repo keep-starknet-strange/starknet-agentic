@@ -9,6 +9,32 @@ import type {
 import { RPC_URLS, TOKEN_ADDRESSES, AVNU_URLS } from "./types.js";
 
 /**
+ * Version ranges written into generated projects' package.json.
+ *
+ * Generated projects live outside this workspace, so they cannot use
+ * `catalog:` and need literal ranges. Each range must equal the root
+ * `pnpm-workspace.yaml` catalog entry for the same package (or, for packages
+ * not in the catalog, the range this workspace's packages declare).
+ * `src/__tests__/template-versions.test.ts` fails when they drift.
+ */
+export const TEMPLATE_DEPENDENCY_VERSIONS = {
+  "@avnu/avnu-sdk": "^4.2.0",
+  "@types/node": "^26.6.3",
+  dotenv: "^18.0.4",
+  starknet: "^10.8.0",
+  tsx: "^4.23.15",
+  typescript: "^6.0.3",
+  zod: "^4.6.5",
+} as const;
+
+/**
+ * Minimum Node.js version for generated projects: the highest `engines.node`
+ * floor among the dependencies above (starknet@10 and @avnu/avnu-sdk@4 need
+ * Node 22+).
+ */
+export const TEMPLATE_NODE_ENGINE = ">=22.0.0";
+
+/**
  * Generate all files for the project
  */
 export function generateProject(config: ProjectConfig): GeneratedFiles {
@@ -41,15 +67,16 @@ export function generateProject(config: ProjectConfig): GeneratedFiles {
 }
 
 function generatePackageJson(config: ProjectConfig): string {
+  const v = TEMPLATE_DEPENDENCY_VERSIONS;
   const deps: Record<string, string> = {
-    dotenv: "^16.4.7",
-    starknet: "^8.9.1",
+    dotenv: v.dotenv,
+    starknet: v.starknet,
   };
 
   const devDeps: Record<string, string> = {
-    tsx: "^4.0.0",
-    typescript: "^5.9.0",
-    "@types/node": "^22.0.0",
+    tsx: v.tsx,
+    typescript: v.typescript,
+    "@types/node": v["@types/node"],
   };
 
   // Add DeFi dependencies
@@ -59,13 +86,13 @@ function generatePackageJson(config: ProjectConfig): string {
     config.defiProtocols.length > 0
   ) {
     if (config.defiProtocols.includes("avnu") || config.template !== "minimal") {
-      deps["@avnu/avnu-sdk"] = "^4.0.1";
+      deps["@avnu/avnu-sdk"] = v["@avnu/avnu-sdk"];
     }
   }
 
   // Add identity deps for full template
   if (config.template === "full") {
-    deps["zod"] = "^3.23.0";
+    deps["zod"] = v.zod;
   }
 
   const pkg = {
@@ -83,7 +110,7 @@ function generatePackageJson(config: ProjectConfig): string {
     dependencies: deps,
     devDependencies: devDeps,
     engines: {
-      node: ">=18.0.0",
+      node: TEMPLATE_NODE_ENGINE,
     },
   };
 
@@ -102,6 +129,9 @@ function generateTsConfig(): string {
       esModuleInterop: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
+      // TypeScript 6 no longer infers rootDir or loads every @types package.
+      rootDir: "./src",
+      types: ["node"],
       outDir: "./dist",
       declaration: true,
     },
@@ -444,6 +474,20 @@ main().catch((error) => {
 `;
 }
 
+/**
+ * Loads `.env` at the top of the generated `src/config.ts`. CONFIG reads
+ * process.env when config.ts is evaluated, which happens before index.ts's
+ * own body runs (ES module imports are evaluated first), so `.env` has to be
+ * loaded here rather than in index.ts.
+ */
+const ENV_LOADER = `import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+// Load .env from the project root before reading process.env below.
+dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
+`;
+
 function generateDeFiConfig(config: ProjectConfig): string {
   const tokens = config.network === "sepolia"
     ? TOKEN_ADDRESSES.sepolia
@@ -454,6 +498,7 @@ function generateDeFiConfig(config: ProjectConfig): string {
  * DeFi Agent Configuration
  */
 
+${ENV_LOADER}
 export const CONFIG = {
   // Network
   RPC_URL: process.env.STARKNET_RPC_URL || "${RPC_URLS[config.network === "custom" ? "mainnet" : config.network]}",
@@ -491,17 +536,11 @@ function generateDeFiAgent(config: ProjectConfig): string {
  * - Arbitrage detection
  */
 
-import dotenv from "dotenv";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
 import { Account, RpcProvider, Contract } from "starknet";
 import { getQuotes, executeSwap, type QuoteRequest } from "@avnu/avnu-sdk";
+// config.js loads .env before CONFIG reads process.env.
 import { CONFIG, TOKENS } from "./config.js";
 import { formatAmount, sleep } from "./utils.js";
-
-// Load .env
-const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: join(__dirname, "..", ".env") });
 
 // ERC20 ABI
 const ERC20_ABI = [
@@ -701,6 +740,7 @@ function generateFullConfig(config: ProjectConfig): string {
  * Full Agent Configuration
  */
 
+${ENV_LOADER}
 export const CONFIG = {
   // Network
   RPC_URL: process.env.STARKNET_RPC_URL || "${RPC_URLS[config.network === "custom" ? "mainnet" : config.network]}",
@@ -843,18 +883,12 @@ function generateFullAgent(config: ProjectConfig): string {
  * - A2A protocol ready
  */
 
-import dotenv from "dotenv";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
 import { Account, RpcProvider, Contract } from "starknet";
 import { getQuotes, executeSwap, type QuoteRequest } from "@avnu/avnu-sdk";
+// config.js loads .env before CONFIG reads process.env.
 import { CONFIG, TOKENS, AGENT_METADATA } from "./config.js";
 import { IdentityClient, type AgentIdentity } from "./identity.js";
 import { formatAmount, sleep } from "./utils.js";
-
-// Load .env
-const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: join(__dirname, "..", ".env") });
 
 // ERC20 ABI
 const ERC20_ABI = [

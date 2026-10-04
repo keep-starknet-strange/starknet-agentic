@@ -72,8 +72,8 @@ export interface GeneratedFiles {
 }
 
 export const RPC_URLS: Record<Exclude<Network, "custom">, string> = {
-  mainnet: "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY",
-  sepolia: "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY",
+  mainnet: "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_API_KEY",
+  sepolia: "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_API_KEY",
 };
 
 // Interpolated into generated projects at generation time, so generated code
