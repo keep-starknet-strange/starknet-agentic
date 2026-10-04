@@ -7,7 +7,7 @@ function createRuntime(args?: {
   sleepStepMs?: number;
 }) {
   let nowMs = 0;
-  let depositCalls: Array<{ amount: bigint; recipient: bigint; value: bigint }> = [];
+  const depositCalls: Array<{ amount: bigint; recipient: bigint; value: bigint }> = [];
   const l1BalanceWei = args?.l1BalanceWei ?? 10n ** 18n;
   const txHash = args?.txHash ?? "0xabc";
   const sleepStepMs = args?.sleepStepMs ?? 1000;

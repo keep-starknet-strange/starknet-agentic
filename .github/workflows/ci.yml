@@ -43,6 +43,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'tsconfig.json'
+              - 'eslint.config.mjs'
             cairo:
               - 'contracts/**'
             cairo-erc8004:
@@ -138,7 +139,7 @@ jobs:
   lint:
     name: Lint
     needs: [detect-changes]
-    if: needs.detect-changes.outputs.ts == 'true' || needs.detect-changes.outputs.ci == 'true'
+    if: needs.detect-changes.outputs.ts == 'true' || needs.detect-changes.outputs.website == 'true' || needs.detect-changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -155,8 +156,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # Packages and examples use the root eslint.config.mjs; the website uses
+      # website/eslint.config.mjs.
       - name: Lint
-        run: pnpm -r --if-present --filter './packages/*' lint
+        run: pnpm -r --if-present lint
 
   test:
     name: Test

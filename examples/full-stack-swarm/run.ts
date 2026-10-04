@@ -529,7 +529,7 @@ async function main() {
   }
 
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-  try { fs.chmodSync(statePath, 0o600); } catch {}
+  try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
 
   // 1.5) Fund accounts if using paymaster default fees or if swaps need sell token.
   // This is intentionally simple: transfer ETH (for the swap) + paymaster gas token (for fees).
@@ -574,7 +574,7 @@ async function main() {
       ),
     );
     fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-    try { fs.chmodSync(statePath, 0o600); } catch {}
+    try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
   }
 
   // 2) Configure each agent (owner-signed direct mode)
@@ -683,7 +683,7 @@ async function main() {
   );
 
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-  try { fs.chmodSync(statePath, 0o600); } catch {}
+  try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
 
   // 3) Start SISNA (optional)
   let sisna: any = null;
@@ -922,7 +922,7 @@ async function main() {
       )
     );
     fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-    try { fs.chmodSync(statePath, 0o600); } catch {}
+    try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
   }
 
   const ok =

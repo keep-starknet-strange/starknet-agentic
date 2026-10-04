@@ -19,7 +19,8 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint ."
   },
   "dependencies": {
     "zod": "^4.6.5"

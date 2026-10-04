@@ -7,7 +7,8 @@
   "main": "index.ts",
   "scripts": {
     "start": "tsx index.ts",
-    "dev": "tsx watch index.ts"
+    "dev": "tsx watch index.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "starknet": "^10.8.0",

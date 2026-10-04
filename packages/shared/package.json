@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsup src/string.ts --format esm --outDir dist && tsc -p tsconfig.build.json --noCheck"
+    "build": "tsup src/string.ts --format esm --outDir dist && tsc -p tsconfig.build.json --noCheck",
+    "lint": "eslint ."
   },
   "exports": {
     "./string": {

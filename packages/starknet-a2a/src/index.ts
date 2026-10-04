@@ -390,7 +390,7 @@ export class StarknetA2AAdapter {
   /**
    * Discover agents from the registry
    */
-  async discoverAgents(options?: {
+  async discoverAgents(_options?: {
     minReputationScore?: number;
     requiredCapabilities?: string[];
   }): Promise<AgentCard[]> {

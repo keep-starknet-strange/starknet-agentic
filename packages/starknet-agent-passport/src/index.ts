@@ -67,8 +67,8 @@ export class IdentityRegistryPassportClient {
     provider: ProviderInterface
     account?: AccountInterface
   }) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- starknet.js Contract constructor accepts Abi type which is loosely typed
     this.contract = new Contract({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- starknet.js Contract constructor accepts Abi type which is loosely typed
       abi: identityRegistryAbi as any,
       address: args.identityRegistryAddress,
       providerOrAccount: args.provider,

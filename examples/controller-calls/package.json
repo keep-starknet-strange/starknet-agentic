@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node run.mjs",
-    "execute": "node run.mjs --execute"
+    "execute": "node run.mjs --execute",
+    "lint": "eslint ."
   },
   "dependencies": {
     "starknet": "^10.8.0"

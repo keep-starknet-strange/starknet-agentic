@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "demo": "npx tsx run.ts",
-    "test": "vitest run --silent"
+    "test": "vitest run --silent",
+    "lint": "eslint ."
   },
   "dependencies": {
     "dotenv": "^18.0.4",
