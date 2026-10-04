@@ -9,7 +9,7 @@ Technical architecture and implementation specification for adding Starknet capa
 1. [Operating Modes](#operating-modes)
 2. [Platform Integration Mode](#platform-integration-mode) ← PRIMARY
 3. [Standalone Mode Architecture](#standalone-mode-architecture)
-4. [Project Structure](#project-structure)
+4. [Project Structure](#project-structure-standalone-mode)
 5. [Core Components](#core-components)
 6. [Configuration System](#configuration-system)
 7. [Agent Runtime](#agent-runtime)
@@ -20,7 +20,7 @@ Technical architecture and implementation specification for adding Starknet capa
 12. [Storage Layer](#storage-layer)
 13. [API Specification](#api-specification)
 14. [Security Model](#security-model)
-15. [Deployment](#deployment)
+15. [Deployment](#deployment-standalone-mode-only)
 
 ---
 
