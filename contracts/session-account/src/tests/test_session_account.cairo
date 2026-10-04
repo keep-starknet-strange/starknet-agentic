@@ -1807,6 +1807,86 @@ fn test_compute_session_message_hash_tracks_active_mode() {
     assert(actual_v2 == expected_v2, 'active v2 hash mismatch');
 }
 
+// Pins the contract to the sessionVectors in spec/session-signature-v2.json, which the
+// off-chain signers (packages/session-account-e2e, starknet-mcp-server) are tested against.
+const SPEC_ACCOUNT: felt252 = 0x0123456789abcdef;
+const SPEC_VALID_UNTIL: u64 = 0x698f136c;
+const SPEC_MAINNET_CHAIN_ID: felt252 = 0x534e5f4d41494e; // 'SN_MAIN'
+
+fn deploy_at_spec_address() -> ContractAddress {
+    let contract = declare("SessionAccount").unwrap().contract_class();
+    let (address, _) = contract
+        .deploy_at(@array![OWNER_PUBKEY], SPEC_ACCOUNT.try_into().unwrap())
+        .unwrap();
+    address
+}
+
+fn spec_vector_calls() -> Array<Call> {
+    array![
+        call_with_data(
+            0x1111111111111111.try_into().unwrap(), 0x2222222222222222, array![0x1, 0x2].span(),
+        ),
+    ]
+}
+
+fn spec_session_hash(
+    account_addr: ContractAddress, chain_id: felt252, nonce: felt252, mode: u8,
+) -> felt252 {
+    let dispatcher = signature_mode_dispatcher(account_addr);
+    start_cheat_chain_id_global(chain_id);
+    start_cheat_nonce(account_addr, nonce);
+    start_cheat_caller_address(account_addr, account_addr);
+    let hash = if mode == SESSION_SIGNATURE_MODE_V1 {
+        dispatcher.compute_session_message_hash_v1(spec_vector_calls(), SPEC_VALID_UNTIL)
+    } else {
+        dispatcher.compute_session_message_hash_v2(spec_vector_calls(), SPEC_VALID_UNTIL)
+    };
+    stop_cheat_caller_address(account_addr);
+    stop_cheat_nonce(account_addr);
+    stop_cheat_chain_id_global();
+    hash
+}
+
+#[test]
+fn test_session_hash_v1_matches_spec_vectors() {
+    let account_addr = deploy_at_spec_address();
+
+    // session_v1_valid_single_call
+    assert(
+        spec_session_hash(
+            account_addr, TEST_CHAIN_ID, 1, SESSION_SIGNATURE_MODE_V1,
+        ) == 0x41a4c7da42592bb690030fe2f82a3cbcf5da18e7a22cbb3d079ea460cbe4c76,
+        'spec v1 valid hash',
+    );
+    // session_v1_invalid_chain_mismatch (verification payload)
+    assert(
+        spec_session_hash(
+            account_addr, SPEC_MAINNET_CHAIN_ID, 1, SESSION_SIGNATURE_MODE_V1,
+        ) == 0x5ab31f1e8be948277063b01ced4cdb15e18cb601ea79b589ea3efc8c2b99e77,
+        'spec v1 chain mismatch hash',
+    );
+}
+
+#[test]
+fn test_session_hash_v2_matches_spec_vectors() {
+    let account_addr = deploy_at_spec_address();
+
+    // session_v2_valid_single_call
+    assert(
+        spec_session_hash(
+            account_addr, TEST_CHAIN_ID, 1, SESSION_SIGNATURE_MODE_V2,
+        ) == 0x7edcb70eb290abc674da6f88c0f3b75bbd657fd7e625d6bfd135c76380b4b28,
+        'spec v2 valid hash',
+    );
+    // session_v2_invalid_nonce_mismatch (verification payload)
+    assert(
+        spec_session_hash(
+            account_addr, TEST_CHAIN_ID, 2, SESSION_SIGNATURE_MODE_V2,
+        ) == 0x6769d48ea737869848d368f0e83f1a4c8b70c35aa1915dae170b078828392a,
+        'spec v2 nonce mismatch hash',
+    );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SECTION 12: SRC-5 INTROSPECTION
 // ═══════════════════════════════════════════════════════════════════════════
