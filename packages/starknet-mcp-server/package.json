@@ -11,6 +11,9 @@
   },
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "starknet-agentic-mcp-server": "./dist/index.js"
+  },
   "scripts": {
     "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared --filter @starknetfoundation/starknet-agentic-x402-starknet build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
