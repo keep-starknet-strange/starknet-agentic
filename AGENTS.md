@@ -40,8 +40,8 @@ This repository includes:
 
 | Role | Owns | Does Not Own |
 | --- | --- | --- |
-| Coordinator | Scope, plan, sequencing, `STATUS.md` accuracy | Large feature implementation |
-| Contracts Executor | Cairo contracts/tests/deploy scripts | Mobile or unrelated UX changes |
+| Coordinator | Scope, plan, sequencing | Large feature implementation |
+| Contracts Executor | Cairo contracts/tests/deploy scripts | Unrelated UX changes |
 | Runtime Executor | MCP/A2A/adapters/tool runtime | Silent ABI/policy shape changes |
 | Skills Executor | `skills/**`, references, install UX docs | Contract logic changes without coordination |
 | Reviewer | Correctness, security regressions, release gates | Initial implementation |
@@ -75,7 +75,7 @@ The `blocked` state can be entered from any state when waiting on a dependency o
 ## Parallelization Rules
 
 Safe to parallelize:
-- `apps/mobile/**` vs `contracts/**` when interfaces are stable
+- `packages/**` or `examples/**` vs `contracts/**` when interfaces are stable
 - independent skill docs under different `skills/<name>/`
 - docs work while long test suites run
 
@@ -133,5 +133,5 @@ Escalation format:
 - Skills spec and format: `references/agentskills/**`
 - System architecture and boundaries: `docs/SPECIFICATION.md`
 - Security policy: `SECURITY.md`
-- Cairo migration mapping: `docs/CAIRO_SKILLS_MIGRATION.md`
+- Cairo skill cutover (legacy name mapping): `skills/README.md` ("Cairo Skill Cutover")
 - Skills distribution docs: `skills/README.md`
