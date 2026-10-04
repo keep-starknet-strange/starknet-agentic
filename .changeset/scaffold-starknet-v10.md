@@ -16,5 +16,7 @@ Generated projects now target starknet.js v10 and zod 4.
 - The `defi` and `full` templates now load `.env` before reading their
   configuration. Before this, they exited with "Missing environment variables!"
   even when `.env` was filled in.
+- `create-starknet-agent --version` and the banner now show the installed
+  version. They were hardcoded to `0.5.0`.
 
 Projects you already generated are not changed.
