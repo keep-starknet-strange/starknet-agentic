@@ -36,13 +36,13 @@ export default function CyberpunkNeon() {
         }}
       />
       <div
-        className="absolute bottom-24 left-12 w-24 h-1 bg-[#00ffff] skew-x-[20deg]"
+        className="absolute bottom-24 left-12 w-24 h-1 bg-[#00ffff] skew-x-20"
         style={{
           boxShadow: "0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 40px #00ffff",
         }}
       />
       <div
-        className="absolute bottom-16 left-20 w-16 h-1 bg-[#ff00ff] skew-x-[20deg]"
+        className="absolute bottom-16 left-20 w-16 h-1 bg-[#ff00ff] skew-x-20"
         style={{
           boxShadow: "0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 40px #ff00ff",
         }}
@@ -200,7 +200,7 @@ export default function CyberpunkNeon() {
 
       {/* Bottom Neon Bar */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00ffff] to-transparent"
+        className="absolute bottom-0 left-0 right-0 h-[2px] bg-linear-to-r from-transparent via-[#00ffff] to-transparent"
         style={{
           boxShadow: "0 0 10px #00ffff, 0 0 20px #00ffff",
         }}
@@ -208,7 +208,7 @@ export default function CyberpunkNeon() {
 
       {/* Top Neon Accent */}
       <div
-        className="absolute top-0 left-1/4 right-1/4 h-[2px] bg-gradient-to-r from-transparent via-[#ff00ff] to-transparent"
+        className="absolute top-0 left-1/4 right-1/4 h-[2px] bg-linear-to-r from-transparent via-[#ff00ff] to-transparent"
         style={{
           boxShadow: "0 0 10px #ff00ff, 0 0 20px #ff00ff",
         }}

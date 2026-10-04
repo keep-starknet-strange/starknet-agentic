@@ -1,6 +1,96 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@plugin "@tailwindcss/typography";
+
+@config "../tailwind.config.mjs";
+
+/*
+  Keep Tailwind v3 hover behaviour. v4 only matches `hover:` on devices with
+  `(hover: hover)`, so on touch screens tapping a code block would no longer
+  reveal its copy button (`group-hover:opacity-100`).
+*/
+@custom-variant hover (&:hover);
+
+@theme {
+  --color-cream: #fffbeb;
+  --color-neo-yellow: #ffd600;
+  --color-neo-pink: #ff6b6b;
+  --color-neo-purple: #a855f7;
+  --color-neo-blue: #3b82f6;
+  --color-neo-green: #34d399;
+  --color-neo-orange: #ff8c42;
+  --color-neo-cyan: #06b6d4;
+  --color-neo-dark: #1a1a2e;
+
+  --shadow-neo-sm: 2px 2px 0px 0px #000000;
+  --shadow-neo: 4px 4px 0px 0px #000000;
+  --shadow-neo-lg: 6px 6px 0px 0px #000000;
+  --shadow-neo-xl: 8px 8px 0px 0px #000000;
+
+  --animate-marquee: marquee 30s linear infinite;
+  --animate-marquee-reverse: marquee-reverse 30s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes marquee-reverse {
+    0% {
+      transform: translateX(-50%);
+    }
+    100% {
+      transform: translateX(0%);
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+}
+
+/* `inline` writes the next/font variables into each utility, as v3 did. */
+@theme inline {
+  --font-heading: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-body: var(--font-dm-sans), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+}
+
+/*
+  Tailwind v3 preflight defaults that v4 changed: gray-200 borders,
+  gray-400 placeholders and pointer cursors on buttons.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 @layer base {
   html {
@@ -16,105 +106,103 @@
   }
 }
 
-@layer components {
-  .neo-card {
-    @apply border-2 border-black bg-white shadow-neo transition-all duration-150;
-  }
+@utility neo-card {
+  @apply border-2 border-black bg-white shadow-neo transition-all duration-150;
+}
 
-  .neo-card-hover {
-    @apply neo-card hover:shadow-neo-lg hover:-translate-x-[2px] hover:-translate-y-[2px];
-  }
+@utility neo-card-hover {
+  @apply neo-card hover:shadow-neo-lg hover:translate-x-[-2px] hover:translate-y-[-2px];
+}
 
-  .neo-btn {
-    @apply inline-flex items-center justify-center border-2 border-black px-6 py-3 font-heading font-bold
+@utility neo-btn {
+  @apply inline-flex items-center justify-center border-2 border-black px-6 py-3 font-heading font-bold
       shadow-neo transition-all duration-100
       hover:shadow-neo-sm hover:translate-x-[2px] hover:translate-y-[2px]
       active:shadow-none active:translate-x-1 active:translate-y-1;
-  }
+}
 
-  .neo-btn-primary {
-    @apply neo-btn bg-neo-yellow text-neo-dark;
-  }
+@utility neo-btn-primary {
+  @apply neo-btn bg-neo-yellow text-neo-dark;
+}
 
-  .neo-btn-secondary {
-    @apply neo-btn bg-white text-neo-dark;
-  }
+@utility neo-btn-secondary {
+  @apply neo-btn bg-white text-neo-dark;
+}
 
-  .neo-btn-dark {
-    @apply neo-btn bg-neo-dark text-white;
-  }
+@utility neo-btn-dark {
+  @apply neo-btn bg-neo-dark text-white;
+}
 
-  .neo-badge {
-    @apply inline-flex items-center border-2 border-black px-3 py-1 text-sm font-bold shadow-neo-sm;
-  }
+@utility neo-badge {
+  @apply inline-flex items-center border-2 border-black px-3 py-1 text-sm font-bold shadow-neo-sm;
+}
 
-  .neo-input {
-    @apply border-2 border-black px-4 py-3 font-mono text-sm shadow-neo-sm
-      focus:outline-none focus:shadow-neo focus:-translate-x-[1px] focus:-translate-y-[1px]
+@utility neo-input {
+  @apply border-2 border-black px-4 py-3 font-mono text-sm shadow-neo-sm
+      focus:outline-hidden focus:shadow-neo focus:-translate-x-px focus:-translate-y-px
       transition-all duration-100;
-  }
+}
 
-  .section-padding {
-    @apply px-6 md:px-12 lg:px-20 py-20 md:py-28;
-  }
+@utility section-padding {
+  @apply px-6 md:px-12 lg:px-20 py-20 md:py-28;
+}
 
-  /* Documentation prose styles */
-  .prose-neo {
-    @apply text-neo-dark/80;
-  }
+@utility text-balance {
+  text-wrap: balance;
+}
 
-  .prose-neo h2 {
+@utility bg-grid {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@utility bg-dots {
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/*
+  Docs prose overrides (`prose prose-neo` on docs articles). The base neo
+  typography theme is in tailwind.config.mjs; these element rules out-rank
+  utilities on MDX elements, as they did in v3.
+*/
+@utility prose-neo {
+  & h2 {
     @apply text-2xl font-heading font-semibold text-neo-dark mt-10 mb-4 pb-2 border-b border-neo-dark/10;
   }
 
-  .prose-neo h3 {
+  & h3 {
     @apply text-xl font-heading font-semibold text-neo-dark mt-8 mb-3;
   }
 
-  .prose-neo p {
+  & p {
     @apply leading-relaxed mb-4;
   }
 
-  .prose-neo ul {
+  & ul {
     @apply list-disc list-inside space-y-2 mb-4 pl-2;
   }
 
-  .prose-neo ol {
+  & ol {
     @apply list-decimal list-inside space-y-2 mb-4 pl-2;
   }
 
-  .prose-neo a {
+  & a {
     @apply text-neo-purple hover:text-neo-purple/80 underline underline-offset-2 transition-colors;
   }
 
-  .prose-neo code:not(pre code) {
-    @apply bg-neo-dark/5 text-neo-dark px-1.5 py-0.5 rounded text-sm font-mono border border-neo-dark/10;
+  & code:not(pre code) {
+    @apply bg-neo-dark/5 text-neo-dark px-1.5 py-0.5 rounded-sm text-sm font-mono border border-neo-dark/10;
   }
 
-  .prose-neo pre {
+  & pre {
     @apply bg-[#0d1117] text-gray-100 rounded-lg p-4 overflow-x-auto my-6 text-sm font-mono border-2 border-black shadow-neo;
   }
 
-  .prose-neo blockquote {
+  & blockquote {
     @apply border-l-4 border-neo-yellow pl-4 py-2 my-4 bg-neo-yellow/5 italic text-neo-dark/70;
-  }
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .bg-grid {
-    background-image:
-      linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
-
-  .bg-dots {
-    background-image: radial-gradient(circle, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
-    background-size: 24px 24px;
   }
 }
 

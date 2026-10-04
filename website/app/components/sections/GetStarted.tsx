@@ -39,7 +39,7 @@ export function GetStarted() {
               </h3>
               <p className="text-neo-dark/70 max-w-2xl">
                 After installing the skill from the 30-second guide, run it on any local Cairo contract in your own workspace to generate a real{" "}
-                <code className="px-1.5 py-0.5 bg-neo-dark/5 rounded text-sm">security-review-*.md</code> report before
+                <code className="px-1.5 py-0.5 bg-neo-dark/5 rounded-sm text-sm">security-review-*.md</code> report before
                 you wire the rest of the stack.
               </p>
             </div>
@@ -56,15 +56,15 @@ export function GetStarted() {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border-2 border-neo-dark/10 rounded p-4">
+            <div className="border-2 border-neo-dark/10 rounded-sm p-4">
               <p className="text-sm font-heading font-bold text-neo-dark mb-2">Codex</p>
-              <code className="block whitespace-pre-wrap break-all text-xs md:text-sm bg-neo-dark text-white rounded px-3 py-3">
+              <code className="block whitespace-pre-wrap break-all text-xs md:text-sm bg-neo-dark text-white rounded-sm px-3 py-3">
                 {CODEX_CAIRO_AUDITOR_PROMPT}
               </code>
             </div>
-            <div className="border-2 border-neo-dark/10 rounded p-4">
+            <div className="border-2 border-neo-dark/10 rounded-sm p-4">
               <p className="text-sm font-heading font-bold text-neo-dark mb-2">Claude Code</p>
-              <code className="block whitespace-pre-wrap break-all text-xs md:text-sm bg-neo-dark text-white rounded px-3 py-3">
+              <code className="block whitespace-pre-wrap break-all text-xs md:text-sm bg-neo-dark text-white rounded-sm px-3 py-3">
                 {CLAUDE_CAIRO_AUDITOR_PROMPT}
               </code>
             </div>

@@ -80,7 +80,7 @@ export function DocsSearch() {
     return (
       <span>
         {before}
-        <mark className="bg-neo-yellow/60 text-neo-dark px-0.5 rounded">{match}</mark>
+        <mark className="bg-neo-yellow/60 text-neo-dark px-0.5 rounded-sm">{match}</mark>
         {after}
       </span>
     );
@@ -144,7 +144,7 @@ export function DocsSearch() {
       {/* Search trigger button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 text-sm text-neo-dark/60 bg-white border-2 border-neo-dark/20 rounded hover:border-neo-dark/40 transition-colors w-full md:w-64"
+        className="flex items-center gap-2 px-3 py-2 text-sm text-neo-dark/60 bg-white border-2 border-neo-dark/20 rounded-sm hover:border-neo-dark/40 transition-colors w-full md:w-64"
         aria-label="Search documentation"
       >
         <svg
@@ -162,7 +162,7 @@ export function DocsSearch() {
           />
         </svg>
         <span className="flex-1 text-left">Search docs...</span>
-        <kbd className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono bg-neo-dark/5 rounded">
+        <kbd className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono bg-neo-dark/5 rounded-sm">
           <span className="text-xs">&#8984;</span>K
         </kbd>
       </button>
@@ -179,7 +179,7 @@ export function DocsSearch() {
           >
             {/* Backdrop */}
             <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs"
               onClick={closeModal}
               aria-hidden="true"
             />
@@ -210,11 +210,11 @@ export function DocsSearch() {
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyNavigation}
                     placeholder="Search documentation..."
-                    className="flex-1 bg-transparent outline-none text-neo-dark placeholder:text-neo-dark/40"
+                    className="flex-1 bg-transparent outline-hidden text-neo-dark placeholder:text-neo-dark/40"
                     autoComplete="off"
                     aria-label="Search query"
                   />
-                  <kbd className="px-2 py-1 text-xs font-mono bg-neo-dark/5 rounded text-neo-dark/60">
+                  <kbd className="px-2 py-1 text-xs font-mono bg-neo-dark/5 rounded-sm text-neo-dark/60">
                     ESC
                   </kbd>
                 </div>
@@ -273,19 +273,19 @@ export function DocsSearch() {
                       <p className="text-sm">Type to search the documentation</p>
                       <div className="mt-4 flex items-center justify-center gap-4 text-xs">
                         <span className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 bg-neo-dark/5 rounded font-mono">
+                          <kbd className="px-1.5 py-0.5 bg-neo-dark/5 rounded-sm font-mono">
                             &#8593;&#8595;
                           </kbd>
                           <span>Navigate</span>
                         </span>
                         <span className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 bg-neo-dark/5 rounded font-mono">
+                          <kbd className="px-1.5 py-0.5 bg-neo-dark/5 rounded-sm font-mono">
                             Enter
                           </kbd>
                           <span>Select</span>
                         </span>
                         <span className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 bg-neo-dark/5 rounded font-mono">
+                          <kbd className="px-1.5 py-0.5 bg-neo-dark/5 rounded-sm font-mono">
                             ESC
                           </kbd>
                           <span>Close</span>

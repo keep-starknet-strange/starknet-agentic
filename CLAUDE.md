@@ -27,7 +27,7 @@ Selected versions for orientation; the source-of-truth files define the exact pi
 | Schema validation | zod v4 | `package.json` files |
 | Skills format | `SKILL.md` (YAML frontmatter + markdown) | `references/agentskills/SPECS.md` |
 | Python tooling | Python 3 (skill validation, evals) | `requirements.txt`, `requirements-lock.txt` |
-| Website | Next.js 16, React 19, Tailwind CSS 3 | `website/package.json` |
+| Website | Next.js 16, React 19, Tailwind CSS 4 | `website/package.json` |
 
 Folders outside the pnpm workspace (`contracts/*/scripts/`, `contracts/erc8004-cairo/e2e-tests/`,
 `skills/*/package.json`) pin their own, sometimes older, starknet.js majors.

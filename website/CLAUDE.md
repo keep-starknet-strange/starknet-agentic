@@ -55,7 +55,7 @@ The dynamic route at `app/docs/[category]/[slug]/page.tsx` renders MDX content v
 
 ### Design System: Neo-brutalist
 
-Uses a neo-brutalist design system defined in `tailwind.config.ts`:
+Uses a neo-brutalist design system defined in the `@theme` block of `app/globals.css` (Tailwind CSS 4):
 
 **Colors:**
 - `cream` - Background (#FFFBEB)
@@ -96,7 +96,8 @@ Defined in `globals.css`:
 | `app/data/docs.ts` | Documentation structure definition |
 | `lib/mdx.ts` | MDX file reading utilities |
 | `lib/mdx-components.tsx` | Custom MDX component definitions |
-| `tailwind.config.ts` | Design system tokens |
+| `app/globals.css` | Tailwind entry point: design tokens (`@theme`) and component classes |
+| `tailwind.config.mjs` | `@tailwindcss/typography` theme for docs prose (loaded via `@config`) |
 | `next.config.ts` | Next.js config with MDX support |
 
 ## Documentation Tracking

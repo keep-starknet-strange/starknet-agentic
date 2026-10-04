@@ -9,7 +9,7 @@ export default function DocsLayout({
   return (
     <div className="min-h-screen bg-cream">
       {/* Docs Navbar */}
-      <header className="sticky top-0 z-40 bg-cream/90 backdrop-blur-sm border-b-2 border-black">
+      <header className="sticky top-0 z-40 bg-cream/90 backdrop-blur-xs border-b-2 border-black">
         <div className="flex items-center justify-between h-16 px-4 md:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 group">

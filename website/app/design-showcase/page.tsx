@@ -184,7 +184,7 @@ export default function DesignShowcase() {
               </div>
 
               {/* Preview Container */}
-              <div className="rounded-lg overflow-hidden shadow-sm ring-1 ring-neutral-200">
+              <div className="rounded-lg overflow-hidden shadow-xs ring-1 ring-neutral-200">
                 <div className="h-[350px] md:h-[400px] overflow-hidden">
                   <design.component />
                 </div>

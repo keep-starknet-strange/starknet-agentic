@@ -2,7 +2,7 @@ export default function MinimalDark() {
   return (
     <div className="h-full w-full bg-[#0a0a0f] relative overflow-hidden">
       {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0f] via-[#0f0f18] to-[#0a0a0f]" />
+      <div className="absolute inset-0 bg-linear-to-br from-[#0a0a0f] via-[#0f0f18] to-[#0a0a0f]" />
 
       {/* Subtle gradient orb - top right */}
       <div className="absolute -top-32 -right-32 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
@@ -23,17 +23,17 @@ export default function MinimalDark() {
         </p>
 
         {/* Subtle divider */}
-        <div className="w-12 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent mb-8" />
+        <div className="w-12 h-px bg-linear-to-r from-transparent via-cyan-500/30 to-transparent mb-8" />
 
         {/* Buttons */}
         <div className="flex items-center gap-4">
           {/* Primary button */}
-          <button className="px-6 py-2.5 bg-white text-[#0a0a0f] text-sm font-medium tracking-wide rounded-sm transition-all duration-300 hover:bg-gray-100 hover:shadow-lg hover:shadow-white/5">
+          <button className="px-6 py-2.5 bg-white text-[#0a0a0f] text-sm font-medium tracking-wide rounded-xs transition-all duration-300 hover:bg-gray-100 hover:shadow-lg hover:shadow-white/5">
             Get Started
           </button>
 
           {/* Secondary button */}
-          <button className="px-6 py-2.5 text-gray-400 text-sm font-medium tracking-wide border border-gray-800 rounded-sm transition-all duration-300 hover:text-white hover:border-gray-600">
+          <button className="px-6 py-2.5 text-gray-400 text-sm font-medium tracking-wide border border-gray-800 rounded-xs transition-all duration-300 hover:text-white hover:border-gray-600">
             Documentation
           </button>
         </div>
@@ -51,7 +51,7 @@ export default function MinimalDark() {
       </div>
 
       {/* Subtle border frame */}
-      <div className="absolute inset-4 border border-white/[0.03] rounded-sm pointer-events-none" />
+      <div className="absolute inset-4 border border-white/3 rounded-xs pointer-events-none" />
     </div>
   );
 }

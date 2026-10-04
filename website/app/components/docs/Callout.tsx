@@ -69,7 +69,7 @@ export function Callout({ type = "info", title, children }: CalloutProps) {
           {title && (
             <p className="font-heading font-bold text-neo-dark m-0 leading-tight">{title}</p>
           )}
-          <div className="text-neo-dark/80 text-sm [&>*]:m-0 [&>*]:mt-1 [&>*:first-child]:mt-0 [&_a]:underline [&_a]:text-inherit">
+          <div className="text-neo-dark/80 text-sm *:m-0 *:mt-1 [&>*:first-child]:mt-0 [&_a]:underline [&_a]:text-inherit">
             {children}
           </div>
         </div>

@@ -43,7 +43,7 @@ export function DocsMobileSidebar({ mode = "slide", iconOnly = false }: DocsMobi
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs"
         onClick={() => setIsOpen(false)}
         aria-hidden="true"
       />
@@ -89,7 +89,7 @@ export function DocsMobileSidebar({ mode = "slide", iconOnly = false }: DocsMobi
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs"
         onClick={() => setIsOpen(false)}
         aria-hidden="true"
       />
@@ -141,7 +141,7 @@ export function DocsMobileSidebar({ mode = "slide", iconOnly = false }: DocsMobi
       {/* Menu button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-neo-dark border-2 border-neo-dark/20 rounded hover:border-neo-dark/40 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-neo-dark border-2 border-neo-dark/20 rounded-sm hover:border-neo-dark/40 transition-colors"
         aria-label="Open navigation menu"
         aria-expanded={isOpen}
       >

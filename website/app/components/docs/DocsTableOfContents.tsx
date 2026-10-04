@@ -71,7 +71,7 @@ export function DocsTableOfContents({ items }: DocsTableOfContentsProps) {
                   item.level === 2 ? "pl-3" : "pl-6"
                 } ${
                   isActive
-                    ? "text-neo-purple font-medium border-l-2 border-neo-purple -ml-[2px]"
+                    ? "text-neo-purple font-medium border-l-2 border-neo-purple ml-[-2px]"
                     : "text-neo-dark/60 hover:text-neo-dark"
                 }`}
                 aria-current={isActive ? "location" : undefined}

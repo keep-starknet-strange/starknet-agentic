@@ -47,7 +47,7 @@ export default function StarknetOfficialStyle() {
         </div>
 
         {/* Code snippet element */}
-        <div className="bg-white border border-[#e5e7eb] rounded-lg p-3 w-full max-w-sm shadow-sm">
+        <div className="bg-white border border-[#e5e7eb] rounded-lg p-3 w-full max-w-sm shadow-xs">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-2 h-2 rounded-full bg-[#ef4444]" />
             <div className="w-2 h-2 rounded-full bg-[#f59e0b]" />

@@ -28,7 +28,7 @@ export function Hero() {
           <span className="relative inline-block">
             <span className="relative z-10">Agentic Era</span>
             <span
-              className="absolute bottom-1 left-0 right-0 h-4 md:h-6 bg-neo-yellow -z-0 -rotate-1"
+              className="absolute bottom-1 left-0 right-0 h-4 md:h-6 bg-neo-yellow z-0 -rotate-1"
               aria-hidden="true"
             />
           </span>

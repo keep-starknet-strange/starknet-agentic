@@ -19,7 +19,7 @@ export function DocsPagination({ prev, next }: DocsPaginationProps) {
       {prev ? (
         <Link
           href={`/docs/${prev.categorySlug}/${prev.slug}`}
-          className="group flex-1 flex flex-col gap-1 p-4 border-2 border-neo-dark/20 rounded hover:border-neo-dark hover:shadow-neo transition-all"
+          className="group flex-1 flex flex-col gap-1 p-4 border-2 border-neo-dark/20 rounded-sm hover:border-neo-dark hover:shadow-neo transition-all"
         >
           <span className="flex items-center gap-2 text-sm text-neo-dark/60 group-hover:text-neo-purple transition-colors">
             <svg
@@ -49,7 +49,7 @@ export function DocsPagination({ prev, next }: DocsPaginationProps) {
       {next ? (
         <Link
           href={`/docs/${next.categorySlug}/${next.slug}`}
-          className="group flex-1 flex flex-col gap-1 p-4 border-2 border-neo-dark/20 rounded text-right hover:border-neo-dark hover:shadow-neo transition-all"
+          className="group flex-1 flex flex-col gap-1 p-4 border-2 border-neo-dark/20 rounded-sm text-right hover:border-neo-dark hover:shadow-neo transition-all"
         >
           <span className="flex items-center justify-end gap-2 text-sm text-neo-dark/60 group-hover:text-neo-purple transition-colors">
             Next

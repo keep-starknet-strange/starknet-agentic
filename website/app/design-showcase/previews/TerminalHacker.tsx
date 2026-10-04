@@ -47,7 +47,7 @@ export default function TerminalHacker() {
           </div>
 
           {/* Code snippet preview */}
-          <div className="bg-[#0a0a0a] border border-green-900/40 rounded px-4 py-3 mb-6 max-w-md w-full">
+          <div className="bg-[#0a0a0a] border border-green-900/40 rounded-sm px-4 py-3 mb-6 max-w-md w-full">
             <div className="text-green-600 text-xs mb-1"># Quick start</div>
             <div className="text-green-400 text-sm">
               <span className="text-green-600">$</span> npx starknet-agentic init

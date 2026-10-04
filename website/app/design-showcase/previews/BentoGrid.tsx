@@ -4,9 +4,9 @@ export default function BentoGrid() {
       {/* Bento Grid Container */}
       <div className="h-full grid grid-cols-4 grid-rows-3 gap-3">
         {/* Hero Cell - Large spanning cell */}
-        <div className="col-span-2 row-span-2 bg-white rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="col-span-2 row-span-2 bg-white rounded-2xl p-6 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0071e3] to-[#40a9ff] flex items-center justify-center mb-4">
+            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-[#0071e3] to-[#40a9ff] flex items-center justify-center mb-4">
               <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
@@ -29,7 +29,7 @@ export default function BentoGrid() {
         </div>
 
         {/* MCP Server Cell */}
-        <div className="col-span-1 row-span-1 bg-white rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+        <div className="col-span-1 row-span-1 bg-white rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <div className="w-6 h-6 rounded-md bg-[#f5f5f7] flex items-center justify-center">
             <svg className="w-3.5 h-3.5 text-[#1d1d1f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
@@ -42,7 +42,7 @@ export default function BentoGrid() {
         </div>
 
         {/* ERC-8004 Cell */}
-        <div className="col-span-1 row-span-1 bg-gradient-to-br from-[#1d1d1f] to-[#3a3a3c] rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+        <div className="col-span-1 row-span-1 bg-linear-to-br from-[#1d1d1f] to-[#3a3a3c] rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center">
             <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -55,7 +55,7 @@ export default function BentoGrid() {
         </div>
 
         {/* A2A Protocol Cell */}
-        <div className="col-span-1 row-span-1 bg-white rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+        <div className="col-span-1 row-span-1 bg-white rounded-2xl p-4 shadow-xs flex flex-col justify-between">
           <div className="w-6 h-6 rounded-md bg-[#f5f5f7] flex items-center justify-center">
             <svg className="w-3.5 h-3.5 text-[#1d1d1f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -68,15 +68,15 @@ export default function BentoGrid() {
         </div>
 
         {/* Stats Cell - accent colored */}
-        <div className="col-span-1 row-span-1 bg-gradient-to-br from-[#0071e3] to-[#40a9ff] rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center text-center">
+        <div className="col-span-1 row-span-1 bg-linear-to-br from-[#0071e3] to-[#40a9ff] rounded-2xl p-4 shadow-xs flex flex-col justify-center items-center text-center">
           <p className="text-white/80 text-xs font-medium uppercase tracking-wide mb-1">Built on</p>
           <p className="text-white text-lg font-semibold">Starknet</p>
           <p className="text-white/70 text-xs mt-1">Native AA</p>
         </div>
 
         {/* DeFi Skills Cell - horizontal */}
-        <div className="col-span-2 row-span-1 bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#34c759] to-[#30d158] flex items-center justify-center flex-shrink-0">
+        <div className="col-span-2 row-span-1 bg-white rounded-2xl p-4 shadow-xs flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[#34c759] to-[#30d158] flex items-center justify-center shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -94,7 +94,7 @@ export default function BentoGrid() {
 
         {/* Wallet Cell */}
         <div className="col-span-1 row-span-1 bg-[#f5f5f7] rounded-2xl p-4 flex flex-col justify-between border border-[#d2d2d7]/50">
-          <div className="w-6 h-6 rounded-md bg-white flex items-center justify-center shadow-sm">
+          <div className="w-6 h-6 rounded-md bg-white flex items-center justify-center shadow-xs">
             <svg className="w-3.5 h-3.5 text-[#1d1d1f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
