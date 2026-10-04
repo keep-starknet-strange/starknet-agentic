@@ -53,7 +53,7 @@ Claude Code marketplace install:
 
 For Codex, Claude Code, and pinned install flows, use the deterministic skill quickstart:
 
-- [`skills/QUICKSTART_2MIN.md`](./skills/QUICKSTART_2MIN.md)
+- [`docs/SKILLS_QUICKSTART.md`](./docs/SKILLS_QUICKSTART.md)
 - [`skills/README.md`](./skills/README.md)
 - [`skills/TROUBLESHOOTING.md`](./skills/TROUBLESHOOTING.md)
 
@@ -159,8 +159,8 @@ The public catalog is maintained in [`skills/README.md`](./skills/README.md) and
 
 | Use case | Requirements |
 |---|---|
-| CLI scaffolder | Node.js `>=18.0.0` |
-| Source checkout | Node.js `>=20.9.0`, `pnpm` `>=10.28.2` |
+| CLI scaffolder | Node.js `>=24.0.0` |
+| Source checkout | Node.js `>=24.0.0` (see [`.nvmrc`](./.nvmrc)), `pnpm` `10.28.2` via corepack (`packageManager` in `package.json`) |
 | Cairo contracts | Scarb `>=2.14.0`, Starknet Foundry `snforge` `>=0.64.0` |
 | Networked examples | Starknet RPC URL, account address, and signer configuration |
 
@@ -231,12 +231,13 @@ gh attestation verify <artifact-file> --repo keep-starknet-strange/starknet-agen
 | Topic | Link |
 |---|---|
 | Getting started | [`docs/GETTING_STARTED.md`](./docs/GETTING_STARTED.md) |
+| Skills quickstart | [`docs/SKILLS_QUICKSTART.md`](./docs/SKILLS_QUICKSTART.md) |
 | Technical specification | [`docs/SPECIFICATION.md`](./docs/SPECIFICATION.md) |
 | Roadmap | [`docs/ROADMAP.md`](./docs/ROADMAP.md) |
 | ERC-8004 parity | [`docs/ERC8004-PARITY.md`](./docs/ERC8004-PARITY.md) |
-| Cairo skills migration | [`docs/CAIRO_SKILLS_MIGRATION.md`](./docs/CAIRO_SKILLS_MIGRATION.md) |
+| Cairo skills cutover (legacy names) | [`skills/README.md`](./skills/README.md#cairo-skill-cutover) |
 | E2E testing | [`docs/E2E_TESTING_GUIDE.md`](./docs/E2E_TESTING_GUIDE.md) |
-| Troubleshooting | [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md) |
+| Troubleshooting | [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md), [`skills/TROUBLESHOOTING.md`](./skills/TROUBLESHOOTING.md) |
 | Good first issues | [`docs/GOOD_FIRST_ISSUES.md`](./docs/GOOD_FIRST_ISSUES.md) |
 
 ## Repository Layout

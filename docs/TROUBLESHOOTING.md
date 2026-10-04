@@ -1,6 +1,9 @@
 # Troubleshooting Guide
 
-Common issues and solutions when building with Starknet Agentic.
+Common issues and solutions when building with Starknet Agentic: environment, RPC, transactions, MCP server, and builds.
+
+Skill install, plugin scope, and sync problems (Claude Code, Codex, Agent Skills CLI) are covered in [`skills/TROUBLESHOOTING.md`](../skills/TROUBLESHOOTING.md).
+E2E-specific issues are in [`E2E_TESTING_GUIDE.md`](./E2E_TESTING_GUIDE.md#troubleshooting).
 
 ## Quick Diagnostics
 
@@ -74,9 +77,9 @@ Max fee exceeds balance
 **Solutions:**
 
 ```bash
-# Check your ETH balance (needed for gas)
+# Check your STRK balance (V3 transactions pay fees in STRK)
 cd skills/starknet-wallet
-npm run check-balance
+TOKEN=STRK npm run check-balance
 
 # Get testnet tokens from faucet
 # Sepolia: https://starknet-faucet.vercel.app/
@@ -333,19 +336,19 @@ Type error: Property X does not exist
 **Solutions:**
 
 ```bash
-# Clean install
-rm -rf node_modules pnpm-lock.yaml
+# Clean install (keep pnpm-lock.yaml; it is committed)
+rm -rf node_modules
 pnpm install
 
 # Rebuild everything
-pnpm clean  # if available
 pnpm build
 
-# Check Node version (must be 18+)
+# Check Node version (must be 24+, see .nvmrc)
 node --version
 
-# Check pnpm version
-pnpm --version  # Should be 8.0+
+# Check pnpm version (must match "packageManager" in root package.json)
+corepack enable
+pnpm --version
 ```
 
 **TypeScript errors:**

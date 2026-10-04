@@ -1,540 +1,239 @@
-# E2E Testing Guide - Spending Policy on Sepolia
+# E2E Testing Guide (Starknet Sepolia)
 
-**Status**: 🟢 Ready for Execution
-**Date**: 2026-02-12
-**Target Network**: Starknet Sepolia Testnet
+End-to-end runs against Starknet Sepolia. Two suites live in this repo:
+
+| Suite | What it covers | Where |
+|---|---|---|
+| ERC-8004 registries | Identity, Reputation, Validation registries (Node test runner) | [Part A](#part-a-erc-8004-registries) |
+| SessionAccount spending policy | Session keys + per-token spending limits on `contracts/session-account` (starkli) | [Part B](#part-b-sessionaccount-spending-policy) |
+
+Contract deployments, including Sepolia, require human review (see `CLAUDE.md` boundaries).
+Never commit keys, keystores, or `.env` files.
 
 ---
 
-## Prerequisites
+## Part A: ERC-8004 Registries
 
-### 1. Environment Setup
+Full details: [`contracts/erc8004-cairo/e2e-tests/README.md`](../contracts/erc8004-cairo/e2e-tests/README.md).
+
+1. Put credentials in `contracts/erc8004-cairo/.env` (read by both the deploy script and the tests):
+   - `STARKNET_RPC_URL`: Sepolia RPC endpoint
+   - `DEPLOYER_ADDRESS`, `DEPLOYER_PRIVATE_KEY`: funded deployer / contract owner
+   - `TEST_ACCOUNT_ADDRESS`, `TEST_ACCOUNT_PRIVATE_KEY`: second funded account (client/validator)
+2. Deploy the registries (writes `deployed_addresses.json`). The script reads the variables from your shell, so export them first:
+
+   ```bash
+   cd contracts/erc8004-cairo
+   set -a; source .env; set +a
+   bash scripts/deploy_sepolia.sh
+   ```
+
+3. Run the suite:
+
+   ```bash
+   cd e2e-tests
+   npm install
+   npm test            # or: npm run test:identity | test:reputation | test:validation
+   ```
+
+---
+
+## Part B: SessionAccount Spending Policy
+
+### Prerequisites
+
+Tools:
+- `starkli` (the deploy and runner scripts call it). Flags change between releases; check `starkli --help` if a command is rejected.
+- Scarb and Starknet Foundry at the versions CI installs (`.github/workflows/ci.yml`). `contracts/session-account/Scarb.toml` declares the matching `starknet` and `snforge_std` dependencies.
+- GNU grep. `scripts/deploy_sepolia.sh` uses `grep -P`, which macOS's BSD grep does not support. On macOS, install GNU grep (`brew install grep`) and put its `gnubin` directory first on `PATH`.
+
+Accounts:
+- **Deployer account**: deploys contracts, needs Sepolia STRK for fees ([faucet](https://starknet-faucet.vercel.app/)).
+- **Owner key**: master key for the SessionAccount (constructor argument `public_key`).
+- **Session keypair**: generated below.
+
+Environment:
+
 ```bash
-# Required tools
-- starkli (latest version)
-- scarb 2.14.0
-- snforge 0.64.0
-- sncast (for deployments)
-
-# Environment variables
-export STARKNET_ACCOUNT=~/.starknet_accounts/deployer-account.json
+export STARKNET_RPC=<your Sepolia RPC URL>
 export STARKNET_KEYSTORE=~/.starknet_accounts/deployer-keystore.json
-export STARKNET_RPC=https://starknet-sepolia.public.blastapi.io/rpc/v0_7
+export STARKNET_ACCOUNT=~/.starknet_accounts/deployer-account.json
+
+# One-time, if you don't have a deployer account yet:
+starkli signer keystore new $STARKNET_KEYSTORE   # create the signer first
+starkli account oz init $STARKNET_ACCOUNT        # uses $STARKNET_KEYSTORE
+# Fund the printed address with Sepolia STRK, then:
+starkli account deploy $STARKNET_ACCOUNT
 ```
 
-### 2. Test Accounts Required
-- **Deployer Account**: For deploying contracts (needs testnet ETH)
-- **Owner Account**: Master key for SessionAccount
-- **Session Key Pair**: Generated keypair for session key testing
+Tokens: use an existing Sepolia ERC-20 or deploy mock tokens (for example 6-decimal MockUSDC, 18-decimal MockWETH). Amounts below assume 6 decimals.
 
-### 3. Mock ERC-20 Tokens
-Deploy or use existing Sepolia ERC-20s:
-- Mock USDC (6 decimals)
-- Mock WETH (18 decimals)
+### Quick path (scripted)
 
----
-
-## Phase 1: Deployment
-
-### Step 1.1: Compile Contracts
-```bash
-cd contracts/session-account
-scarb build
-```
-
-**Expected Output:**
-- `target/dev/session_account_SessionAccount.contract_class.json`
-- Sierra class hash
-- Compiled artifact ready for deployment
-
-### Step 1.2: Declare SessionAccount Contract
-```bash
-starkli declare \
-  target/dev/session_account_SessionAccount.contract_class.json \
-  --account $STARKNET_ACCOUNT \
-  --keystore $STARKNET_KEYSTORE \
-  --rpc $STARKNET_RPC
-```
-
-**Expected Output:**
-```
-Class hash declared: 0x...
-Transaction hash: 0x...
-```
-
-**Save class hash** to `DEPLOYED_CONTRACTS.md`
-
-### Step 1.3: Deploy SessionAccount Instance
-```bash
-# Constructor: owner_pubkey (felt252)
-OWNER_PUBKEY=0x123456789abcdef... # Your owner public key
-
-starkli deploy \
-  <CLASS_HASH> \
-  $OWNER_PUBKEY \
-  --account $STARKNET_ACCOUNT \
-  --keystore $STARKNET_KEYSTORE \
-  --rpc $STARKNET_RPC
-```
-
-**Expected Output:**
-```
-Contract deployed: 0x...
-Transaction hash: 0x...
-```
-
-**Save contract address** to `DEPLOYED_CONTRACTS.md`
-
-### Step 1.4: Deploy Mock ERC-20 Tokens (Optional)
-If needed, deploy test tokens with generous supply:
+**1. Deploy SessionAccount** (from the repo root):
 
 ```bash
-# Mock USDC (6 decimals, 1M supply)
-starkli deploy <ERC20_CLASS_HASH> \
-  str:MockUSDC \
-  str:MUSDC \
-  u256:1000000000000 \
-  <YOUR_ADDRESS> \
-  --account $STARKNET_ACCOUNT
-
-# Mock WETH (18 decimals, 1K supply)
-starkli deploy <ERC20_CLASS_HASH> \
-  str:MockWETH \
-  str:MWETH \
-  u256:1000000000000000000000 \
-  <YOUR_ADDRESS> \
-  --account $STARKNET_ACCOUNT
+bash scripts/deploy_sepolia.sh
+# Prompts for the owner public key, then builds, declares and deploys.
 ```
 
-**Save token addresses** to `DEPLOYED_CONTRACTS.md`
+The script prints `export` lines for `SESSION_ACCOUNT_ADDRESS` and `CLASS_HASH`; run them. It also writes a local `docs/DEPLOYED_CONTRACTS.md`. The canonical deployment record is [`DEPLOYMENT_TRUTH_SHEET.md`](./DEPLOYMENT_TRUTH_SHEET.md).
 
----
+**2. Generate a session key and its signer files:**
 
-## Phase 2: Happy Path Testing
-
-### Test 2.1: Add Session Key
 ```bash
-# Generate session keypair
 starkli signer gen-keypair
+export SESSION_PUBKEY=0x...   # from output
+export SESSION_PRIVKEY=0x...  # from output; keep it secret
 
-# Save private key securely
-# PUBLIC_KEY: 0x...
+cat > ~/.starknet_accounts/session-key.json << EOF
+{
+  "version": 1,
+  "variant": { "type": "open_zeppelin", "version": 1, "public_key": "$SESSION_PUBKEY" },
+  "deployment": { "status": "deployed", "class_hash": "$CLASS_HASH", "address": "$SESSION_ACCOUNT_ADDRESS" }
+}
+EOF
 
-# Add session key to account
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  add_or_update_session_key \
-  <SESSION_PUBLIC_KEY> \
-  u64:$(date -d '+7 days' +%s) \
+starkli signer keystore from-key ~/.starknet_accounts/session-keystore.json
+# Enter SESSION_PRIVKEY and a password when prompted
+
+export SESSION_KEY_ACCOUNT=~/.starknet_accounts/session-key.json
+export SESSION_KEY_KEYSTORE=~/.starknet_accounts/session-keystore.json
+export TOKEN_ADDRESS=0x...    # Sepolia ERC-20 under test
+```
+
+> **Session-key transactions need a session-aware signer.** SessionAccount accepts a session key only when the signature has four elements, `[session_pubkey, r, s, valid_until]`, signed over the account's session message hash. starkli's account signer produces the two-element owner signature `[r, s]`, so a starkli command signed with the session keystore is validated as an owner call and rejected. Use a starknet.js signer that produces the session format, such as `SessionKeySigner` in `packages/starknet-mcp-server/src/helpers/sessionKeySigner.ts` (check it matches the account's session signature mode; see [`SESSION_SIGNATURE_MODE_MIGRATION.md`](./security/SESSION_SIGNATURE_MODE_MIGRATION.md)). Owner-signed steps (adding keys, setting policies) and reads work with starkli as shown.
+
+**3. Run the scripted suite:**
+
+```bash
+bash scripts/e2e_test_runner.sh \
+  --account "$SESSION_ACCOUNT_ADDRESS" \
+  --session-key "$SESSION_PUBKEY" \
+  --token "$TOKEN_ADDRESS"
+# --skip-setup skips adding the session key and policy
+```
+
+It adds a session key (7 days, 100 calls), sets a 1000/5000/24h policy, then checks two in-limit transfers succeed and that over-limit transfers and session-key calls to `set_spending_policy` / `remove_spending_policy` are rejected.
+
+**Known issue:** the runner's session-key steps pass `--account-session-key` to `starkli invoke`, an option starkli does not have, so those steps fail. Only the owner-signed setup (session key, policy) works. Until the runner uses a session-aware signer, run the session-key rows of the manual matrix below with one.
+
+### Manual test matrix
+
+Selectors used below: `transfer` = `0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e`, `approve` = `0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c`. Owner calls use `--account $STARKNET_ACCOUNT --keystore $STARKNET_KEYSTORE`. Session-key calls must be signed with a session-aware signer (see the note above); starkli cannot produce that signature.
+
+#### Setup
+
+Add the session key (owner):
+
+```bash
+starkli invoke $SESSION_ACCOUNT_ADDRESS add_or_update_session_key \
+  $SESSION_PUBKEY \
+  u64:$(($(date +%s) + 604800)) \
   u32:100 \
   array:1:0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e \
-  --account $STARKNET_ACCOUNT
+  --account $STARKNET_ACCOUNT --keystore $STARKNET_KEYSTORE
 ```
 
-**Expected Result:** ✅ Transaction succeeds
-**Verify:** Call `get_session_key_status(<SESSION_PUBLIC_KEY>)`
+Verify with `get_session_data($SESSION_PUBKEY)`.
 
-### Test 2.2: Set Spending Policy
+Set the spending policy, 1000 per call / 5000 per 24h window (owner):
+
 ```bash
-# Policy: 1000 USDC per call, 5000 USDC per 24h window
-# USDC has 6 decimals: 1000 = 1000000000
-
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  set_spending_policy \
-  <SESSION_PUBLIC_KEY> \
-  <MOCK_USDC_ADDRESS> \
-  u256:1000000000 \
-  u256:5000000000 \
-  u64:86400 \
-  --account $STARKNET_ACCOUNT
+starkli invoke $SESSION_ACCOUNT_ADDRESS set_spending_policy \
+  $SESSION_PUBKEY $TOKEN_ADDRESS \
+  u256:1000000000 u256:5000000000 u64:86400 \
+  --account $STARKNET_ACCOUNT --keystore $STARKNET_KEYSTORE
 ```
 
-**Expected Result:** ✅ Transaction succeeds, `SpendingPolicySet` event emitted
-**Verify:** Call `get_spending_policy(<SESSION_PUBLIC_KEY>, <USDC_ADDRESS>)`
+Expect a `SpendingPolicySet` event. Query state at any time:
 
-### Test 2.3: Execute Transfer Within Limits
 ```bash
-# Transfer 500 USDC (within 1000 per-call limit)
-# Recipient: any address
-RECIPIENT=0x...
-
-# Sign with SESSION_KEY using session key signature format
-# Signature: [session_pubkey, r_low, r_high, valid_until]
-
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  __execute__ \
-  array:1 \
-    struct:<MOCK_USDC_ADDRESS>:0x83afd...12e:array:3:<RECIPIENT>:500000000:0 \
-  --account <SESSION_KEY_ACCOUNT> \
-  --keystore <SESSION_KEY_KEYSTORE>
+starkli call $SESSION_ACCOUNT_ADDRESS get_spending_policy $SESSION_PUBKEY $TOKEN_ADDRESS
+# -> max_per_call, max_per_window, window_seconds, spent_in_window, window_start
 ```
 
-**Expected Result:** ✅ Transfer succeeds
-**Verify:**
-- USDC balance decreased by 500000000
-- `get_spending_policy()` shows `spent_in_window = 500000000`
+Transfer with the session key (500 tokens to `RECIPIENT`): execute this call from `$SESSION_ACCOUNT_ADDRESS` with a session-aware signer:
 
-### Test 2.4: Multiple Transfers in Same Window
+```text
+contractAddress: $TOKEN_ADDRESS
+entrypoint:      transfer
+calldata:        [$RECIPIENT, 500000000, 0]   # u256 amount = (low, high)
+```
+
+#### Happy path
+
+| # | Scenario | Expected |
+|---|---|---|
+| 2.1 | Add session key | Succeeds; visible via `get_session_data` |
+| 2.2 | Set policy 1000/5000/24h | Succeeds; `SpendingPolicySet` emitted |
+| 2.3 | Transfer 500 | Succeeds; `spent_in_window = 500000000` |
+| 2.4 | Transfers of 500, 1000, 2000 in one window (3500 < 5000) | All succeed; `spent_in_window = 3500000000` |
+| 2.5 | After 24h + 1s, transfer 1000 | Succeeds; `spent_in_window` resets to `1000000000` |
+
+#### Failure path
+
+| # | Scenario | Expected |
+|---|---|---|
+| 3.1 | Transfer 1500 (> per-call 1000) | Reverts with `Spending: exceeds per-call`; state unchanged |
+| 3.2 | After 3500 spent, transfer 2000 (5500 > 5000) | Reverts with `Spending: exceeds window limit`; `spent_in_window` stays 3500000000 |
+| 3.3 | Session key calls `set_spending_policy` | Rejected (blocklist); policy unchanged |
+| 3.4 | Session key calls `remove_spending_policy` | Rejected (blocklist); policy still active |
+
+#### Edge cases
+
+| # | Scenario | Expected |
+|---|---|---|
+| 4.1 | Seed `spent_in_window = 4500000000` (e.g. 1000 x 4 + 500). At exactly `window_start + 86400`, transfer 1000; then transfer 1000 at +1s | At the boundary it reverts (window not reset; 5500 > 5000); at +1s it succeeds and `spent_in_window` resets to `1000000000`. This separates strict `>` from `>=`; exact timestamps are only practical in snforge tests |
+| 4.2 | Multicall of 5 x 500 transfers in one tx | All succeed; `spent_in_window = 2500000000` (cumulative tracking) |
+| 4.3 | Transfer exactly 1000 (per-call) and exactly 5000 total (window) | Succeeds (limits are inclusive) |
+| 4.4 | Non-spending selector (`balanceOf`) via `__execute__` | Succeeds; `spent_in_window` unchanged |
+| 4.5 | `approve(spender, 1000)` via `__execute__` | Succeeds; counted as spending (+1000000000) |
+
+#### Policy management (owner)
+
+| # | Scenario | Expected |
+|---|---|---|
+| 5.1 | `remove_spending_policy(session_key, token)` | Succeeds; `SpendingPolicyRemoved`; `get_spending_policy` returns zeros |
+| 5.2 | Large transfer (> 5000) after removal | Succeeds (no enforcement) |
+| 5.3 | Raise limits to 2000/10000/24h | `get_spending_policy` reflects new limits |
+| 5.4 | Separate policies for two tokens (e.g. USDC 1000/5000, WETH 0.5/2) | Tracked independently per token |
+
+#### Load (optional)
+
+No load-test script is checked in. A reasonable target is 100 transfers of 50 tokens over one hour; track success rate, confirmation time, fee per transaction, and that cumulative `spent_in_window` stays consistent.
+
+#### Monitoring
+
 ```bash
-# Transfer 1: 500 USDC
-# Transfer 2: 1000 USDC
-# Transfer 3: 2000 USDC
-# Total: 3500 USDC < 5000 window limit ✅
-
-# Execute transfers sequentially (use script for automation)
+watch -n 300 'starkli call $SESSION_ACCOUNT_ADDRESS get_spending_policy $SESSION_PUBKEY $TOKEN_ADDRESS'
+starkli events $SESSION_ACCOUNT_ADDRESS --from-block <START_BLOCK>   # SpendingPolicySet / SpendingPolicyRemoved
+starkli call $TOKEN_ADDRESS balanceOf $SESSION_ACCOUNT_ADDRESS
 ```
 
-**Expected Result:** ✅ All 3 transfers succeed
-**Verify:** `spent_in_window = 3500000000`
+### Security expectations
 
-### Test 2.5: Wait for Window Reset
-```bash
-# Advance time by 24h + 1 second
-# In testnet, either wait or use block timestamp tricks
+Threat model, attack simulations, and known limitations are in [`security/SPENDING_POLICY_AUDIT.md`](./security/SPENDING_POLICY_AUDIT.md). E2E runs should confirm on-chain what that audit claims:
 
-# After 24h+1s, execute transfer
-# Transfer 4: 1000 USDC
+- Window-boundary double-spend, same-block bypass, reentrancy, overflow, and admin-function bypass are blocked.
+- `transferFrom` is not tracked (it needs a prior tracked `approve`).
+- Failed calls still count against the limit (fail-closed).
+- A zero `max_per_window` disables window enforcement (by design).
 
-starkli invoke <SESSION_ACCOUNT_ADDRESS> __execute__ ...
-```
+If a run contradicts the audit: stop, record exact reproduction steps and transaction hashes, fix and re-run unit tests, then redeploy and re-test the affected scenarios.
 
-**Expected Result:** ✅ Transfer succeeds after window reset
-**Verify:** `spent_in_window = 1000000000` (reset to only this transfer)
+### Troubleshooting
 
----
+| Symptom | Fix |
+|---|---|
+| `Transaction reverted` | Check deployer fee balance, contract address, and that the session key is registered (`get_session_data`) |
+| `Spending: exceeds per-call` / `exceeds window limit` | Expected in failure-path tests; otherwise lower the amount or raise the policy |
+| `Account not found` | Check `SESSION_KEY_ACCOUNT` path and contents (class hash + address) |
+| `Invalid signature` | Session private key doesn't match the registered public key; regenerate and update the signer files |
+| `Failed to extract class hash` from the deploy script | `grep -P` unsupported; use GNU grep (see prerequisites) |
 
-## Phase 3: Failure Path Testing
+### Exit criteria
 
-### Test 3.1: Exceed Per-Call Limit
-```bash
-# Try to transfer 1500 USDC (> 1000 limit)
-
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  __execute__ \
-  array:1 \
-    struct:<USDC>:0x83afd...:array:3:<RECIPIENT>:1500000000:0 \
-  --account <SESSION_KEY_ACCOUNT>
-```
-
-**Expected Result:** ❌ Transaction fails with "Spending: exceeds per-call"
-**Verify:** Balance unchanged, `spent_in_window` unchanged
-
-### Test 3.2: Exceed Window Limit
-```bash
-# After Test 2.4 (spent = 3500), try to transfer 2000 more
-# 3500 + 2000 = 5500 > 5000 window limit
-
-starkli invoke <SESSION_ACCOUNT_ADDRESS> __execute__ ...
-```
-
-**Expected Result:** ❌ Transaction fails with "Spending: exceeds window limit"
-**Verify:** `spent_in_window` still 3500000000
-
-### Test 3.3: Session Key Tries to Modify Policy (Blocklist)
-```bash
-# Try to call set_spending_policy from session key
-
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  set_spending_policy \
-  <SESSION_PUBLIC_KEY> \
-  <USDC> \
-  u256:9999999 \
-  u256:9999999 \
-  u64:1 \
-  --account <SESSION_KEY_ACCOUNT>
-```
-
-**Expected Result:** ❌ Transaction fails (blocklist rejection)
-**Verify:** Policy unchanged
-
-### Test 3.4: Session Key Tries to Remove Policy
-```bash
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  remove_spending_policy \
-  <SESSION_PUBLIC_KEY> \
-  <USDC> \
-  --account <SESSION_KEY_ACCOUNT>
-```
-
-**Expected Result:** ❌ Transaction fails (blocklist rejection)
-**Verify:** Policy still active
-
----
-
-## Phase 4: Edge Case Testing
-
-### Test 4.1: Window Boundary Spending
-```bash
-# Scenario: Spend at exact window_start + 86400 seconds
-# 1. Note current window_start from get_spending_policy
-# 2. Wait until exactly window_start + 86400
-# 3. Transfer max_per_window (5000 USDC)
-# 4. Try to transfer again at same timestamp
-
-# Expected: First succeeds, second fails (window NOT reset yet)
-```
-
-**Expected Result:**
-- ✅ First transfer at boundary succeeds
-- ❌ Second transfer at boundary fails (window not reset)
-- ✅ Third transfer at boundary+1s succeeds (window resets)
-
-**Verifies:** Critical fix V1 (>= changed to >)
-
-### Test 4.2: Multicall Cumulative Enforcement
-```bash
-# Execute multicall with 5 transfers of 500 each
-# Total: 2500 USDC in single transaction
-
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  __execute__ \
-  array:5 \
-    struct:<USDC>:0x83afd...:array:3:<ADDR1>:500000000:0 \
-    struct:<USDC>:0x83afd...:array:3:<ADDR2>:500000000:0 \
-    struct:<USDC>:0x83afd...:array:3:<ADDR3>:500000000:0 \
-    struct:<USDC>:0x83afd...:array:3:<ADDR4>:500000000:0 \
-    struct:<USDC>:0x83afd...:array:3:<ADDR5>:500000000:0 \
-  --account <SESSION_KEY_ACCOUNT>
-```
-
-**Expected Result:** ✅ All 5 transfers succeed, `spent_in_window = 2500000000`
-**Verifies:** Multicall cumulative tracking works
-
-### Test 4.3: Transfer Exactly at Limit
-```bash
-# Transfer exactly 1000 USDC (max_per_call)
-# Transfer exactly 5000 USDC total (max_per_window)
-
-starkli invoke <SESSION_ACCOUNT_ADDRESS> __execute__ ...
-```
-
-**Expected Result:** ✅ Succeeds (boundary inclusive: amount <= limit)
-**Verifies:** Exact limit transfers allowed
-
-### Test 4.4: Non-Spending Selector (balanceOf)
-```bash
-# Call balanceOf on USDC (non-spending selector)
-
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  __execute__ \
-  array:1 \
-    struct:<USDC>:0x2e4263afad...8dc:array:1:<SESSION_ACCOUNT> \
-  --account <SESSION_KEY_ACCOUNT>
-```
-
-**Expected Result:** ✅ Succeeds without affecting `spent_in_window`
-**Verifies:** Non-spending selectors ignored
-
-### Test 4.5: Approve Tracked as Spending
-```bash
-# Call approve(spender, amount) on USDC
-# approve selector: 0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c
-
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  __execute__ \
-  array:1 \
-    struct:<USDC>:0x219209e...:array:3:<SPENDER>:1000000000:0 \
-  --account <SESSION_KEY_ACCOUNT>
-```
-
-**Expected Result:** ✅ Succeeds, `spent_in_window` increases by 1000000000
-**Verifies:** Approve tracked as spending
-
----
-
-## Phase 5: Policy Management
-
-### Test 5.1: Remove Policy
-```bash
-# Owner removes spending policy
-
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  remove_spending_policy \
-  <SESSION_PUBLIC_KEY> \
-  <USDC> \
-  --account $STARKNET_ACCOUNT
-```
-
-**Expected Result:** ✅ Policy removed, `SpendingPolicyRemoved` event
-**Verify:** `get_spending_policy()` returns all zeros
-
-### Test 5.2: Unrestricted Spending After Removal
-```bash
-# Transfer large amount (>5000 USDC) after policy removed
-
-starkli invoke <SESSION_ACCOUNT_ADDRESS> __execute__ \
-  array:1 \
-    struct:<USDC>:0x83afd...:array:3:<RECIPIENT>:10000000000:0 \
-  --account <SESSION_KEY_ACCOUNT>
-```
-
-**Expected Result:** ✅ Large transfer succeeds (no policy enforcement)
-**Verifies:** Policy removal works correctly
-
-### Test 5.3: Update Policy (Increase Limits)
-```bash
-# Owner updates policy with higher limits
-# New: 2000 per call, 10000 per window
-
-starkli invoke \
-  <SESSION_ACCOUNT_ADDRESS> \
-  set_spending_policy \
-  <SESSION_PUBLIC_KEY> \
-  <USDC> \
-  u256:2000000000 \
-  u256:10000000000 \
-  u64:86400 \
-  --account $STARKNET_ACCOUNT
-```
-
-**Expected Result:** ✅ Policy updated
-**Verify:** `get_spending_policy()` reflects new limits
-
-### Test 5.4: Multi-Token Policies
-```bash
-# Set separate policies for USDC and WETH
-# USDC: 1000/5000/24h
-# WETH: 0.5/2/24h
-
-starkli invoke <SESSION_ACCOUNT_ADDRESS> \
-  set_spending_policy <SESSION_KEY> <USDC> ...
-
-starkli invoke <SESSION_ACCOUNT_ADDRESS> \
-  set_spending_policy <SESSION_KEY> <WETH> ...
-```
-
-**Expected Result:** ✅ Both policies set independently
-**Verify:** Transfers of each token tracked separately
-
----
-
-## Phase 6: Load Testing
-
-### Test 6.1: Sustained Transaction Volume
-```bash
-# Execute 100 transactions over 1 hour
-# Each transfer: 50 USDC (well within limits)
-# Target: ~1.67 tx/minute sustained
-
-# Use automation script
-./scripts/load_test.sh \
-  --account <SESSION_ACCOUNT> \
-  --token <USDC> \
-  --amount 50000000 \
-  --count 100 \
-  --duration 3600
-```
-
-**Expected Results:**
-- ✅ All 100 transactions succeed
-- ✅ Cumulative tracking accurate (5000000000 total)
-- ✅ No state corruption
-- ✅ Gas costs consistent
-
-**Metrics to Track:**
-- Transaction success rate
-- Average confirmation time
-- Gas usage per transaction
-- Policy state consistency
-
----
-
-## Phase 7: Monitoring & Observability
-
-### Metrics to Monitor
-
-**On-Chain State:**
-```bash
-# Query spending state every 5 minutes
-watch -n 300 'starkli call <SESSION_ACCOUNT> get_spending_policy <SESSION_KEY> <USDC>'
-```
-
-**Event Monitoring:**
-```bash
-# Monitor SpendingPolicySet and SpendingPolicyRemoved events
-starkli events <SESSION_ACCOUNT> --from-block <START_BLOCK>
-```
-
-**Balance Tracking:**
-```bash
-# Track USDC balance changes
-starkli call <USDC> balanceOf <SESSION_ACCOUNT>
-```
-
-### Dashboard Metrics (Optional)
-- Total spending per token
-- Spending rate (tokens/hour)
-- Time until window reset
-- Policy update history
-
----
-
-## Phase 8: Security Validation
-
-### 8.1: Attack Simulation Results
-- [x] Window boundary double-spend → **BLOCKED** ✅
-- [x] Same-block spending bypass → **BLOCKED** ✅
-- [x] Reentrancy attack → **PROTECTED** ✅
-- [x] Overflow attack → **PREVENTED** ✅
-- [x] Admin function bypass → **BLOCKED** ✅
-
-### 8.2: Known Limitations Verified
-- [x] `transferFrom` not tracked (requires approval first) → **DOCUMENTED** ✅
-- [x] Failed calls count against limit → **FAIL-CLOSED** ✅
-- [x] Zero policy disables enforcement → **BY DESIGN** ✅
-
-### 8.3: Incident Response Plan
-If issues found during E2E:
-1. **Stop all testing** immediately
-2. **Document** exact reproduction steps
-3. **Analyze** root cause in code
-4. **Fix** and re-run unit tests
-5. **Re-deploy** and re-test affected scenarios
-6. **Update** security audit with findings
-
----
-
-## Success Criteria
-
-### ✅ All Tests Must Pass:
-- [ ] All 18 happy path tests succeed
-- [ ] All 4 failure path tests correctly reject
-- [ ] All 5 edge case tests behave as expected
-- [ ] All 4 policy management tests work
-- [ ] Load test completes with 100% success rate
-
-### ✅ Security Validation:
-- [ ] No bypasses found in attack simulations
-- [ ] Known limitations verified and documented
-- [ ] State consistency maintained under load
-
-### ✅ Documentation Complete:
-- [ ] All test results documented in `E2E_TEST_RESULTS.md`
-- [ ] Deployment addresses saved in `DEPLOYED_CONTRACTS.md`
-- [ ] Gas usage metrics recorded
-- [ ] Known issues (if any) documented with mitigations
-
----
-
-## Next Steps After E2E
-
-1. **Review Results** with security team
-2. **Final Security Sign-Off** from all stakeholders
-3. **Mainnet Deployment Planning**
-4. **User Documentation** (guides, examples, best practices)
-5. **MCP Tools Integration** (spending policy management via MCP)
-
----
-
-**Document Version:** 1.0
-**Last Updated:** 2026-02-12
-**Status:** Ready for Execution
+- All happy-path, failure-path, edge-case, and policy-management scenarios behave as expected.
+- No bypass contradicts the audit; state stays consistent.
+- Results (transaction hashes, fees, any issues and mitigations) are recorded in the PR or issue tracking the run before any mainnet planning.
