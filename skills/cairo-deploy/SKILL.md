@@ -40,8 +40,8 @@ Reference for deploying Cairo smart contracts to Starknet using sncast (Starknet
 ```bash
 # Install via asdf (recommended for version pinning)
 asdf plugin add starknet-foundry
-asdf install starknet-foundry 0.56.0
-asdf global starknet-foundry 0.56.0
+asdf install starknet-foundry 0.64.0
+asdf global starknet-foundry 0.64.0
 
 # Or install directly
 curl -L https://raw.githubusercontent.com/foundry-rs/starknet-foundry/master/scripts/install.sh | sh
@@ -54,10 +54,10 @@ Pin versions for reproducible builds:
 
 ```
 scarb 2.15.1
-starknet-foundry 0.56.0
+starknet-foundry 0.64.0
 ```
 
-> **Note:** snforge 0.56.0 requires Scarb >= 2.12.0. Check [github.com/foundry-rs/starknet-foundry/releases](https://github.com/foundry-rs/starknet-foundry/releases) for the latest.
+> **Note:** snforge 0.64.0 requires Scarb >= 2.13.1 (recommended: >= 2.18.0). Check [github.com/foundry-rs/starknet-foundry/releases](https://github.com/foundry-rs/starknet-foundry/releases) for the latest.
 
 ## Build
 
@@ -285,11 +285,11 @@ Verify source code on Voyager or Starkscan:
 # Verify on Voyager (manual: upload Sierra JSON via web UI)
 # https://sepolia.voyager.online/contract/0xADDRESS#code
 
-# Or use Walnut for programmatic verification
-# https://app.walnut.dev
+# Or use Starkloupe (formerly Walnut) for programmatic verification
+# https://app.starkloupe.co
 ```
 
-> **Note:** `sncast verify` supports both Walnut and Voyager backends. Use `--verifier walnut` or `--verifier voyager` explicitly.
+> **Note:** `sncast verify` supports Starkloupe and Voyager backends. Use `--verifier starkloupe` or `--verifier voyager` explicitly. (`--verifier walnut` was replaced by `--verifier starkloupe` in Starknet Foundry 0.64.0.)
 
 ## Upgradeable Contracts
 
