@@ -406,9 +406,6 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.31.0(zod@4.6.5)
-      '@starknetfoundation/starknet-agentic-x402-starknet':
-        specifier: workspace:*
-        version: link:../x402-starknet
       starknet:
         specifier: 'catalog:'
         version: 10.8.0(typescript@6.0.3)(zod@4.6.5)
@@ -419,6 +416,9 @@ importers:
       '@starknetfoundation/starknet-agentic-shared':
         specifier: workspace:*
         version: link:../shared
+      '@starknetfoundation/starknet-agentic-x402-starknet':
+        specifier: workspace:*
+        version: link:../x402-starknet
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.3

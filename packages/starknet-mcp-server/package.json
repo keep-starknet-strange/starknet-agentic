@@ -12,7 +12,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
+    "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared --filter @starknetfoundation/starknet-agentic-x402-starknet build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
     "pretest": "pnpm --filter @starknetfoundation/starknet-agentic-x402-starknet build",
     "test": "vitest run",
@@ -23,7 +23,6 @@
   "dependencies": {
     "@avnu/avnu-sdk": "^4.2.0",
     "@modelcontextprotocol/sdk": "catalog:",
-    "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*",
     "starknet": "catalog:",
     "zod": "catalog:"
   },
@@ -33,6 +32,7 @@
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
+    "@starknetfoundation/starknet-agentic-x402-starknet": "workspace:*"
   }
 }
