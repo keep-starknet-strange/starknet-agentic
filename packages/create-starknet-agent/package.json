@@ -28,11 +28,13 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --clean && tsc -p tsconfig.build.json --noCheck",
+    "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared build && tsup src/index.ts --format esm --clean && tsc -p tsconfig.build.json --noCheck",
     "dev": "tsup src/index.ts --format esm --watch",
     "prepublishOnly": "pnpm build",
     "test": "vitest run",
-    "link:local": "pnpm build && npm link"
+    "link:local": "pnpm build && npm link",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "prompts": "^2.4.2",
@@ -43,7 +45,8 @@
     "@types/prompts": "^2.4.9",
     "tsup": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "engines": {
     "node": ">=24.0.0"

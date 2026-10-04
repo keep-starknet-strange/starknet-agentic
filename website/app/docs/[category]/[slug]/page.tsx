@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
@@ -52,12 +53,12 @@ export default async function DocPage({ params }: DocPageProps) {
         <div className="max-w-3xl">
           {/* Breadcrumb */}
           <nav className="mb-6 flex items-center gap-2 text-sm" aria-label="Breadcrumb">
-            <a
+            <Link
               href="/docs"
               className="text-neo-dark/60 hover:text-neo-dark transition-colors"
             >
               Docs
-            </a>
+            </Link>
             <span className="text-neo-dark/40" aria-hidden="true">/</span>
             <span className="text-neo-purple font-medium">{docCategory.title}</span>
           </nav>

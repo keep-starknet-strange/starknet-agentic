@@ -18,11 +18,8 @@ jobs:
       pull-requests: read
     outputs:
       ts: ${{ steps.filter.outputs.ts }}
-      cairo: ${{ steps.filter.outputs.cairo }}
-      cairo-erc8004: ${{ steps.filter.outputs.cairo-erc8004 }}
-      cairo-agent-account: ${{ steps.filter.outputs.cairo-agent-account }}
-      cairo-huginn: ${{ steps.filter.outputs.cairo-huginn }}
-      cairo-session-account: ${{ steps.filter.outputs.cairo-session-account }}
+      # JSON array of contracts/<dir> names to build and test, e.g. ["agent-account"].
+      cairo-contracts: ${{ steps.cairo-filter.outputs.changes }}
       website: ${{ steps.filter.outputs.website }}
       skills: ${{ steps.filter.outputs.skills }}
       onboarding: ${{ steps.filter.outputs.onboarding }}
@@ -43,16 +40,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'tsconfig.json'
-            cairo:
-              - 'contracts/**'
-            cairo-erc8004:
-              - 'contracts/erc8004-cairo/**'
-            cairo-agent-account:
-              - 'contracts/agent-account/**'
-            cairo-huginn:
-              - 'contracts/huginn-registry/**'
-            cairo-session-account:
-              - 'contracts/session-account/**'
+              - 'eslint.config.mjs'
             website:
               - 'website/**'
               - 'packages/**'
@@ -88,6 +76,25 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
             ci:
+              - '.github/workflows/ci.yml'
+      # One filter per Scarb project under contracts/. Filter names must equal the
+      # directory names: the `changes` output becomes the Cairo job's matrix.
+      # Editing this workflow runs every contract.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: cairo-filter
+        with:
+          filters: |
+            erc8004-cairo:
+              - 'contracts/erc8004-cairo/**'
+              - '.github/workflows/ci.yml'
+            agent-account:
+              - 'contracts/agent-account/**'
+              - '.github/workflows/ci.yml'
+            huginn-registry:
+              - 'contracts/huginn-registry/**'
+              - '.github/workflows/ci.yml'
+            session-account:
+              - 'contracts/session-account/**'
               - '.github/workflows/ci.yml'
 
   secret-scan:
@@ -132,13 +139,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # Package builds use `tsc --noCheck` (declarations only), so they do not
+      # type-check. They are still needed: dependents resolve workspace
+      # packages through the emitted dist/*.d.ts.
+      - name: Build workspace packages
+        run: pnpm -r --filter './packages/*' build
+
+      # Runs `tsc --noEmit` in every package, example and the website that
+      # defines a `typecheck` script.
       - name: Type check
-        run: pnpm run build
+        run: pnpm -r --if-present typecheck
 
   lint:
     name: Lint
     needs: [detect-changes]
-    if: needs.detect-changes.outputs.ts == 'true' || needs.detect-changes.outputs.ci == 'true'
+    if: needs.detect-changes.outputs.ts == 'true' || needs.detect-changes.outputs.website == 'true' || needs.detect-changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -155,8 +170,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # Packages and examples use the root eslint.config.mjs; the website uses
+      # website/eslint.config.mjs.
       - name: Lint
-        run: pnpm -r --if-present --filter './packages/*' lint
+        run: pnpm -r --if-present lint
 
   test:
     name: Test
@@ -201,45 +218,16 @@ jobs:
       - name: Run tests
         run: pnpm run test
 
-  cairo-check:
-    name: Cairo Check
+  cairo:
+    # GitHub appends the matrix value, e.g. "Cairo (agent-account)".
+    name: Cairo
     needs: [detect-changes]
-    if: needs.detect-changes.outputs.cairo == 'true' || needs.detect-changes.outputs.ci == 'true'
+    if: needs.detect-changes.outputs.cairo-contracts != '' && needs.detect-changes.outputs.cairo-contracts != '[]'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
-
-      - name: Setup Scarb
-        uses: software-mansion/setup-scarb@2a96b748888e3329ee44ac9ac073d930e692b3cd # v1.6.2
-        with:
-          scarb-version: "2.14.0"
-
-      - name: Check Cairo contracts
-        working-directory: contracts/erc8004-cairo
-        run: scarb build
-
-      - name: Check agent-account contracts
-        working-directory: contracts/agent-account
-        run: scarb build
-
-      - name: Check huginn-registry contracts
-        working-directory: contracts/huginn-registry
-        run: scarb build
-
-      - name: Check session-account contracts
-        working-directory: contracts/session-account
-        run: scarb build
-
-  cairo-test-erc8004:
-    name: Cairo Tests (erc8004)
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.cairo-erc8004 == 'true' || needs.detect-changes.outputs.ci == 'true'
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        contract: ${{ fromJSON(needs.detect-changes.outputs.cairo-contracts) }}
     defaults:
       run:
         shell: bash
@@ -258,89 +246,12 @@ jobs:
         with:
           starknet-foundry-version: "0.64.0"
 
-      - name: Run Cairo tests (erc8004)
-        working-directory: contracts/erc8004-cairo
-        run: snforge test
+      - name: Build contracts
+        working-directory: contracts/${{ matrix.contract }}
+        run: scarb build
 
-  cairo-test-agent-account:
-    name: Cairo Tests (agent-account)
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.cairo-agent-account == 'true' || needs.detect-changes.outputs.ci == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
-
-      - name: Setup Scarb
-        uses: software-mansion/setup-scarb@2a96b748888e3329ee44ac9ac073d930e692b3cd # v1.6.2
-        with:
-          scarb-version: "2.14.0"
-
-      - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@16e23ddd0e2845f38727c92f4b913a7b728cda9e # v6.0.0
-        with:
-          starknet-foundry-version: "0.64.0"
-
-      - name: Run Cairo tests (agent-account)
-        working-directory: contracts/agent-account
-        run: snforge test
-
-  cairo-test-huginn:
-    name: Cairo Tests (huginn-registry)
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.cairo-huginn == 'true' || needs.detect-changes.outputs.ci == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
-
-      - name: Setup Scarb
-        uses: software-mansion/setup-scarb@2a96b748888e3329ee44ac9ac073d930e692b3cd # v1.6.2
-        with:
-          scarb-version: "2.14.0"
-
-      - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@16e23ddd0e2845f38727c92f4b913a7b728cda9e # v6.0.0
-        with:
-          starknet-foundry-version: "0.64.0"
-
-      - name: Run Cairo tests (huginn-registry)
-        working-directory: contracts/huginn-registry
-        run: snforge test
-
-  cairo-test-session-account:
-    name: Cairo Tests (session-account)
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.cairo-session-account == 'true' || needs.detect-changes.outputs.ci == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
-
-      - name: Setup Scarb
-        uses: software-mansion/setup-scarb@2a96b748888e3329ee44ac9ac073d930e692b3cd # v1.6.2
-        with:
-          scarb-version: "2.14.0"
-
-      - name: Setup Starknet Foundry
-        uses: foundry-rs/setup-snfoundry@16e23ddd0e2845f38727c92f4b913a7b728cda9e # v6.0.0
-        with:
-          starknet-foundry-version: "0.64.0"
-
-      - name: Run Cairo tests (session-account)
-        working-directory: contracts/session-account
+      - name: Run Cairo tests
+        working-directory: contracts/${{ matrix.contract }}
         run: snforge test
 
   website-build:
@@ -495,7 +406,7 @@ jobs:
     name: All Checks Passed
     if: always()
     runs-on: ubuntu-latest
-    needs: [detect-changes, secret-scan, typecheck, lint, test, cairo-check, cairo-test-erc8004, cairo-test-agent-account, cairo-test-huginn, cairo-test-session-account, website-build, validate-skills, onboarding-smoke]
+    needs: [detect-changes, secret-scan, typecheck, lint, test, cairo, website-build, validate-skills, onboarding-smoke]
     steps:
       - name: Verify no failures
         run: |

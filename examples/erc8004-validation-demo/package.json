@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "demo": "npx tsx run.ts",
-    "test": "vitest run --silent"
+    "test": "vitest run --silent",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "dotenv": "catalog:",
-    "starknet": "catalog:"
+    "starknet": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "devDependencies": {
     "tsx": "catalog:",

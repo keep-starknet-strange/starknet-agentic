@@ -7,12 +7,15 @@
   "main": "index.ts",
   "scripts": {
     "start": "tsx index.ts",
-    "dev": "tsx watch index.ts"
+    "dev": "tsx watch index.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "starknet": "catalog:",
     "@avnu/avnu-sdk": "^4.2.0",
-    "dotenv": "catalog:"
+    "dotenv": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "devDependencies": {
     "tsx": "catalog:",

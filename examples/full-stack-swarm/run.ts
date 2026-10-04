@@ -25,15 +25,19 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { Account, RpcProvider, ec, extractContractHashes, num } from "starknet";
+import {
+  MAINNET_TOKENS,
+  STARKNET_CHAIN_IDS,
+} from "@starknetfoundation/starknet-agentic-shared/constants";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 // --- Static token addresses (Starknet mainnet/sepolia canonical addresses) ---
 const TOKENS: Record<string, string> = {
-  ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-  STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-  USDC: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
-  USDT: "0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8",
+  ETH: MAINNET_TOKENS.ETH,
+  STRK: MAINNET_TOKENS.STRK,
+  USDC: MAINNET_TOKENS.USDC,
+  USDT: MAINNET_TOKENS.USDT,
 };
 
 // --- CLI args ---
@@ -246,7 +250,7 @@ class McpSidecar {
     const transport = new StdioClientTransport({
       command: "node",
       args: [mcpEntry],
-      env: { ...process.env, ...this.env },
+      env: { ...process.env, ...this.env } as Record<string, string>,
     });
 
     const client = new Client(
@@ -266,7 +270,8 @@ class McpSidecar {
     if (!this.client) throw new Error("MCP client not connected");
     const res = await this.client.callTool({ name, arguments: args });
     if (res?.isError) {
-      const msg = res?.content?.[0]?.text || `Tool error: ${name}`;
+      const content = res?.content as Array<{ text?: string }> | undefined;
+      const msg = content?.[0]?.text || `Tool error: ${name}`;
       throw new Error(msg);
     }
     return res;
@@ -307,7 +312,7 @@ function startSisna(args: {
       throw new Error("DFNS mode requires pinned pubkeys by keyId");
     }
   }
-  const keyringAllowedChainIds = "0x534e5f5345504f4c4941"; // "SN_SEPOLIA" as felt
+  const keyringAllowedChainIds = STARKNET_CHAIN_IDS.sepolia; // "SN_SEPOLIA" as felt
   const env: Record<string, string> = {
     ...process.env,
     NODE_ENV: "development",
@@ -529,7 +534,7 @@ async function main() {
   }
 
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-  try { fs.chmodSync(statePath, 0o600); } catch {}
+  try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
 
   // 1.5) Fund accounts if using paymaster default fees or if swaps need sell token.
   // This is intentionally simple: transfer ETH (for the swap) + paymaster gas token (for fees).
@@ -574,7 +579,7 @@ async function main() {
       ),
     );
     fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-    try { fs.chmodSync(statePath, 0o600); } catch {}
+    try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
   }
 
   // 2) Configure each agent (owner-signed direct mode)
@@ -683,7 +688,7 @@ async function main() {
   );
 
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-  try { fs.chmodSync(statePath, 0o600); } catch {}
+  try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
 
   // 3) Start SISNA (optional)
   let sisna: any = null;
@@ -922,7 +927,7 @@ async function main() {
       )
     );
     fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
-    try { fs.chmodSync(statePath, 0o600); } catch {}
+    try { fs.chmodSync(statePath, 0o600); } catch { /* best-effort: chmod is unsupported on some filesystems */ }
   }
 
   const ok =

@@ -16,6 +16,11 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { Account, RpcProvider, Contract } from "starknet";
 import { getQuotes, executeSwap, QuoteRequest } from "@avnu/avnu-sdk";
+import {
+  AVNU_API_URLS,
+  AVNU_PAYMASTER_URLS,
+  MAINNET_TOKENS,
+} from "@starknetfoundation/starknet-agentic-shared/constants";
 
 // Load .env from script's directory (works regardless of cwd)
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -29,8 +34,8 @@ const CONFIG = {
   RPC_URL: process.env.STARKNET_RPC_URL || "https://starknet-mainnet.public.blastapi.io",
   ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS!,
   PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY!,
-  AVNU_BASE_URL: process.env.AVNU_BASE_URL || "https://starknet.api.avnu.fi",
-  AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || "https://starknet.paymaster.avnu.fi",
+  AVNU_BASE_URL: process.env.AVNU_BASE_URL || AVNU_API_URLS.mainnet,
+  AVNU_PAYMASTER_URL: process.env.AVNU_PAYMASTER_URL || AVNU_PAYMASTER_URLS.mainnet,
 
   // Trading parameters
   MIN_PROFIT_BPS: 50, // Minimum 0.5% profit to trade
@@ -40,9 +45,9 @@ const CONFIG = {
 
 // Token addresses
 const TOKENS = {
-  ETH: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-  STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-  USDC: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+  ETH: MAINNET_TOKENS.ETH,
+  STRK: MAINNET_TOKENS.STRK,
+  USDC: MAINNET_TOKENS.USDC,
 };
 
 // Cairo 1 style ABI for ERC20 balance check

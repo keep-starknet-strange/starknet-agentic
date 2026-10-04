@@ -8,7 +8,8 @@
   "scripts": {
     "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@starknetfoundation/starknet-agentic-shared": "workspace:*",

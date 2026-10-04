@@ -5,7 +5,6 @@
 import type {
   ProjectConfig,
   GeneratedFiles,
-  DeFiProtocol,
 } from "./types.js";
 import { RPC_URLS, TOKEN_ADDRESSES, AVNU_URLS } from "./types.js";
 

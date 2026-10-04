@@ -11,12 +11,14 @@ import {
   byteArray,
   cairo,
 } from "starknet";
+import { SEPOLIA_DEPLOYMENTS } from "@starknetfoundation/starknet-agentic-shared/constants";
 import {
   parseValidationRequestHashFromReceipt,
   readAgentExists,
   readTotalAgents,
   readValidationSummary,
   toU256Calldata,
+  type StarknetTxReceipt,
 } from "./lib.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -37,11 +39,9 @@ async function main() {
 
   // Maintainer-reviewed defaults sourced from docs/DEPLOYMENT_TRUTH_SHEET.md.
   const identityRegistry =
-    process.env.ERC8004_IDENTITY_REGISTRY ||
-    "0x72eb37b0389e570bf8b158ce7f0e1e3489de85ba43ab3876a0594df7231631";
+    process.env.ERC8004_IDENTITY_REGISTRY || SEPOLIA_DEPLOYMENTS.identityRegistry;
   const validationRegistry =
-    process.env.ERC8004_VALIDATION_REGISTRY ||
-    "0x7c8ac08e98d8259e1507a2b4b719f7071104001ed7152d4e9532a6850a62a4f";
+    process.env.ERC8004_VALIDATION_REGISTRY || SEPOLIA_DEPLOYMENTS.validationRegistry;
 
   const explorer = process.env.STARKNET_EXPLORER || "https://sepolia.voyager.online";
 
@@ -105,7 +105,7 @@ async function main() {
   const requestReceipt = await provider.waitForTransaction(requestTx.transaction_hash);
 
   const requestHash = parseValidationRequestHashFromReceipt({
-    receipt: requestReceipt,
+    receipt: requestReceipt as StarknetTxReceipt,
     expectedValidator: accountAddress,
     expectedAgentId: predictedAgentId,
   });
