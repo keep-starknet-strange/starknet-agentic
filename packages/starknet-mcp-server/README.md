@@ -235,6 +235,48 @@ npm test
 npm run build
 ```
 
+### Source layout
+
+```
+src/
+├── index.ts          # Bootstrap: env validation and production guards, provider/signer/account,
+│                     # transaction submission, policy guard, tools/list + tools/call wiring
+├── tools/
+│   ├── index.ts      # Registry: TOOL_MODULES (order = tools/list order), listTools, getToolHandler
+│   ├── _shared.ts    # ToolContext / ToolModule types and shared input validators
+│   └── <tool>.ts     # One module per tool: definition + handler (+ optional isListed)
+├── helpers/          # Balance, Vesu, keyring proxy signer, session keys, tx receipts, ...
+├── middleware/       # policyGuard (evaluated before every tool call)
+└── services/         # TokenService (symbol and decimals resolution)
+```
+
+### Adding a tool
+
+1. Create `src/tools/<tool-name>.ts` (kebab-case, without the `starknet_` prefix) that exports:
+   - `definition: Tool`: `name`, `description` and a JSON Schema `inputSchema`. `tools/list`
+     returns this object as is, so it is the contract the agent sees.
+   - `handler(args, ctx): Promise<ToolResult>`: validate `args` before using them. Reuse the
+     validators in `_shared.ts` (`parseAddress`, `parseFelt`, `parseCalldata`,
+     `validateEntrypoint`, `parseAmount`). For structured input, parse `args` with a Zod schema
+     and keep it in sync with `inputSchema` (Zod 4's `z.toJSONSchema()` can generate it).
+     Throw an `Error` on failure: the server returns it as an `isError` result (via
+     `formatErrorMessage`) and logs the raw message to stderr.
+   - `isListed(ctx)` (optional): return `false` to hide the tool from `tools/list` when its
+     configuration is missing. Hidden tools can still be called, so the handler must also check
+     its configuration and throw a clear "not configured" error.
+2. Read runtime dependencies from `ctx` (`env`, `provider`, `account`, ...). Prefer
+   `ctx.executeTransaction` + `ctx.waitForTransactionSuccess` for state-changing calls so gasfree
+   (paymaster) mode and receipt checks behave like the other tools.
+3. Register the module in `TOOL_MODULES` in `src/tools/index.ts`. Its position there is its
+   position in `tools/list`.
+4. If the tool moves funds or invokes arbitrary contracts, add a rule for it in
+   `src/middleware/policyGuard.ts`. When `denyUnknownTools` is enabled, tools without a case in
+   `PolicyGuard.evaluate` are rejected.
+5. Add Vitest tests. `__tests__/handlers/tools.test.ts` mocks `starknet`, the avnu SDK and the MCP
+   SDK, then calls tools through the real `tools/call` handler. Also add the tool name to
+   `EXPECTED_ORDER` in `__tests__/tools/registry.test.ts`.
+6. Document the tool under [Available Tools](#available-tools).
+
 ## Architecture
 
 The server uses:

@@ -11,6 +11,7 @@ import {
 import { Contract, shortString, byteArray, type RpcProvider } from "starknet";
 import { type CachedToken, TOKEN_TTL_MS } from "../types/token.js";
 import { normalizeAddress } from "../utils.js";
+import { AVNU_API_URLS, MAINNET_TOKENS } from "@starknetfoundation/starknet-agentic-shared/constants";
 
 const ERC20_METADATA_ABI = [
   {
@@ -48,10 +49,10 @@ const STATIC_TOKEN_DEFAULTS = {
 
 /** Core token data - only the fields that differ per token */
 const STATIC_TOKEN_DATA = [
-  { address: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7", symbol: "ETH", name: "Ether", decimals: 18 },
-  { address: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d", symbol: "STRK", name: "Starknet Token", decimals: 18 },
-  { address: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", symbol: "USDC", name: "USD Coin", decimals: 6 },
-  { address: "0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8", symbol: "USDT", name: "Tether USD", decimals: 6 },
+  { address: MAINNET_TOKENS.ETH, symbol: "ETH", name: "Ether", decimals: 18 },
+  { address: MAINNET_TOKENS.STRK, symbol: "STRK", name: "Starknet Token", decimals: 18 },
+  { address: MAINNET_TOKENS.USDC, symbol: "USDC", name: "USD Coin", decimals: 6 },
+  { address: MAINNET_TOKENS.USDT, symbol: "USDT", name: "Tether USD", decimals: 6 },
 ] as const;
 
 /**
@@ -107,7 +108,7 @@ export class TokenService {
   /** Maximum number of dynamic (non-static) entries allowed in cache */
   private static readonly MAX_DYNAMIC_CACHE_SIZE = 512;
 
-  constructor(baseUrl: string = "https://starknet.api.avnu.fi") {
+  constructor(baseUrl: string = AVNU_API_URLS.mainnet) {
     this.baseUrl = baseUrl;
     this.loadStaticTokens();
   }

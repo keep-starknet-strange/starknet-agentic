@@ -12,17 +12,17 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
+    "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "test": "vitest run"
   },
   "dependencies": {
-    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
     "starknet": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   }
 }

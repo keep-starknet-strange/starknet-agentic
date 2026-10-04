@@ -12,7 +12,8 @@
   "dependencies": {
     "starknet": "catalog:",
     "@avnu/avnu-sdk": "^4.2.0",
-    "dotenv": "catalog:"
+    "dotenv": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "devDependencies": {
     "tsx": "catalog:",

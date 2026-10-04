@@ -9,6 +9,10 @@ import path from "node:path";
 import os from "node:os";
 import { spawn } from "node:child_process";
 import pc from "picocolors";
+import {
+  ETH_TOKEN_ADDRESS,
+  STRK_TOKEN_ADDRESS,
+} from "@starknetfoundation/starknet-agentic-shared/constants";
 import type { DetectedPlatform, Network } from "./types.js";
 import { detectPlatforms, getPlatformByType, isValidPlatformType } from "./platform.js";
 import { EXIT_CODES } from "./index.js";
@@ -539,17 +543,13 @@ async function fetchBalance(
   rpcUrl: string,
   verbose: boolean
 ): Promise<{ success: boolean; balances?: Record<string, string>; error?: string }> {
-  // Token addresses (same on all networks)
-  const ETH_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
-  const STRK_ADDRESS = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
-
   // Normalize address (ensure it's properly padded)
   const normalizedAddress = normalizeAddress(accountAddress);
 
   try {
-    // Fetch ETH balance
-    const ethBalance = await callBalanceOf(rpcUrl, ETH_ADDRESS, normalizedAddress, verbose);
-    const strkBalance = await callBalanceOf(rpcUrl, STRK_ADDRESS, normalizedAddress, verbose);
+    // Fetch ETH and STRK balances (same token addresses on all networks)
+    const ethBalance = await callBalanceOf(rpcUrl, ETH_TOKEN_ADDRESS, normalizedAddress, verbose);
+    const strkBalance = await callBalanceOf(rpcUrl, STRK_TOKEN_ADDRESS, normalizedAddress, verbose);
 
     return {
       success: true,

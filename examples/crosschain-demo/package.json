@@ -16,7 +16,8 @@
     "@starknetfoundation/starknet-agentic-onboarding-utils": "workspace:*",
     "dotenv": "catalog:",
     "ethers": "^6.17.0",
-    "starknet": "catalog:"
+    "starknet": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "devDependencies": {
     "tsx": "catalog:",

@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "dotenv": "catalog:",
-    "starkzap": "^4.0.0"
+    "starkzap": "^4.0.0",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "devDependencies": {
     "tsx": "catalog:",
