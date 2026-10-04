@@ -3,11 +3,41 @@
 This register tracks dependency-audit exceptions, their risk treatment, and
 every forced resolution in the root `pnpm.overrides` block.
 
-**Active exceptions: none.** `security/audit-allowlist.json` is currently empty
-— every previously excepted advisory has been resolved by pinning patched
-versions through `pnpm.overrides` (root) and `overrides` (`tools/ajv-cli`). The
-CI audit gate (`scripts/security/audit-gate.mjs`, `--failLevel high`) therefore
-enforces zero unaddressed high/critical advisories with no exceptions applied.
+**Active exceptions: 1** (`ADV-1240992-BRACES`, below). Everything else has been
+resolved by pinning patched versions through `pnpm.overrides` (root) and
+`overrides` (`tools/ajv-cli`). The CI audit gate (`scripts/security/audit-gate.mjs`,
+`--failLevel high`) enforces zero unaddressed high/critical advisories; the only
+excepted advisory ID is listed in `security/audit-allowlist.json` with an expiry.
+
+## ADV-1240992-BRACES (Active)
+
+- Status: **Active** from `2026-10-04`, expires `2026-11-04`.
+- Advisory ID: `1240992` (`GHSA-vfj7-8cjw-p6xm`, "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns")
+- Package: `braces` (vulnerable `<= 3.0.3`; **no patched release exists**, 3.0.3 is the latest)
+- Severity: `high`
+- Advisory URL: `https://github.com/advisories/GHSA-vfj7-8cjw-p6xm`
+- Threat model entry ID: `ADV-1240992-BRACES`
+- Dependency path (only one): `website > eslint-config-next > @next/eslint-plugin-next > fast-glob > micromatch > braces`
+- Scope: Transitive dependency of `eslint-config-next`, a `website` **devDependency** used only for linting. Not part of any published package or the deployed website runtime.
+- Justification: No upstream fix is available, so an override cannot resolve it. The vulnerable code expands glob patterns; on this path the patterns come from the repository's own lint configuration, not from untrusted input.
+- Allowlist expiry: `2026-11-04` (the gate blocks again after this date; re-assess then)
+- Owner: Security maintainers (to be confirmed in review)
+- Linked allowlist entry: `security/audit-allowlist.json` → `id: "1240992"`
+
+### Residual Risk
+
+A contributor or CI job running ESLint on the website could hit excessive recursion if a deeply nested brace pattern were introduced into lint configuration or file globs. Impact is limited to a failed or slow local/CI lint run; no runtime, key material, or user data is reachable through this path.
+
+### Mitigations
+
+1. Only reachable from website lint tooling; nothing in `packages/*` or the deployed site depends on it.
+2. Glob inputs are repository-controlled and reviewed in PRs.
+3. Time-bounded exception (`expiresOn` in the allowlist): the gate fails again on expiry, forcing a re-check.
+4. Exit criteria: remove the allowlist entry and close this record when a patched `braces` is published (then pin it via `pnpm.overrides`), or when the dependency path disappears (e.g. `@next/eslint-plugin-next` drops `fast-glob`/`micromatch`).
+
+### Review Sign-off
+
+- Exception sign-off: pending maintainer sign-off on this PR.
 
 ## pnpm override register
 
