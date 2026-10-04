@@ -21,6 +21,7 @@
 import { fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
+import { AVNU_PAYMASTER_URLS } from "@starknetfoundation/starknet-agentic-shared/constants";
 import {
   assertPositiveAmount,
   assertPrivateKeyFormat,
@@ -41,7 +42,7 @@ const {
   sepoliaTokens,
 } = await import("starkzap");
 
-const SEPOLIA_PAYMASTER = "https://sepolia.paymaster.avnu.fi";
+const SEPOLIA_PAYMASTER = AVNU_PAYMASTER_URLS.sepolia;
 const DEFAULT_RPC = "https://starknet-sepolia-rpc.publicnode.com";
 const STARKSCAN_TX_BASE_URL = "https://sepolia.starkscan.co/tx/";
 

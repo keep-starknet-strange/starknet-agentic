@@ -12,6 +12,11 @@ import {
   type Call,
   type PaymasterDetails,
 } from "starknet";
+import {
+  AVNU_PAYMASTER_URLS,
+  ETH_TOKEN_ADDRESS,
+  STARKNET_CHAIN_IDS,
+} from "@starknetfoundation/starknet-agentic-shared/constants";
 
 export type ProviderLike = Pick<RpcProvider, "getChainId" | "callContract" | "waitForTransaction">;
 
@@ -129,7 +134,7 @@ export function assertSepoliaChainId(chainId: string, network: string): void {
   }
 
   const isSepolia =
-    chainId === "0x534e5f5345504f4c4941" /* SN_SEPOLIA (hex) */ ||
+    chainId === STARKNET_CHAIN_IDS.sepolia /* SN_SEPOLIA (hex) */ ||
     chainId === "SN_SEPOLIA";
   if (!isSepolia) {
     throw new Error(`Network is "sepolia" but chain returned ${chainId}. Check STARKNET_RPC_URL.`);
@@ -244,7 +249,7 @@ export interface DeployAccountResult {
 function createPaymasterRpc(args: { network: string; paymasterUrl?: string; paymasterApiKey?: string }): PaymasterRpc {
   const url =
     args.paymasterUrl ||
-    (args.network === "sepolia" ? "https://sepolia.paymaster.avnu.fi" : "https://starknet.paymaster.avnu.fi");
+    (args.network === "sepolia" ? AVNU_PAYMASTER_URLS.sepolia : AVNU_PAYMASTER_URLS.mainnet);
   const headers = args.paymasterApiKey ? { "x-paymaster-api-key": args.paymasterApiKey } : {};
   return new PaymasterRpc({ nodeUrl: url, headers });
 }
@@ -326,9 +331,7 @@ export async function firstActionBalances(args: {
 
   let verifyTxHash: string | null = null;
   if (args.verifyTx) {
-    const ethAddress =
-      args.tokens.ETH ||
-      "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+    const ethAddress = args.tokens.ETH || ETH_TOKEN_ADDRESS;
 
     const account = new Account({
       provider: args.provider,

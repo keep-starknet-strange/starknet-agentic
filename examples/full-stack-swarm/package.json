@@ -13,7 +13,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "catalog:",
     "dotenv": "catalog:",
-    "starknet": "catalog:"
+    "starknet": "catalog:",
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
   },
   "devDependencies": {
     "tsx": "catalog:",
