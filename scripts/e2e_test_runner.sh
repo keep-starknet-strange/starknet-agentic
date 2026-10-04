@@ -5,13 +5,15 @@
 # Environment:
 #   STARKNET_RPC            Sepolia RPC URL
 #   SESSION_PRIVATE_KEY     private key of --session-key (session-key steps)
-#   SESSION_OWNER_ACCOUNT   starkli account file whose address is the SessionAccount itself
-#   SESSION_OWNER_KEYSTORE  starkli keystore holding the SessionAccount owner key
-#                           (both only needed without --skip-setup)
+#   SESSION_OWNER_ACCOUNT   owner account whose address is the SessionAccount itself: an
+#                           account JSON file (with SESSION_OWNER_KEYSTORE) or an account
+#                           name in sncast's accounts file (without it). Setup only.
+#   SESSION_OWNER_KEYSTORE  optional encrypted keystore for SESSION_OWNER_ACCOUNT; sncast
+#                           prompts for its password unless KEYSTORE_PASSWORD is set
 #
-# Owner-signed setup uses starkli: the owner key signs [r, s] and the SessionAccount calls
-# itself, which its assert_only_self admin entrypoints require. starkli cannot produce
-# session-key signatures, so session-key steps run packages/session-account-e2e/src/cli.ts,
+# Owner-signed setup uses sncast (Starknet Foundry): the owner key signs [r, s] and the
+# SessionAccount calls itself, which its assert_only_self admin entrypoints require. sncast
+# cannot produce session-key signatures, so session-key steps run packages/session-account-e2e/src/cli.ts,
 # which signs [session_pubkey, r, s, valid_until] for the account's session signature mode
 # and asserts each step's expected outcome. See docs/E2E_TESTING_GUIDE.md.
 
@@ -80,8 +82,13 @@ if [ -z "$SESSION_PRIVATE_KEY" ]; then
     exit 1
 fi
 
-if [ "$SKIP_SETUP" != "true" ] && { [ -z "$SESSION_OWNER_ACCOUNT" ] || [ -z "$SESSION_OWNER_KEYSTORE" ]; }; then
-    echo -e "${RED}Error: SESSION_OWNER_ACCOUNT and SESSION_OWNER_KEYSTORE must be set for setup (or pass --skip-setup)${NC}"
+if [ "$SKIP_SETUP" != "true" ] && [ -z "$SESSION_OWNER_ACCOUNT" ]; then
+    echo -e "${RED}Error: SESSION_OWNER_ACCOUNT must be set for setup (or pass --skip-setup)${NC}"
+    exit 1
+fi
+
+if ! command -v sncast >/dev/null 2>&1; then
+    echo -e "${RED}Error: sncast (Starknet Foundry) is required${NC}"
     exit 1
 fi
 
@@ -171,10 +178,11 @@ transfer_call() {
     echo "$TOKEN_ADDRESS:transfer:$1,$2,0"
 }
 
-# Helper to query spending policy
+# Helper to query spending policy (decoded SpendingPolicy struct)
 get_spending_state() {
-    starkli call $SESSION_ACCOUNT get_spending_policy $SESSION_PUBKEY $TOKEN_ADDRESS \
-        --rpc $STARKNET_RPC 2>/dev/null || echo "0 0 0 0 0"
+    sncast call --url "$STARKNET_RPC" --contract-address "$SESSION_ACCOUNT" \
+        --function get_spending_policy --calldata "$SESSION_PUBKEY" "$TOKEN_ADDRESS" 2>/dev/null \
+        | sed -n 's/^Response: *//p' || true
 }
 
 # Phase 1: Setup (if not skipped)
@@ -184,20 +192,26 @@ if [ "$SKIP_SETUP" != "true" ]; then
     echo -e "${BLUE}========================================${NC}"
     echo ""
 
-    # Test 1: Add session key
+    # Owner-signed invokes; --wait so the session-key steps below see the new state.
+    if [ -n "$SESSION_OWNER_KEYSTORE" ]; then
+        OWNER_SNCAST='sncast --account "$SESSION_OWNER_ACCOUNT" --keystore "$SESSION_OWNER_KEYSTORE" --wait invoke --url "$STARKNET_RPC"'
+    else
+        OWNER_SNCAST='sncast --account "$SESSION_OWNER_ACCOUNT" --wait invoke --url "$STARKNET_RPC"'
+    fi
+
+    # Test 1: Add session key. Calldata: session_key, valid_until (u64), max_calls (u32),
+    # allowed_entrypoints (Array<felt252>: length, then the transfer selector)
     run_test "Add session key (7 days, 100 calls)" \
-        "starkli invoke $SESSION_ACCOUNT add_or_update_session_key \
-            $SESSION_PUBKEY u64:$(($(date +%s) + 604800)) u32:100 \
-            array:1:0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e \
-            --account \$SESSION_OWNER_ACCOUNT --keystore \$SESSION_OWNER_KEYSTORE --rpc \$STARKNET_RPC" \
+        "$OWNER_SNCAST --contract-address $SESSION_ACCOUNT --function add_or_update_session_key \
+            --calldata $SESSION_PUBKEY $(($(date +%s) + 604800)) 100 \
+            1 0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e" \
         "pass"
 
-    # Test 2: Set spending policy (1000 per call, 5000 per window, 24h)
+    # Test 2: Set spending policy (1000 per call, 5000 per window, 24h). Calldata: session_key,
+    # token, max_per_call (u256 low, high), max_per_window (u256 low, high), window_seconds (u64)
     run_test "Set spending policy (1000/5000/24h)" \
-        "starkli invoke $SESSION_ACCOUNT set_spending_policy \
-            $SESSION_PUBKEY $TOKEN_ADDRESS \
-            u256:1000000000 u256:5000000000 u64:86400 \
-            --account \$SESSION_OWNER_ACCOUNT --keystore \$SESSION_OWNER_KEYSTORE --rpc \$STARKNET_RPC" \
+        "$OWNER_SNCAST --contract-address $SESSION_ACCOUNT --function set_spending_policy \
+            --calldata $SESSION_PUBKEY $TOKEN_ADDRESS 1000000000 0 5000000000 0 86400" \
         "pass"
 fi
 

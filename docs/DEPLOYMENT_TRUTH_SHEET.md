@@ -8,10 +8,10 @@ This document is the canonical deployment status reference for ERC-8004 registri
 
 - On-chain class hash: `starknet_getClassHashAt`
 - First-seen block/time: binary search over `starknet_getClassHashAt` by block number, then block timestamp lookup
-- On-chain owner values: `starkli call ... owner` (registries) and `starkli call ... get_owner` (factory)
-- Local class hash: `scarb build` + `starkli class-hash`
+- On-chain owner values: `sncast call --contract-address <addr> --function owner` (registries) and `--function get_owner` (factory)
+- Local class hash: `scarb --release build` + `sncast utils class-hash --sierra-file <target/release/...contract_class.json>`
 
-Tooling used during verification:
+Tooling used during the recorded verification (the commands above are the current sncast equivalents for re-verification):
 - `scarb 2.14.0`
 - `starkli 0.4.2`
 
