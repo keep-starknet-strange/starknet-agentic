@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { TEMPLATE_DEPENDENCY_SOURCES } from "../src/template-dependencies.js";
 import {
   findWorkspaceRoot,
+  isRegistryRange,
   parseCatalog,
   resolveTemplateVersions,
   templateVersionDefines,
@@ -132,6 +133,24 @@ describe("resolveTemplateVersions", () => {
     expect(() => resolveTemplateVersions(root)).toThrow(/not a registry range/);
   });
 
+  it.each(["latest", "next", "*", "x", "^banana", "1.2.3 -", "^1.2.3 ||", "github:org/repo"])(
+    "rejects a malformed catalog range (%s)",
+    (bad) => {
+      const root = fixture({ ...baseCatalog, zod: bad }, { "packages/starknet-mcp-server": mcpServer });
+      expect(() => resolveTemplateVersions(root)).toThrow(/zod: .* is not a registry range/);
+    }
+  );
+
+  it.each(["latest", "beta", "*", "~", "file:../avnu"])(
+    "rejects a malformed workspace-package range (%s)",
+    (bad) => {
+      const root = fixture(baseCatalog, {
+        "packages/starknet-mcp-server": { dependencies: { "@avnu/avnu-sdk": bad } },
+      });
+      expect(() => resolveTemplateVersions(root)).toThrow(/@avnu\/avnu-sdk: .* is not a registry range/);
+    }
+  );
+
   it("produces a define entry whose value is the JSON of the resolved map", () => {
     const root = fixture(baseCatalog, { "packages/starknet-mcp-server": mcpServer });
     const defines = templateVersionDefines(root);
@@ -143,4 +162,28 @@ describe("resolveTemplateVersions", () => {
     const versions = resolveTemplateVersions();
     expect(Object.keys(versions).sort()).toEqual(Object.keys(TEMPLATE_DEPENDENCY_SOURCES).sort());
   });
+});
+
+describe("isRegistryRange", () => {
+  it.each([
+    "^10.8.0",
+    "~4.2.1",
+    "4.2.1",
+    "v4.2.1",
+    ">=1.2.3 <2.0.0",
+    "^1.0.0 || ^2.0.0",
+    "1.2.3 - 2.3.4",
+    "4.x",
+    "^6.0.0-rc.1",
+    "1.2.3+build.5",
+  ])("accepts %s", (range) => {
+    expect(isRegistryRange(range)).toBe(true);
+  });
+
+  it.each(["", "latest", "*", "x", "^", ">=", "^1.2.3 ||", "^1 - 2", "workspace:*", "catalog:", "npm:zod@4"])(
+    "rejects %j",
+    (range) => {
+      expect(isRegistryRange(range)).toBe(false);
+    }
+  );
 });

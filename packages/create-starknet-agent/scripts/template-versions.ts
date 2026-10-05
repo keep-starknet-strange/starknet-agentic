@@ -101,11 +101,35 @@ function resolveOne(
   return range;
 }
 
+// One npm semver comparator: an optional operator, then a version whose minor,
+// patch and prerelease/build parts are optional (`^10.8.0`, `~4.2`, `>=1.2.3-rc.1`,
+// `4.x`). Wildcards are allowed only after an explicit major.
+const COMPARATOR =
+  /^(?:\^|~|>=|<=|>|<|=)?v?\d+(?:\.(?:\d+|x|X|\*)){0,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+/**
+ * True for an npm semver range with a concrete lower bound: comparator sets
+ * joined by `||`, each a space-separated list of comparators or a hyphen range
+ * (`1.2.3 - 2.3.4`). Rejects dist-tags (`latest`, `next`), unbounded `*` / `x`,
+ * protocols and anything else a generated package.json should not pin.
+ */
+export function isRegistryRange(range: string): boolean {
+  return range.split("||").every((set) => {
+    const parts = set.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return false;
+    if (parts.length === 3 && parts[1] === "-") {
+      return COMPARATOR.test(parts[0]) && COMPARATOR.test(parts[2]) && !/^[\^~<>=]/.test(parts[0] + parts[2]);
+    }
+    return parts.every((part) => COMPARATOR.test(part));
+  });
+}
+
 /**
  * Resolves every dependency in TEMPLATE_DEPENDENCY_SOURCES to the range this
- * workspace declares. Throws when one is missing, or is not a plain registry
- * range a project outside the workspace can install (`workspace:`, named
- * `catalog:` entries, `file:` and similar protocols).
+ * workspace declares. Throws when one is missing, or is not a semver range a
+ * project outside the workspace can install from the registry (`workspace:`,
+ * named `catalog:` entries, `file:` and other protocols, dist-tags such as
+ * `latest`, unbounded `*`).
  */
 export function resolveTemplateVersions(repoRoot: string = findWorkspaceRoot()): TemplateDependencyVersions {
   const catalog = parseCatalog(readFileSync(join(repoRoot, "pnpm-workspace.yaml"), "utf8"));
@@ -115,7 +139,7 @@ export function resolveTemplateVersions(repoRoot: string = findWorkspaceRoot()):
   >;
   for (const [name, source] of entries) {
     const range = resolveOne(name, source, catalog, repoRoot).trim();
-    if (!range || /^[a-z][a-z0-9+.-]*:/i.test(range)) {
+    if (!isRegistryRange(range)) {
       throw new Error(`${name}: "${range}" is not a registry range a generated project can install`);
     }
     versions[name] = range;
