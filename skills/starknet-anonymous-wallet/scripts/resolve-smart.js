@@ -17,6 +17,7 @@ import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
+import { getNetwork } from './_network.js';
 import { loadPrivateKeyByAccountAddress } from './_keys.js';
 
 const AVNU_VIRTUAL_SENTINELS = new Set(['__avnu_virtual__', '0x01']);
@@ -565,7 +566,7 @@ async function main() {
       const findTokenFallback = async (symbol) => {
         const found = findToken(symbol);
         if (found) return found;
-        if (!avnuTokens) avnuTokens = await fetchVerifiedTokens();
+        if (!avnuTokens) avnuTokens = await fetchVerifiedTokens(await getNetwork(provider));
         const t = avnuTokens.find(x => x.symbol?.toLowerCase() === String(symbol || '').toLowerCase());
         return t ? { symbol: t.symbol, address: t.address, decimals: t.decimals ?? 18 } : null;
       };
@@ -822,7 +823,7 @@ async function main() {
                 if (!String(inp.type || '').includes('ContractAddress')) continue;
                 const v = args[inp.name];
                 if (typeof v === 'string' && !v.startsWith('0x') && /^[A-Z0-9.]{2,12}$/.test(v)) {
-                  if (!avnuTokens) avnuTokens = await fetchVerifiedTokens();
+                  if (!avnuTokens) avnuTokens = await fetchVerifiedTokens(await getNetwork(provider));
                   const t = avnuTokens.find(x => String(x.symbol || '').toUpperCase() === v.toUpperCase());
                   if (t?.address) {
                     args[inp.name] = t.address;

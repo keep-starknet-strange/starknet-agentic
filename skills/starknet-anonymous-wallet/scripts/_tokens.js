@@ -1,13 +1,22 @@
 import { fetchTokens } from '@avnu/avnu-sdk';
+import { avnuOptions } from './_network.js';
 
-let tokenCache = null;
-let lastTokenFetch = 0;
+// chainId -> { tokens, fetchedAt }, so one network's addresses never answer
+// for another.
+const tokenCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
 
-export async function fetchVerifiedTokens() {
+/**
+ * AVNU verified tokens for `network` (from `getNetwork(provider)` in _network.js).
+ * Throws for a missing or unsupported network; AVNU fetch errors return the
+ * last cached list for that network, or [].
+ */
+export async function fetchVerifiedTokens(network) {
+  const options = avnuOptions(network);
   const now = Date.now();
-  if (tokenCache && (now - lastTokenFetch) < CACHE_TTL) {
-    return tokenCache;
+  const cached = tokenCache.get(network.chainId);
+  if (cached && (now - cached.fetchedAt) < CACHE_TTL) {
+    return cached.tokens;
   }
 
   try {
@@ -16,7 +25,7 @@ export async function fetchVerifiedTokens() {
     let page = 0;
 
     while (true) {
-      const resp = await fetchTokens({ page, size, tags: ['Verified'] });
+      const resp = await fetchTokens({ page, size, tags: ['Verified'] }, options);
       const content = Array.isArray(resp?.content) ? resp.content : [];
       all.push(...content);
 
@@ -31,16 +40,15 @@ export async function fetchVerifiedTokens() {
       if (page > 100) break;
     }
 
-    tokenCache = all;
-    lastTokenFetch = now;
-    return tokenCache;
+    tokenCache.set(network.chainId, { tokens: all, fetchedAt: now });
+    return all;
   } catch (err) {
     if (process.env.OPENCLAW_DEBUG === '1') {
       console.error(JSON.stringify({
-        warning: 'Failed to fetch verified tokens from AVNU',
+        warning: `Failed to fetch verified tokens from AVNU (${network.name})`,
         error: err?.message || String(err)
       }));
     }
-    return tokenCache || [];
+    return cached?.tokens || [];
   }
 }
