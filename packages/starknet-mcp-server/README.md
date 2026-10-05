@@ -8,7 +8,7 @@ An MCP (Model Context Protocol) server that exposes Starknet blockchain operatio
 - **Contract Interactions**: Call read/write functions on any Starknet contract
 - **DeFi Operations**: Execute swaps via avnu aggregator with best-price routing
 - **Fee Estimation**: Estimate transaction costs before execution
-- **Multi-token Support**: ETH, STRK, USDC, USDT, and custom ERC20 tokens
+- **Multi-token Support**: ETH, STRK, USDC (Circle native), USDC.e (legacy bridged USDC), USDT, and custom ERC20 tokens
 
 ## Installation
 
@@ -153,7 +153,7 @@ Get token balance for an address.
 
 ```typescript
 {
-  "token": "ETH",  // or "STRK", "USDC", "USDT", or contract address
+  "token": "ETH",  // or "STRK", "USDC", "USDC.e", "USDT", or contract address
   "address": "0x..."  // optional, defaults to agent's address
 }
 ```

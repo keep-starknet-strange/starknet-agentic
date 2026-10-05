@@ -10,7 +10,7 @@ import type { Token, TokenTag } from "@avnu/avnu-sdk";
  * Used internally by TokenService for caching.
  */
 export interface CachedToken extends Token {
-  /** True for static tokens (ETH, STRK, USDC, USDT) - never expires */
+  /** True for static tokens (ETH, STRK, USDC, USDC.e, USDT) - never expires */
   isStatic: boolean;
   /** Timestamp when token was cached - used for TTL */
   lastUpdated: number;

@@ -53,10 +53,11 @@ describe("TokenService", () => {
   });
 
   describe("static tokens", () => {
-    it("should have ETH, STRK, USDC, USDT loaded by default", () => {
-      expect(service.getCacheSize()).toBe(4);
+    it("should have ETH, STRK, USDC, USDC.e, USDT loaded by default", () => {
+      expect(service.getCacheSize()).toBe(5);
       expect(service.getDecimals("0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7")).toBe(18);
       expect(service.getDecimals("0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d")).toBe(18);
+      expect(service.getDecimals("0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb")).toBe(6);
       expect(service.getDecimals("0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8")).toBe(6);
       expect(service.getDecimals("0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8")).toBe(6);
     });
@@ -77,7 +78,12 @@ describe("TokenService", () => {
 
   describe("symbol resolution", () => {
     it("should resolve known symbols", () => {
-      expect(service.resolveSymbol("USDC")).toBe("0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8");
+      expect(service.resolveSymbol("USDC")).toBe("0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb");
+    });
+
+    it("should resolve USDC.e to legacy bridged USDC, case-insensitively", () => {
+      expect(service.resolveSymbol("USDC.e")).toBe("0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8");
+      expect(service.resolveSymbol("usdc.e")).toBe("0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8");
     });
 
     it("should pass through and normalize hex addresses", () => {
@@ -226,11 +232,11 @@ describe("TokenService", () => {
       vi.mocked(fetchTokenByAddress).mockResolvedValueOnce(MOCK_LORDS_TOKEN);
 
       await service.getTokenByAddress(MOCK_LORDS_TOKEN.address);
-      expect(service.getCacheSize()).toBe(5); // 4 static + 1 dynamic
+      expect(service.getCacheSize()).toBe(6); // 5 static + 1 dynamic
 
       service.clearDynamicCache();
 
-      expect(service.getCacheSize()).toBe(4); // Only static
+      expect(service.getCacheSize()).toBe(5); // Only static
       // LORDS should not be resolvable after clearing
       expect(() => service.resolveSymbol("LORDS")).toThrow("Unknown token: LORDS");
       // ETH should still be resolvable

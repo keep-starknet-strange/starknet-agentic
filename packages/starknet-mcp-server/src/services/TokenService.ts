@@ -52,6 +52,7 @@ const STATIC_TOKEN_DATA = [
   { address: MAINNET_TOKENS.ETH, symbol: "ETH", name: "Ether", decimals: 18 },
   { address: MAINNET_TOKENS.STRK, symbol: "STRK", name: "Starknet Token", decimals: 18 },
   { address: MAINNET_TOKENS.USDC, symbol: "USDC", name: "USD Coin", decimals: 6 },
+  { address: MAINNET_TOKENS.USDC_E, symbol: "USDC.e", name: "Bridged USDC", decimals: 6 },
   { address: MAINNET_TOKENS.USDT, symbol: "USDT", name: "Tether USD", decimals: 6 },
 ] as const;
 
@@ -70,7 +71,7 @@ export const STATIC_TOKENS: CachedToken[] = STATIC_TOKEN_DATA.map((token) => ({
  */
 export const TOKENS = Object.fromEntries(
   STATIC_TOKENS.map((t) => [t.symbol, t.address])
-) as Record<"ETH" | "STRK" | "USDC" | "USDT", string>;
+) as Record<"ETH" | "STRK" | "USDC" | "USDC.e" | "USDT", string>;
 
 /**
  * Check if a cached token has expired (TTL 24h).

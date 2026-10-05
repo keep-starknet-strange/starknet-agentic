@@ -59,7 +59,7 @@ export function normalizeAddress(address: string): string {
  *
  * @example
  * ```typescript
- * await validateTokensInputAsync(["ETH", "USDC"])  // → ["0x049d...", "0x053c..."]
+ * await validateTokensInputAsync(["ETH", "USDC"])  // → ["0x049d...", "0x0330..."]
  * await validateTokensInputAsync([])               // → throws "At least one token is required"
  * await validateTokensInputAsync(["ETH", "ETH"])   // → throws "Duplicate tokens in request"
  * ```
