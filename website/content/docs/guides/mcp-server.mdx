@@ -74,7 +74,7 @@ Starknet's native account abstraction makes it ideal for AI agent operations:
 
 Before configuring any AI client, you need:
 
-1. **Node.js 18+** - [Download](https://nodejs.org/)
+1. **Node.js 24+** - [Download](https://nodejs.org/)
 2. **A Starknet Account** - With private key access
 3. **RPC Endpoint** - From [Alchemy](https://www.alchemy.com/) or [Infura](https://infura.io/). For quick tests, the keyless Cartridge endpoint `https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10` works but is rate limited
 4. **The MCP Server Built** - See installation below
@@ -345,7 +345,7 @@ The MCP server exposes 10 core tools plus 4 conditional tools:
 | `starknet_invoke_contract` | Execute state-changing contract function |
 | `starknet_estimate_fee` | Estimate transaction fee |
 | `starknet_build_calls` | Build unsigned calls for external signing |
-| `x402_starknet_sign_payment_required` | Sign X-402 payment header |
+| `x402_starknet_sign_payment_required` | Build and sign an x402 `exact` payment from a PAYMENT-REQUIRED header (direct signer mode) |
 | `starknet_register_agent` | Register ERC-8004 identity (conditional) |
 | `starknet_set_agent_metadata` | Set agent metadata (conditional) |
 | `starknet_get_agent_metadata` | Read agent metadata (conditional) |

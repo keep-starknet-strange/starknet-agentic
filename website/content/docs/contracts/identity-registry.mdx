@@ -128,16 +128,14 @@ fn register(ref self: TContractState) -> u256
 **Example:**
 
 ```typescript
-import { Account, RpcProvider, Contract, constants } from "starknet";
+import { Account, RpcProvider, Contract } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
-const account = new Account(
+const account = new Account({
   provider,
   address,
-  privateKey,
-  undefined,
-  constants.TRANSACTION_VERSION.V3
-);
+  signer: privateKey,
+});
 
 const { transaction_hash } = await account.execute({
   contractAddress: identityRegistryAddress,
@@ -145,7 +143,7 @@ const { transaction_hash } = await account.execute({
   calldata: [],
 });
 
-const receipt = await account.waitForTransaction(transaction_hash);
+const receipt = await provider.waitForTransaction(transaction_hash);
 // Parse agent_id from Registered event
 ```
 
@@ -261,7 +259,7 @@ fn get_metadata(self: @TContractState, agent_id: u256, key: ByteArray) -> ByteAr
 **Example:**
 
 ```typescript
-const identityRegistry = new Contract(abi, identityRegistryAddress, provider);
+const identityRegistry = new Contract({ abi, address: identityRegistryAddress, providerOrAccount: provider });
 
 const name = await identityRegistry.get_metadata(agentId, "agentName");
 const status = await identityRegistry.get_metadata(agentId, "status");
@@ -483,11 +481,11 @@ The IdentityRegistry also implements standard ERC-721 functions:
 ## Complete Example
 
 ```typescript
-import { Account, RpcProvider, Contract, CallData, constants } from "starknet";
+import { Account, RpcProvider, Contract, CallData } from "starknet";
 
 // Setup
 const provider = new RpcProvider({ nodeUrl: "https://starknet-sepolia.g.alchemy.com/..." });
-const account = new Account(provider, address, privateKey, undefined, constants.TRANSACTION_VERSION.V3);
+const account = new Account({ provider, address, signer: privateKey });
 
 // Register agent with metadata
 const metadata = [
@@ -506,10 +504,10 @@ const { transaction_hash } = await account.execute({
   }),
 });
 
-await account.waitForTransaction(transaction_hash);
+await provider.waitForTransaction(transaction_hash);
 
 // Query the agent
-const registry = new Contract(abi, identityRegistryAddress, provider);
+const registry = new Contract({ abi, address: identityRegistryAddress, providerOrAccount: provider });
 const total = await registry.total_agents();
 const exists = await registry.agent_exists(1n);
 const name = await registry.get_metadata(1n, "agentName");

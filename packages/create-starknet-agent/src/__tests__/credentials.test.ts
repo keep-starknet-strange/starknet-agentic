@@ -74,7 +74,7 @@ describe("credentials", () => {
 
   describe("isValidRpcUrl", () => {
     it("accepts valid RPC URLs", () => {
-      expect(isValidRpcUrl("https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/test")).toBe(true);
+      expect(isValidRpcUrl("https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/test")).toBe(true);
       expect(isValidRpcUrl("http://localhost:5050")).toBe(true);
       expect(isValidRpcUrl("https://api.example.com/rpc")).toBe(true);
     });
@@ -91,7 +91,7 @@ describe("credentials", () => {
       const result = validateCredentials(
         "0x1234567890abcdef",
         "0xabcdef1234567890",
-        "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/test"
+        "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/test"
       );
 
       expect(result.valid).toBe(true);
@@ -102,7 +102,7 @@ describe("credentials", () => {
       const result = validateCredentials(
         "invalid-address",
         "0xabcdef1234567890",
-        "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/test"
+        "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/test"
       );
 
       expect(result.valid).toBe(false);
@@ -115,7 +115,7 @@ describe("credentials", () => {
       const result = validateCredentials(
         "0x1234567890abcdef",
         "invalid-key",
-        "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/test"
+        "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/test"
       );
 
       expect(result.valid).toBe(false);

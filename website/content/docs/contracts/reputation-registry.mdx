@@ -339,7 +339,7 @@ fn get_summary(
 **Example:**
 
 ```typescript
-const registry = new Contract(abi, reputationRegistryAddress, provider);
+const registry = new Contract({ abi, address: reputationRegistryAddress, providerOrAccount: provider });
 
 // Get overall summary
 const [count, summaryValue, decimals] = await registry.get_summary(agentId, [], "", "");
@@ -560,12 +560,12 @@ const SECURITY = encodeTag("security");
 ## Complete Example
 
 ```typescript
-import { Account, RpcProvider, Contract, CallData, constants } from "starknet";
+import { Account, RpcProvider, Contract, CallData } from "starknet";
 
 // Setup
 const provider = new RpcProvider({ nodeUrl: rpcUrl });
-const ownerAccount = new Account(provider, ownerAddress, ownerPrivateKey, undefined, constants.TRANSACTION_VERSION.V3);
-const clientAccount = new Account(provider, clientAddress, clientPrivateKey, undefined, constants.TRANSACTION_VERSION.V3);
+const ownerAccount = new Account({ provider, address: ownerAddress, signer: ownerPrivateKey });
+const clientAccount = new Account({ provider, address: clientAddress, signer: clientPrivateKey });
 
 // 1. Owner creates authorization for client
 const feedbackAuth = {
@@ -597,7 +597,7 @@ await clientAccount.execute({
 });
 
 // 3. Query reputation
-const registry = new Contract(abi, reputationRegistryAddress, provider);
+const registry = new Contract({ abi, address: reputationRegistryAddress, providerOrAccount: provider });
 const [count, avgScore] = await registry.get_summary(agentId, [], 0, 0);
 console.log(`Agent has ${count} reviews with average score ${avgScore}/100`);
 

@@ -15,11 +15,11 @@
 
 import "dotenv/config";
 import { Account as TongoAccount } from "@fatsolutions/tongo-sdk";
-import { Account, RpcProvider, TransactionExecutionStatus } from "starknet";
+import { Account, RpcProvider } from "starknet";
 
 async function waitSuccess(provider: RpcProvider, txHash: string) {
   const receipt = await provider.waitForTransaction(txHash);
-  if (receipt.execution_status === TransactionExecutionStatus.REVERTED) {
+  if (receipt.isReverted()) {
     throw new Error(`Transaction reverted: ${receipt.revert_reason ?? "no revert reason provided"}`);
   }
   return receipt;
@@ -35,7 +35,8 @@ function required(name: string): string {
 }
 
 async function main() {
-  const provider = new RpcProvider({ nodeUrl: required("STARKNET_RPC_URL") });
+  const rpcUrl = required("STARKNET_RPC_URL");
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
   const tongoContractAddress = required("TONGO_CONTRACT_ADDRESS");
 
   const account = new Account({
@@ -44,17 +45,19 @@ async function main() {
     signer: required("STARKNET_PRIVATE_KEY"),
   });
 
+  // tongo-sdk bundles its own starknet.js 9.x: hand it the RPC URL, not the
+  // starknet.js 10 provider (which fails its internal provider check).
   const sender = new TongoAccount(
     required("TONGO_PRIVATE_KEY_SENDER"),
     tongoContractAddress,
-    provider,
+    rpcUrl,
   );
   // WARNING: Test-only pattern. In production, each Tongo private key must only
   // exist on its owner's machine. Never co-locate multiple Tongo keys.
   const receiver = new TongoAccount(
     required("TONGO_PRIVATE_KEY_RECEIVER"),
     tongoContractAddress,
-    provider,
+    rpcUrl,
   );
 
   const AMOUNT = 10n;

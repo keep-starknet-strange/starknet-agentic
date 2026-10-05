@@ -30,8 +30,10 @@ Confidential ERC20 payments on Starknet using the [Tongo protocol](https://githu
 ## Prerequisites
 
 ```bash
-npm install @fatsolutions/tongo-sdk starknet@^9.2.1
+npm install @fatsolutions/tongo-sdk starknet@^10.8.0
 ```
+
+`@fatsolutions/tongo-sdk` bundles its own starknet.js 9.4.2. Give the Tongo classes your RPC URL (a string), not your starknet.js 10 `RpcProvider`: a v10 provider instance fails the SDK's internal check (`Failed to parse URL from [object Object]`) and does not typecheck. The calls Tongo operations return are plain `Call` objects that your v10 `Account` executes.
 
 To run the demo script (`scripts/demo-e2e.ts`):
 
@@ -86,11 +88,12 @@ const account = new Account({
   signer: process.env.STARKNET_PRIVATE_KEY,
 });
 
-// Tongo account for confidential operations
+// Tongo account for confidential operations. Pass the RPC URL: tongo-sdk
+// builds its own provider with the starknet.js copy it bundles.
 const tongo = new TongoAccount(
   process.env.TONGO_PRIVATE_KEY,
   process.env.TONGO_CONTRACT_ADDRESS,
-  provider,
+  process.env.STARKNET_RPC_URL,
 );
 
 console.log("Tongo address:", tongo.tongoAddress()); // Base58-encoded public key
@@ -206,7 +209,7 @@ import { Auditor } from "@fatsolutions/tongo-sdk";
 const auditor = new Auditor(
   process.env.TONGO_AUDITOR_PRIVATE_KEY,
   process.env.TONGO_CONTRACT_ADDRESS,
-  provider,
+  process.env.STARKNET_RPC_URL, // RPC URL, not a starknet.js 10 provider
 );
 
 // Tongo address of the user to audit (Base58, shared publicly by the user)

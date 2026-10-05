@@ -583,7 +583,7 @@ export async function runCredentialsSetup(args: CredentialsArgs): Promise<void> 
   if (!detectedNetwork && rpcUrl) {
     if (rpcUrl.includes("sepolia")) {
       detectedNetwork = "sepolia";
-    } else if (rpcUrl.includes("mainnet") || rpcUrl.includes("blast") && !rpcUrl.includes("sepolia")) {
+    } else if (rpcUrl.includes("mainnet")) {
       detectedNetwork = "mainnet";
     }
   }

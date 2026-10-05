@@ -504,3 +504,73 @@ describe("compareDecimalStrings", () => {
     expect(compareDecimalStrings("10", "abc")).toBe(0);
   });
 });
+
+describe("PolicyGuard.evaluatePayment (x402 payments as transfers)", () => {
+  const STRK = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
+  const PAY_TO = "0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57";
+  const PAY_TO_UNPADDED = "0x2dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57";
+  const OTHER = "0x0666000000000000000000000000000000000000000000000000000000000bad";
+  const base = { asset: STRK, payTo: PAY_TO, amount: 10n ** 18n, decimals: 18, trustedSymbol: "STRK" };
+
+  it("allows everything without a transfer policy", () => {
+    expect(new PolicyGuard({}).evaluatePayment({ ...base, decimals: undefined }).allowed).toBe(true);
+  });
+
+  it("compares the amount exactly in atomic units", () => {
+    const guard = new PolicyGuard({ transfer: { maxAmountPerCall: "1" } });
+    expect(guard.evaluatePayment(base).allowed).toBe(true);
+    const over = guard.evaluatePayment({ ...base, amount: 10n ** 18n + 1n });
+    expect(over.allowed).toBe(false);
+    expect(over.reason).toBe("Payment amount 1.000000000000000001 exceeds policy limit of 1");
+  });
+
+  it("rounds a limit finer than the token's decimals down", () => {
+    const guard = new PolicyGuard({ transfer: { maxAmountPerCall: "0.0000019" } });
+    expect(guard.evaluatePayment({ ...base, amount: 1n, decimals: 6 }).allowed).toBe(true);
+    expect(guard.evaluatePayment({ ...base, amount: 2n, decimals: 6 }).allowed).toBe(false);
+  });
+
+  it("fails closed on unknown decimals or an unparseable limit", () => {
+    const guard = new PolicyGuard({ transfer: { maxAmountPerCall: "100" } });
+    expect(guard.evaluatePayment({ ...base, decimals: undefined }).allowed).toBe(false);
+    expect(guard.evaluatePayment({ ...base, decimals: 1.5 }).allowed).toBe(false);
+    expect(guard.evaluatePayment({ ...base, decimals: 300 }).allowed).toBe(false);
+    const bad = new PolicyGuard({ transfer: { maxAmountPerCall: "1e3" } });
+    expect(bad.evaluatePayment(base)).toEqual({
+      allowed: false,
+      reason: 'Policy maxAmountPerCall "1e3" is not a decimal number',
+    });
+  });
+
+  it("fails closed on values it cannot evaluate", () => {
+    const guard = new PolicyGuard({ transfer: { allowedRecipients: [PAY_TO] } });
+    expect(guard.evaluatePayment({ ...base, payTo: "merchant" }).allowed).toBe(false);
+    expect(guard.evaluatePayment({ ...base, amount: -1n }).allowed).toBe(false);
+  });
+
+  it("matches recipients numerically, so padding cannot dodge a list", () => {
+    expect(new PolicyGuard({ transfer: { allowedRecipients: [PAY_TO_UNPADDED] } }).evaluatePayment(base).allowed).toBe(true);
+    expect(new PolicyGuard({ transfer: { allowedRecipients: [OTHER] } }).evaluatePayment(base).allowed).toBe(false);
+    expect(
+      new PolicyGuard({ transfer: { blockedRecipients: [PAY_TO_UNPADDED.toUpperCase().replace("0X", "0x")] } }).evaluatePayment(base)
+        .allowed
+    ).toBe(false);
+    expect(new PolicyGuard({ transfer: { blockedRecipients: [OTHER] } }).evaluatePayment(base).allowed).toBe(true);
+  });
+
+  it("matches allowedTokens by address, or by symbol only when the symbol is trusted", () => {
+    const strkUnpadded = "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
+    expect(new PolicyGuard({ transfer: { allowedTokens: [strkUnpadded] } }).evaluatePayment(base).allowed).toBe(true);
+    expect(new PolicyGuard({ transfer: { allowedTokens: ["strk"] } }).evaluatePayment(base).allowed).toBe(true);
+    expect(
+      new PolicyGuard({ transfer: { allowedTokens: ["STRK"] } }).evaluatePayment({ ...base, trustedSymbol: undefined }).allowed
+    ).toBe(false);
+    expect(new PolicyGuard({ transfer: { allowedTokens: ["USDC", OTHER] } }).evaluatePayment(base).allowed).toBe(false);
+  });
+
+  it("does not change how the preflight treats the x402 tool (denyUnknownTools still blocks it)", () => {
+    const guard = new PolicyGuard({ denyUnknownTools: true, transfer: {} });
+    expect(guard.evaluate("x402_starknet_sign_payment_required", { paymentRequiredHeader: "e30=" }).allowed).toBe(false);
+    expect(new PolicyGuard({}).evaluate("x402_starknet_sign_payment_required", {}).allowed).toBe(true);
+  });
+});

@@ -71,9 +71,9 @@ export class IdentityRegistryPassportClient {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- starknet.js Contract constructor accepts Abi type which is loosely typed
       abi: identityRegistryAbi as any,
       address: args.identityRegistryAddress,
-      providerOrAccount: args.provider,
+      // starknet.js 10 Contract has no connect(); writes need the account here
+      providerOrAccount: args.account ?? args.provider,
     })
-    if (args.account) this.contract.connect(args.account)
   }
 
   async agentExists(agentId: bigint): Promise<boolean> {
@@ -82,16 +82,13 @@ export class IdentityRegistryPassportClient {
   }
 
   async getMetadata(agentId: bigint, key: string): Promise<string> {
-    const res = await this.contract.call("get_metadata", [agentId, encodeStringAsByteArray(key)])
+    // starknet.js 10 builds ByteArray arguments from plain strings and rejects ByteArray objects
+    const res = await this.contract.call("get_metadata", [agentId, key])
     return decodeByteArrayAsString(res)
   }
 
   async setMetadata(agentId: bigint, key: string, value: string) {
-    return this.contract.invoke("set_metadata", [
-      agentId,
-      encodeStringAsByteArray(key),
-      encodeStringAsByteArray(value),
-    ])
+    return this.contract.invoke("set_metadata", [agentId, key, value])
   }
 
   /**

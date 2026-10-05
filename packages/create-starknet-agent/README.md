@@ -224,6 +224,9 @@ npx @starknetfoundation/create-starknet-agent verify
 
 Checks:
 - MCP server configuration exists
+- The configured MCP server starts with the env from that config and answers an MCP
+  `initialize` handshake (reports its version and tool count; `--timeout <seconds>`,
+  default 60, covers the first `npx` download)
 - Required credentials are set
 - Skills are installed
 - Can query Starknet (optional balance check)

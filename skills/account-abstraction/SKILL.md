@@ -49,7 +49,7 @@ user-invocable: true
 import { Account, CallData, RpcProvider } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
-const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
+const account = new Account({ provider, address: process.env.ACCOUNT_ADDRESS!, signer: process.env.PRIVATE_KEY! });
 
 // Validate preview (debug-only): inspect __validate__ behavior with the current nonce.
 const nonce = await account.getNonce();

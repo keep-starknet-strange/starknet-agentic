@@ -116,7 +116,7 @@ describe("MCP config generation", () => {
     const network = "sepolia";
     const expectedRpcUrl = RPC_URLS[network];
 
-    expect(expectedRpcUrl).toBe("https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_API_KEY");
+    expect(expectedRpcUrl).toBe("https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10");
   });
 });
 

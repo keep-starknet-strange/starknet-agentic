@@ -54,6 +54,27 @@ export interface PolicyResult {
   reason?: string;
 }
 
+/**
+ * A token payment the server is about to authorize without a `starknet_transfer`
+ * call, e.g. an x402 payment: `amount` of `asset` to `payTo`.
+ */
+export interface PaymentPolicyInput {
+  /** Token contract address. */
+  asset: string;
+  /** Recipient address. */
+  payTo: string;
+  /** Exact amount in the token's atomic units. */
+  amount: bigint;
+  /** Token decimals, if known. Required when `transfer.maxAmountPerCall` is set. */
+  decimals?: number;
+  /**
+   * Symbol from the server's built-in token list only (never from token metadata
+   * fetched at runtime, which the token contract controls). Lets `allowedTokens`
+   * entries written as symbols match.
+   */
+  trustedSymbol?: string;
+}
+
 // ── Default deny-list of privileged entrypoints ─────────────────────────────
 
 const DEFAULT_BLOCKED_ENTRYPOINTS = [
@@ -102,6 +123,73 @@ export class PolicyGuard {
         }
         return { allowed: true };
     }
+  }
+
+  /**
+   * Evaluate a payment the server signs without going through `starknet_transfer`
+   * (x402) as a transfer of `amount` of `asset` to `payTo`, under the `transfer`
+   * policy. Same rules as `evaluateTransfer`, applied strictly because the values
+   * come from a counterparty: amounts are compared exactly in atomic units,
+   * addresses numerically, and anything that cannot be evaluated is denied.
+   */
+  evaluatePayment(input: PaymentPolicyInput): PolicyResult {
+    const policy = this.config.transfer;
+    if (!policy) return { allowed: true };
+
+    const payTo = parseFeltOrUndefined(input.payTo);
+    const asset = parseFeltOrUndefined(input.asset);
+    if (payTo === undefined || asset === undefined || input.amount < 0n) {
+      return { allowed: false, reason: "Payment recipient, token or amount cannot be evaluated" };
+    }
+
+    if (policy.maxAmountPerCall) {
+      const decimals = input.decimals;
+      if (decimals === undefined || !Number.isInteger(decimals) || decimals < 0 || decimals > 255) {
+        return {
+          allowed: false,
+          reason: `Token ${input.asset} decimals are unknown, so the payment cannot be checked against maxAmountPerCall`,
+        };
+      }
+      const limit = parseDecimalToAtomic(policy.maxAmountPerCall, decimals);
+      if (limit === undefined) {
+        return { allowed: false, reason: `Policy maxAmountPerCall "${policy.maxAmountPerCall}" is not a decimal number` };
+      }
+      if (input.amount > limit) {
+        return {
+          allowed: false,
+          reason: `Payment amount ${formatAtomic(input.amount, decimals)} exceeds policy limit of ${policy.maxAmountPerCall}`,
+        };
+      }
+    }
+
+    if (policy.allowedRecipients && policy.allowedRecipients.length > 0) {
+      if (!policy.allowedRecipients.some((entry) => parseFeltOrUndefined(entry) === payTo)) {
+        return { allowed: false, reason: `Recipient ${input.payTo} is not in the allowed recipients list` };
+      }
+    }
+
+    if (policy.blockedRecipients && policy.blockedRecipients.length > 0) {
+      const blocked = policy.blockedRecipients.some(
+        (entry) => parseFeltOrUndefined(entry) === payTo || entry.toLowerCase() === input.payTo.toLowerCase()
+      );
+      if (blocked) {
+        return { allowed: false, reason: `Recipient ${input.payTo} is blocked by policy` };
+      }
+    }
+
+    if (policy.allowedTokens && policy.allowedTokens.length > 0) {
+      const symbol = input.trustedSymbol?.toLowerCase();
+      const allowed = policy.allowedTokens.some((entry) => {
+        const felt = parseFeltOrUndefined(entry);
+        if (felt !== undefined) return felt === asset;
+        return symbol !== undefined && entry.toLowerCase() === symbol;
+      });
+      if (!allowed) {
+        return { allowed: false, reason: `Token ${input.asset} is not in the allowed tokens list` };
+      }
+    }
+
+    return { allowed: true };
   }
 
   private evaluateTransfer(args: Record<string, unknown>): PolicyResult {
@@ -287,6 +375,31 @@ export class PolicyGuard {
 function normalizeAddress(addr: string | undefined | null): string {
   if (!addr) return "";
   return addr.toLowerCase();
+}
+
+/** Parse a 0x-hex felt; undefined for anything else (symbols, garbage). */
+function parseFeltOrUndefined(value: unknown): bigint | undefined {
+  if (typeof value !== "string" || !/^0x[0-9a-fA-F]{1,64}$/.test(value.trim())) return undefined;
+  return BigInt(value.trim());
+}
+
+/**
+ * Exact conversion of a human-readable decimal ("1.5") to atomic units, rounding
+ * down any precision the token does not have. Undefined if not a plain decimal.
+ */
+function parseDecimalToAtomic(value: string, decimals: number): bigint | undefined {
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(value.trim());
+  if (!match) return undefined;
+  const [, whole, fraction = ""] = match;
+  return BigInt(whole + fraction.slice(0, decimals).padEnd(decimals, "0"));
+}
+
+function formatAtomic(amount: bigint, decimals: number): string {
+  if (decimals === 0) return amount.toString();
+  const digits = amount.toString().padStart(decimals + 1, "0");
+  const fraction = digits.slice(-decimals).replace(/0+$/, "");
+  const whole = digits.slice(0, -decimals);
+  return fraction ? `${whole}.${fraction}` : whole;
 }
 
 /**

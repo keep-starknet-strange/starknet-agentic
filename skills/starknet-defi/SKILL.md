@@ -30,7 +30,7 @@ Execute DeFi operations on Starknet using avnu aggregator and native protocols.
 ## Prerequisites
 
 ```bash
-npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
+npm install starknet@^10.8.0 @avnu/avnu-sdk@^4.2.0
 ```
 
 ## Token Swaps (avnu SDK v4)
@@ -43,7 +43,7 @@ import { Account, RpcProvider, ETransactionVersion } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
 
-// starknet.js v8: Account uses options object
+// starknet.js v10: Account uses an options object; provider calls go through account.provider
 const account = new Account({
   provider,
   address,
@@ -141,6 +141,7 @@ const result = await executeSwap({
     active: true,
     provider: paymaster,
     params: {
+      version: "0x1",
       feeMode: {
         mode: "default",
         gasToken: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", // USDC
