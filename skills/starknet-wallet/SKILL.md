@@ -137,11 +137,9 @@ const ethContract = new Contract({
   address: ethAddress,
   providerOrAccount: provider,
 });
-const balance = await ethContract.balanceOf(accountAddress);
-
-// Convert uint256 to bigint
-const balanceBigInt = BigInt(balance.low) + (BigInt(balance.high) << 128n);
-// Format: (balanceBigInt / 10n ** 18n).toString() for whole units
+// starknet.js parses a Cairo 1 u256 return value to bigint (no low/high struct)
+const balance: bigint = await ethContract.balanceOf(accountAddress);
+// Format: (balance / 10n ** 18n).toString() for whole units
 ```
 
 ### Check Multiple Balances (Batch)

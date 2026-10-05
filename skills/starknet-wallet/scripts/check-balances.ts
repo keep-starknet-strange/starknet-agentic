@@ -88,6 +88,7 @@ async function fetchTokenInfo(symbols: string[]): Promise<TokenInfo[]> {
   return Promise.all(
     symbols.map(async (symbol) => {
       const token = await fetchVerifiedTokenBySymbol(symbol);
+      if (!token) throw new Error(`${symbol} not found in avnu verified token list`);
       return {
         symbol,
         address: token.address,

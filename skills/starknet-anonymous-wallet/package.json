@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@andersmyrmel/vard": "^1.2.0",
-    "@avnu/avnu-sdk": "^4.0.1",
+    "@avnu/avnu-sdk": "^4.2.0",
     "compromise": "^14.14.5",
     "starknet": "^10.8.0",
     "typhoon-sdk": "^1.1.13",
