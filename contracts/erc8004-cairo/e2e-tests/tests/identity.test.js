@@ -63,7 +63,7 @@ async function runTests() {
     console.log('Test 1: Register Agent with Token URI');
     console.log('────────────────────────────────────────');
     
-    identityRegistry.connect(agentOwner);
+    identityRegistry.providerOrAccount = agentOwner;
     const tokenUri = 'ipfs://QmTest123/agent.json';
     
     const registerTx = await identityRegistry.register_with_token_uri(tokenUri);
@@ -177,7 +177,7 @@ async function runTests() {
     console.log('Test 9: Unauthorized Set Metadata (Should Fail)');
     console.log('────────────────────────────────────────');
     
-    identityRegistry.connect(otherUser);
+    identityRegistry.providerOrAccount = otherUser;
     
     try {
       await identityRegistry.set_metadata(
@@ -198,7 +198,7 @@ async function runTests() {
     console.log('Test 10: Approve and Transfer');
     console.log('────────────────────────────────────────');
     
-    identityRegistry.connect(agentOwner);
+    identityRegistry.providerOrAccount = agentOwner;
     
     // Approve other user
     const approveTx = await identityRegistry.approve(
@@ -230,7 +230,7 @@ async function runTests() {
     console.log('Test 11: New Owner Can Set Metadata');
     console.log('────────────────────────────────────────');
     
-    identityRegistry.connect(otherUser);
+    identityRegistry.providerOrAccount = otherUser;
     
     const newOwnerMetadataTx = await identityRegistry.set_metadata(
       toUint256(agentId),
@@ -252,7 +252,7 @@ async function runTests() {
     console.log('Test 12: Register Multiple Agents');
     console.log('────────────────────────────────────────');
     
-    identityRegistry.connect(agentOwner);
+    identityRegistry.providerOrAccount = agentOwner;
     
     const agent2Tx = await identityRegistry.register_with_token_uri('ipfs://agent2.json');
     await waitForTransaction(agent2Tx.transaction_hash);
@@ -316,7 +316,7 @@ async function runTests() {
     // Let's use one of the agents created in Test 12
     
     // First get a fresh agent ID that agentOwner owns
-    identityRegistry.connect(agentOwner);
+    identityRegistry.providerOrAccount = agentOwner;
     const freshAgentTx = await identityRegistry.register_with_token_uri('ipfs://wallet-test-agent.json');
     await waitForTransaction(freshAgentTx.transaction_hash);
     const walletTestAgentId = await identityRegistry.total_agents();
@@ -336,7 +336,7 @@ async function runTests() {
     console.log('Test 16: Unauthorized Unset Agent Wallet (Should Fail)');
     console.log('────────────────────────────────────────');
     
-    identityRegistry.connect(otherUser);
+    identityRegistry.providerOrAccount = otherUser;
     
     try {
       // otherUser trying to unset wallet for agent owned by agentOwner
@@ -355,7 +355,7 @@ async function runTests() {
     console.log('────────────────────────────────────────');
     
     // Step 1: Create a fresh agent
-    identityRegistry.connect(agentOwner);
+    identityRegistry.providerOrAccount = agentOwner;
     const hookTestTx = await identityRegistry.register_with_token_uri('ipfs://hook-test-agent.json');
     await waitForTransaction(hookTestTx.transaction_hash);
     const hookTestAgentId = await identityRegistry.total_agents();

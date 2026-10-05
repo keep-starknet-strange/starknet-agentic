@@ -63,7 +63,7 @@ function assert(condition, message) {
 async function waitForTx(txHash, account) {
   console.log(`   ⏳ Waiting for tx: ${txHash.slice(0, 18)}...`);
   try {
-    const receipt = await account.waitForTransaction(txHash, { retryInterval: 5000 });
+    const receipt = await account.provider.waitForTransaction(txHash, { retryInterval: 5000 });
     console.log('   ✅ Confirmed');
     return receipt;
   } catch (error) {
@@ -138,7 +138,7 @@ export default async function runTests() {
     console.log('Setup: Register Agent');
     console.log('────────────────────────────────────────');
     
-    identityRegistry.connect(agentOwner);
+    identityRegistry.providerOrAccount = agentOwner;
     const registerTx = await identityRegistry.register_with_token_uri('ipfs://validation-test-agent.json');
     await waitForTx(registerTx.transaction_hash, agentOwner);
     
@@ -177,7 +177,7 @@ export default async function runTests() {
     console.log('Test 2: Create Validation Request');
     console.log('────────────────────────────────────────');
     
-    validationRegistry.connect(agentOwner);
+    validationRegistry.providerOrAccount = agentOwner;
     
     const requestUri1 = 'ipfs://validation-req1.json';
     // Use timestamp to ensure uniqueness
@@ -319,7 +319,7 @@ export default async function runTests() {
     console.log('Test 7: Submit Validation Response (Valid)');
     console.log('────────────────────────────────────────');
     
-    validationRegistry.connect(validator);
+    validationRegistry.providerOrAccount = validator;
     
     const response1 = 100; // 100 = fully valid
     const responseUri1 = 'ipfs://validation-resp1.json';
@@ -406,7 +406,7 @@ export default async function runTests() {
     
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    validationRegistry.connect(agentOwner);
+    validationRegistry.providerOrAccount = agentOwner;
     
     const requestUri2 = 'ipfs://validation-req2.json';
     const requestHash2 = BigInt(Date.now()) + 0xFEDCBA2n;
@@ -441,7 +441,7 @@ export default async function runTests() {
     console.log('Test 10: Submit Second Validation Response (Invalid)');
     console.log('────────────────────────────────────────');
     
-    validationRegistry.connect(validator);
+    validationRegistry.providerOrAccount = validator;
     
     const response2 = 0; // 0 = invalid
     const responseUri2 = 'ipfs://validation-resp2.json';
