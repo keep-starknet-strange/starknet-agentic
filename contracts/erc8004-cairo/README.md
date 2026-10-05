@@ -355,6 +355,29 @@ Notes:
   - `REVIEW_ACKNOWLEDGED=true`
   - `REVIEWER_IDENTITY=<name|handle|ticket>`
 
+### Offline smoke test
+
+```bash
+scarb build
+cd scripts
+npm ci
+npm run smoke
+```
+
+`npm run smoke` runs `deploy.js` and `verify_owners.js` against an in-process fake Starknet
+JSON-RPC (`scripts/smoke/`). The scenarios cover:
+
+- declare and deploy on Sepolia and mainnet
+- the already-declared paths
+- every deployment safety gate
+- owner verification
+
+Nothing reaches a network: sockets and DNS are blocked, the RPC URL uses the reserved `.invalid`
+TLD, and each run uses a throwaway key and a clean environment, so it never reads your `.env`.
+The fake also checks what a node would check: V3 transaction shape, the class hash and compiled
+class hash of each declared class, and the constructor calldata of each deployment. CI runs it in
+the `Cairo (erc8004-cairo)` job. Set `SMOKE_ONLY=<regex>` to run a subset of scenarios.
+
 ## E2E Tests
 
 ```bash

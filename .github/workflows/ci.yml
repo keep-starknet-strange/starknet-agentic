@@ -271,6 +271,26 @@ jobs:
         working-directory: contracts/${{ matrix.contract }}
         run: snforge test
 
+      # Runs deploy.js and verify_owners.js against an in-process fake RPC
+      # (scripts/smoke/). No network access, no secrets, nothing is deployed.
+      - name: Setup Node.js (deploy-script smoke test)
+        if: matrix.contract == 'erc8004-cairo'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: contracts/erc8004-cairo/scripts/package-lock.json
+
+      - name: Smoke-test deploy scripts offline
+        if: matrix.contract == 'erc8004-cairo'
+        working-directory: contracts/erc8004-cairo
+        run: |
+          # Incremental: makes sure the Sierra/CASM artifacts the scripts declare are present.
+          scarb build
+          cd scripts
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run smoke
+
   website-build:
     name: Website Build
     needs: [detect-changes]

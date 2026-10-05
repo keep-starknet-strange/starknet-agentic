@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "deploy": "node deploy.js",
-    "verify:owners": "node verify_owners.js"
+    "verify:owners": "node verify_owners.js",
+    "smoke": "node smoke/run.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
