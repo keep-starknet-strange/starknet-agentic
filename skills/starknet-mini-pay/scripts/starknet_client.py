@@ -14,7 +14,7 @@ from starknet_py.rpc_provider import RpcProvider
 class StarknetClient:
     """Low-level Starknet RPC client"""
     
-    def __init__(self, rpc_url: str = "https://rpc.starknet.lava.build:443"):
+    def __init__(self, rpc_url: str = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"):
         self.rpc_url = rpc_url
         self.client = FullNodeClient(node_url=rpc_url)
     

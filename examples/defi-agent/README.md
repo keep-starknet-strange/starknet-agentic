@@ -210,7 +210,7 @@ Recommended for learning:
 ### Testnet Configuration
 
 ```env
-STARKNET_RPC_URL=https://starknet-sepolia.public.blastapi.io
+STARKNET_RPC_URL=https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10
 # Use testnet account
 STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_PRIVATE_KEY=0x...

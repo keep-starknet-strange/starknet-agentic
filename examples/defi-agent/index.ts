@@ -31,7 +31,7 @@ dotenv.config({ path: join(__dirname, ".env") });
 // ============================================================================
 
 const CONFIG = {
-  RPC_URL: process.env.STARKNET_RPC_URL || "https://starknet-mainnet.public.blastapi.io",
+  RPC_URL: process.env.STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10",
   ACCOUNT_ADDRESS: process.env.STARKNET_ACCOUNT_ADDRESS!,
   PRIVATE_KEY: process.env.STARKNET_PRIVATE_KEY!,
   AVNU_BASE_URL: process.env.AVNU_BASE_URL || AVNU_API_URLS.mainnet,

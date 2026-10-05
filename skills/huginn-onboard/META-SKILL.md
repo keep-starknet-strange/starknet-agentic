@@ -60,7 +60,7 @@ curl -X POST "https://api.avnu.fi/v1/bridge/quote" \
 import { Account, RpcProvider } from "starknet";
 
 const provider = new RpcProvider({
-  nodeUrl: "https://starknet-mainnet.public.blastapi.io"
+  nodeUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
 });
 
 // Deploy with paymaster (Foundation subsidizes gas)

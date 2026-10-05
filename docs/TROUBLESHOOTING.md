@@ -180,7 +180,9 @@ await sleep(100);  // 100ms delay
 **Use paid RPC for production:**
 - [Alchemy](https://www.alchemy.com/starknet) - 300M compute units/month free
 - [Infura](https://www.infura.io/networks/starknet) - 100K requests/day free
-- [Blast API](https://blastapi.io/public-api/starknet) - Public endpoints
+- Keyless public endpoints for testing only (rate limited, RPC spec 0.10):
+  - Cartridge: `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`, `https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10`
+  - PublicNode: `https://starknet-rpc.publicnode.com`, `https://starknet-sepolia-rpc.publicnode.com`
 
 ---
 
