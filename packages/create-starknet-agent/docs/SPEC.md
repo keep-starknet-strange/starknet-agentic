@@ -179,10 +179,18 @@ npx @starknetfoundation/create-starknet-agent verify
 
 Checks:
 1. MCP config exists and is valid JSON
-2. MCP server binary is available (`npx @starknetfoundation/starknet-agentic-mcp-server --version`)
+2. MCP server is reachable: verify starts the `mcpServers.starknet` command with the
+   config's `env` (expanding `${VAR}` / `${VAR:-default}` from the environment),
+   sends an MCP `initialize` request and `tools/list` over stdio, and reports
+   `serverInfo.version` and the tool count. The server is always stopped afterwards
+   (hard timeout, default 60s, `--timeout <seconds>`; also on Ctrl-C). If the server
+   exits naming missing environment variables, verify reports them as a configuration
+   problem. Server output is shown only with `--verbose`, with secrets redacted.
 3. Required environment variables are set (not their values, just existence)
 4. Skills are installed
-5. (Optional) Can reach Starknet RPC and query a balance
+5. (Optional) Can reach Starknet RPC and query a balance. Without `STARKNET_RPC_URL`
+   this uses a keyless public Sepolia endpoint on RPC spec 0.10
+   (`PUBLIC_RPC_URLS` in `packages/shared`).
 
 ---
 
