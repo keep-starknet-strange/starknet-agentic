@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "starknet": "^9.2.1"
+    "starknet": "^10.8.0"
   },
   "devDependencies": {
     "tsx": "^4.21.0",
