@@ -62,6 +62,7 @@ This endpoint has no WebSocket support, so `watch-events-smart.js` falls back to
 - The gas token defaults to the sell token. Pass `"gasToken":"STRK"` (any verified symbol the paymaster accepts) to override it.
 - The account needs the sell amount plus the fee in the gas token.
 - `PAYMASTER_URL` selects the endpoint; only `starknet.paymaster.avnu.fi` and `sepolia.paymaster.avnu.fi` are accepted.
+- Quotes always come from the mainnet AVNU API, so swaps currently run on mainnet only; on Sepolia, `executeSwap` fails with `Invalid chainId`.
 
 ## Starknet.js v10 quick patterns
 
