@@ -169,8 +169,7 @@ starknet-mini-pay/
 │   ├── invoice.py        # Invoice management
 │   ├── telegram_bot.py   # Telegram bot
 │   └── starknet_client.py # RPC client
-└── tests/
-    └── test_payments.py  # Unit tests
+└── requirements.txt      # Python dependencies
 ```
 
 ## Usage Examples

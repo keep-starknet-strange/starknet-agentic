@@ -128,10 +128,7 @@ starknet-mini-pay/
 │   ├── invoice.py          # Invoice system
 │   ├── telegram_bot.py     # Telegram bot
 │   └── starknet_client.py  # Starknet RPC client
-├── contracts/
-│   └── payment_request.cairo  # Optional invoice contract
-└── tests/
-    └── test_payments.py
+└── requirements.txt
 ```
 
 ## Dependencies
@@ -257,11 +254,9 @@ Payer: opens the link and signs the transfer in their own wallet
 
 ## Optional: Invoice Contract
 
-For trustless invoices, deploy the Cairo contract:
+This skill does not ship a contract. A trustless invoice contract could follow this sketch:
 
 ```cairo
-// contracts/payment_request.cairo
-
 #[starknet::contract]
 mod PaymentRequest {
     #[storage]
