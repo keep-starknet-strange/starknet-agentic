@@ -139,6 +139,15 @@ function toCachedToken(token: Token, isStatic: boolean): CachedToken {
 }
 
 /**
+ * Readable text for a rejection that may not be an Error, or may be an Error
+ * with an empty message.
+ */
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message || `${error.name} (no message)`;
+  return String(error);
+}
+
+/**
  * TokenService manages token resolution and caching.
  * Uses avnu SDK for lazy fetching of unknown tokens.
  */
@@ -425,17 +434,25 @@ export class TokenService {
       }
     }
 
+    const builtIns = this.getStaticTokens().map((t) => t.symbol).join(", ");
+    const unknown = `Unknown token "${symbol}": not a built-in token on ${this.network} (built-ins: ${builtIns})`;
+
     // Fetch from avnu (verified tokens only)
+    let token: Token | null | undefined;
     try {
-      const token = await fetchVerifiedTokenBySymbol(symbol, { baseUrl: this.baseUrl });
-      if (!token) {
-        throw new Error("token not found");
-      }
-      return this.addToCache(token, false);
+      token = await fetchVerifiedTokenBySymbol(symbol, { baseUrl: this.baseUrl });
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to fetch token by symbol "${symbol}": ${msg}`);
+      // The avnu SDK rejects with `undefined` when no verified token matches.
+      if (error !== undefined) {
+        throw new Error(`${unknown}, and avnu's verified list could not be checked: ${describeError(error)}`, {
+          cause: error,
+        });
+      }
     }
+    if (!token) {
+      throw new Error(`${unknown} and not in avnu's verified list`);
+    }
+    return this.addToCache(token, false);
   }
 
   /**

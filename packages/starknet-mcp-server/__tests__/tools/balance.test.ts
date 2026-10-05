@@ -73,9 +73,10 @@ describe("resolveTokenAddressAsync", () => {
   });
 
   it("throws for unknown token symbols", async () => {
-    // Async version tries avnu first, so error message is different
-    await expect(resolveTokenAddressAsync("UNKNOWN")).rejects.toThrow("Failed to fetch token by symbol");
-    await expect(resolveTokenAddressAsync("invalid")).rejects.toThrow("Failed to fetch token by symbol");
+    // Async version tries avnu first; the message starts the same whether avnu
+    // finds nothing or cannot be reached.
+    await expect(resolveTokenAddressAsync("UNKNOWN")).rejects.toThrow('Unknown token "UNKNOWN": not a built-in token');
+    await expect(resolveTokenAddressAsync("invalid")).rejects.toThrow('Unknown token "invalid": not a built-in token');
   });
 });
 
@@ -230,7 +231,7 @@ describe("starknet_get_balances (batch)", () => {
 
   it("throws for unknown tokens in batch", async () => {
     const tokens = ["ETH", "UNKNOWN_TOKEN", "USDC"];
-    await expect(Promise.all(tokens.map(resolveTokenAddressAsync))).rejects.toThrow("Failed to fetch token by symbol");
+    await expect(Promise.all(tokens.map(resolveTokenAddressAsync))).rejects.toThrow('Unknown token "UNKNOWN_TOKEN"');
   });
 });
 

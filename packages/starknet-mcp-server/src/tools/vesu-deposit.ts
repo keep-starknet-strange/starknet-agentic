@@ -19,7 +19,7 @@ export const definition: Tool = {
     properties: {
       token: {
         type: "string",
-        description: "Token symbol (STRK, ETH, USDC, USDC.e, USDT) or address",
+        description: "Token symbol (STRK, ETH, USDC, USDC.e; USDT on mainnet only) or address",
       },
       amount: {
         type: "string",

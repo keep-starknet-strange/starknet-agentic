@@ -315,7 +315,9 @@ describe("TokenService", () => {
       vi.mocked(fetchVerifiedTokenBySymbol).mockResolvedValue(null as never);
       const sepolia = new TokenService(undefined, "sepolia");
 
-      await expect(sepolia.resolveSymbolAsync("USDT")).rejects.toThrow('Failed to fetch token by symbol "USDT"');
+      await expect(sepolia.resolveSymbolAsync("USDT")).rejects.toThrow(
+        'Unknown token "USDT": not a built-in token on sepolia (built-ins: ETH, STRK, USDC, USDC.e) and not in avnu\'s verified list'
+      );
       expect(fetchVerifiedTokenBySymbol).toHaveBeenCalledWith("USDT", { baseUrl: "https://sepolia.api.avnu.fi" });
     });
 
@@ -396,6 +398,69 @@ describe("TokenService", () => {
       expect(networkForStarknetChainId("0x0534E5F5345504F4C4941")).toBe("sepolia");
       expect(networkForStarknetChainId("0x4b4154414e41")).toBeUndefined(); // KATANA
       expect(networkForStarknetChainId("SN_SEPOLIA")).toBeUndefined();
+    });
+  });
+
+  describe("unknown symbols", () => {
+    const UNKNOWN_SEPOLIA_USDT =
+      'Unknown token "USDT": not a built-in token on sepolia (built-ins: ETH, STRK, USDC, USDC.e)';
+
+    it("names the network and its built-ins when a symbol is unknown", async () => {
+      vi.mocked(fetchVerifiedTokenBySymbol).mockRejectedValue(undefined);
+
+      await expect(service.getTokenBySymbol("NOPE")).rejects.toThrow(
+        'Unknown token "NOPE": not a built-in token on mainnet (built-ins: ETH, STRK, USDC, USDC.e, USDT) and not in avnu\'s verified list'
+      );
+    });
+
+    it("reports a readable not-found error when avnu rejects with undefined", async () => {
+      // avnu-sdk 4.x rejects with `undefined` when no verified token matches the symbol.
+      vi.mocked(fetchVerifiedTokenBySymbol).mockRejectedValue(undefined);
+      const sepolia = new TokenService(undefined, "sepolia");
+
+      const error = await sepolia.resolveSymbolAsync("USDT").catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe(`${UNKNOWN_SEPOLIA_USDT} and not in avnu's verified list`);
+      expect((error as Error).message).not.toContain("undefined");
+      expect((error as Error).cause).toBeUndefined();
+    });
+
+    it("keeps avnu's error as the cause when the lookup itself fails", async () => {
+      const avnuError = new TypeError("fetch failed");
+      vi.mocked(fetchVerifiedTokenBySymbol).mockRejectedValue(avnuError);
+      const sepolia = new TokenService(undefined, "sepolia");
+
+      const error = await sepolia.getTokenBySymbol("USDT").catch((e: unknown) => e);
+
+      expect((error as Error).message).toBe(
+        `${UNKNOWN_SEPOLIA_USDT}, and avnu's verified list could not be checked: fetch failed`
+      );
+      expect((error as Error).cause).toBe(avnuError);
+    });
+
+    it("describes avnu errors without a message and non-Error rejections", async () => {
+      const sepolia = new TokenService(undefined, "sepolia");
+
+      vi.mocked(fetchVerifiedTokenBySymbol).mockRejectedValueOnce(new Error(""));
+      await expect(sepolia.getTokenBySymbol("USDT")).rejects.toThrow(
+        "avnu's verified list could not be checked: Error (no message)"
+      );
+
+      vi.mocked(fetchVerifiedTokenBySymbol).mockRejectedValueOnce("503 Service Unavailable");
+      const error = await sepolia.getTokenBySymbol("USDT").catch((e: unknown) => e);
+      expect((error as Error).message).toBe(
+        `${UNKNOWN_SEPOLIA_USDT}, and avnu's verified list could not be checked: 503 Service Unavailable`
+      );
+      expect((error as Error).cause).toBe("503 Service Unavailable");
+    });
+
+    it("caches nothing after a failed lookup", async () => {
+      vi.mocked(fetchVerifiedTokenBySymbol).mockRejectedValueOnce(undefined).mockResolvedValueOnce(MOCK_LORDS_TOKEN);
+
+      await expect(service.resolveSymbolAsync("LORDS")).rejects.toThrow('Unknown token "LORDS"');
+      expect(service.getCacheSize()).toBe(5);
+      expect(await service.resolveSymbolAsync("LORDS")).toBe(MOCK_LORDS_TOKEN.address);
     });
   });
 

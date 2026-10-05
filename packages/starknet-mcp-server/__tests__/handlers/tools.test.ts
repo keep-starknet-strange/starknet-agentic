@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
 // Token addresses
 const TOKENS = {
@@ -1057,7 +1058,8 @@ describe("MCP Tool Handlers", () => {
 
       expect(response.isError).toBe(true);
       const result = parseResponse(response);
-      expect(result.message).toContain("Failed to fetch token");
+      expect(result.message).toContain('Unknown token "UNKNOWN_TOKEN": not a built-in token on');
+      expect(result.message).toContain("and not in avnu's verified list");
     });
 
     it("respects slippage parameter", async () => {
@@ -1868,6 +1870,24 @@ describe("Tool list", () => {
     expect(toolNames).toContain("x402_starknet_sign_payment_required");
   });
 
+  it("marks USDT as mainnet-only wherever a tool lists it", async () => {
+    if (!capturedListHandler) {
+      throw new Error("List handler not captured");
+    }
+
+    const { tools }: { tools: Tool[] } = await capturedListHandler();
+    const descriptions = tools.flatMap((t) => [
+      t.description ?? "",
+      ...Object.values(t.inputSchema.properties ?? {}).map((p) => (p as { description?: string }).description ?? ""),
+    ]);
+
+    const usdt = descriptions.filter((d) => d.includes("USDT"));
+    expect(usdt.length).toBeGreaterThanOrEqual(8);
+    for (const description of usdt) {
+      expect(description).toMatch(/USDT (\(mainnet only\)|on mainnet only)/);
+    }
+  });
+
   it("includes deploy tool when factory env is set", async () => {
     process.env.AGENT_ACCOUNT_FACTORY_ADDRESS =
       "0x0fabcde01234567890abcdef01234567890abcdef01234567890abcdef01234";
@@ -2016,6 +2036,31 @@ describe("Static token network", () => {
 
     expect(await usdcAddress()).toBe(SEPOLIA_USDC);
     expect(await lookUpUsdt()).toBe("https://avnu.internal.example");
+  });
+
+  it("tells the agent USDT is unknown on Sepolia rather than reporting an undefined avnu error", async () => {
+    await startServer({}, SEPOLIA_CHAIN_ID);
+    // avnu-sdk rejects with `undefined` when no verified token matches the symbol.
+    mockFetchVerifiedTokenBySymbol.mockRejectedValueOnce(undefined);
+
+    const response = await callTool("starknet_get_balance", { token: "USDT" });
+
+    expect(response.isError).toBe(true);
+    expect(parseResponse(response).message).toBe(
+      'Unknown token "USDT": not a built-in token on sepolia (built-ins: ETH, STRK, USDC, USDC.e) and not in avnu\'s verified list'
+    );
+  });
+
+  it("passes avnu lookup failures through to the agent", async () => {
+    await startServer({}, SEPOLIA_CHAIN_ID);
+    mockFetchVerifiedTokenBySymbol.mockRejectedValueOnce(new TypeError("fetch failed"));
+
+    const response = await callTool("starknet_get_balance", { token: "USDT" });
+
+    expect(response.isError).toBe(true);
+    expect(parseResponse(response).message).toBe(
+      'Unknown token "USDT": not a built-in token on sepolia (built-ins: ETH, STRK, USDC, USDC.e), and avnu\'s verified list could not be checked: fetch failed'
+    );
   });
 
   it("keeps the RPC URL's network when the chain id cannot be read", async () => {
