@@ -78,13 +78,13 @@ class DeFiAgent {
   private tradeCount: number = 0;
 
   constructor() {
-    // starknet.js v8 uses options objects
+    // starknet.js v10 uses options objects
     this.provider = new RpcProvider({ nodeUrl: CONFIG.RPC_URL });
     this.account = new Account({
       provider: this.provider,
       address: CONFIG.ACCOUNT_ADDRESS,
       signer: CONFIG.PRIVATE_KEY,
-      // transactionVersion defaults to V3 in starknet.js v8
+      // starknet.js v10 only sends V3 transactions
     });
   }
 
@@ -124,7 +124,7 @@ class DeFiAgent {
       });
 
       const balance = await ethContract.balance_of(this.account.address);
-      // In starknet.js v8 with Cairo 1 ABI, u256 returns as bigint
+      // With a Cairo 1 ABI, starknet.js returns u256 as bigint
       const balanceBigInt = typeof balance === "bigint" ? balance : BigInt(balance);
       const balanceETH = Number(balanceBigInt) / 1e18;
 

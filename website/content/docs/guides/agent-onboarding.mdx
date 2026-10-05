@@ -26,7 +26,7 @@ The result is a fully functional agent account with:
 
 You need:
 
-- **Node.js 18+**
+- **Node.js 24+**
 - **A funded deployer account** (existing Starknet account that pays for deployment)
 - **RPC endpoint** (Sepolia or Mainnet)
 
@@ -103,16 +103,14 @@ For canonical address reconciliation (including legacy Sepolia set), see `docs/D
 The preflight step validates your environment:
 
 ```typescript
-import { RpcProvider, Account, constants } from "starknet";
+import { RpcProvider, Account } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
-const account = new Account(
+const account = new Account({
   provider,
-  process.env.DEPLOYER_ADDRESS,
-  process.env.DEPLOYER_PRIVATE_KEY,
-  undefined,
-  constants.TRANSACTION_VERSION.V3
-);
+  address: process.env.DEPLOYER_ADDRESS,
+  signer: process.env.DEPLOYER_PRIVATE_KEY,
+});
 
 // Verify chain ID
 const chainId = await provider.getChainId();
@@ -164,13 +162,11 @@ The factory atomically:
 Send a self-transfer to verify the account works:
 
 ```typescript
-const agentAccount = new Account(
+const agentAccount = new Account({
   provider,
-  deployedAccountAddress,
-  privateKey,
-  undefined,
-  constants.TRANSACTION_VERSION.V3
-);
+  address: deployedAccountAddress,
+  signer: privateKey,
+});
 
 // Zero-value self-transfer
 await agentAccount.execute({
@@ -188,21 +184,23 @@ await agentAccount.execute({
 With gasfree mode, the AVNU paymaster sponsors gas fees:
 
 ```typescript
-import { PaymasterRpc } from "starknet";
+import { Account, PaymasterRpc } from "starknet";
 
 const paymaster = new PaymasterRpc({
   nodeUrl: "https://sepolia.paymaster.avnu.fi",
   headers: { "x-paymaster-api-key": process.env.AVNU_PAYMASTER_API_KEY },
 });
 
-const result = await deployerAccount.execute([deployCall], {
-  paymaster: {
-    provider: paymaster,
-    params: {
-      version: "0x1",
-      feeMode: { mode: "sponsored" },
-    },
-  },
+// Attach the paymaster to the deployer account
+const deployerAccount = new Account({
+  provider,
+  address: process.env.DEPLOYER_ADDRESS,
+  signer: process.env.DEPLOYER_PRIVATE_KEY,
+  paymaster,
+});
+
+const result = await deployerAccount.executePaymasterTransaction([deployCall], {
+  feeMode: { mode: "sponsored" },
 });
 ```
 

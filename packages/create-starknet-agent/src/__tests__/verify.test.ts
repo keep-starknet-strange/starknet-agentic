@@ -1,18 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { parseVerifyArgs } from "../verify.js";
 
-// Mock child_process for spawn tests
-vi.mock("node:child_process", () => ({
-  spawn: vi.fn().mockReturnValue({
-    on: vi.fn((event, callback) => {
-      if (event === "close") {
-        setTimeout(() => callback(0), 10);
-      }
-    }),
-    kill: vi.fn(),
-  }),
-}));
-
 describe("verify module", () => {
   const originalEnv = process.env;
 
@@ -87,6 +75,17 @@ describe("verify module", () => {
       const args = parseVerifyArgs(["--platform", "invalid"]);
 
       expect(args.platform).toBeUndefined();
+    });
+
+    it("parses --timeout in seconds", () => {
+      expect(parseVerifyArgs(["--timeout", "90"]).mcpTimeoutMs).toBe(90_000);
+      expect(parseVerifyArgs(["--timeout", "2.5"]).mcpTimeoutMs).toBe(2_500);
+    });
+
+    it("ignores an invalid --timeout", () => {
+      expect(parseVerifyArgs(["--timeout", "0"]).mcpTimeoutMs).toBeUndefined();
+      expect(parseVerifyArgs(["--timeout", "-5"]).mcpTimeoutMs).toBeUndefined();
+      expect(parseVerifyArgs(["--timeout", "soon"]).mcpTimeoutMs).toBeUndefined();
     });
 
     it("parses multiple flags together", () => {

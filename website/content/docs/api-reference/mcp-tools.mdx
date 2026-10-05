@@ -26,7 +26,7 @@ This page documents the Starknet MCP Server toolset. Tool availability can evolv
 | [`starknet_invoke_contract`](#starknet_invoke_contract) | Invoke contract function | Yes |
 | [`starknet_estimate_fee`](#starknet_estimate_fee) | Estimate transaction fee | No |
 | [`starknet_build_calls`](#starknet_build_calls) | Build unsigned calls for external signing | No |
-| [`x402_starknet_sign_payment_required`](#x402_starknet_sign_payment_required) | Sign X-402 payment | No |
+| [`x402_starknet_sign_payment_required`](#x402_starknet_sign_payment_required) | Build and sign an x402 payment (no transaction sent) | No |
 | [`starknet_register_agent`](#starknet_register_agent) | Register ERC-8004 identity | Yes |
 | [`starknet_set_agent_metadata`](#starknet_set_agent_metadata) | Set agent metadata | Yes |
 | [`starknet_get_agent_metadata`](#starknet_get_agent_metadata) | Read agent metadata | No |
@@ -915,62 +915,94 @@ const result = await sessionAccount.execute(calls);
 
 ## x402_starknet_sign_payment_required
 
-Sign a base64-encoded PAYMENT-REQUIRED header containing Starknet typedData. Part of the [X-402 payment protocol](https://x402.xyz/) for AI-to-AI micropayments.
+Pay for an x402-protected HTTP resource with the configured account. Implements the client side of the x402 v2 [`exact` scheme on Starknet](https://github.com/x402-foundation/x402/blob/751590a25e7ecc22ee044b37fd55c2b66cc14fd6/specs/schemes/exact/scheme_exact_starknet.md): the tool reads the server's payment requirements from the `PAYMENT-REQUIRED` header, builds the SNIP-9 `OutsideExecution` itself, checks it against the spending policy, signs it and returns the `PAYMENT-SIGNATURE` header to send with the retried request.
+
+<Callout type="warning" title="Direct signer mode only">
+  The tool signs with `STARKNET_PRIVATE_KEY` and is not listed when `STARKNET_SIGNER_MODE=proxy`. The signer API has no endpoint for this signature yet.
+</Callout>
+
+**What gets signed**
+
+Only what the requirements say, built by the client: exactly one call `transfer(payTo, amount)` on the `asset` token for exactly `amount` atomic units, executable only by the server's `extra.feePayer` (SNIP-9 `Caller`), from now until `now + maxTimeoutSeconds`, with a fresh nonce. The server pays the gas. The tool never signs typed data or calls supplied by the server, and refuses:
+
+- a header that is not standard base64 (base64url is rejected) of an x402 v2 `PaymentRequired`;
+- offers that are not `scheme: "exact"` on the chain the RPC reports (`starknet:SN_MAIN` or `starknet:SN_SEPOLIA`);
+- a `feePayer` equal to the payer or to the SNIP-9 `ANY_CALLER` sentinel;
+- a non base-10 or zero `amount`, invalid addresses, or `maxTimeoutSeconds` above 3600;
+- a payment the `transfer` policy forbids (`maxAmountPerCall`, `allowedRecipients`, `blockedRecipients`, `allowedTokens`). When `maxAmountPerCall` is set and the token's decimals cannot be resolved, the payment is refused.
 
 **Parameters**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `paymentRequiredHeader` | string | Yes | Base64-encoded JSON from PAYMENT-REQUIRED HTTP header |
-| `rpcUrl` | string | No | Starknet RPC URL (defaults to env var) |
-| `accountAddress` | string | No | Account address (defaults to env var) |
-| `privateKey` | string | No | Private key (defaults to env var) |
+| `paymentRequiredHeader` | string | Yes | Value of the `PAYMENT-REQUIRED` response header (standard base64 of an x402 v2 `PaymentRequired`) |
+| `acceptIndex` | integer | No | Index of the `accepts` entry to pay. Defaults to the first `exact` entry on the account's network |
+
+The account, key and RPC always come from the server's environment; arguments with those names are ignored.
 
 **Returns**
 
 ```json
 {
-  "paymentSignatureHeader": "eyJzaWduYXR1cmUiOiIweDEyMzQ...",
-  "payload": {
-    "version": "1",
-    "network": "starknet-mainnet",
-    "amount": "1000000",
-    "token": "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
-    "recipient": "0x04f3..."
+  "paymentSignatureHeader": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoi...NDU3Il19fX0=",
+  "summary": {
+    "network": "starknet:SN_SEPOLIA",
+    "acceptIndex": 0,
+    "resourceUrl": "https://api.example.com/premium-data",
+    "asset": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+    "payTo": "0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
+    "amount": "500000000000000000",
+    "feePayer": "0x05f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
+    "payer": "0x0007f16adbaa3a661e1c412e85e2cf3fe598a968434af09fd789fb3d4cedfcdb",
+    "nonce": "0x9b18366a878bb02f47b989d85f6ec6df66b80ebd50f6d5d14074001820576",
+    "validAfter": 1,
+    "validUntil": 1791183914,
+    "validUntilIso": "2026-10-05T07:05:14.000Z",
+    "assetSymbol": "STRK",
+    "decimals": 18,
+    "amountFormatted": "0.5",
+    "description": "Authorized a payment of 0.5 STRK to 0x02dd1b49...8170ab57 on starknet:SN_SEPOLIA, executable only by 0x05f2e02a...1be36f81 until 2026-10-05T07:05:14.000Z."
   }
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `paymentSignatureHeader` | string | Base64-encoded signature for PAYMENT-SIGNATURE header |
-| `payload` | object | Decoded payment request details |
+| `paymentSignatureHeader` | string | Value for the `PAYMENT-SIGNATURE` request header: standard base64 of `{ x402Version: 2, resource, accepted, payload: { from, outsideExecution: { typedData, signature } } }`, signature as hex felts `[r, s]` |
+| `summary` | object | What was authorized: token, exact amount (atomic and formatted when decimals are known), recipient, the only address that can execute it, and its expiry |
+
+`assetSymbol` is set only for tokens in the server's built-in list; `decimals` and `amountFormatted` are `null` when the token's decimals cannot be resolved.
 
 **Examples**
 
-<Collapsible title="Sign payment header" defaultOpen={true}>
+<Collapsible title="Pay a 402 response" defaultOpen={true}>
 
-**Prompt:** "Sign this payment header: eyJhbW91bnQiOiIxMDAw..."
+**Prompt:** "The API answered 402 with this PAYMENT-REQUIRED header: eyJ4NDAyVmVyc2lvbiI6Mi... Pay it."
 
 **Tool call:**
 ```json
 {
-  "paymentRequiredHeader": "eyJhbW91bnQiOiIxMDAwMDAwIiwicmVjaXBpZW50IjoiMHgwNGYzZThkMTdiNDFiMWU4MmIxM2E5MzUyYjI4ZjNmOGU1YjAwZWYuLi4ifQ=="
+  "paymentRequiredHeader": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZXhhbXBsZS5jb20vcHJlbWl1bS1kYXRhIn0sImFjY2VwdHMiOlt7InNjaGVtZSI6ImV4YWN0IiwibmV0d29yayI6InN0YXJrbmV0OlNOX1NFUE9MSUEiLCJhbW91bnQiOiI1MDAwMDAwMDAwMDAwMDAwMDAiLCJhc3NldCI6IjB4MDQ3MThmNWEwZmMzNGNjMWFmMTZhMWNkZWU5OGZmYjIwYzMxZjVjZDYxZDZhYjA3MjAxODU4ZjQyODdjOTM4ZCIsInBheVRvIjoiMHgwMmRkMWI0OTI3NjVjMDY0ZWFjNDAzOWUzODQxYWE1ZjM4Mjc3M2I1OTgwOTdhNDAwNzNiZDhiNDgxNzBhYjU3IiwibWF4VGltZW91dFNlY29uZHMiOjMwMCwiZXh0cmEiOnsiZmVlUGF5ZXIiOiIweDA1ZjJlMDJhY2Q1OWYzN2YxZTE5ZGE3ZWExZGI2YmYzMWQ0OWU2ZTViYTY2YTdmMWMyZjBlMmJhMWJlMzZmODEifX1dfQ=="
 }
 ```
 
+The agent then retries the request with `PAYMENT-SIGNATURE: <paymentSignatureHeader>`.
+
 </Collapsible>
 
-**Error Codes**
+**Errors**
 
-| Error | Cause | Recovery |
-|-------|-------|----------|
-| `INVALID_HEADER` | Malformed base64 or JSON | Check header encoding |
-| `UNSUPPORTED_NETWORK` | Network not Starknet | Verify payment request |
-| `SIGNATURE_FAILED` | Signing operation failed | Check private key |
+| Message starts with | Cause | Recovery |
+|---------------------|-------|----------|
+| `PAYMENT-REQUIRED is base64url` / `is not valid standard base64` | Header is not standard base64 | Pass the header value unchanged |
+| `PAYMENT-REQUIRED is not a valid x402 v2 PaymentRequired` | Not an x402 v2 document | The server does not speak x402 v2 |
+| `PAYMENT-REQUIRED offers no exact payment on starknet:...` | No `exact` offer on the account's chain | Use an account on an offered chain |
+| `accepts[i] ...` | The offer is malformed or unsafe (amount, addresses, `feePayer`, `maxTimeoutSeconds`) | Do not pay; pick another offer with `acceptIndex` if there is one |
+| `Policy violation: ...` | The payment exceeds or breaks the `transfer` policy | Adjust the policy or decline |
+| `... is disabled in STARKNET_SIGNER_MODE=proxy` | Proxy signer mode | Not available in proxy mode |
 
-<Callout type="info" title="X-402 Protocol">
-  X-402 enables HTTP-based micropayments where servers return `402 Payment Required` responses. The client signs and returns a `PAYMENT-SIGNATURE` header to authorize payment.
+<Callout type="info" title="x402">
+  x402 lets HTTP servers charge per request: the server answers `402 Payment Required` with a `PAYMENT-REQUIRED` header, the client retries with a `PAYMENT-SIGNATURE` header, and the server's facilitator verifies and settles the payment on-chain.
 </Callout>
 
 ---

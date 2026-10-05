@@ -97,8 +97,8 @@ const block = await provider.getBlock('latest');
 const nonce = await provider.getNonceForAddress(accountAddress);
 await provider.waitForTransaction(txHash);
 
-// Read storage directly
-const value = await provider.getStorageAt(contractAddress, storageKey);
+// Read storage directly (v10 returns { value, last_update_block }, not a bare felt)
+const { value } = await provider.getStorageAt(contractAddress, storageKey);
 ```
 
 ## Account Management
@@ -128,8 +128,7 @@ const address = hash.calculateContractAddressFromHash(publicKey, classHash, cons
 ```typescript
 import { Account } from 'starknet';
 
-// NOTE: Account constructor signature varies across starknet.js versions.
-// If this doesn't typecheck for your version, refer to the official docs.
+// v10: the Account constructor takes a single options object
 const account = new Account({ provider, address, signer: privateKey, cairoVersion: '1' });
 const { transaction_hash } = await account.deployAccount({
   classHash,
@@ -221,7 +220,8 @@ const tx = await account.execute([approveCall, depositCall]);
 ```typescript
 const receipt = await provider.getTransactionReceipt(txHash);
 const events = contract.parseEvents(receipt);
-const transferEvents = contract.parseEvents(receipt, 'Transfer');
+// Events are keyed by full Cairo path, e.g. '...::ERC20Component::Transfer'
+const transferEvents = events.filter((e) => Object.keys(e).some((name) => name.endsWith('::Transfer')));
 ```
 
 ## Transaction Simulation
@@ -229,17 +229,17 @@ const transferEvents = contract.parseEvents(receipt, 'Transfer');
 Simulate before executing to catch reverts and inspect state changes:
 
 ```typescript
-const simResult = await account.simulateTransaction(
-  [{ type: 'INVOKE', payload: calls }],
-  { skipValidate: false }
+// v10 returns { simulated_transactions, initial_reads? } instead of an array
+const { simulated_transactions: [sim] } = await account.simulateTransaction(
+  [{ type: 'INVOKE', payload: calls }], { skipValidate: false }
 );
 
-console.log('Fee estimate:', simResult[0].fee_estimation);
-console.log('Trace:', simResult[0].transaction_trace);
+console.log('Fee estimate:', sim.overall_fee, sim.resourceBounds);
+console.log('Trace:', sim.transaction_trace);
 
 // Check state changes before execution
-const trace = simResult[0].transaction_trace;
-if (trace?.state_diff) {
+const trace = sim.transaction_trace;
+if ('state_diff' in trace && trace.state_diff) {
   console.log('Storage changes:', trace.state_diff.storage_diffs);
 }
 ```
@@ -254,21 +254,21 @@ console.log({
 });
 ```
 
-Execute with custom bounds:
+Execute with custom bounds (each resource is `{ max_amount, max_price_per_unit }` as bigint; by default v10 already adds a 50% margin to estimated bounds via `config.get('resourceBoundsOverhead')`):
 ```typescript
+const { resourceBounds } = await account.estimateInvokeFee(calls);
 const tx = await account.execute(calls, {
   resourceBounds: {
-    l1_gas: { amount: '0x2000', price: '0x1000000000' },
-    l2_gas: { amount: '0x0', price: '0x0' },
-    l1_data_gas: { amount: '0x1000', price: '0x1000000000' }
+    ...resourceBounds,
+    l2_gas: { ...resourceBounds.l2_gas, max_amount: resourceBounds.l2_gas.max_amount * 2n }
   }
 });
 ```
 
-With priority tip:
+With priority tip (v10 applies `recommendedTip` by default via `config` `defaultTipType`; pass `tip` to override). `getEstimateTip()` returns `{ minTip, maxTip, averageTip, medianTip, modeTip, recommendedTip, p90Tip, p95Tip }`:
 ```typescript
 const tipStats = await provider.getEstimateTip();
-const tx = await account.execute(calls, { tip: tipStats.percentile_75 });
+const tx = await account.execute(calls, { tip: tipStats.p90Tip });
 ```
 
 ## Transaction Receipt Handling
@@ -281,8 +281,6 @@ if (receipt.isSuccess()) {
   console.log('Transaction succeeded');
 } else if (receipt.isReverted()) {
   console.log('Reverted:', receipt.revert_reason);
-} else if (receipt.isRejected()) {
-  console.log('Rejected');
 } else if (receipt.isError()) {
   console.log('Error');
 }
@@ -297,6 +295,8 @@ import { connect } from '@starknet-io/get-starknet';
 import { WalletAccount } from 'starknet';
 
 const selectedWallet = await connect({ modalMode: 'alwaysAsk' });
+if (!selectedWallet) throw new Error('No wallet selected');
+// get-starknet 4.x bundles older wallet-API types than v10; strict TS may need a cast here
 const walletAccount = await WalletAccount.connect(
   { nodeUrl: 'https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10' },
   selectedWallet
@@ -306,7 +306,7 @@ const walletAccount = await WalletAccount.connect(
 const tx = await walletAccount.execute(calls);
 
 // Event handlers
-walletAccount.onAccountChange((accounts) => console.log('New account:', accounts[0]));
+walletAccount.onAccountChange((accounts) => console.log('New account:', accounts?.[0]));
 walletAccount.onNetworkChanged((chainId) => console.log('Network changed:', chainId));
 ```
 
@@ -328,8 +328,9 @@ const tx = await account.executePaymasterTransaction(calls, { feeMode: { mode: '
 
 **Alternative token (e.g., USDC):**
 ```typescript
+import type { PaymasterDetails } from 'starknet';
 const tokens = await account.paymaster.getSupportedTokens();
-const feeDetails = { feeMode: { mode: 'default', gasToken: USDC_ADDRESS } };
+const feeDetails: PaymasterDetails = { feeMode: { mode: 'default', gasToken: USDC_ADDRESS } };
 const estimate = await account.estimatePaymasterTransactionFee(calls, feeDetails);
 const tx = await account.executePaymasterTransaction(calls, feeDetails, estimate.suggested_max_fee_in_gas_token);
 ```
@@ -354,13 +355,14 @@ const typedData = {
 
 const signature = await account.signMessage(typedData);
 const msgHash = await account.hashMessage(typedData);
-const isValid = ec.starkCurve.verify(signature, msgHash, publicKey);
+// Verify via the account contract's is_valid_signature (works for any account type)
+const isValid = await provider.verifyMessageInStarknet(typedData, signature, account.address);
 ```
 
 ## CallData & Cairo Types
 
 ```typescript
-import { CallData, cairo, CairoCustomEnum, CairoOption, CairoOptionVariant } from 'starknet';
+import { CallData, cairo, byteArray, CairoCustomEnum, CairoOption, CairoOptionVariant } from 'starknet';
 
 // Compile with ABI
 const calldata = new CallData(abi);
@@ -368,10 +370,9 @@ const compiled = calldata.compile('transfer', { recipient: '0x...', amount: cair
 
 // Cairo type helpers - always use BigInt (n suffix) for token amounts
 cairo.uint256(1000n)          // { low, high } - ALWAYS use BigInt for precision
-cairo.felt252(1000)           // BigInt
-cairo.felt('0x123')           // hex to felt
-cairo.bool(true)              // Cairo bool
-cairo.byteArray('Hello')      // ByteArray for long strings
+cairo.felt('0x123')           // felt252 as a decimal string ('291'); throws outside [0, P)
+byteArray.byteArrayFromString('Hello')  // ByteArray for long strings
+// Cairo bool: pass true / false directly
 
 // Short strings (<= 31 chars)
 import { shortString } from 'starknet';
@@ -395,8 +396,8 @@ const balance = await erc20.balanceOf(account.address);
 console.log('Balance (wei):', balance.toString());
 
 // Transfer (use BigInt for amount)
-const amount = cairo.uint256(1000000000000000000n); // 1 token (18 decimals)
-const tx = await erc20.transfer(recipientAddress, amount);
+const amount = 10n ** 18n; // 1 token (18 decimals)
+const tx = await erc20.transfer(recipientAddress, cairo.uint256(amount));
 await provider.waitForTransaction(tx.transaction_hash);
 
 // Approve + transferFrom pattern
@@ -457,12 +458,13 @@ const result = await account.declareAndDeploy({
 Execute transactions on behalf of another account (gasless/delegated):
 
 ```typescript
-const version = await account.getSnip9Version();  // 'V1' | 'V2' | 'UNSUPPORTED'
+import { OutsideExecutionVersion } from 'starknet';
+const version = await account.getSnip9Version();  // OutsideExecutionVersion: '0' | '1' | '2'
 
 const outsideTransaction = await account.getOutsideTransaction(
   { caller: executorAddress, execute_after: now, execute_before: now + 3600 },
   calls,
-  'V2'
+  OutsideExecutionVersion.V2
 );
 
 // Executor submits the pre-signed transaction
@@ -488,12 +490,10 @@ try {
 ## Logging & Configuration
 
 ```typescript
-import { config, setLogLevel } from 'starknet';
+import { config, logger } from 'starknet';
 
-// Global config
-config.set('transactionVersion', '0x3');
-config.get('transactionVersion');
-
-// Logging
-setLogLevel('DEBUG');  // ERROR | WARN | INFO | DEBUG
+// Global config (v10 only sends V3 transactions)
+config.set('defaultTipType', 'p90Tip');   // tip applied when execute() gets no `tip`
+config.get('resourceBoundsOverhead');     // margin added to estimated resource bounds
+logger.setLogLevel('DEBUG');  // DEBUG | INFO | WARN | ERROR | FATAL | OFF
 ```

@@ -16,8 +16,18 @@ This document defines the contract between `packages/starknet-mcp-server` (proxy
   - `spec/examples/signer-api/x402.request.json`
   - `spec/examples/signer-api/x402.response.json`
 
-Note: current `starknet-mcp-server` runtime disables `x402_starknet_sign_payment_required` in proxy mode.
-The x402 examples document the signer API contract for interoperable clients and planned proxy-safe x402 paths.
+Note: `starknet-mcp-server` disables `x402_starknet_sign_payment_required` in proxy mode. The x402
+examples show a transfer signed through the generic session-transaction contract; they are not
+yet a working path for the registered x402 `exact` scheme on Starknet, which needs a signature over
+a SNIP-9 v2 `OutsideExecution` whose `Caller` is the server's `extra.feePayer`. This v1 request
+schema has no `caller` (or `executeAfter`) field, and SISNA, which accepts `caller` as an extension,
+defaults it to `ANY_CALLER`, which would make the signed payment a bearer authorization anyone can
+submit. A proxy-safe x402 path needs, at least: `caller` and `executeAfter` in the request schema
+(required, and never `ANY_CALLER`, for payments); signer-side enforcement of the payment intent
+(exactly one `transfer(payTo, amount)` on the token, `caller = feePayer`) and of spending limits;
+the MCP server comparing the returned `messageHash` with the hash of the document it checked; and
+confirmation that the session account accepts the session signature in `is_valid_signature` and
+`execute_from_outside_v2`. See issue #554.
 
 ## Endpoint
 

@@ -49,7 +49,7 @@ import { Account, RpcProvider, ETransactionVersion } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
 
-// starknet.js v10: Account uses options object
+// starknet.js v10: Account uses an options object; provider calls go through account.provider
 const account = new Account({
   provider,
   address,
