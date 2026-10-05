@@ -1,7 +1,9 @@
 # Starknet Mini-Pay Dependencies
 
 # Core Starknet SDK
-starknet-py>=0.6.0
+# Tested with 0.30.x, which requires an RPC endpoint serving JSON-RPC spec 0.10.
+# Minor releases track RPC spec bumps, so re-test before widening this range.
+starknet-py>=0.30.0,<0.31.0
 
 # QR Code generation
 qrcode[pil]>=7.4.2
