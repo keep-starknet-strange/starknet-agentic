@@ -36,6 +36,7 @@ import { VESU_POOL_FACTORY } from "./helpers/vesu.js";
 import { z } from "zod";
 import { AVNU_API_URLS, AVNU_PAYMASTER_URLS } from "@starknetfoundation/starknet-agentic-shared/constants";
 import { formatErrorMessage } from "./utils/formatter.js";
+import { SERVER_VERSION } from "./version.js";
 import { PolicyGuard, loadPolicyConfig } from "./middleware/policyGuard.js";
 import { KeyringProxySigner } from "./helpers/keyringProxySigner.js";
 import {
@@ -296,7 +297,7 @@ async function executeTransaction(
 const server = new Server(
   {
     name: "starknet-mcp-server",
-    version: "0.1.0",
+    version: SERVER_VERSION,
   },
   {
     capabilities: {
