@@ -11,12 +11,19 @@ import { spawn } from "node:child_process";
 import pc from "picocolors";
 import {
   ETH_TOKEN_ADDRESS,
+  PUBLIC_RPC_URLS,
   STRK_TOKEN_ADDRESS,
 } from "@starknetfoundation/starknet-agentic-shared/constants";
 import type { DetectedPlatform, Network } from "./types.js";
 import { detectPlatforms, getPlatformByType, isValidPlatformType } from "./platform.js";
 import { EXIT_CODES } from "./index.js";
 import { AVAILABLE_SKILLS } from "./wizards.js";
+
+/**
+ * RPC used by the end-to-end balance check when STARKNET_RPC_URL is not set:
+ * a keyless public Sepolia endpoint on RPC spec 0.10.
+ */
+export const DEFAULT_E2E_RPC_URL: string = PUBLIC_RPC_URLS.sepolia;
 
 /**
  * MCP server check result
@@ -262,7 +269,7 @@ async function pingMcpServer(
       env: {
         ...process.env,
         // Minimal env for ping
-        STARKNET_RPC_URL: "https://starknet-sepolia.public.blastapi.io/rpc/v0_7",
+        STARKNET_RPC_URL: PUBLIC_RPC_URLS.sepolia,
       },
     });
 
@@ -479,6 +486,13 @@ function checkSkills(platform: DetectedPlatform): SkillsCheckResult {
 }
 
 /**
+ * RPC URL for the end-to-end check: STARKNET_RPC_URL, else the public default.
+ */
+export function resolveE2ERpcUrl(env: NodeJS.ProcessEnv): string {
+  return env.STARKNET_RPC_URL || DEFAULT_E2E_RPC_URL;
+}
+
+/**
  * Perform end-to-end balance check
  */
 async function checkE2E(
@@ -502,7 +516,7 @@ async function checkE2E(
   try {
     // Get full address from env
     const accountAddress = process.env.STARKNET_ACCOUNT_ADDRESS;
-    const rpcUrl = process.env.STARKNET_RPC_URL || "https://starknet-sepolia.public.blastapi.io/rpc/v0_7";
+    const rpcUrl = resolveE2ERpcUrl(process.env);
 
     if (!accountAddress) {
       result.error = "Account address not available in environment";
@@ -718,7 +732,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     errors.push("STARKNET_PRIVATE_KEY not set");
   }
   if (!credentialsResult.rpcUrlPresent) {
-    warnings.push("STARKNET_RPC_URL not set, using default public RPC");
+    warnings.push("STARKNET_RPC_URL not set; the end-to-end check uses a public Sepolia RPC");
   }
 
   if (!args.jsonOutput) {
@@ -737,7 +751,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     if (credentialsResult.rpcUrlPresent) {
       console.log(`  ${pc.green("✓")} RPC URL configured`);
     } else {
-      console.log(`  ${pc.yellow("○")} RPC URL not set ${pc.dim("(will use default public RPC)")}`);
+      console.log(`  ${pc.yellow("○")} RPC URL not set ${pc.dim("(end-to-end check uses a public Sepolia RPC)")}`);
     }
 
     if (credentialsResult.network) {
