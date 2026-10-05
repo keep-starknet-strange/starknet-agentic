@@ -18,12 +18,16 @@ Simple P2P payments on Starknet. Like Lightning, but native.
 ### 1. Install Dependencies
 
 ```bash
-pip install starknet-py qrcode[pil] python-telegram-bot httpx aiosqlite --break-system-packages
+pip install -r requirements.txt
 ```
+
+`starknet-py` is pinned to the tested 0.30.x range, which requires an RPC endpoint serving
+Starknet JSON-RPC spec 0.10.
 
 ### 2. Set Environment Variables
 
 ```bash
+# Keyless public RPC (spec 0.10). Sepolia: https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10
 export STARKNET_RPC="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
 export MINI_PAY_ADDRESS="0xyour_address_here"
 export MINI_PAY_PRIVATE_KEY="0xyour_private_key_here"
@@ -51,12 +55,12 @@ from mini_pay import MiniPay
 
 pay = MiniPay()
 
-# Send payment
-tx_hash = await pay.send(
+# Send payment (V3 transaction: the fee is paid in STRK)
+tx_hash = await pay.transfer(
     from_address="0x...",
     private_key="0x...",
     to_address="0x123...",
-    amount_wei=0.01 * 10**18,  # 0.01 ETH
+    amount_wei=10**16,  # 0.01 ETH
     token="ETH",
     memo="Coffee"
 )
@@ -176,11 +180,11 @@ from mini_pay import MiniPay
 async def main():
     pay = MiniPay(rpc_url="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10")
     
-    tx_hash = await pay.send(
+    tx_hash = await pay.transfer(
         from_address="0xsender...",
         private_key="0xkey...",
         to_address="0xrecipient...",
-        amount_wei=0.05 * 10**18,
+        amount_wei=5 * 10**16,  # 0.05 ETH
         token="ETH",
         memo="Lunch payment"
     )
@@ -276,10 +280,10 @@ Message your bot and use `/start` to begin!
 
 ```python
 try:
-    tx_hash = await pay.send(...)
+    tx_hash = await pay.transfer(...)
 except ValueError as e:
-    if "INSUFFICIENT_BALANCE" in str(e):
-        print("Not enough ETH for transfer + fees")
+    if "Insufficient STRK for fees" in str(e):
+        print("Not enough STRK to pay the V3 transaction fee")
     elif "ACCOUNT_NOT_FOUND" in str(e):
         print("Invalid sender address")
 ```
