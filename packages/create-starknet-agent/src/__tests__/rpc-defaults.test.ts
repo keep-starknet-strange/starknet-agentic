@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PUBLIC_RPC_URLS } from "@starknetfoundation/starknet-agentic-shared/constants";
 import { DEFAULT_E2E_RPC_URL, resolveE2ERpcUrl } from "../verify.js";
+import { generateProject } from "../templates.js";
+import { RPC_URLS } from "../types.js";
 
 // Public endpoints that have shut down: Blast API answers HTTP 403 and the
 // rpc.starknet(-testnet).lava.build endpoints answer HTTP 410.
@@ -53,5 +55,27 @@ describe("fallback RPC URLs", () => {
       return DEAD_RPC_HOSTS.some((host) => content.includes(host));
     });
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("default RPC in generated projects", () => {
+  it("uses the keyless public endpoints, not a provider URL with a key placeholder", () => {
+    expect(RPC_URLS).toEqual({ mainnet: PUBLIC_RPC_URLS.mainnet, sepolia: PUBLIC_RPC_URLS.sepolia });
+  });
+
+  it.each(["mainnet", "sepolia"] as const)("%s projects get a working STARKNET_RPC_URL out of the box", (network) => {
+    for (const template of ["minimal", "defi", "full"] as const) {
+      const files = generateProject({
+        projectName: "sample",
+        network,
+        template,
+        defiProtocols: [],
+        includeExample: "none",
+        installDeps: false,
+      });
+      const all = Object.values(files).join("\n");
+      expect(all, template).not.toMatch(/YOUR_API_KEY/);
+      expect(files[".env.example"], template).toContain(`STARKNET_RPC_URL=${PUBLIC_RPC_URLS[network]}`);
+    }
   });
 });

@@ -6,6 +6,7 @@ import {
   AVNU_API_URLS,
   AVNU_PAYMASTER_URLS,
   MAINNET_TOKENS,
+  PUBLIC_RPC_URLS,
   SEPOLIA_TOKENS,
 } from "@starknetfoundation/starknet-agentic-shared/constants";
 
@@ -71,9 +72,13 @@ export interface GeneratedFiles {
   [path: string]: string;
 }
 
+// Default RPC written into generated projects and MCP configs: keyless public
+// endpoints (RPC spec v0_10), so a new project works without signing up for a
+// provider. They are shared and may be rate-limited; users can point
+// STARKNET_RPC_URL at their own provider for production.
 export const RPC_URLS: Record<Exclude<Network, "custom">, string> = {
-  mainnet: "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_API_KEY",
-  sepolia: "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/YOUR_API_KEY",
+  mainnet: PUBLIC_RPC_URLS.mainnet,
+  sepolia: PUBLIC_RPC_URLS.sepolia,
 };
 
 // Interpolated into generated projects at generation time, so generated code

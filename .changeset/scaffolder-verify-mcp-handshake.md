@@ -1,5 +1,5 @@
 ---
-"@starknetfoundation/create-starknet-agent": patch
+"@starknetfoundation/create-starknet-agent": minor
 ---
 
 `verify` now checks that the MCP server actually works.
