@@ -24,6 +24,7 @@ jobs:
       skills: ${{ steps.filter.outputs.skills }}
       onboarding: ${{ steps.filter.outputs.onboarding }}
       scaffolder: ${{ steps.filter.outputs.scaffolder }}
+      contract-scripts: ${{ steps.filter.outputs.contract-scripts }}
       ci: ${{ steps.filter.outputs.ci }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -83,6 +84,9 @@ jobs:
               - 'packages/shared/**'
               - 'packages/starknet-mcp-server/package.json'
               - 'pnpm-workspace.yaml'
+            contract-scripts:
+              - 'contracts/*/scripts/*.js'
+              - 'contracts/eslint.scripts.config.mjs'
             ci:
               - '.github/workflows/ci.yml'
       # One filter per Scarb project under contracts/. Filter names must equal the
@@ -161,7 +165,7 @@ jobs:
   lint:
     name: Lint
     needs: [detect-changes]
-    if: needs.detect-changes.outputs.ts == 'true' || needs.detect-changes.outputs.website == 'true' || needs.detect-changes.outputs.ci == 'true'
+    if: needs.detect-changes.outputs.ts == 'true' || needs.detect-changes.outputs.website == 'true' || needs.detect-changes.outputs.contract-scripts == 'true' || needs.detect-changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -182,6 +186,11 @@ jobs:
       # website/eslint.config.mjs.
       - name: Lint
         run: pnpm -r --if-present lint
+
+      # contracts/*/scripts/ sit outside the pnpm workspace and never run in
+      # CI, so an undefined helper would only surface at deploy time (#622).
+      - name: Check contract deploy scripts for undefined identifiers
+        run: pnpm exec eslint -c contracts/eslint.scripts.config.mjs 'contracts/*/scripts/*.js'
 
   test:
     name: Test
