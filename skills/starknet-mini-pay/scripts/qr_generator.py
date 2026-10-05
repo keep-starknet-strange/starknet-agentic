@@ -75,11 +75,12 @@ class QRGenerator:
         else:
             fg_color = self.COLORS["starknet"]
         
+        # get_image() unwraps qrcode's StyledPilImage into a PIL Image for paste()
         img = qr.make_image(
             image_factory=StyledPilImage,
             module_drawer=SquareModuleDrawer(),
             color_mask=SolidFillColorMask(front_color=fg_color),
-        )
+        ).get_image()
         
         # Add logo if provided
         if logo_path and os.path.exists(logo_path):
@@ -125,7 +126,7 @@ class QRGenerator:
             image_factory=StyledPilImage,
             module_drawer=GappedSquareModuleDrawer(),
             color_mask=SolidFillColorMask(front_color=fg_color),
-        )
+        ).get_image()
         
         img.save(output_file)
         return output_file
@@ -179,7 +180,7 @@ class QRGenerator:
             return address.lower()
         return address
     
-    def _add_logo(self, qr_image, logo_path: str, logo_size: float = 0.25) -> Image.Image:
+    def _add_logo(self, qr_image: Image.Image, logo_path: str, logo_size: float = 0.25) -> Image.Image:
         """
         Add logo to center of QR code
         
@@ -188,7 +189,8 @@ class QRGenerator:
             logo_path: Path to logo file
             logo_size: Size ratio (0.25 = 25% of QR size)
         """
-        logo = Image.open(logo_path)
+        # RGBA so the logo can be its own paste mask (RGB/JPEG/palette logos can't)
+        logo = Image.open(logo_path).convert("RGBA")
         
         # Calculate logo size
         qr_width, qr_height = qr_image.size
