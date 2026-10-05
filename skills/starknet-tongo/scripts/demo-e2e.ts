@@ -11,16 +11,22 @@
  *   TONGO_CONTRACT_ADDRESS    - Deployed Tongo contract
  *   TONGO_PRIVATE_KEY_SENDER  - Sender's Tongo private key
  *   TONGO_PRIVATE_KEY_RECEIVER - Receiver's Tongo private key
+ *
+ * Written for @fatsolutions/tongo-sdk 2.x with starknet.js 10. Amounts are in
+ * Tongo units: the ERC20 moved is amount * rate (rate() on the Tongo contract).
  */
 
 import "dotenv/config";
-import { Account as TongoAccount } from "@fatsolutions/tongo-sdk";
+import { Account as TongoAccount, pubKeyBase58ToAffine } from "@fatsolutions/tongo-sdk";
 import { Account, RpcProvider } from "starknet";
 
 async function waitSuccess(provider: RpcProvider, txHash: string) {
   const receipt = await provider.waitForTransaction(txHash);
   if (receipt.isReverted()) {
     throw new Error(`Transaction reverted: ${receipt.revert_reason ?? "no revert reason provided"}`);
+  }
+  if (receipt.isError()) {
+    throw new Error(`Transaction receipt error: ${receipt.value.message}`);
   }
   return receipt;
 }
@@ -60,16 +66,18 @@ async function main() {
     rpcUrl,
   );
 
-  const AMOUNT = 10n;
+  const AMOUNT = 10n; // Tongo units
 
   // --- 1. Fund ---
-  console.log(`\n[1/4] Funding sender with ${AMOUNT} tokens...`);
+  console.log(`\n[1/4] Funding sender with ${AMOUNT} Tongo units...`);
   const fundOp = await sender.fund({
     amount: AMOUNT,
     sender: account.address,
-    fee_to_sender: 0n,
   });
-  let tx = await account.execute([fundOp.approve, fundOp.toCalldata()]);
+  let tx = await account.execute([
+    ...(fundOp.approve ? [fundOp.approve] : []),
+    ...fundOp.toCalldata(),
+  ]);
   await waitSuccess(provider, tx.transaction_hash);
 
   let state = await sender.state();
@@ -83,11 +91,12 @@ async function main() {
 
   // --- 2. Transfer ---
   console.log(`\n[2/4] Transferring ${AMOUNT} to receiver...`);
+  // A real sender only knows the receiver's base58 Tongo address; `to` takes
+  // the public key point it encodes.
   const transferOp = await sender.transfer({
     amount: AMOUNT,
-    to: receiver.tongoAddress(),
+    to: pubKeyBase58ToAffine(receiver.tongoAddress()),
     sender: account.address,
-    fee_to_sender: 0n,
   });
   tx = await account.execute(transferOp.toCalldata());
   await waitSuccess(provider, tx.transaction_hash);
@@ -124,7 +133,6 @@ async function main() {
     amount: AMOUNT,
     to: account.address,
     sender: account.address,
-    fee_to_sender: 0n,
   });
   tx = await account.execute(withdrawOp.toCalldata());
   await waitSuccess(provider, tx.transaction_hash);
