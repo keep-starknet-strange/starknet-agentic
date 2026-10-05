@@ -35,8 +35,8 @@ NETWORKS = {
 DEFAULT_RPC = NETWORKS["mainnet"]
 
 
-def parse_args():
-    """Parse command line arguments."""
+def build_parser():
+    """Build the command line argument parser."""
     parser = argparse.ArgumentParser(
         description="Starknet Mini-Pay CLI (Fixed)",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -104,7 +104,7 @@ def parse_args():
     # Config command
     config_parser = subparsers.add_parser("config", help="Show current configuration")
     
-    return parser.parse_args()
+    return parser
 
 
 async def cmd_send(args, rpc_url: str):
@@ -318,14 +318,15 @@ def cmd_config(rpc_url: str):
 
 async def main():
     """Main entry point with proper async handling."""
-    args = parse_args()
+    parser = build_parser()
+    args = parser.parse_args()
     
     # Determine RPC URL
     rpc_url = args.rpc if args.rpc else NETWORKS.get(args.network, DEFAULT_RPC)
     
     # Route command
     if not args.command:
-        parse_args().print_help()
+        parser.print_help()
         return 0
     
     if args.command == "config":
@@ -353,7 +354,7 @@ async def main():
     if args.command == "status":
         return await cmd_status(args, rpc_url)
     
-    parse_args().print_help()
+    parser.print_help()
     return 0
 
 
