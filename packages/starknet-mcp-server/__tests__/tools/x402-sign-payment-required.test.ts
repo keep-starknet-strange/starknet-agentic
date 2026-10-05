@@ -14,6 +14,8 @@ const MAINNET_CHAIN_ID = "0x534e5f4d41494e";
 const ACCOUNT_ADDRESS = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const STRK = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
 const SEPOLIA_USDC = "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343";
+const MAINNET_USDC = "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb";
+const UNLISTED_TOKEN = "0x0777000000000000000000000000000000000000000000000000000000000777";
 const PAY_TO = "0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57";
 const FEE_PAYER = "0x05f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81";
 const ATTACKER = "0x0666000000000000000000000000000000000000000000000000000000000bad";
@@ -245,18 +247,54 @@ describe("x402_starknet_sign_payment_required", () => {
 
     it("fails closed when an amount limit is set and the token's decimals are unknown", async () => {
       const { ctx } = context({ policy: { transfer: { maxAmountPerCall: "1000000" } } });
-      const usdc = header([requirement({ asset: SEPOLIA_USDC, amount: "10000" })]);
-      await expect(handler({ paymentRequiredHeader: usdc }, ctx)).rejects.toThrow(
+      const unlisted = header([requirement({ asset: UNLISTED_TOKEN, amount: "10000" })]);
+      await expect(handler({ paymentRequiredHeader: unlisted }, ctx)).rejects.toThrow(
         /Policy violation: Token .* decimals are unknown/,
       );
     });
 
     it("signs a token with unknown decimals when no amount limit applies, reporting atomic units", async () => {
       const { ctx } = context();
+      const unlisted = header([requirement({ asset: UNLISTED_TOKEN, amount: "10000" })]);
+      const { summary } = parse(await handler({ paymentRequiredHeader: unlisted }, ctx));
+      expect(summary).toMatchObject({ amount: "10000", decimals: null, amountFormatted: null, assetSymbol: null });
+      expect(summary.description).toMatch(/^Authorized a payment of 10000 atomic units 0x0777/);
+    });
+
+    it("applies Sepolia USDC's built-in symbol and decimals on Sepolia", async () => {
+      const { ctx } = context({ policy: { transfer: { allowedTokens: ["USDC"], maxAmountPerCall: "0.01" } } });
       const usdc = header([requirement({ asset: SEPOLIA_USDC, amount: "10000" })]);
       const { summary } = parse(await handler({ paymentRequiredHeader: usdc }, ctx));
-      expect(summary).toMatchObject({ amount: "10000", decimals: null, amountFormatted: null, assetSymbol: null });
-      expect(summary.description).toMatch(/^Authorized a payment of 10000 atomic units 0x0512/);
+      expect(summary).toMatchObject({ assetSymbol: "USDC", decimals: 6, amountFormatted: "0.01" });
+      expect(summary.description).toContain("0.01 USDC");
+
+      const over = header([requirement({ asset: SEPOLIA_USDC, amount: "10001" })]);
+      await expect(handler({ paymentRequiredHeader: over }, ctx)).rejects.toThrow(
+        /Policy violation: Payment amount 0.010001 exceeds policy limit of 0.01/,
+      );
+    });
+
+    it("does not treat the mainnet USDC address as USDC on Sepolia", async () => {
+      const { ctx } = context({ policy: { transfer: { allowedTokens: ["USDC"] } } });
+      const mainnetUsdc = header([requirement({ asset: MAINNET_USDC, amount: "10000" })]);
+      await expect(handler({ paymentRequiredHeader: mainnetUsdc }, ctx)).rejects.toThrow(
+        /Policy violation: Token .* is not in the allowed tokens list/,
+      );
+    });
+
+    it("does not treat the Sepolia USDC address as USDC on mainnet", async () => {
+      const { ctx } = context({ chainId: MAINNET_CHAIN_ID, policy: { transfer: { allowedTokens: ["USDC"] } } });
+      const sepoliaUsdc = header([
+        requirement({ network: "starknet:SN_MAIN", asset: SEPOLIA_USDC, amount: "10000" }),
+      ]);
+      await expect(handler({ paymentRequiredHeader: sepoliaUsdc }, ctx)).rejects.toThrow(
+        /Policy violation: Token .* is not in the allowed tokens list/,
+      );
+      const mainnetUsdc = header([
+        requirement({ network: "starknet:SN_MAIN", asset: MAINNET_USDC, amount: "10000" }),
+      ]);
+      const { summary } = parse(await handler({ paymentRequiredHeader: mainnetUsdc }, ctx));
+      expect(summary).toMatchObject({ assetSymbol: "USDC", decimals: 6 });
     });
 
     it("refuses to sign without a policy guard", async () => {

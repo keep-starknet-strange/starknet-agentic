@@ -11,7 +11,12 @@ import {
 import { Contract, shortString, byteArray, type RpcProvider } from "starknet";
 import { type CachedToken, TOKEN_TTL_MS } from "../types/token.js";
 import { normalizeAddress } from "../utils.js";
-import { AVNU_API_URLS, MAINNET_TOKENS } from "@starknetfoundation/starknet-agentic-shared/constants";
+import {
+  AVNU_API_URLS,
+  MAINNET_TOKENS,
+  SEPOLIA_TOKENS,
+  type StarknetNetwork,
+} from "@starknetfoundation/starknet-agentic-shared/constants";
 
 const ERC20_METADATA_ABI = [
   {
@@ -47,31 +52,70 @@ const STATIC_TOKEN_DEFAULTS = {
   lastUpdated: 0,
 } as const;
 
-/** Core token data - only the fields that differ per token */
-const STATIC_TOKEN_DATA = [
-  { address: MAINNET_TOKENS.ETH, symbol: "ETH", name: "Ether", decimals: 18 },
-  { address: MAINNET_TOKENS.STRK, symbol: "STRK", name: "Starknet Token", decimals: 18 },
-  { address: MAINNET_TOKENS.USDC, symbol: "USDC", name: "USD Coin", decimals: 6 },
-  { address: MAINNET_TOKENS.USDC_E, symbol: "USDC.e", name: "Bridged USDC", decimals: 6 },
-  { address: MAINNET_TOKENS.USDT, symbol: "USDT", name: "Tether USD", decimals: 6 },
-] as const;
+/** Core token data per network - only the fields that differ per token */
+const STATIC_TOKEN_DATA = {
+  mainnet: [
+    { address: MAINNET_TOKENS.ETH, symbol: "ETH", name: "Ether", decimals: 18 },
+    { address: MAINNET_TOKENS.STRK, symbol: "STRK", name: "Starknet Token", decimals: 18 },
+    { address: MAINNET_TOKENS.USDC, symbol: "USDC", name: "USD Coin", decimals: 6 },
+    { address: MAINNET_TOKENS.USDC_E, symbol: "USDC.e", name: "Bridged USDC", decimals: 6 },
+    { address: MAINNET_TOKENS.USDT, symbol: "USDT", name: "Tether USD", decimals: 6 },
+  ],
+  sepolia: [
+    { address: SEPOLIA_TOKENS.ETH, symbol: "ETH", name: "Ether", decimals: 18 },
+    { address: SEPOLIA_TOKENS.STRK, symbol: "STRK", name: "Starknet Token", decimals: 18 },
+    { address: SEPOLIA_TOKENS.USDC, symbol: "USDC", name: "USD Coin", decimals: 6 },
+    { address: SEPOLIA_TOKENS.USDC_E, symbol: "USDC.e", name: "Bridged USDC", decimals: 6 },
+  ],
+} as const satisfies Record<
+  StarknetNetwork,
+  readonly { address: string; symbol: string; name: string; decimals: number }[]
+>;
 
 /**
- * Static token definitions - these always take precedence and never expire.
+ * Static token definitions per network - these always take precedence and never expire.
  * Single source of truth for token addresses and decimals.
  */
-export const STATIC_TOKENS: CachedToken[] = STATIC_TOKEN_DATA.map((token) => ({
-  ...STATIC_TOKEN_DEFAULTS,
-  tags: [...STATIC_TOKEN_DEFAULTS.tags],
-  ...token,
-}));
+export const STATIC_TOKENS_BY_NETWORK: Record<StarknetNetwork, CachedToken[]> = {
+  mainnet: STATIC_TOKEN_DATA.mainnet.map(toStaticToken),
+  sepolia: STATIC_TOKEN_DATA.sepolia.map(toStaticToken),
+};
 
 /**
- * Token addresses indexed by symbol for easy access.
+ * Mainnet static tokens. Prefer `getTokenService().getStaticTokens()`, which
+ * follows the configured network.
+ */
+export const STATIC_TOKENS: CachedToken[] = STATIC_TOKENS_BY_NETWORK.mainnet;
+
+/**
+ * Mainnet token addresses indexed by symbol. ETH and STRK are identical on
+ * Sepolia; the others are not, so resolve those through the TokenService.
  */
 export const TOKENS = Object.fromEntries(
   STATIC_TOKENS.map((t) => [t.symbol, t.address])
 ) as Record<"ETH" | "STRK" | "USDC" | "USDC.e" | "USDT", string>;
+
+function toStaticToken(token: { address: string; symbol: string; name: string; decimals: number }): CachedToken {
+  return {
+    ...STATIC_TOKEN_DEFAULTS,
+    tags: [...STATIC_TOKEN_DEFAULTS.tags],
+    ...token,
+  };
+}
+
+/**
+ * Find the static token at `address` on `network`, comparing addresses as
+ * numbers so padding and case do not matter. Undefined for non-hex input.
+ */
+export function findStaticToken(address: string, network: StarknetNetwork): CachedToken | undefined {
+  let target: bigint;
+  try {
+    target = BigInt(address);
+  } catch {
+    return undefined;
+  }
+  return STATIC_TOKENS_BY_NETWORK[network].find((token) => BigInt(token.address) === target);
+}
 
 /**
  * Check if a cached token has expired (TTL 24h).
@@ -107,11 +151,18 @@ export class TokenService {
   private baseUrl: string;
   /** RPC provider for on-chain fallback */
   private provider: RpcProvider | null = null;
+  /** Network whose static tokens are loaded */
+  private network: StarknetNetwork;
   /** Maximum number of dynamic (non-static) entries allowed in cache */
   private static readonly MAX_DYNAMIC_CACHE_SIZE = 512;
 
-  constructor(baseUrl: string = AVNU_API_URLS.mainnet) {
-    this.baseUrl = baseUrl;
+  /**
+   * @param baseUrl - avnu API base URL (defaults to the avnu API for `network`)
+   * @param network - Network whose static tokens take precedence (default mainnet)
+   */
+  constructor(baseUrl?: string, network: StarknetNetwork = "mainnet") {
+    this.baseUrl = baseUrl ?? AVNU_API_URLS[network];
+    this.network = network;
     this.loadStaticTokens();
   }
 
@@ -123,10 +174,46 @@ export class TokenService {
   }
 
   /**
-   * Load static tokens into cache.
+   * Network whose static tokens are loaded.
+   */
+  getNetwork(): StarknetNetwork {
+    return this.network;
+  }
+
+  /**
+   * Switch the static token set to `network`, and the avnu base URL to
+   * `baseUrl` if given. Drops every cached token, dynamic ones included,
+   * since they were resolved for the previous network.
+   */
+  setNetwork(network: StarknetNetwork, baseUrl: string = this.baseUrl): void {
+    if (network === this.network && baseUrl === this.baseUrl) return;
+    this.network = network;
+    this.baseUrl = baseUrl;
+    this.cache.clear();
+    this.symbolIndex.clear();
+    this.loadStaticTokens();
+  }
+
+  /**
+   * Static tokens for the configured network.
+   */
+  getStaticTokens(): CachedToken[] {
+    return STATIC_TOKENS_BY_NETWORK[this.network];
+  }
+
+  /**
+   * Symbol of the static token at `address` on the configured network, or
+   * undefined if it is not one. Never derived from avnu or on-chain metadata.
+   */
+  getStaticSymbol(address: string): string | undefined {
+    return findStaticToken(address, this.network)?.symbol;
+  }
+
+  /**
+   * Load static tokens for the configured network into cache.
    */
   private loadStaticTokens(): void {
-    for (const token of STATIC_TOKENS) {
+    for (const token of STATIC_TOKENS_BY_NETWORK[this.network]) {
       const normalized = normalizeAddress(token.address);
       this.cache.set(normalized, { ...token, address: normalized });
       this.symbolIndex.set(token.symbol.toUpperCase(), normalized);

@@ -485,6 +485,13 @@ import { dirname, join } from "path";
 dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
 `;
 
+/** `TOKENS` object entries for a generated config: every token the network has. */
+function tokenEntries(tokens: Record<string, string>): string {
+  return Object.entries(tokens)
+    .map(([symbol, address]) => `  ${symbol}: "${address}",`)
+    .join("\n");
+}
+
 function generateDeFiConfig(config: ProjectConfig): string {
   const tokens = config.network === "sepolia"
     ? TOKEN_ADDRESSES.sepolia
@@ -515,10 +522,7 @@ export const CONFIG = {
 };
 
 export const TOKENS = {
-  ETH: "${tokens.ETH}",
-  STRK: "${tokens.STRK}",
-${config.network !== "sepolia" ? `  USDC: "${TOKEN_ADDRESSES.mainnet.USDC}",
-  USDT: "${TOKEN_ADDRESSES.mainnet.USDT}",` : ""}
+${tokenEntries(tokens)}
 };
 `;
 }
@@ -760,10 +764,7 @@ export const CONFIG = {
 };
 
 export const TOKENS = {
-  ETH: "${tokens.ETH}",
-  STRK: "${tokens.STRK}",
-${config.network !== "sepolia" ? `  USDC: "${TOKEN_ADDRESSES.mainnet.USDC}",
-  USDT: "${TOKEN_ADDRESSES.mainnet.USDT}",` : ""}
+${tokenEntries(tokens)}
 };
 
 export const AGENT_METADATA = {

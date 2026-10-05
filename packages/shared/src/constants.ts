@@ -39,12 +39,19 @@ export const MAINNET_TOKENS = {
 } as const;
 
 /**
- * ERC-20 token addresses on Starknet Sepolia. USDC and USDT are intentionally
- * absent: no Sepolia address for them is used anywhere in this repo yet.
+ * ERC-20 token addresses on Starknet Sepolia.
+ *
+ * USDC is Circle's native USDC (https://developers.circle.com/stablecoins/usdc-contract-addresses).
+ * USDC_E is the legacy bridged USDC.e (https://docs.avnu.fi/updates/circle-usdc-migration).
+ * Both use 6 decimals; checked 2026-10-05 on Sepolia (deployed, decimals() is 6,
+ * accepted by the avnu Sepolia paymaster). There is no USDT on Sepolia, and the
+ * mainnet USDC, USDC_E and USDT addresses have no contract there.
  */
 export const SEPOLIA_TOKENS = {
   ETH: ETH_TOKEN_ADDRESS,
   STRK: STRK_TOKEN_ADDRESS,
+  USDC: "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
+  USDC_E: "0x053b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080",
 } as const;
 
 /** Token addresses keyed by network. */
