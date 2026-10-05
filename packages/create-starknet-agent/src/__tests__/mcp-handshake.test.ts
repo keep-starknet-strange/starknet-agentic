@@ -10,7 +10,6 @@ import {
   createRedactor,
   extractEnvProblems,
   isSensitiveEnvKey,
-  quoteWindowsArg,
   redactUrl,
   resolveLaunchEnv,
   type McpServerLaunch,
@@ -455,28 +454,5 @@ describe("appendBoundedStderr", () => {
     let buffer = appendBoundedStderr("", "z".repeat(40), 32);
     buffer = appendBoundedStderr(buffer, "\nok\n", 32);
     expect(buffer).toBe("\nok\n");
-  });
-});
-
-describe("quoteWindowsArg", () => {
-  it("passes safe arguments through unchanged", () => {
-    expect(quoteWindowsArg("npx")).toBe("npx");
-    expect(quoteWindowsArg("-y")).toBe("-y");
-    expect(quoteWindowsArg("@starknetfoundation/starknet-agentic-mcp-server@latest")).toBe(
-      "@starknetfoundation/starknet-agentic-mcp-server@latest"
-    );
-  });
-
-  it("quotes empty arguments and arguments with spaces or shell metacharacters", () => {
-    expect(quoteWindowsArg("")).toBe('""');
-    expect(quoteWindowsArg("C:\\Program Files\\node.exe")).toBe('"C:\\Program Files\\node.exe"');
-    expect(quoteWindowsArg("a&b")).toBe('"a&b"');
-    expect(quoteWindowsArg("x|y")).toBe('"x|y"');
-  });
-
-  it("escapes embedded quotes and the backslashes before them, and trailing backslashes", () => {
-    expect(quoteWindowsArg('say "hi"')).toBe('"say \\"hi\\""');
-    expect(quoteWindowsArg('a\\"b')).toBe('"a\\\\\\"b"');
-    expect(quoteWindowsArg("dir with space\\")).toBe('"dir with space\\\\"');
   });
 });

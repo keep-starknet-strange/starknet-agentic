@@ -13,7 +13,8 @@
  * the whole process tree (`npx` -> node) that a timeout or Ctrl-C leaves behind.
  */
 
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess, type SpawnOptions } from "node:child_process";
+import crossSpawn from "cross-spawn";
 
 /** Default time allowed for spawn + initialize + tools/list. The first `npx` run downloads the server. */
 export const DEFAULT_MCP_HANDSHAKE_TIMEOUT_MS = 60_000;
@@ -255,15 +256,15 @@ export function appendBoundedStderr(buffer: string, chunk: string, max: number =
 }
 
 /**
- * Quote one argument for a cmd.exe command line (Windows only). Arguments made
- * of safe characters are passed as is; anything else is wrapped in double
- * quotes, with embedded quotes and the backslashes before them escaped the way
- * the Microsoft C runtime parses them.
+ * Spawn the MCP server process. On Windows, npx/npm are .cmd shims that only
+ * run through cmd.exe, which re-parses the command line (it expands %VAR% even
+ * inside quotes and does not treat \\" as an escaped quote). cross-spawn
+ * resolves the command via PATHEXT and escapes the arguments for both cmd.exe
+ * and the Microsoft C runtime, double-escaping for .cmd shims, so every
+ * argument reaches the server unchanged. POSIX uses Node's spawn with no shell.
  */
-export function quoteWindowsArg(arg: string): string {
-  if (arg.length > 0 && /^[A-Za-z0-9_\-./:@=+,]+$/.test(arg)) return arg;
-  const escaped = arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1");
-  return `"${escaped}"`;
+export function spawnServerProcess(command: string, args: string[], options: SpawnOptions): ChildProcess {
+  return process.platform === "win32" ? crossSpawn(command, args, options) : spawn(command, args, options);
 }
 
 function tail(text: string, lines: number): string {
@@ -393,21 +394,13 @@ export async function checkMcpServerHealth(
 
   let child: ChildProcess;
   try {
-    const spawnOptions = {
+    child = spawnServerProcess(launch.command, launch.args ?? [], {
       cwd: options.cwd ?? process.cwd(),
       env,
-      stdio: ["pipe", "pipe", "pipe"] as ["pipe", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
       detached: useProcessGroup,
       windowsHide: true,
-    };
-    const args = launch.args ?? [];
-    child =
-      process.platform === "win32"
-        ? // npx/npm are .cmd shims on Windows and need a shell. Pass one quoted
-          // command line rather than an args array with shell: true, which Node
-          // joins without escaping (DEP0190).
-          spawn([launch.command, ...args].map(quoteWindowsArg).join(" "), { ...spawnOptions, shell: true })
-        : spawn(launch.command, args, spawnOptions);
+    });
   } catch (error) {
     return {
       ok: false,
