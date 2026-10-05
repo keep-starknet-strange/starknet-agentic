@@ -55,6 +55,14 @@ If neither is provided, scripts fall back to Cartridge's keyless public mainnet 
 
 This endpoint has no WebSocket support, so `watch-events-smart.js` falls back to HTTP polling unless you pass a `wsRpcUrl` from your own provider.
 
+### Swap gas (AVNU paymaster)
+
+`scripts/avnu-swap.js` executes swaps through the AVNU paymaster in `default` fee mode: gas is paid in an ERC-20 rather than from the account's STRK balance. No paymaster API key is needed; sponsored (dApp-paid) mode is not used.
+
+- The gas token defaults to the sell token. Pass `"gasToken":"STRK"` (any verified symbol the paymaster accepts) to override it.
+- The account needs the sell amount plus the fee in the gas token.
+- `PAYMASTER_URL` selects the endpoint; only `starknet.paymaster.avnu.fi` and `sepolia.paymaster.avnu.fi` are accepted.
+
 ## Starknet.js v10 quick patterns
 
 ```js
