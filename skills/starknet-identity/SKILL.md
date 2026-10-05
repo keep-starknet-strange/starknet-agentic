@@ -79,7 +79,7 @@ const { transaction_hash } = await account.execute({
   }),
 });
 
-const receipt = await account.waitForTransaction(transaction_hash);
+const receipt = await account.provider.waitForTransaction(transaction_hash);
 // Parse agent_id from events
 ```
 

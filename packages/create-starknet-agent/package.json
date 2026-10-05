@@ -38,16 +38,18 @@
     "check:generated": "node scripts/check-generated-projects.mjs"
   },
   "dependencies": {
-    "prompts": "^2.4.2",
-    "picocolors": "^1.1.1"
+    "cross-spawn": "^7.0.6",
+    "picocolors": "^1.1.1",
+    "prompts": "^2.4.2"
   },
   "devDependencies": {
+    "@starknetfoundation/starknet-agentic-shared": "workspace:*",
+    "@types/cross-spawn": "^6.0.6",
     "@types/node": "catalog:",
     "@types/prompts": "^2.4.9",
     "tsup": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "@starknetfoundation/starknet-agentic-shared": "workspace:*"
+    "vitest": "catalog:"
   },
   "engines": {
     "node": ">=24.0.0"

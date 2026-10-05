@@ -19,16 +19,17 @@ import aiohttp
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mini_pay import MiniPay
+from mini_pay import MiniPay, MAINNET_RPC_URL, SEPOLIA_RPC_URL
 from qr_generator import QRGenerator
 from link_builder import PaymentLinkBuilder
 from invoice import InvoiceManager
 
 
 # Configuration
+# Custom RPCs must serve JSON-RPC spec 0.10 (required by starknet-py 0.30)
 NETWORKS = {
-    "mainnet": "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10",
-    "sepolia": "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10"
+    "mainnet": MAINNET_RPC_URL,
+    "sepolia": SEPOLIA_RPC_URL
 }
 
 DEFAULT_RPC = NETWORKS["mainnet"]
@@ -127,7 +128,7 @@ async def cmd_send(args, rpc_url: str):
     print(f"📤 Sending {args.amount} {token} to {args.address[:16]}...")
     print(f"   Memo: {args.memo or 'None'}")
     
-    pay = MiniPay(rpc_url=rpc_url)
+    pay = MiniPay(rpc_url=rpc_url, network=args.network)
     
     try:
         tx_hash = await pay.transfer(
@@ -160,7 +161,7 @@ async def cmd_send(args, rpc_url: str):
 
 async def cmd_balance(args, rpc_url: str):
     """Handle balance command."""
-    pay = MiniPay(rpc_url=rpc_url)
+    pay = MiniPay(rpc_url=rpc_url, network=args.network)
     
     try:
         balance = await pay.get_balance(args.address, args.token)
@@ -287,7 +288,7 @@ async def cmd_invoice(args, rpc_url: str):
 
 async def cmd_status(args, rpc_url: str):
     """Handle status check command."""
-    pay = MiniPay(rpc_url=rpc_url)
+    pay = MiniPay(rpc_url=rpc_url, network=args.network)
     
     try:
         status = await pay.get_transaction_status(args.tx_hash)

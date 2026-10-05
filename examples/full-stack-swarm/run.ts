@@ -394,7 +394,7 @@ async function declareSessionAccountIfRequested(args: {
   const provider = new RpcProvider({ nodeUrl: args.rpcUrl });
   const account = new Account({ provider, address: args.deployerAddress, signer: args.deployerPrivateKey });
   // Declare if not already declared.
-  // NOTE: declareIfNot exists in starknet.js v8 and is what Starkclaw uses for pinned builds.
+  // NOTE: declareIfNot is an Account method in starknet.js v10 and is what Starkclaw uses for pinned builds.
   const result = (await account.declareIfNot({ contract: sierra, casm })) as any;
   const txHash = result?.transaction_hash;
   if (typeof txHash === "string" && txHash.length > 0) {

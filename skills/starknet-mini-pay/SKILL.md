@@ -132,16 +132,17 @@ starknet-mini-pay/
 ## Dependencies
 
 ```bash
-pip install starknet-py --break-system-packages
-pip install qrcode[pil] --break-system-packages
-pip install python-telegram-bot --break-system-packages
-pip install httpx aiosqlite --break-system-packages
+pip install -r requirements.txt
 ```
+
+`requirements.txt` pins `starknet-py` to the tested 0.30.x range. starknet-py 0.30 speaks
+Starknet JSON-RPC spec 0.10, so any custom RPC URL must serve a `v0_10` endpoint.
 
 ## Configuration
 
 ```bash
 # Environment variables
+# Keyless public RPC (spec 0.10). Sepolia: https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10
 export STARKNET_RPC="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
 export MINI_PAY_PRIVATE_KEY="0x..."
 export MINI_PAY_ADDRESS="0x..."
@@ -154,22 +155,22 @@ export TELEGRAM_CHAT_ID="..."
 ### Send Payment
 
 ```python
-from mini_pay import MiniPay
+from mini_pay import MiniPay, MAINNET_RPC_URL
 
-pay = MiniPay(rpc_url="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10")
+pay = MiniPay(rpc_url=MAINNET_RPC_URL)
 
-# Send ETH
-tx_hash = pay.send(
+# Send ETH (V3 transaction: the fee is paid in STRK)
+tx_hash = await pay.transfer(
     from_address="0x...",
     private_key="0x...",
     to_address="0x123...",
-    amount_wei=0.5 * 10**18,
+    amount_wei=5 * 10**17,  # 0.5 ETH
     token="ETH"
 )
 
 # Check status
-status = pay.get_status(tx_hash)
-print(f"Status: {status}")  # PENDING, CONFIRMED, FAILED
+status = await pay.get_transaction_status(tx_hash)
+print(f"Status: {status}")  # PENDING, CONFIRMED, REJECTED, NOT_FOUND
 ```
 
 ### Generate QR Code
@@ -294,7 +295,7 @@ mod PaymentRequest {
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| `INSUFFICIENT_BALANCE` | Not enough ETH for transfer | Add more ETH to account |
+| `INSUFFICIENT_BALANCE` | Not enough of the token, or not enough STRK for fees | Top up the token and keep STRK for V3 fees |
 | `ACCOUNT_NOT_FOUND` | Invalid sender address | Check address format |
 | `INVALID_AMOUNT` | Amount <= 0 | Use positive amount |
 | `TX_FAILED` | Transaction reverted | Check recipient address |

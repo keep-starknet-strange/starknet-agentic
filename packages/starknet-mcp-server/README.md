@@ -231,6 +231,54 @@ Estimate transaction fee.
 }
 ```
 
+### `x402_starknet_sign_payment_required`
+
+Pay for an x402-protected HTTP resource with the configured account, per the x402 v2
+[`exact` scheme on Starknet](https://github.com/x402-foundation/x402/blob/751590a25e7ecc22ee044b37fd55c2b66cc14fd6/specs/schemes/exact/scheme_exact_starknet.md).
+Direct signer mode only (not listed in proxy mode).
+
+```typescript
+{
+  "paymentRequiredHeader": "eyJ4NDAyVmVyc2lvbiI6Mi...",  // PAYMENT-REQUIRED response header, standard base64
+  "acceptIndex": 0  // optional: which `accepts` entry to pay
+}
+```
+
+The tool builds the payment itself from the server's requirements: one `transfer` of exactly
+`amount` of `asset` to `payTo`, executable only by the server's `extra.feePayer`, valid for
+`maxTimeoutSeconds` (at most 3600). It never signs typed data supplied by the server. The
+payment is checked against the `transfer` policy (`maxAmountPerCall`, `allowedRecipients`,
+`blockedRecipients`, `allowedTokens`) before signing; with `maxAmountPerCall` set, a token
+whose decimals cannot be resolved is refused. It pays only offers on the chain the RPC
+reports. Returns the `PAYMENT-SIGNATURE` request header and a summary:
+
+```json
+{
+  "paymentSignatureHeader": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoi...NDU3Il19fX0=",
+  "summary": {
+    "network": "starknet:SN_SEPOLIA",
+    "acceptIndex": 0,
+    "resourceUrl": "https://api.example.com/premium-data",
+    "asset": "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+    "payTo": "0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
+    "amount": "500000000000000000",
+    "feePayer": "0x05f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
+    "payer": "0x0007f16adbaa3a661e1c412e85e2cf3fe598a968434af09fd789fb3d4cedfcdb",
+    "nonce": "0x9b18366a878bb02f47b989d85f6ec6df66b80ebd50f6d5d14074001820576",
+    "validAfter": 1,
+    "validUntil": 1791183914,
+    "validUntilIso": "2026-10-05T07:05:14.000Z",
+    "assetSymbol": "STRK",
+    "decimals": 18,
+    "amountFormatted": "0.5",
+    "description": "Authorized a payment of 0.5 STRK to 0x02dd...ab57 on starknet:SN_SEPOLIA, executable only by 0x05f2...6f81 until 2026-10-05T07:05:14.000Z."
+  }
+}
+```
+
+Breaking change in 0.3.0: the tool used to sign the `typedData` embedded in a non-standard
+`PAYMENT-REQUIRED` and return base64url; see the CHANGELOG.
+
 ## Development
 
 ```bash
@@ -280,7 +328,9 @@ src/
    position in `tools/list`.
 4. If the tool moves funds or invokes arbitrary contracts, add a rule for it in
    `src/middleware/policyGuard.ts`. When `denyUnknownTools` is enabled, tools without a case in
-   `PolicyGuard.evaluate` are rejected.
+   `PolicyGuard.evaluate` are rejected. A tool that only learns what it pays after decoding its
+   input (as `x402_starknet_sign_payment_required` does) calls `ctx.policyGuard.evaluatePayment`
+   itself before signing.
 5. Add Vitest tests. `__tests__/handlers/tools.test.ts` mocks `starknet`, the avnu SDK and the MCP
    SDK, then calls tools through the real `tools/call` handler. Also add the tool name to
    `EXPECTED_ORDER` in `__tests__/tools/registry.test.ts`.
@@ -304,6 +354,9 @@ The server uses:
 - SISNA currently requires explicit production acknowledgement for in-process
   key custody: `KEYRING_ALLOW_INSECURE_IN_PROCESS_KEYS_IN_PRODUCTION=true`
 - Direct private key mode is intended for local development only
+- x402 payments are built client-side from the payment requirements (never from server-supplied
+  typed data), checked against the intended transfer before signing, and held to the `transfer`
+  policy like a `starknet_transfer`
 - All inputs are validated before execution
 - Transactions wait for confirmation before returning
 - Comprehensive error handling for all operations

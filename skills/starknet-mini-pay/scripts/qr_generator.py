@@ -5,7 +5,7 @@ Generate QR codes for addresses and payment links
 
 import qrcode
 from qrcode.image.styledpil import StyledPilImage
-from qrcode.image.styles.moduledrawers import SquareModuleDrawer, GlowingSquareModuleDrawer
+from qrcode.image.styles.moduledrawers import SquareModuleDrawer, GappedSquareModuleDrawer
 from qrcode.image.styles.colormasks import SolidFillColorMask
 from PIL import Image
 from typing import Optional
@@ -123,7 +123,7 @@ class QRGenerator:
         
         img = qr.make_image(
             image_factory=StyledPilImage,
-            module_drawer=GlowingSquareModuleDrawer(),
+            module_drawer=GappedSquareModuleDrawer(),
             color_mask=SolidFillColorMask(front_color=fg_color),
         )
         

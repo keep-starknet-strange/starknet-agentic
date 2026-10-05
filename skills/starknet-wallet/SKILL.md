@@ -30,7 +30,7 @@ Manage Starknet wallets for AI agents with native Account Abstraction support.
 ## Prerequisites
 
 ```bash
-npm install starknet@^10.8.0 @avnu/avnu-sdk@^4.0.1
+npm install starknet@^10.8.0 @avnu/avnu-sdk@^4.2.0
 ```
 
 Environment variables:
@@ -391,6 +391,7 @@ const result = await executeSwap({
     active: true,
     provider: paymaster,
     params: {
+      version: "0x1",
       feeMode: {
         mode: "default",
         gasToken: usdcAddress, // Pay gas in USDC instead of ETH/STRK

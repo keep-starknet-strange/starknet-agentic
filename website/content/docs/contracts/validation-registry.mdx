@@ -197,10 +197,10 @@ fn validation_request(
 **Example:**
 
 ```typescript
-import { Account, CallData, constants } from "starknet";
+import { Account, RpcProvider, CallData } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: rpcUrl });
-const account = new Account(provider, address, privateKey, undefined, constants.TRANSACTION_VERSION.V3);
+const account = new Account({ provider, address, signer: privateKey });
 
 // Request validation with auto-generated hash
 await account.execute({
@@ -279,7 +279,7 @@ fn get_validation_status(
 **Example:**
 
 ```typescript
-const registry = new Contract(abi, validationRegistryAddress, provider);
+const registry = new Contract({ abi, address: validationRegistryAddress, providerOrAccount: provider });
 
 const [validator, agentId, score, tag, lastUpdate] =
   await registry.get_validation_status(requestHash);
@@ -532,12 +532,12 @@ Common validator categories:
 ## Complete Example
 
 ```typescript
-import { Account, RpcProvider, Contract, CallData, constants } from "starknet";
+import { Account, RpcProvider, Contract, CallData } from "starknet";
 
 // Setup
 const provider = new RpcProvider({ nodeUrl: rpcUrl });
-const ownerAccount = new Account(provider, ownerAddress, ownerPrivateKey, undefined, constants.TRANSACTION_VERSION.V3);
-const validatorAccount = new Account(provider, validatorAddress, validatorPrivateKey, undefined, constants.TRANSACTION_VERSION.V3);
+const ownerAccount = new Account({ provider, address: ownerAddress, signer: ownerPrivateKey });
+const validatorAccount = new Account({ provider, address: validatorAddress, signer: validatorPrivateKey });
 
 // 1. Owner requests security audit
 const { transaction_hash: requestTx } = await ownerAccount.execute({
@@ -551,7 +551,7 @@ const { transaction_hash: requestTx } = await ownerAccount.execute({
   }),
 });
 
-const requestReceipt = await ownerAccount.waitForTransaction(requestTx);
+const requestReceipt = await provider.waitForTransaction(requestTx);
 // Parse request_hash from ValidationRequest event
 
 // 2. Validator performs audit and submits response
@@ -568,7 +568,7 @@ await validatorAccount.execute({
 });
 
 // 3. Query validation results
-const registry = new Contract(abi, validationRegistryAddress, provider);
+const registry = new Contract({ abi, address: validationRegistryAddress, providerOrAccount: provider });
 
 // Check specific validation
 const [validator, agentId, score, tag, lastUpdate] =

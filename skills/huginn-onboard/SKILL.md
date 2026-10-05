@@ -70,11 +70,12 @@ Call `HuginnRegistry.register_agent()`:
 ```typescript
 import { Contract, Account } from "starknet";
 
-const registry = new Contract(
-  HUGINN_ABI,
-  "0x...", // HuginnRegistry address
-  provider
-);
+// `account`: the Account deployed in Step 2 (writes need an account, not a provider)
+const registry = new Contract({
+  abi: HUGINN_ABI,
+  address: "0x...", // HuginnRegistry address
+  providerOrAccount: account,
+});
 
 // Register your agent
 await registry.register_agent(

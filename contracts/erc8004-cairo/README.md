@@ -294,7 +294,7 @@ This implementation uses **Poseidon hashing** (native to Starknet) instead of ke
 - Scarb 2.14.x
 - Cairo 2.14.x
 - Snforge 0.54.x
-- Node.js >= 18.0.0
+- Node.js >= 22 (the deploy scripts and E2E tests use starknet.js 10)
 
 ## Setup
 
@@ -322,6 +322,7 @@ ALLOW_PUBLIC_DEPLOY=false
 ALLOW_MAINNET_DEPLOY=false
 REVIEW_ACKNOWLEDGED=false
 REVIEWER_IDENTITY=
+SEPOLIA_DEPLOYMENT_ARTIFACT=
 TEST_ACCOUNT_ADDRESS=0x...
 TEST_ACCOUNT_PRIVATE_KEY=0x...
 ```
@@ -329,6 +330,7 @@ TEST_ACCOUNT_PRIVATE_KEY=0x...
 `ALLOW_PUBLIC_DEPLOY` is a safety gate for public testnets (currently Sepolia).
 `ALLOW_MAINNET_DEPLOY` is a separate safety gate for mainnet.
 `REVIEW_ACKNOWLEDGED` and `REVIEWER_IDENTITY` are required for Sepolia/mainnet deploys.
+`SEPOLIA_DEPLOYMENT_ARTIFACT` (proof of a prior Sepolia deploy) is required for mainnet deploys.
 
 ## Deployment
 
@@ -347,6 +349,8 @@ Notes:
   fields may contain provider secrets. Only copy contract addresses/class hashes into tracked docs.
 - Sepolia deploys require explicit opt-in: `ALLOW_PUBLIC_DEPLOY=true`.
 - Mainnet deploys require explicit opt-in: `ALLOW_MAINNET_DEPLOY=true`.
+- Mainnet deploys also require `SEPOLIA_DEPLOYMENT_ARTIFACT` set to the path of a
+  `deployed_addresses_sepolia*.json` artifact from a prior Sepolia run (its `network` must be `sepolia`).
 - Sepolia/mainnet deploys also require human-review acknowledgement:
   - `REVIEW_ACKNOWLEDGED=true`
   - `REVIEWER_IDENTITY=<name|handle|ticket>`
