@@ -7,7 +7,7 @@ import type { ToolArgs, ToolContext, ToolResult } from "./_shared.js";
 export const definition: Tool = {
   name: "starknet_get_balances",
   description:
-    "Get multiple token balances for an address in a single RPC call. More efficient than calling starknet_get_balance multiple times. Supports ETH, STRK, USDC, USDT, or any token addresses.",
+    "Get multiple token balances for an address in a single RPC call. More efficient than calling starknet_get_balance multiple times. Supports ETH, STRK, USDC (Circle native), USDC.e (legacy bridged USDC), USDT, or any token addresses.",
   inputSchema: {
     type: "object",
     properties: {
@@ -18,7 +18,7 @@ export const definition: Tool = {
       tokens: {
         type: "array",
         items: { type: "string" },
-        description: "Array of token symbols (ETH, STRK, USDC, USDT) or contract addresses",
+        description: "Array of token symbols (ETH, STRK, USDC, USDC.e, USDT) or contract addresses",
       },
     },
     required: ["tokens"],

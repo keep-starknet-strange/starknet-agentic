@@ -21,7 +21,7 @@ export const definition: Tool = {
       tokens: {
         type: "array",
         items: { type: "string" },
-        description: "Token symbols (STRK, ETH, USDC, USDT) or addresses to check",
+        description: "Token symbols (STRK, ETH, USDC, USDC.e, USDT) or addresses to check",
       },
       address: {
         type: "string",

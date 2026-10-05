@@ -22,7 +22,7 @@ export const definition: Tool = {
       },
       token: {
         type: "string",
-        description: "Token symbol (ETH, STRK, USDC, USDT) or contract address",
+        description: "Token symbol (ETH, STRK, USDC, USDC.e, USDT) or contract address",
       },
       amount: {
         type: "string",
