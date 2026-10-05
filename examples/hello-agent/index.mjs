@@ -34,7 +34,7 @@ for (const k of Object.keys(env)) {
   if (!env[k]) throw new Error(`Missing env var: ${k}`);
 }
 
-// starknet.js v8 uses options objects
+// starknet.js v10 uses options objects
 const provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL });
 const account = new Account({
   provider,
@@ -95,7 +95,7 @@ async function main() {
   const token = new Contract({ abi: ERC20_ABI, address: TOKEN_ADDRESS, providerOrAccount: provider });
   const decimals = Number(await token.decimals());
   const balResult = await token.balance_of(account.address);
-  // In starknet.js v8 with Cairo 1 ABI, u256 returns as bigint
+  // With a Cairo 1 ABI, starknet.js returns u256 as bigint
   const balBn = typeof balResult === 'bigint' ? balResult : BigInt(balResult);
   console.log('token:', TOKEN_ADDRESS);
   console.log('balance:', formatAmount(balBn, decimals));
