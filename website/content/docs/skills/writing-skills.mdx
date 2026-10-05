@@ -142,7 +142,7 @@ List all dependencies and environment setup:
 ## Prerequisites
 
 \`\`\`bash
-npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
+npm install starknet@^10.8.0 @avnu/avnu-sdk@^4.2.0
 \`\`\`
 
 Environment variables:
@@ -233,11 +233,11 @@ Every operation should have runnable code:
 import { RpcProvider } from "starknet";
 
 const provider = new RpcProvider({
-  nodeUrl: "https://starknet-mainnet.g.alchemy.com/v2/YOUR_KEY"
+  nodeUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
 });
 
-const balance = await provider.getBalance("0x...");
-console.log(balance);
+const blockNumber = await provider.getBlockNumber();
+console.log(blockNumber);
 ```
 
 ### Document Contract Addresses
@@ -302,7 +302,7 @@ Mint NFTs on Starknet with IPFS metadata storage.
 ## Prerequisites
 
 \`\`\`bash
-npm install starknet@^8.9.1 @pinata/sdk
+npm install starknet@^10.8.0 @pinata/sdk
 \`\`\`
 
 ## Configuration
@@ -362,7 +362,7 @@ const { transaction_hash } = await account.execute({
   }),
 });
 
-await account.waitForTransaction(transaction_hash);
+await account.provider.waitForTransaction(transaction_hash);
 console.log("Minted! TX:", transaction_hash);
 \`\`\`
 

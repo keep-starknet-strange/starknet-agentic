@@ -214,7 +214,7 @@ async function main() {
   console.log("═══════════════════════════════════════════════════════════════\n");
   console.log("🔗 Chain ID:", chainIdHex);
 
-  // starknet.js v9 Account constructor uses options object
+  // starknet.js v10 Account constructor uses an options object
   const account = new Account({
     provider: provider,
     address: accountAddress,

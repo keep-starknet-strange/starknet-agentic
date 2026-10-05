@@ -91,11 +91,11 @@ Call `HuginnRegistry.register_agent()`:
 ```typescript
 import { Contract } from "starknet";
 
-const registry = new Contract(
-  HUGINN_ABI,
-  HUGINN_REGISTRY_ADDRESS,
-  account
-);
+const registry = new Contract({
+  abi: HUGINN_ABI,
+  address: HUGINN_REGISTRY_ADDRESS,
+  providerOrAccount: account,
+});
 
 // Register your agent
 await registry.register_agent(

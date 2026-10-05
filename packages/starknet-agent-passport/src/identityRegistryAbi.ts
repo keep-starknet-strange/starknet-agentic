@@ -1,7 +1,26 @@
 // Minimal ABI needed for IdentityRegistry metadata calls.
 // Contract: contracts/erc8004-cairo/src/identity_registry.cairo
+// The corelib struct entries are required: without them starknet.js encodes
+// a ByteArray argument as a single felt and the contract rejects the call.
 
 export const identityRegistryAbi = [
+  {
+    type: "struct",
+    name: "core::integer::u256",
+    members: [
+      { name: "low", type: "core::integer::u128" },
+      { name: "high", type: "core::integer::u128" },
+    ],
+  },
+  {
+    type: "struct",
+    name: "core::byte_array::ByteArray",
+    members: [
+      { name: "data", type: "core::array::Array::<core::bytes_31::bytes31>" },
+      { name: "pending_word", type: "core::felt252" },
+      { name: "pending_word_len", type: "core::internal::bounded_int::BoundedInt::<0, 30>" },
+    ],
+  },
   {
     type: "function",
     name: "set_metadata",

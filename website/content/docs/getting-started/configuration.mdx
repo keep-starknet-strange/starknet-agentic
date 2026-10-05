@@ -229,8 +229,8 @@ setLogLevel("debug"); // 'debug' | 'info' | 'warn' | 'error'
   Yes, you can configure multiple accounts by using different environment variable prefixes or by passing account credentials directly to the SDK:
 
   ```typescript
-  const account1 = new Account(provider, process.env.ACCOUNT_1_ADDRESS, process.env.ACCOUNT_1_KEY);
-  const account2 = new Account(provider, process.env.ACCOUNT_2_ADDRESS, process.env.ACCOUNT_2_KEY);
+  const account1 = new Account({ provider, address: process.env.ACCOUNT_1_ADDRESS, signer: process.env.ACCOUNT_1_KEY });
+  const account2 = new Account({ provider, address: process.env.ACCOUNT_2_ADDRESS, signer: process.env.ACCOUNT_2_KEY });
   ```
 </FAQItem>
 

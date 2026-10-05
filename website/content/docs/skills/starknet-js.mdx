@@ -54,20 +54,19 @@ const sepoliaProvider = new RpcProvider({
 Accounts require a provider, address, and signer:
 
 ```typescript
-import { Account, constants } from "starknet";
+import { Account } from "starknet";
 
 // Connect to existing account
 const account = new Account({
   provider,
   address: "0x123...",
   signer: privateKey,
-  cairoVersion: "1",
-  transactionVersion: constants.TRANSACTION_VERSION.V3
+  cairoVersion: "1"
 });
 ```
 
 <Callout type="info" title="V3 Transactions">
-  V3 transactions pay fees in STRK instead of ETH. Always use `TRANSACTION_VERSION.V3` for new applications.
+  V3 transactions pay fees in STRK instead of ETH. starknet.js v10 only sends V3 transactions, so no transaction version option is needed.
 </Callout>
 
 ### Contract Interaction
@@ -119,15 +118,18 @@ const { transaction_hash } = await account.execute(calls);
 Enable gas payment in ERC-20 tokens or sponsor transactions entirely:
 
 ```typescript
-import { PaymasterRpc } from "starknet";
+import { Account, PaymasterRpc } from "starknet";
 
 // Create paymaster instance
 const paymaster = new PaymasterRpc({
   nodeUrl: "https://sepolia.paymaster.avnu.fi",
   headers: {
-    "x-api-key": process.env.AVNU_PAYMASTER_API_KEY
+    "x-paymaster-api-key": process.env.AVNU_PAYMASTER_API_KEY
   }
 });
+
+// Attach it to the account (executePaymasterTransaction uses account.paymaster)
+const account = new Account({ provider, address, signer: privateKey, paymaster });
 
 // Sponsored transaction (dApp pays gas)
 const result = await account.executePaymasterTransaction(
@@ -219,13 +221,10 @@ await relayerAccount.execute({
 ```typescript
 // Reading balance
 const balance = await tokenContract.balanceOf(address);
-// balance is a Uint256 object with { low, high }
-
-// Converting to BigInt
-const balanceBigInt = BigInt(balance.low) + (BigInt(balance.high) << 128n);
+// u256 results are returned as a bigint (no { low, high } conversion needed)
 
 // Formatting for display (18 decimals)
-const formatted = Number(balanceBigInt) / 1e18;
+const formatted = Number(balance) / 1e18;
 
 // Preparing amount for transfer
 const amount = 1000000000000000000n; // 1 token with 18 decimals
@@ -239,18 +238,15 @@ const { low, high } = uint256.bnToUint256(amount);
 const estimateFee = await account.estimateInvokeFee(calls);
 
 console.log("Overall fee:", estimateFee.overall_fee);
-console.log("Gas consumed:", estimateFee.gas_consumed);
+console.log("Resource bounds:", estimateFee.resourceBounds); // l1_gas, l2_gas, l1_data_gas
 
-// Execute with custom resource bounds
+// Execute with custom resource bounds (bigint values)
 const { transaction_hash } = await account.execute(calls, {
   resourceBounds: {
-    l1_gas: {
-      max_amount: "0x1000",
-      max_price_per_unit: "0x100000000000"
-    },
+    ...estimateFee.resourceBounds,
     l2_gas: {
-      max_amount: "0x0",
-      max_price_per_unit: "0x0"
+      ...estimateFee.resourceBounds.l2_gas,
+      max_amount: estimateFee.resourceBounds.l2_gas.max_amount * 2n
     }
   }
 });
@@ -262,15 +258,18 @@ Connect to browser wallets:
 
 ```typescript
 import { connect } from "@starknet-io/get-starknet";
+import { WalletAccount } from "starknet";
 
 // Connect to wallet
-const starknet = await connect();
+const selectedWallet = await connect();
 
-if (starknet) {
-  await starknet.enable();
-
-  const account = starknet.account;
-  const address = starknet.selectedAddress;
+if (selectedWallet) {
+  // get-starknet 4.x bundles older wallet-API types than v10; strict TS may need a cast here
+  const account = await WalletAccount.connect(
+    { nodeUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10" },
+    selectedWallet
+  );
+  const address = account.address;
 
   // Use account for transactions
   const tx = await account.execute(calls);
@@ -284,11 +283,13 @@ Deploy contracts via Universal Deployer Contract (UDC):
 ```typescript
 import { hash, CallData } from "starknet";
 
-// Compute class hash
-const classHash = await provider.declareContract({
+// Declare the class (returns its class hash)
+const declareResponse = await account.declare({
   contract: compiledContract,
   casm: compiledCasm
 });
+await provider.waitForTransaction(declareResponse.transaction_hash);
+const classHash = declareResponse.class_hash;
 
 // Deploy via UDC
 const { transaction_hash, contract_address } = await account.deployContract({

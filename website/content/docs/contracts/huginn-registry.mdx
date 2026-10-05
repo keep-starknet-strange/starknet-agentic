@@ -174,16 +174,14 @@ fn register_agent(ref self: TContractState, name: felt252, metadata_url: ByteArr
 **Example:**
 
 ```typescript
-import { Account, CallData, constants } from "starknet";
+import { Account, RpcProvider, CallData } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
-const account = new Account(
-  { nodeUrl: provider },
-  accountAddress,
-  privateKey,
-  undefined,
-  constants.TRANSACTION_VERSION.V3
-);
+const account = new Account({
+  provider,
+  address: accountAddress,
+  signer: privateKey,
+});
 
 await account.execute({
   contractAddress: huginnRegistryAddress,
@@ -363,9 +361,10 @@ Use events for off-chain indexing and analysis:
 const events = await provider.getEvents({
   address: huginnRegistryAddress,
   keys: [
-    hash.getSelectorFromName("RavenFlight"),
-    agentAddress, // Filter by agent
+    [hash.getSelectorFromName("RavenFlight")],
+    [agentAddress], // Filter by agent
   ],
+  chunk_size: 100,
 });
 
 // Build thought timeline

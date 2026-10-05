@@ -40,7 +40,7 @@ try {
   process.exit(1);
 }
 
-// Setup provider (starknet.js v7.6.4 compatible)
+// Setup provider (starknet.js v10)
 const rpcUrl = validateEnvVar('STARKNET_RPC_URL');
 const provider = new RpcProvider({
   nodeUrl: rpcUrl,
@@ -124,19 +124,19 @@ async function runTest() {
     ).abi;
 
     // Create accounts
-    const agentOwner = new Account(provider, ACCOUNT_1.address, ACCOUNT_1.privateKey);
-    const newWalletAccount = new Account(provider, ACCOUNT_2.address, ACCOUNT_2.privateKey);
+    const agentOwner = new Account({ provider, address: ACCOUNT_1.address, signer: ACCOUNT_1.privateKey });
+    const newWalletAccount = new Account({ provider, address: ACCOUNT_2.address, signer: ACCOUNT_2.privateKey });
 
     console.log(`👤 Agent Owner (Account 1): ${agentOwner.address.slice(0, 16)}...`);
     console.log(`👛 New Wallet (Account 2):  ${newWalletAccount.address.slice(0, 16)}...`);
     console.log('');
 
     // Create contract instance
-    const identityRegistry = new Contract(
-      identityAbi,
-      deploymentInfo.contracts.identityRegistry.address,
-      agentOwner
-    );
+    const identityRegistry = new Contract({
+      abi: identityAbi,
+      address: deploymentInfo.contracts.identityRegistry.address,
+      providerOrAccount: agentOwner,
+    });
 
     // ===================================================================
     // Step 1: Register a new agent
