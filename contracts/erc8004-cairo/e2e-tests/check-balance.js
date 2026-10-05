@@ -1,5 +1,4 @@
-import { RpcProvider, constants } from 'starknet';
-import fs from 'fs';
+import { RpcProvider, constants, uint256 } from 'starknet';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -27,73 +26,48 @@ const provider = new RpcProvider({
   chainId: constants.StarknetChainId.SN_SEPOLIA,
   blockIdentifier: 'latest',
   retries: 3,
-  skipSpecVersionCheck: true
 });
 
-// Load OZ accounts
-const ozAccountsPath = path.join(__dirname, 'oz_reputation_accounts.json');
-const ozAccounts = JSON.parse(fs.readFileSync(ozAccountsPath, 'utf8'));
+// The two accounts the E2E tests sign with (see setup.js)
+const accounts = [
+  { label: 'Agent Owner', envVar: 'DEPLOYER_ADDRESS', address: validateEnvVar('DEPLOYER_ADDRESS') },
+  { label: 'Client/Validator', envVar: 'TEST_ACCOUNT_ADDRESS', address: validateEnvVar('TEST_ACCOUNT_ADDRESS') },
+];
+
+// STRK token (same address on Sepolia and mainnet); V3 transaction fees are paid in STRK
+const strkTokenAddress = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
+
+function formatStrk(amount) {
+  const whole = amount / 10n ** 18n;
+  const fraction = (amount % 10n ** 18n).toString().padStart(18, '0').slice(0, 4);
+  return `${whole}.${fraction}`;
+}
 
 async function checkBalances() {
   console.log('\n🔍 Checking Account Balances on Sepolia...\n');
-  
-  const agentOwnerAddress = ozAccounts.agentOwnerAccount.address;
-  const clientAddress = ozAccounts.clientAccount.address;
-  
-  try {
-    // STRK token address on Sepolia
-    const strkTokenAddress = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
-    
-    console.log('Agent Owner Account:');
-    console.log(`  Address: ${agentOwnerAddress}`);
-    
+
+  for (const { label, envVar, address } of accounts) {
+    console.log(`${label} (${envVar}):`);
+    console.log(`  Address: ${address}`);
+
     try {
-      const balance1 = await provider.callContract({
+      const [low, high] = await provider.callContract({
         contractAddress: strkTokenAddress,
         entrypoint: 'balanceOf',
-        calldata: [agentOwnerAddress]
+        calldata: [address],
       });
-      const balanceStrk1 = BigInt(balance1[0]) / BigInt(10**18);
-      console.log(`  STRK Balance: ${balanceStrk1} STRK\n`);
+      console.log(`  STRK Balance: ${formatStrk(uint256.uint256ToBN({ low, high }))} STRK`);
     } catch (e) {
-      console.log(`  ⚠️  Unable to fetch balance: ${e.message}\n`);
+      console.log(`  ⚠️  Unable to fetch balance: ${e.message}`);
     }
-    
-    console.log('Client/Validator Account:');
-    console.log(`  Address: ${clientAddress}`);
-    
+
     try {
-      const balance2 = await provider.callContract({
-        contractAddress: strkTokenAddress,
-        entrypoint: 'balanceOf',
-        calldata: [clientAddress]
-      });
-      const balanceStrk2 = BigInt(balance2[0]) / BigInt(10**18);
-      console.log(`  STRK Balance: ${balanceStrk2} STRK\n`);
+      const nonce = await provider.getNonceForAddress(address);
+      console.log(`  Nonce: ${nonce}\n`);
     } catch (e) {
-      console.log(`  ⚠️  Unable to fetch balance: ${e.message}\n`);
+      console.log(`  Nonce: Unable to fetch (${e.message})\n`);
     }
-    
-    // Get nonces
-    console.log('Account Nonces:');
-    try {
-      const nonce1 = await provider.getNonceForAddress(agentOwnerAddress);
-      console.log(`  Agent Owner Nonce: ${nonce1}`);
-    } catch (e) {
-      console.log(`  Agent Owner Nonce: Unable to fetch`);
-    }
-    
-    try {
-      const nonce2 = await provider.getNonceForAddress(clientAddress);
-      console.log(`  Client Nonce: ${nonce2}\n`);
-    } catch (e) {
-      console.log(`  Client Nonce: Unable to fetch\n`);
-    }
-    
-  } catch (error) {
-    console.error('Error:', error.message);
   }
 }
 
 checkBalances();
-

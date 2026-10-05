@@ -4,9 +4,9 @@ End-to-end tests for the ERC-8004 Trustless Agent contracts on Starknet Sepolia 
 
 ## Prerequisites
 
-1. **Node.js** (v18+)
+1. **Node.js** 22+ (required by starknet.js 10)
 2. **Deployed contracts** on Sepolia testnet
-3. **Test accounts** with Sepolia ETH for gas
+3. **Test accounts** with Sepolia STRK for fees (V3 transactions pay fees in STRK; [faucet](https://starknet-faucet.vercel.app/))
 
 ## Setup
 
@@ -25,14 +25,20 @@ End-to-end tests for the ERC-8004 Trustless Agent contracts on Starknet Sepolia 
 
 ## Test Accounts
 
-The tests use two pre-configured Sepolia accounts:
+The tests sign with two Sepolia accounts, read from `contracts/erc8004-cairo/.env`
+(see `.env.example` and [docs/E2E_TESTING_GUIDE.md](../../../docs/E2E_TESTING_GUIDE.md)):
 
-| Account | Role | Address |
-|---------|------|---------|
-| Account 1 | Agent Owner, Contract Owner | `0x04a6b1f...` |
-| Account 2 | Client, Validator, Other User | `0x0065b98...` |
+| Account | Role | Environment variables |
+|---------|------|-----------------------|
+| Account 1 | Agent Owner, Contract Owner | `DEPLOYER_ADDRESS`, `DEPLOYER_PRIVATE_KEY` |
+| Account 2 | Client, Validator, Other User | `TEST_ACCOUNT_ADDRESS`, `TEST_ACCOUNT_PRIVATE_KEY` |
 
-**Important**: Ensure both accounts have sufficient Sepolia ETH for transaction fees.
+**Important**: Ensure both accounts have enough Sepolia STRK for transaction fees. To check their
+STRK balances and nonces:
+
+```bash
+npm run check-balance
+```
 
 ## Running Tests
 
