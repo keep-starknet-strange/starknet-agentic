@@ -380,7 +380,7 @@ def example():
     
     # Create payment link
     link = builder.create(
-        address="0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005",
+        address="0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         amount=0.01,
         memo="Coffee",
         token="ETH"
@@ -389,7 +389,7 @@ def example():
     
     # Create wallet deep links
     deep_links = builder.create_wallet_deep_links(
-        address="0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005",
+        address="0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         amount=0.01,
         memo="Coffee"
     )

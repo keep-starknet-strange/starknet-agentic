@@ -94,7 +94,7 @@ starknet:<address>?amount=<value>&memo=<text>&token=<ETH|STRK|USDC>
 
 **Example:**
 ```
-starknet:0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005?amount=0.01&memo=coffee&token=ETH
+starknet:0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef?amount=0.01&memo=coffee&token=ETH
 ```
 
 ### Telegram Bot Commands
@@ -180,7 +180,7 @@ from qr_generator import QRGenerator
 
 qr = QRGenerator()
 qr.generate(
-    address="0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005",
+    address="0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     amount=None,  # Optional amount
     memo=None,     # Optional memo
     output_file="address_qr.png"
