@@ -34,13 +34,13 @@ function isHexAddress(v) {
   return typeof v === 'string' && /^0x[0-9a-fA-F]+$/.test(v);
 }
 
-function loadVesuPools() {
+function loadVesuConfig() {
   // Pools are stored under protocols.json → VESU.pools
   const p = join(SKILL_ROOT, 'protocols.json');
   if (!existsSync(p)) return {};
   try {
     const all = JSON.parse(readFileSync(p, 'utf8'));
-    return all?.VESU?.pools || {};
+    return all?.VESU || {};
   } catch (e) {
     if (process.env.OPENCLAW_DEBUG === '1') {
       console.error(JSON.stringify({ warning: 'Failed to parse protocols.json', error: e?.message }));
@@ -155,7 +155,8 @@ async function main() {
     process.exit(1);
   }
 
-  const pools = loadVesuPools();
+  const vesuCfg = loadVesuConfig();
+  const pools = vesuCfg.pools || {};
   const poolCfg = pools[poolName];
   if (!poolCfg?.poolAddress || !isHexAddress(poolCfg.poolAddress)) {
     console.log(JSON.stringify({
@@ -176,6 +177,19 @@ async function main() {
   const provider = new Provider({ nodeUrl: rpcUrl });
   // Token addresses come from AVNU for the RPC's network; unknown chain IDs throw.
   const network = await getNetwork(provider);
+
+  // A pool address is only valid on the network protocols.json lists it for
+  // (VESU.pools[name].network, else VESU.network).
+  const poolNetwork = poolCfg.network ?? vesuCfg.network;
+  if (poolNetwork !== network.registryName) {
+    console.log(JSON.stringify({
+      success: false,
+      error: `Pool ${poolName} is configured for ${poolNetwork ?? 'no network'}, but the RPC is on ${network.name}`,
+      nextStep: 'CONFIGURE_VESU_POOL',
+      message: `Use a pool configured for "${network.registryName}" in protocols.json (VESU.pools[name].network, else VESU.network).`
+    }));
+    process.exit(1);
+  }
 
   // Resolve tokens
   // For Vesu modify_position we need collateral_asset + debt_asset.

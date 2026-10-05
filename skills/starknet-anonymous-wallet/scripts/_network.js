@@ -4,10 +4,12 @@ const { SN_MAIN, SN_SEPOLIA } = constants.StarknetChainId;
 
 // Chain ID -> AVNU endpoints. This table is the allowlist: no other AVNU API or
 // paymaster host is called, and a chain ID missing here gets no endpoints.
+// `registryName` is the network's name in protocols.json ("network" fields).
 export const NETWORKS = Object.freeze({
   [SN_MAIN]: Object.freeze({
     name: 'SN_MAIN',
     chainId: SN_MAIN,
+    registryName: 'mainnet',
     avnuApiHost: 'starknet.api.avnu.fi',
     paymasterHost: 'starknet.paymaster.avnu.fi',
     explorerTxUrl: 'https://starkscan.co/tx/'
@@ -15,6 +17,7 @@ export const NETWORKS = Object.freeze({
   [SN_SEPOLIA]: Object.freeze({
     name: 'SN_SEPOLIA',
     chainId: SN_SEPOLIA,
+    registryName: 'sepolia',
     avnuApiHost: 'sepolia.api.avnu.fi',
     paymasterHost: 'sepolia.paymaster.avnu.fi',
     explorerTxUrl: 'https://sepolia.starkscan.co/tx/'
