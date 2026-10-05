@@ -5,8 +5,12 @@
  * Default swap handler - uses AVNU SDK for all swap operations.
  * This script receives account info via arguments - NO secrets access.
  * 
+ * Gas is paid through the AVNU paymaster in "default" fee mode (no API key):
+ * the fee is taken in `gasToken` (defaults to the sell token) instead of STRK.
+ * 
  * Usage:
  *   node avnu-swap.js '{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x..."}'
+ *   node avnu-swap.js '{"sellToken":"ETH","buyToken":"USDC","sellAmount":"0.001","gasToken":"STRK","accountAddress":"0x..."}'
  */
 
 import { getQuotes, executeSwap } from '@avnu/avnu-sdk';
@@ -82,6 +86,20 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
   return { quote: quotes[0], sellToken, buyToken };
 }
 
+/**
+ * Resolve the token that pays gas through the paymaster.
+ * Defaults to the sell token, which the account is known to hold.
+ */
+async function resolveGasToken(gasTokenSymbol, sellToken) {
+  if (!gasTokenSymbol) return sellToken;
+  const needle = String(gasTokenSymbol).toLowerCase();
+  const gasToken = (await getAllTokens()).find(t =>
+    String(t?.symbol || '').toLowerCase() === needle
+  );
+  if (!gasToken) throw new Error(`Unknown gas token: ${gasTokenSymbol}`);
+  return gasToken;
+}
+
 const DEFAULT_PAYMASTER_URL = 'https://starknet.paymaster.avnu.fi';
 const ALLOWED_PAYMASTER_HOSTS = new Set([
   'starknet.paymaster.avnu.fi',
@@ -104,14 +122,25 @@ function resolvePaymasterUrl() {
 
 let paymaster = null;
 
-async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE) {
+async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE, gasTokenAddress = quote.sellTokenAddress) {
   if (!paymaster) throw new Error('Paymaster not initialized');
+  if (!gasTokenAddress) throw new Error('Missing gas token address');
 
+  // avnu-sdk only takes the paymaster path when `paymaster.active` is set;
+  // a bare PaymasterRpc is ignored and the account pays its own gas.
   const result = await executeSwap({
-    paymaster: paymaster,
+    paymaster: {
+      active: true,
+      provider: paymaster,
+      params: {
+        version: '0x1',
+        feeMode: { mode: 'default', gasToken: gasTokenAddress },
+      },
+    },
     provider: account,
     quote,
     slippage,
+    executeApprove: true,
   });
   
   return result;
@@ -141,6 +170,7 @@ async function main() {
     buyToken, 
     sellAmount, 
     slippage = DEFAULT_SLIPPAGE,
+    gasToken,
     accountAddress
   } = input;
   
@@ -210,14 +240,18 @@ async function main() {
       buyTokenAddress: buyTokenData.address
     }));
     
+    const gasTokenData = await resolveGasToken(gasToken, sellTokenData);
+    
     // Step 2: Execute swap
     console.error(JSON.stringify({
       step: "execute",
       status: "executing",
-      slippage: `${slippage * 100}%`
+      slippage: `${slippage * 100}%`,
+      feeMode: "default",
+      gasToken: gasTokenData.symbol
     }));
     
-    const result = await executeAvnuSwap(quote, account, slippage);
+    const result = await executeAvnuSwap(quote, account, slippage, gasTokenData.address);
     
     console.log(JSON.stringify({
       success: true,
@@ -231,6 +265,9 @@ async function main() {
       gasFees: quote.gasFees.toString(),
       sellTokenAddress: sellTokenData.address,
       buyTokenAddress: buyTokenData.address,
+      feeMode: "default",
+      gasToken: gasTokenData.symbol,
+      gasTokenAddress: gasTokenData.address,
       explorer: `https://starkscan.co/tx/${result.transactionHash}`
     }));
     
@@ -251,4 +288,4 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 }
 
 // Export for use as module
-export { getSwapQuote, executeAvnuSwap, matchTokens, getAllTokens };
+export { getSwapQuote, executeAvnuSwap, matchTokens, getAllTokens, resolveGasToken };
