@@ -15,6 +15,7 @@ import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { validateAndParseAddress, type Account, type Call, type RpcProvider } from "starknet";
 import { getTokenService } from "../services/index.js";
 import type { TxReceiptLike } from "../helpers/txReceipt.js";
+import type { PolicyGuard } from "../middleware/policyGuard.js";
 
 /** Raw tool arguments as received in a tools/call request. */
 export type ToolArgs = Record<string, unknown> | undefined;
@@ -44,6 +45,11 @@ export interface ToolContext {
   account: Account;
   isSponsored: boolean;
   vesuPoolFactoryAddress: string;
+  /**
+   * The server's policy guard. Tools that authorize value transfers without a
+   * transfer call (x402 signing) evaluate it themselves once the payment is known.
+   */
+  policyGuard: PolicyGuard;
   executeTransaction: (
     calls: Call | Call[],
     gasfree: boolean,

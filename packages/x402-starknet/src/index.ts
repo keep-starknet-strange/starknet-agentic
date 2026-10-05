@@ -1,124 +1,68 @@
-import { Account, RpcProvider, stark, type TypedData } from "starknet"
-
-export type X402PaymentRequired = {
-  /** opaque scheme id, ex: exact-starknet */
-  scheme: string
-  /** facilitator URL */
-  facilitator?: string
-  /** typedData the client must sign for Starknet exact scheme */
-  typedData?: TypedData
-  /** optional extra fields */
-  [k: string]: unknown
-}
-
-export type X402PaymentSignature = {
-  scheme: string
-  typedData: TypedData
-  /** Signature felts as 0x-prefixed hex strings; `[r, s]` for the built-in private-key signer. */
-  signature: string[]
-  address: string
-  [k: string]: unknown
-}
-
-function base64ToBuffer(input: string): Buffer {
-  // Accept both base64 and base64url.
-  // base64url uses -_ and often omits padding.
-  const normalized = input.replace(/-/g, "+").replace(/_/g, "/").trim()
-
-  // Length mod 4 === 1 is not a valid base64/base64url length.
-  // Guard to avoid silently decoding garbage.
-  if (normalized.length % 4 === 1) {
-    throw new Error("Invalid base64/base64url string length")
-  }
-
-  const padLen = (4 - (normalized.length % 4)) % 4
-  const padded = normalized + "=".repeat(padLen)
-  return Buffer.from(padded, "base64")
-}
-
-function bufferToBase64Url(buf: Buffer): string {
-  const base64 = buf.toString("base64")
-  const base64Url = base64.replaceAll("+", "-").replaceAll("/", "_")
-
-  let end = base64Url.length
-  while (end > 0 && base64Url.charAt(end - 1) === "=") {
-    end -= 1
-  }
-
-  return base64Url.slice(0, end)
-}
-
-export function decodeBase64Json<T = unknown>(v: string): T {
-  return JSON.parse(base64ToBuffer(v).toString("utf8")) as T
-}
-
 /**
- * Encodes as base64url (RFC 4648) without padding.
- * This is generally safer for HTTP header values.
- */
-export function encodeBase64Json(value: unknown): string {
-  return bufferToBase64Url(Buffer.from(JSON.stringify(value), "utf8"))
-}
-
-/**
- * Create PAYMENT-SIGNATURE header value for Starknet by signing the typedData contained in PAYMENT-REQUIRED.
+ * x402 `exact` scheme on Starknet, client side.
  *
- * This is intentionally generic: it does not assume a specific facilitator implementation.
+ * The client builds the SNIP-9 v2 `OutsideExecution` it signs from the
+ * `PaymentRequirements` alone (one `transfer(payTo, amount)` on `asset`,
+ * `Caller = extra.feePayer`), checks the document against that intent, signs it,
+ * and returns the standard-base64 `PAYMENT-SIGNATURE` header. Nothing the server
+ * sends is signed as received.
+ *
+ * Spec: x402-foundation/x402 specs/schemes/exact/scheme_exact_starknet.md at
+ * {@link SPEC_REVISION}.
  */
-export async function createStarknetPaymentSignatureHeader(args: {
-  paymentRequiredHeader: string
-  rpcUrl: string
-  accountAddress: string
-  privateKey: string
-}): Promise<{ headerValue: string; payload: X402PaymentSignature }>
 
-export async function createStarknetPaymentSignatureHeader(args: {
-  paymentRequired: X402PaymentRequired
-  rpcUrl: string
-  accountAddress: string
-  privateKey: string
-}): Promise<{ headerValue: string; payload: X402PaymentSignature }>
-
-export async function createStarknetPaymentSignatureHeader(args: {
-  paymentRequiredHeader?: string
-  paymentRequired?: X402PaymentRequired
-  rpcUrl: string
-  accountAddress: string
-  privateKey: string
-}): Promise<{ headerValue: string; payload: X402PaymentSignature }> {
-  const paymentRequired =
-    args.paymentRequired ??
-    (args.paymentRequiredHeader
-      ? decodeBase64Json<X402PaymentRequired>(args.paymentRequiredHeader)
-      : undefined)
-
-  if (!paymentRequired) throw new Error("Missing paymentRequired")
-  if (!paymentRequired.typedData) throw new Error("paymentRequired.typedData missing")
-
-  const provider = new RpcProvider({ nodeUrl: args.rpcUrl })
-  const account = new Account({ provider, address: args.accountAddress, signer: args.privateKey })
-
-  // starknet.js signs typedData per SNIP-12.
-  const rawSignature = await account.signMessage(paymentRequired.typedData)
-
-  // The default (private-key) signer returns a Signature object whose r and s are bigints,
-  // which JSON.stringify cannot serialize. Encode it as hex felts [r, s] with starknet.js's own
-  // stark.formatSignature, the encoding starknet.js sends to RPC nodes and the one the registered
-  // exact/Starknet x402 scheme uses for its signature value (this payload's envelope is still
-  // not that scheme's, see #554). The recovery bit is not part of a Starknet signature and is
-  // dropped. An array signature is already a felt array and is kept as is.
-  // Only the encoding changes: the signed typedData and its message hash are untouched.
-  const signature = Array.isArray(rawSignature) ? rawSignature : stark.formatSignature(rawSignature)
-
-  // Preserve any additional metadata from PAYMENT-REQUIRED (facilitator, extensions, etc).
-  // Explicit keys win, so we don't let unknown fields override scheme/typedData/signature/address.
-  const payload: X402PaymentSignature = {
-    ...(paymentRequired as Record<string, unknown>),
-    scheme: paymentRequired.scheme,
-    typedData: paymentRequired.typedData,
-    signature,
-    address: args.accountAddress,
-  }
-
-  return { headerValue: encodeBase64Json(payload), payload }
-}
+export {
+  ANY_CALLER,
+  DEFAULT_MAX_TIMEOUT_SECONDS_CAP,
+  EXACT_SCHEME,
+  EXECUTE_AFTER,
+  MAX_TIMEOUT_SECONDS_CAP_LIMIT,
+  SNIP12_REVISION,
+  SNIP9_DOMAIN_NAME,
+  SNIP9_DOMAIN_VERSION,
+  SPEC_REVISION,
+  STARKNET_NETWORKS,
+  STARKNET_NETWORK_IDS,
+  TRANSFER_SELECTOR,
+  X402_VERSION,
+  type StarknetNetwork,
+} from "./constants.js"
+export { X402PaymentError, type X402PaymentErrorCode } from "./errors.js"
+export {
+  decodePaymentRequiredHeader,
+  feltEquals,
+  isStarknetAddress,
+  networkForChainId,
+  parseExactStarknetRequirements,
+  selectPaymentRequirements,
+  type DecodedPaymentRequired,
+  type ExactStarknetRequirements,
+  type RequirementsPolicy,
+  type SelectedRequirements,
+  type SelectionOptions,
+} from "./requirements.js"
+export {
+  buildOutsideExecutionTypedData,
+  OUTSIDE_EXECUTION_TYPES,
+  splitU256,
+  type OutsideExecutionCall,
+  type OutsideExecutionDomain,
+  type OutsideExecutionMessage,
+  type OutsideExecutionTypedData,
+  type PaymentAuthorization,
+} from "./typedData.js"
+export { assertTypedDataMatchesIntent, type PaymentIntent } from "./intent.js"
+export {
+  createStarknetPaymentSignatureHeader,
+  decodePaymentSignatureHeader,
+  prepareStarknetPayment,
+  signPreparedStarknetPayment,
+  type CreatePaymentSignatureArgs,
+  type ExactStarknetPaymentPayload,
+  type PaymentSigner,
+  type PaymentSummary,
+  type PreparedStarknetPayment,
+  type PrepareOptions,
+  type SignedStarknetPayment,
+  type SignOptions,
+} from "./payment.js"

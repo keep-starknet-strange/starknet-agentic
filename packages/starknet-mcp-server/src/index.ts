@@ -314,6 +314,7 @@ const toolContext: ToolContext = {
   account,
   isSponsored,
   vesuPoolFactoryAddress,
+  policyGuard,
   executeTransaction,
   waitForTransactionSuccess,
 };
