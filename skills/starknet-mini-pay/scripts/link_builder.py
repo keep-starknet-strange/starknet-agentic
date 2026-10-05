@@ -52,6 +52,7 @@ class PaymentLinkBuilder:
     PROTOCOL = "starknet"
     DEFAULT_TOKEN = "ETH"
     VALID_TOKENS = ["ETH", "STRK", "USDC"]
+    ADDRESS_BOUND = 2**251
     
     # Wallet deep link schemas
     WALLET_SCHEMES = {
@@ -82,6 +83,7 @@ class PaymentLinkBuilder:
         # Validate address format
         if not self._validate_address(address):
             raise ValueError(f"Invalid Starknet address: {address}")
+        address = self._normalize_address(address)
         
         # Validate token
         token = token.upper()
@@ -190,7 +192,7 @@ class PaymentLinkBuilder:
             return self._parse_wallet_link(url)
         elif url.startswith("0x") and "?" not in url:
             # Just an address
-            return PaymentLinkData(address=url.lower())
+            return PaymentLinkData(address=self._normalize_address(url))
         else:
             # Full URL format
             full_url = url
@@ -300,22 +302,26 @@ class PaymentLinkBuilder:
         if not address:
             return False
         
-        # Remove 0x prefix for validation
-        addr = address.lower().replace("0x", "")
+        addr = address.strip().lower()
+        if addr.startswith("0x"):
+            addr = addr[2:]
         
-        # Starknet addresses are 64 hex characters
-        if len(addr) != 64:
+        # 1-64 hex characters: leading zeros are often omitted (e.g. hex() output)
+        if not re.fullmatch(r"[0-9a-f]{1,64}", addr):
             return False
         
-        # Check all characters are valid hex
-        return bool(re.match(r'^[0-9a-f]+$', addr))
+        # Addresses are felts, so they must be below 2**251
+        return int(addr, 16) < self.ADDRESS_BOUND
     
     def _normalize_address(self, address: str) -> str:
-        """Normalize address to lowercase with 0x prefix"""
+        """Normalize address to lowercase 0x + 64 hex chars (zero-padded)"""
         addr = address.strip().lower()
-        if not addr.startswith("0x"):
-            addr = f"0x{addr}"
-        return addr
+        if addr.startswith("0x"):
+            addr = addr[2:]
+        # Only pad hex; anything else is left for _validate_address to reject
+        if re.fullmatch(r"[0-9a-f]{1,64}", addr):
+            addr = addr.zfill(64)
+        return f"0x{addr}"
     
     def format_amount(self, amount: float, token: str = "ETH") -> str:
         """Format amount with appropriate decimals"""
