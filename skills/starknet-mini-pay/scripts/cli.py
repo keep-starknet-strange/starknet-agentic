@@ -260,6 +260,16 @@ async def cmd_parse_link(args):
 
 async def cmd_invoice(args, rpc_url: str):
     """Handle invoice creation command."""
+    link = PaymentLinkBuilder()
+    
+    # Validate before saving, so a bad address or token leaves no invoice behind
+    if not link._validate_address(args.address):
+        print(f"❌ Error: Invalid Starknet address: {args.address}")
+        return 1
+    if args.token.upper() not in link.VALID_TOKENS:
+        print(f"❌ Error: Invalid token: {args.token}. Valid: {link.VALID_TOKENS}")
+        return 1
+    
     async with InvoiceManager(rpc_url=rpc_url) as invoice_mgr:
         invoice = await invoice_mgr.create(
             payer_address=args.address,
@@ -276,7 +286,6 @@ async def cmd_invoice(args, rpc_url: str):
         print(f"   Address: {args.address}")
         
         # Generate payment link
-        link = PaymentLinkBuilder()
         url = link.create(
             address=args.address,
             amount=args.amount,
