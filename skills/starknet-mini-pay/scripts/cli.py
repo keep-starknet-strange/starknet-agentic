@@ -76,6 +76,7 @@ def parse_args():
     qr_parser.add_argument("--output", "-o", default="qr_code.png", help="Output file")
     qr_parser.add_argument("--amount", type=float, help="Pre-fill amount")
     qr_parser.add_argument("--memo", help="Pre-fill memo")
+    qr_parser.add_argument("--token", default="ETH", help="Token (ETH, STRK, USDC)")
     
     # Link command
     link_parser = subparsers.add_parser("link", help="Create payment link")
@@ -184,17 +185,18 @@ async def cmd_qr(args):
     qr = QRGenerator()
     
     try:
+        # Build the payment link first: it validates the address and token
+        link = PaymentLinkBuilder()
+        url = link.create(args.address, args.amount, args.memo, args.token)
+        
         qr.generate(
             address=args.address,
             amount=args.amount,
             memo=args.memo,
+            token=args.token,
             output_file=args.output
         )
         print(f"✅ QR code saved to {args.output}")
-        
-        # Also print the payment link
-        link = PaymentLinkBuilder()
-        url = link.create(args.address, args.amount, args.memo, args.token or "ETH")
         print(f"📱 Payment link: {url}")
         
         return 0

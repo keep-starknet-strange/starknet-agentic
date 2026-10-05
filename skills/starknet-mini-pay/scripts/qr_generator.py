@@ -42,7 +42,8 @@ class QRGenerator:
         memo: Optional[str] = None,
         output_file: str = "qr_code.png",
         color: tuple = None,
-        logo_path: Optional[str] = None
+        logo_path: Optional[str] = None,
+        token: Optional[str] = None
     ):
         """
         Generate QR code for a Starknet address
@@ -54,9 +55,10 @@ class QRGenerator:
             output_file: Output file path
             color: RGB tuple for QR color
             logo_path: Optional logo to embed in center
+            token: Optional token symbol (ETH, the link default, is omitted)
         """
         # Build the data
-        data = self._build_address_data(address, amount, memo)
+        data = self._build_address_data(address, amount, memo, token)
         
         # Create QR code
         qr = qrcode.QRCode(
@@ -154,7 +156,8 @@ class QRGenerator:
         self,
         address: str,
         amount: Optional[float],
-        memo: Optional[str]
+        memo: Optional[str],
+        token: Optional[str] = None
     ) -> str:
         """Build data string for QR code"""
         # Ensure address is checksummed
@@ -168,6 +171,9 @@ class QRGenerator:
         
         if memo:
             parts.append(f"memo={memo}")
+        
+        if token and token.upper() != "ETH":
+            parts.append(f"token={token.upper()}")
         
         # Return as URI format
         if len(parts) > 1:
