@@ -16,4 +16,7 @@ Rationale: base64url is generally safer in HTTP headers and logs.
 - signs the embedded Starknet SNIP-12 typedData
 - returns a base64url PAYMENT-SIGNATURE header value
 
+`signature` in the payload is an array of 0x-prefixed hex felts (`[r, s]` for the
+private-key signer), the encoding starknet.js uses on the wire.
+
 It also preserves additional metadata fields from PAYMENT-REQUIRED (for example `facilitator`, extensions, or other keys), while ensuring `scheme`, `typedData`, `signature`, and `address` are set explicitly.
