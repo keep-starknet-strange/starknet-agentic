@@ -7,13 +7,17 @@
  * 
  * Gas is paid through the AVNU paymaster in "default" fee mode (no API key):
  * the fee is taken in `gasToken` (defaults to the sell token) instead of STRK.
- * 
+ * The account only signs paymaster typed data after starknet.js has checked
+ * that it carries exactly the AVNU swap calls plus one gas-token fee transfer
+ * no larger than the fee cap.
+ *
  * Usage:
  *   node avnu-swap.js '{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x..."}'
  *   node avnu-swap.js '{"sellToken":"ETH","buyToken":"USDC","sellAmount":"0.001","gasToken":"STRK","accountAddress":"0x..."}'
+ *   node avnu-swap.js '{"sellToken":"STRK","buyToken":"ETH","sellAmount":"10","maxGasFee":"0.5","accountAddress":"0x..."}'
  */
 
-import { getQuotes, executeSwap } from '@avnu/avnu-sdk';
+import { getQuotes, quoteToCalls } from '@avnu/avnu-sdk';
 import { RpcProvider, Account, PaymasterRpc } from 'starknet';
 import { fileURLToPath } from 'url';
 import { resolveRpcUrl } from './_rpc.js';
@@ -106,13 +110,15 @@ const ALLOWED_PAYMASTER_HOSTS = new Set([
   'sepolia.paymaster.avnu.fi'
 ]);
 
-function resolvePaymasterUrl() {
-  const value = process.env.PAYMASTER_URL || DEFAULT_PAYMASTER_URL;
+function assertAllowedPaymasterUrl(value) {
   let parsed;
   try {
     parsed = new URL(value);
   } catch {
-    throw new Error(`Invalid PAYMASTER_URL: ${value}`);
+    throw new Error(`Invalid paymaster URL: ${value}`);
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error(`Paymaster URL must use https: ${value}`);
   }
   if (!ALLOWED_PAYMASTER_HOSTS.has(parsed.hostname)) {
     throw new Error(`Untrusted paymaster host: ${parsed.hostname}`);
@@ -120,30 +126,55 @@ function resolvePaymasterUrl() {
   return parsed.toString();
 }
 
-let paymaster = null;
+function resolvePaymasterUrl() {
+  return assertAllowedPaymasterUrl(process.env.PAYMASTER_URL || DEFAULT_PAYMASTER_URL);
+}
 
-async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE, gasTokenAddress = quote.sellTokenAddress) {
-  if (!paymaster) throw new Error('Paymaster not initialized');
+/**
+ * Execute an AVNU quote through the account's paymaster, paying gas in
+ * `gasTokenAddress`.
+ *
+ * avnu-sdk's executeSwap signs whatever typed data the paymaster returns.
+ * Account.executePaymasterTransaction instead rebuilds the paymaster
+ * transaction and refuses to sign unless its calls equal `calls` plus one
+ * `gasTokenAddress` transfer of at most `maxFeeInGasToken`.
+ *
+ * `maxGasFee` (gas token base units) optionally caps the fee independently of
+ * the paymaster's own estimate.
+ */
+async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE, gasTokenAddress = quote.sellTokenAddress, maxGasFee) {
   if (!gasTokenAddress) throw new Error('Missing gas token address');
+  assertAllowedPaymasterUrl(account.paymaster.nodeUrl);
 
-  // avnu-sdk only takes the paymaster path when `paymaster.active` is set;
-  // a bare PaymasterRpc is ignored and the account pays its own gas.
-  const result = await executeSwap({
-    paymaster: {
-      active: true,
-      provider: paymaster,
-      params: {
-        version: '0x1',
-        feeMode: { mode: 'default', gasToken: gasTokenAddress },
-      },
-    },
-    provider: account,
-    quote,
+  const chainId = await account.provider.getChainId();
+  if (BigInt(chainId) !== BigInt(quote.chainId)) {
+    throw new Error(`Quote chainId ${quote.chainId} does not match account chainId ${chainId}`);
+  }
+
+  const { calls } = await quoteToCalls({
+    quoteId: quote.quoteId,
+    takerAddress: account.address,
     slippage,
     executeApprove: true,
   });
-  
-  return result;
+
+  const paymasterDetails = { feeMode: { mode: 'default', gasToken: gasTokenAddress } };
+  const estimate = await account.estimatePaymasterTransactionFee(calls, paymasterDetails);
+  const estimatedFeeInGasToken = BigInt(estimate.estimated_fee_in_gas_token);
+  const maxFeeInGasToken = BigInt(estimate.suggested_max_fee_in_gas_token);
+
+  // starknet.js skips the fee cap when maxFeeInGasToken is falsy, so a zero
+  // estimate would leave the fee transfer unbounded.
+  if (maxFeeInGasToken <= 0n) {
+    throw new Error(`Paymaster returned a non-positive max fee: ${maxFeeInGasToken}`);
+  }
+  if (maxGasFee !== undefined && maxFeeInGasToken > maxGasFee) {
+    throw new Error(`Paymaster max fee ${maxFeeInGasToken} exceeds maxGasFee ${maxGasFee} (gas token base units)`);
+  }
+
+  const result = await account.executePaymasterTransaction(calls, paymasterDetails, maxFeeInGasToken);
+
+  return { transactionHash: result.transaction_hash, estimatedFeeInGasToken, maxFeeInGasToken };
 }
 
 async function main() {
@@ -171,6 +202,7 @@ async function main() {
     sellAmount, 
     slippage = DEFAULT_SLIPPAGE,
     gasToken,
+    maxGasFee,
     accountAddress
   } = input;
   
@@ -195,6 +227,7 @@ async function main() {
 
   const privateKey = loadPrivateKeyByAccountAddress(accountAddress);
 
+  let paymaster;
   try {
     paymaster = new PaymasterRpc({
       nodeUrl: resolvePaymasterUrl(),
@@ -207,13 +240,15 @@ async function main() {
     process.exit(1);
   }
   
-  // Create account from passed arguments (no secrets access)
+  // Create account from passed arguments (no secrets access).
+  // executePaymasterTransaction talks to the account's own paymaster.
   const rpcUrl = resolveRpcUrl();
   const provider = new RpcProvider({ nodeUrl: rpcUrl });
   const account = new Account({
     provider,
     address: accountAddress,
-    signer: privateKey
+    signer: privateKey,
+    paymaster
   });
   
   try {
@@ -242,16 +277,26 @@ async function main() {
     
     const gasTokenData = await resolveGasToken(gasToken, sellTokenData);
     
+    let maxGasFeeUnits;
+    if (maxGasFee != null) {
+      try {
+        maxGasFeeUnits = amountToBigInt(maxGasFee, gasTokenData.decimals);
+      } catch (e) {
+        throw new Error(`Invalid maxGasFee: ${e.message}`);
+      }
+    }
+    
     // Step 2: Execute swap
     console.error(JSON.stringify({
       step: "execute",
       status: "executing",
       slippage: `${slippage * 100}%`,
       feeMode: "default",
-      gasToken: gasTokenData.symbol
+      gasToken: gasTokenData.symbol,
+      ...(maxGasFeeUnits !== undefined && { maxGasFee: maxGasFeeUnits.toString() })
     }));
     
-    const result = await executeAvnuSwap(quote, account, slippage, gasTokenData.address);
+    const result = await executeAvnuSwap(quote, account, slippage, gasTokenData.address, maxGasFeeUnits);
     
     console.log(JSON.stringify({
       success: true,
@@ -268,6 +313,8 @@ async function main() {
       feeMode: "default",
       gasToken: gasTokenData.symbol,
       gasTokenAddress: gasTokenData.address,
+      estimatedFeeInGasToken: result.estimatedFeeInGasToken.toString(),
+      maxFeeInGasToken: result.maxFeeInGasToken.toString(),
       explorer: `https://starkscan.co/tx/${result.transactionHash}`
     }));
     

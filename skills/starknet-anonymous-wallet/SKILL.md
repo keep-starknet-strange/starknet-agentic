@@ -61,8 +61,10 @@ This endpoint has no WebSocket support, so `watch-events-smart.js` falls back to
 
 - The gas token defaults to the sell token. Pass `"gasToken":"STRK"` (any verified symbol the paymaster accepts) to override it.
 - The account needs the sell amount plus the fee in the gas token.
-- `PAYMASTER_URL` selects the endpoint; only `starknet.paymaster.avnu.fi` and `sepolia.paymaster.avnu.fi` are accepted.
-- Quotes always come from the mainnet AVNU API, so swaps currently run on mainnet only; on Sepolia, `executeSwap` fails with `Invalid chainId`.
+- The script never blind-signs paymaster typed data. It builds the swap calls with `quoteToCalls`, asks the paymaster for a fee estimate, then runs `account.executePaymasterTransaction`, which refuses to sign unless the typed data holds exactly those calls plus one gas-token transfer no larger than the estimate's `suggested_max_fee_in_gas_token`. That cap is reported as `maxFeeInGasToken` (gas token base units).
+- The cap comes from the paymaster's own estimate. Pass `"maxGasFee":"0.5"` (gas token units) to set an independent ceiling; the swap aborts before signing if the paymaster asks for more.
+- `PAYMASTER_URL` selects the endpoint; it must be `https://` and only `starknet.paymaster.avnu.fi` and `sepolia.paymaster.avnu.fi` are accepted.
+- Quotes always come from the mainnet AVNU API, so swaps currently run on mainnet only; on Sepolia the script stops before building calls with `Quote chainId ... does not match account chainId ...`.
 
 ## Starknet.js v10 quick patterns
 
@@ -218,7 +220,7 @@ AVNU SDK sequence for WRITE/CONDITIONAL (boilerplate):
 Typical AVNU SDK calls in this skill:
 - `fetchTokens(...)`
 - `getQuotes(...)`
-- `executeSwap(...)`
+- `quoteToCalls(...)`, then `account.estimatePaymasterTransactionFee(...)` and `account.executePaymasterTransaction(calls, details, maxFee)` (starknet.js checks the paymaster's typed data before signing; avoid avnu-sdk's `executeSwap` with a paymaster, which signs it unchecked)
 
 ## CONDITIONAL SCHEMA
 
