@@ -63,8 +63,9 @@ This endpoint has no WebSocket support, so `watch-events-smart.js` falls back to
 - The account needs the sell amount plus the fee in the gas token.
 - The script never blind-signs paymaster typed data. It builds the swap calls with `quoteToCalls`, asks the paymaster for a fee estimate, then runs `account.executePaymasterTransaction`, which refuses to sign unless the typed data holds exactly those calls plus one gas-token transfer no larger than the estimate's `suggested_max_fee_in_gas_token`. That cap is reported as `maxFeeInGasToken` (gas token base units).
 - The cap comes from the paymaster's own estimate. Pass `"maxGasFee":"0.5"` (gas token units) to set an independent ceiling; the swap aborts before signing if the paymaster asks for more.
-- `PAYMASTER_URL` selects the endpoint; it must be `https://` and only `starknet.paymaster.avnu.fi` and `sepolia.paymaster.avnu.fi` are accepted.
-- Quotes always come from the mainnet AVNU API, so swaps currently run on mainnet only; on Sepolia the script stops before building calls with `Quote chainId ... does not match account chainId ...`.
+- The network comes from the chain ID of `STARKNET_RPC_URL`: `SN_MAIN` uses `starknet.api.avnu.fi` and `starknet.paymaster.avnu.fi`; `SN_SEPOLIA` uses `sepolia.api.avnu.fi` and `sepolia.paymaster.avnu.fi`. Any other chain ID stops the script with `Unsupported Starknet chain ID ...` before AVNU is called. Token symbols resolve against that network's list of AVNU-verified tokens (also in `parse-smart.js`, `resolve-smart.js` and `vesu-pool.js`). `vesu-pool.js` also refuses a pool whose `protocols.json` network (`VESU.pools[name].network`, else `VESU.network`) is not the RPC's (`mainnet` or `sepolia`).
+- `PAYMASTER_URL` overrides the default paymaster. It must be `https://`, only `starknet.paymaster.avnu.fi` and `sepolia.paymaster.avnu.fi` are accepted, and it must match the RPC's network; for example, the Sepolia paymaster with a mainnet RPC fails with `Paymaster ... serves SN_SEPOLIA, but the RPC is on SN_MAIN`.
+- AVNU's Sepolia API may list no tokens or return no quotes. The script then stops before signing, with `AVNU returned no verified tokens for SN_SEPOLIA` or `No quotes available for this swap on SN_SEPOLIA`.
 
 ## Starknet.js v10 quick patterns
 

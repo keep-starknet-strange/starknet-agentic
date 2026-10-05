@@ -5,6 +5,10 @@
  * Default swap handler - uses AVNU SDK for all swap operations.
  * This script receives account info via arguments - NO secrets access.
  * 
+ * The network comes from the RPC's chain ID (see _network.js): SN_MAIN uses the
+ * mainnet AVNU API and paymaster, SN_SEPOLIA the Sepolia ones, and any other
+ * chain ID is refused before AVNU is called.
+ *
  * Gas is paid through the AVNU paymaster in "default" fee mode (no API key):
  * the fee is taken in `gasToken` (defaults to the sell token) instead of STRK.
  * The account only signs paymaster typed data after starknet.js has checked
@@ -22,6 +26,7 @@ import { RpcProvider, Account, PaymasterRpc } from 'starknet';
 import { fileURLToPath } from 'url';
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
+import { NETWORKS, getNetwork, avnuOptions } from './_network.js';
 import { loadPrivateKeyByAccountAddress } from './_keys.js';
 
 
@@ -41,17 +46,21 @@ function amountToBigInt(amount, decimals) {
 }
 
 /**
- * Fetch all verified tokens from AVNU
+ * Fetch all verified tokens on `network` from AVNU
  */
-async function getAllTokens() {
-  return fetchVerifiedTokens();
+async function getAllTokens(network) {
+  const tokens = await fetchVerifiedTokens(network);
+  if (tokens.length === 0) {
+    throw new Error(`AVNU returned no verified tokens for ${network.name}; token symbols cannot be resolved`);
+  }
+  return tokens;
 }
 
 /**
- * Match token symbols to AVNU tokens
+ * Match token symbols to AVNU tokens on `network`
  */
-async function matchTokens(sellSymbol, buySymbol) {
-  const tokens = (await getAllTokens()).filter(t => typeof t?.symbol === 'string' && t.symbol.length > 0);
+async function matchTokens(sellSymbol, buySymbol, network) {
+  const tokens = (await getAllTokens(network)).filter(t => typeof t?.symbol === 'string' && t.symbol.length > 0);
   const sellNeedle = String(sellSymbol || '').toLowerCase();
   const buyNeedle = String(buySymbol || '').toLowerCase();
 
@@ -66,8 +75,8 @@ async function matchTokens(sellSymbol, buySymbol) {
   return { sellToken, buyToken };
 }
 
-async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, accountAddress) {
-  const { sellToken, buyToken } = await matchTokens(sellTokenSymbol, buyTokenSymbol);
+async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, accountAddress, network) {
+  const { sellToken, buyToken } = await matchTokens(sellTokenSymbol, buyTokenSymbol, network);
   
   if (!sellToken) throw new Error(`Unknown sell token: ${sellTokenSymbol}`);
   if (!buyToken) throw new Error(`Unknown buy token: ${buyTokenSymbol}`);
@@ -81,10 +90,10 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
     sellAmount: amountBigInt,
     takerAddress: accountAddress,
     size: 3, // Get top 3 quotes for comparison
-  });
+  }, avnuOptions(network));
   
   if (!quotes || quotes.length === 0) {
-    throw new Error("No quotes available for this swap");
+    throw new Error(`No quotes available for this swap on ${network.name}`);
   }
   
   return { quote: quotes[0], sellToken, buyToken };
@@ -94,21 +103,19 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
  * Resolve the token that pays gas through the paymaster.
  * Defaults to the sell token, which the account is known to hold.
  */
-async function resolveGasToken(gasTokenSymbol, sellToken) {
+async function resolveGasToken(gasTokenSymbol, sellToken, network) {
   if (!gasTokenSymbol) return sellToken;
   const needle = String(gasTokenSymbol).toLowerCase();
-  const gasToken = (await getAllTokens()).find(t =>
+  const gasToken = (await getAllTokens(network)).find(t =>
     String(t?.symbol || '').toLowerCase() === needle
   );
   if (!gasToken) throw new Error(`Unknown gas token: ${gasTokenSymbol}`);
   return gasToken;
 }
 
-const DEFAULT_PAYMASTER_URL = 'https://starknet.paymaster.avnu.fi';
-const ALLOWED_PAYMASTER_HOSTS = new Set([
-  'starknet.paymaster.avnu.fi',
-  'sepolia.paymaster.avnu.fi'
-]);
+const ALLOWED_PAYMASTER_HOSTS = new Set(
+  Object.values(NETWORKS).map(n => n.paymasterHost)
+);
 
 function assertAllowedPaymasterUrl(value) {
   let parsed;
@@ -126,8 +133,27 @@ function assertAllowedPaymasterUrl(value) {
   return parsed.toString();
 }
 
-function resolvePaymasterUrl() {
-  return assertAllowedPaymasterUrl(process.env.PAYMASTER_URL || DEFAULT_PAYMASTER_URL);
+/**
+ * Like assertAllowedPaymasterUrl, but also rejects the other network's paymaster.
+ */
+function assertPaymasterUrlForNetwork(value, network) {
+  const url = assertAllowedPaymasterUrl(value);
+  const host = new URL(url).hostname;
+  if (host !== network.paymasterHost) {
+    const other = Object.values(NETWORKS).find(n => n.paymasterHost === host);
+    throw new Error(`Paymaster ${host} serves ${other?.name ?? 'another network'}, but the RPC is on ${network.name}; use https://${network.paymasterHost} or unset PAYMASTER_URL`);
+  }
+  return url;
+}
+
+/**
+ * PAYMASTER_URL if set, else the AVNU paymaster for `network`.
+ */
+function resolvePaymasterUrl(network) {
+  return assertPaymasterUrlForNetwork(
+    process.env.PAYMASTER_URL || `https://${network.paymasterHost}`,
+    network
+  );
 }
 
 /**
@@ -144,11 +170,11 @@ function resolvePaymasterUrl() {
  */
 async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE, gasTokenAddress = quote.sellTokenAddress, maxGasFee) {
   if (!gasTokenAddress) throw new Error('Missing gas token address');
-  assertAllowedPaymasterUrl(account.paymaster.nodeUrl);
 
-  const chainId = await account.provider.getChainId();
-  if (BigInt(chainId) !== BigInt(quote.chainId)) {
-    throw new Error(`Quote chainId ${quote.chainId} does not match account chainId ${chainId}`);
+  const network = await getNetwork(account.provider);
+  assertPaymasterUrlForNetwork(account.paymaster.nodeUrl, network);
+  if (BigInt(network.chainId) !== BigInt(quote.chainId)) {
+    throw new Error(`Quote chainId ${quote.chainId} does not match account chainId ${network.chainId}`);
   }
 
   const { calls } = await quoteToCalls({
@@ -156,7 +182,7 @@ async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE, gasT
     takerAddress: account.address,
     slippage,
     executeApprove: true,
-  });
+  }, avnuOptions(network));
 
   const paymasterDetails = { feeMode: { mode: 'default', gasToken: gasTokenAddress } };
   const estimate = await account.estimatePaymasterTransactionFee(calls, paymasterDetails);
@@ -227,10 +253,24 @@ async function main() {
 
   const privateKey = loadPrivateKeyByAccountAddress(accountAddress);
 
+  // The RPC's chain ID picks the AVNU API and paymaster; unknown chains stop here.
+  const rpcUrl = resolveRpcUrl();
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
+  let network;
+  try {
+    network = await getNetwork(provider);
+  } catch (err) {
+    console.log(JSON.stringify({
+      error: `Network detection failed: ${err.message}`,
+      nextStep: 'CONFIGURE_RPC'
+    }));
+    process.exit(1);
+  }
+
   let paymaster;
   try {
     paymaster = new PaymasterRpc({
-      nodeUrl: resolvePaymasterUrl(),
+      nodeUrl: resolvePaymasterUrl(network),
     });
   } catch (err) {
     console.log(JSON.stringify({
@@ -242,8 +282,6 @@ async function main() {
   
   // Create account from passed arguments (no secrets access).
   // executePaymasterTransaction talks to the account's own paymaster.
-  const rpcUrl = resolveRpcUrl();
-  const provider = new RpcProvider({ nodeUrl: rpcUrl });
   const account = new Account({
     provider,
     address: accountAddress,
@@ -256,12 +294,13 @@ async function main() {
     console.error(JSON.stringify({
       step: "quote",
       status: "fetching",
+      network: network.name,
       sellToken,
       buyToken,
       sellAmount
     }));
     
-    const { quote, sellToken: sellTokenData, buyToken: buyTokenData } = await getSwapQuote(sellToken, buyToken, sellAmount, account.address);
+    const { quote, sellToken: sellTokenData, buyToken: buyTokenData } = await getSwapQuote(sellToken, buyToken, sellAmount, account.address, network);
     
     console.error(JSON.stringify({
       step: "quote",
@@ -275,7 +314,7 @@ async function main() {
       buyTokenAddress: buyTokenData.address
     }));
     
-    const gasTokenData = await resolveGasToken(gasToken, sellTokenData);
+    const gasTokenData = await resolveGasToken(gasToken, sellTokenData, network);
     
     let maxGasFeeUnits;
     if (maxGasFee != null) {
@@ -303,6 +342,7 @@ async function main() {
       step: "execute",
       status: "success",
       transactionHash: result.transactionHash,
+      network: network.name,
       sellToken,
       buyToken,
       sellAmount,
@@ -315,7 +355,7 @@ async function main() {
       gasTokenAddress: gasTokenData.address,
       estimatedFeeInGasToken: result.estimatedFeeInGasToken.toString(),
       maxFeeInGasToken: result.maxFeeInGasToken.toString(),
-      explorer: `https://starkscan.co/tx/${result.transactionHash}`
+      explorer: `${network.explorerTxUrl}${result.transactionHash}`
     }));
     
   } catch (err) {

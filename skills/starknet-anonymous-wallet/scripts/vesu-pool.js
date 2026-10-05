@@ -24,6 +24,7 @@ import { fileURLToPath } from 'url';
 
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
+import { getNetwork } from './_network.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -33,13 +34,13 @@ function isHexAddress(v) {
   return typeof v === 'string' && /^0x[0-9a-fA-F]+$/.test(v);
 }
 
-function loadVesuPools() {
+function loadVesuConfig() {
   // Pools are stored under protocols.json → VESU.pools
   const p = join(SKILL_ROOT, 'protocols.json');
   if (!existsSync(p)) return {};
   try {
     const all = JSON.parse(readFileSync(p, 'utf8'));
-    return all?.VESU?.pools || {};
+    return all?.VESU || {};
   } catch (e) {
     if (process.env.OPENCLAW_DEBUG === '1') {
       console.error(JSON.stringify({ warning: 'Failed to parse protocols.json', error: e?.message }));
@@ -108,8 +109,8 @@ function formatUnits(value, decimals) {
   return `${negative ? '-' : ''}${whole.toString()}${fracStr ? `.${fracStr}` : ''}`;
 }
 
-async function resolveToken(symbol) {
-  const tokens = await fetchVerifiedTokens();
+async function resolveToken(symbol, network) {
+  const tokens = await fetchVerifiedTokens(network);
   const t = tokens.find(x => x.symbol?.toLowerCase() === String(symbol || '').toLowerCase());
   if (!t?.address) return null;
   return { symbol: t.symbol, address: t.address, decimals: Number(t.decimals ?? 18) };
@@ -154,7 +155,8 @@ async function main() {
     process.exit(1);
   }
 
-  const pools = loadVesuPools();
+  const vesuCfg = loadVesuConfig();
+  const pools = vesuCfg.pools || {};
   const poolCfg = pools[poolName];
   if (!poolCfg?.poolAddress || !isHexAddress(poolCfg.poolAddress)) {
     console.log(JSON.stringify({
@@ -173,6 +175,21 @@ async function main() {
   const poolAddress = poolCfg.poolAddress;
 
   const provider = new Provider({ nodeUrl: rpcUrl });
+  // Token addresses come from AVNU for the RPC's network; unknown chain IDs throw.
+  const network = await getNetwork(provider);
+
+  // A pool address is only valid on the network protocols.json lists it for
+  // (VESU.pools[name].network, else VESU.network).
+  const poolNetwork = poolCfg.network ?? vesuCfg.network;
+  if (poolNetwork !== network.registryName) {
+    console.log(JSON.stringify({
+      success: false,
+      error: `Pool ${poolName} is configured for ${poolNetwork ?? 'no network'}, but the RPC is on ${network.name}`,
+      nextStep: 'CONFIGURE_VESU_POOL',
+      message: `Use a pool configured for "${network.registryName}" in protocols.json (VESU.pools[name].network, else VESU.network).`
+    }));
+    process.exit(1);
+  }
 
   // Resolve tokens
   // For Vesu modify_position we need collateral_asset + debt_asset.
@@ -214,8 +231,8 @@ async function main() {
       return;
     }
 
-    collateralInfo = await resolveToken(collSym);
-    debtInfo = await resolveToken(debtSym);
+    collateralInfo = await resolveToken(collSym, network);
+    debtInfo = await resolveToken(debtSym, network);
     if (!collateralInfo || !debtInfo) {
       console.log(JSON.stringify({
         success: false,
@@ -325,7 +342,7 @@ async function main() {
       console.log(JSON.stringify({ success: false, error: 'Missing collateralToken/token' }));
       process.exit(1);
     }
-    collateralInfo = await resolveToken(collateralToken);
+    collateralInfo = await resolveToken(collateralToken, network);
     if (!collateralInfo) {
       console.log(JSON.stringify({ success: false, error: `Unknown token: ${collateralToken}` }));
       process.exit(1);
@@ -340,7 +357,7 @@ async function main() {
       }));
       process.exit(1);
     }
-    debtInfo = await resolveToken(defaultDebt);
+    debtInfo = await resolveToken(defaultDebt, network);
     if (!debtInfo) {
       console.log(JSON.stringify({ success: false, error: `Unknown default debt token: ${defaultDebt}` }));
       process.exit(1);
@@ -357,8 +374,8 @@ async function main() {
       process.exit(1);
     }
 
-    collateralInfo = await resolveToken(collateralToken);
-    debtInfo = await resolveToken(debtToken);
+    collateralInfo = await resolveToken(collateralToken, network);
+    debtInfo = await resolveToken(debtToken, network);
     if (!collateralInfo) {
       console.log(JSON.stringify({ success: false, error: `Unknown collateral token: ${collateralToken}` }));
       process.exit(1);

@@ -34,6 +34,7 @@ import vard from '@andersmyrmel/vard';
 import nlp from 'compromise';
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
+import { getNetwork } from './_network.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -257,8 +258,9 @@ function validatePromptSecurity(prompt) {
 }
 
 // ============ TOKEN FETCHING ============
-async function fetchAllTokens() {
-  return fetchVerifiedTokens();
+// `network` comes from getNetwork(provider) so symbols resolve on the RPC's chain.
+async function fetchAllTokens(network) {
+  return fetchVerifiedTokens(network);
 }
 
 // ============ ABI FETCHING ============
@@ -487,8 +489,12 @@ async function main() {
   }
   
   // Step 3: Load data
+  // Token addresses come from AVNU for the RPC's network; unknown chain IDs throw.
+  const rpcUrl = resolveRpcUrl();
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
+  const network = await getNetwork(provider);
   const PROTOCOLS = loadProtocols();
-  const avnuTokens = await fetchAllTokens();
+  const avnuTokens = await fetchAllTokens(network);
   const availableTokens = avnuTokens
     .map(t => t?.symbol)
     .filter(s => typeof s === 'string' && s.length > 0);
@@ -643,8 +649,6 @@ async function main() {
   // This skill is ecosystem-wide, not DeFi-specific.
   
   // Step 7: Fetch ABIs for registered protocols (AVNU gets fake ABI)
-  const rpcUrl = resolveRpcUrl();
-  const provider = new RpcProvider({ nodeUrl: rpcUrl });
   const abis = {};
   const addresses = {};
   
