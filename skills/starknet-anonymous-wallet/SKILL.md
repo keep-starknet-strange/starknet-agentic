@@ -38,8 +38,10 @@ This skill provides **agent-facing scripts** for:
 ## Prerequisites
 
 ```bash
-npm install starknet@^8.9.1 typhoon-sdk@^1.1.13 @andersmyrmel/vard@^1.2.0 @avnu/avnu-sdk compromise@^14.14.5 ws@^8.19.0
+npm install starknet@^10.8.0 typhoon-sdk@^1.1.13 @andersmyrmel/vard@^1.2.0 @avnu/avnu-sdk compromise@^14.14.5 ws@^8.19.0
 ```
+
+starknet.js 10 requires Node.js 22+.
 
 ### RPC setup (required for onchain reads/writes)
 
@@ -48,16 +50,18 @@ These scripts talk to Starknet via JSON-RPC. Configure one of:
 - Set `STARKNET_RPC_URL` in your environment (recommended), OR
 - Pass `rpcUrl` in the JSON input for scripts that support it.
 
-If neither is provided, scripts fall back to the public Lava mainnet RPC:
-- `https://rpc.starknet.lava.build:443`
+If neither is provided, scripts fall back to Cartridge's keyless public mainnet RPC (spec 0.10, rate limited):
+- `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
 
-## Starknet.js v8.9.1 quick patterns
+This endpoint has no WebSocket support, so `watch-events-smart.js` falls back to HTTP polling unless you pass a `wsRpcUrl` from your own provider.
+
+## Starknet.js v10 quick patterns
 
 ```js
 import { RpcProvider, Account, Contract } from 'starknet';
 
 const provider = new RpcProvider({
-  nodeUrl: process.env.STARKNET_RPC_URL || 'https://rpc.starknet.lava.build:443'
+  nodeUrl: process.env.STARKNET_RPC_URL || 'https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10'
 });
 
 // signer can be a private key string or Starknet Signer instance

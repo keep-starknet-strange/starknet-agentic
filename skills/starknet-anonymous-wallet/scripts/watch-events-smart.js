@@ -16,8 +16,8 @@
  *     "enabled": true,
  *     "name": "ekubo-swap-monitor"
  *   },
- *   "wsRpcUrl": "wss://rpc.starknet.lava.build/ws", // optional
- *   "httpRpcUrl": "https://rpc.starknet.lava.build", // optional
+ *   "wsRpcUrl": "wss://<your-provider-websocket-url>", // optional, derived from httpRpcUrl if omitted
+ *   "httpRpcUrl": "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10", // optional (no WebSocket: polling only)
  *   "healthCheckIntervalMs": 30000, // optional, default: 30s
  *   "mode": "auto" // "auto", "websocket", "polling"
  * }
