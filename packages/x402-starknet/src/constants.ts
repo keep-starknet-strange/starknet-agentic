@@ -67,6 +67,9 @@ export const MAX_TIMEOUT_SECONDS_CAP_LIMIT = 86_400
 /** The Cairo field modulus. */
 export const STARK_PRIME = 2n ** 251n + 17n * 2n ** 192n + 1n
 
+/** Order of the STARK curve's generator; valid private keys are in [1, n). */
+export const STARK_CURVE_ORDER = 0x800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2fn
+
 /** Contract addresses are strictly below 2^251 - 256 (starknet `ADDR_BOUND`). */
 export const ADDR_BOUND = 2n ** 251n - 256n
 

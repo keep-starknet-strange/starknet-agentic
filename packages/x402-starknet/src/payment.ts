@@ -3,6 +3,7 @@ import { ec, Signer, stark, typedData as snip12, type Signature, type TypedData 
 import {
   EXECUTE_AFTER,
   MAX_SIGNATURE_FELTS,
+  STARK_CURVE_ORDER,
   STARK_PRIME,
   X402_VERSION,
   type StarknetNetwork,
@@ -165,9 +166,6 @@ function encodeSignature(raw: Signature): string[] {
   }
   return felts
 }
-
-// Order of the STARK curve's generator; valid private keys are in [1, n).
-const STARK_CURVE_ORDER = 0x800000000000010ffffffffffffffffb781126dcae7b2321e66a241adc64d2fn
 
 function parsePrivateKey(privateKey: unknown): string {
   if (typeof privateKey !== "string" || !/^0x[0-9a-fA-F]{1,64}$/.test(privateKey)) {
