@@ -30,7 +30,7 @@ Manage Starknet wallets for AI agents with native Account Abstraction support.
 ## Prerequisites
 
 ```bash
-npm install starknet@^10.8.0 @avnu/avnu-sdk@^4.0.1
+npm install starknet@^10.8.0 @avnu/avnu-sdk@^4.2.0
 ```
 
 Environment variables:
@@ -278,11 +278,15 @@ import { Account, RpcProvider, CallData, cairo, ETransactionVersion } from "star
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
 
+const address = process.env.STARKNET_ACCOUNT_ADDRESS;
+const privateKey = process.env.STARKNET_PRIVATE_KEY;
+if (!address || !privateKey) throw new Error("Set STARKNET_ACCOUNT_ADDRESS and STARKNET_PRIVATE_KEY");
+
 // starknet.js v10: Account uses an options object; provider calls go through account.provider
 const account = new Account({
   provider,
-  address: process.env.STARKNET_ACCOUNT_ADDRESS,
-  signer: process.env.STARKNET_PRIVATE_KEY,
+  address,
+  signer: privateKey,
   transactionVersion: ETransactionVersion.V3,
 });
 
@@ -390,6 +394,7 @@ const result = await executeSwap({
     active: true,
     provider: paymaster,
     params: {
+      version: "0x1",
       feeMode: {
         mode: "default",
         gasToken: usdcAddress, // Pay gas in USDC instead of ETH/STRK
@@ -404,18 +409,18 @@ const result = await executeSwap({
 The MCP server uses TokenService to resolve token symbols and addresses. Static tokens (ETH, STRK, USDC, USDT) are always available. For other tokens, the service fetches metadata from avnu SDK.
 
 ```typescript
-import { fetchTokenByAddress, fetchVerifiedTokenBySymbol } from '@avnu/avnu-sdk';
+import { fetchTokenByAddress, fetchTokens, fetchVerifiedTokenBySymbol } from '@avnu/avnu-sdk';
 
-// Get token by symbol (verified tokens only)
+// Get token by symbol (undefined if not a verified/unruggable token)
 const lords = await fetchVerifiedTokenBySymbol('LORDS');
+if (!lords) throw new Error('LORDS not found in avnu token list');
 console.log(lords.address, lords.decimals); // 0x0124aeb..., 18
 
 // Get token by address (any token)
 const token = await fetchTokenByAddress('0x...');
 console.log(token.symbol, token.name, token.decimals);
 
-// Get all verified tokens
-import { fetchTokens } from '@avnu/avnu-sdk';
+// Get verified tokens (returns Page<Token>; tokens are in `content`)
 const page = await fetchTokens({ tags: ['Verified'], size: 100 });
 page.content.forEach(t => console.log(t.symbol, t.address));
 ```
