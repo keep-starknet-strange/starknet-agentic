@@ -1,12 +1,12 @@
 ---
 name: starknet-js
-description: "Reference for building Starknet applications using starknet.js v9.x SDK, including contract interaction, account management, transaction handling, fee estimation, wallet integration, and paymaster flows."
+description: "Reference for building Starknet applications using starknet.js v10 SDK, including contract interaction, account management, transaction handling, fee estimation, wallet integration, and paymaster flows."
 license: Apache-2.0
 metadata:
   author: 0xlny
   version: "1.0.0"
   org: keep-starknet-strange
-compatibility: "Node.js 18+, TypeScript 5+, npm package: starknet@^9.0.0"
+compatibility: "Node.js 22+, TypeScript 5+, npm package: starknet@^10.8.0"
 keywords:
   - starknet
   - starknet-js
@@ -33,7 +33,7 @@ allowed-tools:
 user-invocable: true
 ---
 
-# starknet.js v9.x SDK
+# starknet.js v10 SDK
 
 Related modules: [skills catalog](../README.md).
 
@@ -48,7 +48,7 @@ Related modules: [skills catalog](../README.md).
 ## Quick Start
 
 ```bash
-npm install starknet
+npm install starknet@^10.8.0
 ```
 
 Minimal setup to read from Starknet:
@@ -56,8 +56,8 @@ Minimal setup to read from Starknet:
 ```typescript
 import { RpcProvider, Contract } from 'starknet';
 
-const provider = await RpcProvider.create({ nodeUrl: 'https://rpc.starknet.lava.build' });
-const contract = new Contract(abi, contractAddress, provider);
+const provider = await RpcProvider.create({ nodeUrl: 'https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10' });
+const contract = new Contract({ abi, address: contractAddress, providerOrAccount: provider });
 const result = await contract.get_balance();
 ```
 
@@ -70,7 +70,7 @@ Network   Identity   Interaction
 ```
 
 - **Provider**: Read-only network connection (RpcProvider)
-- **Account**: Extends Provider with signing and transaction capabilities
+- **Account**: Signs and sends transactions; in v10 it no longer extends Provider, so call provider methods through `account.provider`
 - **Contract**: Type-safe interface to deployed contracts
 
 Use Provider for read operations, Account for write operations.
@@ -82,13 +82,13 @@ import { RpcProvider } from 'starknet';
 
 // Recommended: Auto-detect RPC spec version
 const provider = await RpcProvider.create({
-  nodeUrl: 'https://rpc.starknet.lava.build'
+  nodeUrl: 'https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10'
 });
 ```
 
-**Networks:**
-- Mainnet: `https://rpc.starknet.lava.build`
-- Sepolia: `https://rpc.starknet-testnet.lava.build`
+**Networks** (keyless public Cartridge endpoints on RPC spec 0.10, rate limited; use your own provider in production):
+- Mainnet: `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
+- Sepolia: `https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10`
 
 **Key Methods:**
 ```typescript
@@ -159,8 +159,8 @@ const account = new Account({
 ```typescript
 import { Contract } from 'starknet';
 
-const contract = new Contract(abi, contractAddress, provider);  // Read-only
-const writeContract = new Contract(abi, contractAddress, account);   // Read-write
+const contract = new Contract({ abi, address: contractAddress, providerOrAccount: provider });  // Read-only
+const writeContract = new Contract({ abi, address: contractAddress, providerOrAccount: account });   // Read-write
 ```
 
 ### Typed Contract (Type-Safe)
@@ -298,7 +298,7 @@ import { WalletAccount } from 'starknet';
 
 const selectedWallet = await connect({ modalMode: 'alwaysAsk' });
 const walletAccount = await WalletAccount.connect(
-  { nodeUrl: 'https://rpc.starknet.lava.build' },
+  { nodeUrl: 'https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10' },
   selectedWallet
 );
 
@@ -388,7 +388,7 @@ const some = new CairoOption(CairoOptionVariant.Some, value);
 ## ERC-20 Token Operations
 
 ```typescript
-const erc20 = new Contract(erc20Abi, tokenAddress, account);
+const erc20 = new Contract({ abi: erc20Abi, address: tokenAddress, providerOrAccount: account });
 
 // Read balance (returns BigInt - do NOT convert with Number())
 const balance = await erc20.balanceOf(account.address);

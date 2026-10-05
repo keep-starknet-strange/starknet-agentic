@@ -251,7 +251,7 @@
       </div>
       <div class="form-group">
         <label>RPC URL</label>
-        <input type="text" id="rpc-url" value="https://starknet-sepolia.public.blastapi.io/rpc/v0_7" />
+        <input type="text" id="rpc-url" value="https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10" />
       </div>
     </div>
 
@@ -308,7 +308,7 @@
 
   <script type="module">
     import { connect, disconnect } from 'https://esm.sh/starknetkit@1.1.9';
-    import { Contract, RpcProvider, hash, shortString } from 'https://esm.sh/starknet@6.11.0';
+    import { Contract, RpcProvider, hash, shortString } from 'https://esm.sh/starknet@10.8.0';
     
     // Global state
     let wallet = null;
@@ -540,7 +540,7 @@
         
         const rpcUrl = document.getElementById('rpc-url').value;
         const readProvider = new RpcProvider({ nodeUrl: rpcUrl });
-        const contract = new Contract(abi, contractAddress, readProvider);
+        const contract = new Contract({ abi, address: contractAddress, providerOrAccount: readProvider });
         
         const owner = await contract.owner_of({ low: agentId, high: '0' });
         const currentWallet = await contract.get_agent_wallet({ low: agentId, high: '0' });
@@ -558,7 +558,7 @@
         log(`Agent ${agentId} owner: ${ownerHex.slice(0, 16)}...`, 'success');
         log(`Current wallet: ${walletHex.slice(0, 16)}...`);
         
-        identityContract = new Contract(abi, contractAddress, readProvider);
+        identityContract = new Contract({ abi, address: contractAddress, providerOrAccount: readProvider });
         
       } catch (error) {
         const errorMessage = getErrorMessage(error);
@@ -679,7 +679,7 @@
           state_mutability: 'external'
         }];
         
-        const contract = new Contract(setWalletAbi, contractAddress, wallet.account);
+        const contract = new Contract({ abi: setWalletAbi, address: contractAddress, providerOrAccount: wallet.account });
         
         const result = await contract.set_agent_wallet(
           { low: agentId, high: '0' },
@@ -715,7 +715,7 @@
         .then(r => r.json())
         .then(data => {
           document.getElementById('contract-address').value = data.contracts?.identityRegistry?.address || '';
-          document.getElementById('rpc-url').value = data.rpcUrl || 'https://starknet-sepolia.public.blastapi.io/rpc/v0_7';
+          document.getElementById('rpc-url').value = data.rpcUrl || 'https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10';
           log('Loaded deployment config');
         })
         .catch(() => log('No deployment config found, enter manually'));

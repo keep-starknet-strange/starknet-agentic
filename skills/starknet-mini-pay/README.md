@@ -24,7 +24,7 @@ pip install starknet-py qrcode[pil] python-telegram-bot httpx aiosqlite --break-
 ### 2. Set Environment Variables
 
 ```bash
-export STARKNET_RPC="https://rpc.starknet.lava.build:443"
+export STARKNET_RPC="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
 export MINI_PAY_ADDRESS="0xyour_address_here"
 export MINI_PAY_PRIVATE_KEY="0xyour_private_key_here"
 export TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
@@ -174,7 +174,7 @@ import asyncio
 from mini_pay import MiniPay
 
 async def main():
-    pay = MiniPay(rpc_url="https://rpc.starknet.lava.build:443")
+    pay = MiniPay(rpc_url="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10")
     
     tx_hash = await pay.send(
         from_address="0xsender...",

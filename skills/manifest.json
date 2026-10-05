@@ -99,7 +99,7 @@
       "skill_md_path": "skills/starknet-identity/SKILL.md"
     },
     {
-      "description": "Reference for building Starknet applications using starknet.js v9.x SDK, including contract interaction, account management, transaction handling, fee estimation, wallet integration, and paymaster flows.",
+      "description": "Reference for building Starknet applications using starknet.js v10 SDK, including contract interaction, account management, transaction handling, fee estimation, wallet integration, and paymaster flows.",
       "install": "npx skills add keep-starknet-strange/starknet-agentic/skills/starknet-js",
       "name": "starknet-js",
       "raw_skill_md_url": "https://raw.githubusercontent.com/keep-starknet-strange/starknet-agentic/main/skills/starknet-js/SKILL.md",

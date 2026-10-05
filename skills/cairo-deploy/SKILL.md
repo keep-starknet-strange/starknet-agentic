@@ -265,7 +265,7 @@ echo "  AMM:   $AMM_ADDR"
 | Sepolia (testnet) | `https://starknet-sepolia.g.alchemy.com/v2/KEY` |
 | Mainnet | `https://starknet-mainnet.g.alchemy.com/v2/KEY` |
 
-Alternative providers: Infura, Blast, Nethermind (free tier available).
+Alternative providers: Infura, Nethermind (free tier available). Keyless public endpoints for quick tests: `https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10` and `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10` (rate limited).
 
 ### Local Devnet
 

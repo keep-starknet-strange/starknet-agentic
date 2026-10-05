@@ -183,7 +183,7 @@ export const DOC_CATEGORIES: DocCategory[] = [
       {
         slug: "starknet-js",
         title: "starknet.js SDK Skill",
-        description: "starknet.js v9.x SDK patterns and examples",
+        description: "starknet.js v10 SDK patterns and examples",
       },
       {
         slug: "writing-skills",

@@ -177,7 +177,7 @@ export const SKILLS: Skill[] = [
     name: "starknet-js",
     title: "starknet.js SDK",
     description:
-      "Comprehensive guide for building Starknet dApps using starknet.js v9.x. Providers, accounts, contracts, multicall, paymaster, and SNIP-9/12.",
+      "Comprehensive guide for building Starknet dApps using starknet.js v10. Providers, accounts, contracts, multicall, paymaster, and SNIP-9/12.",
     keywords: [
       "starknet-js",
       "sdk",

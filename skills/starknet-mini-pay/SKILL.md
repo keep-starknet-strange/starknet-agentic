@@ -142,7 +142,7 @@ pip install httpx aiosqlite --break-system-packages
 
 ```bash
 # Environment variables
-export STARKNET_RPC="https://rpc.starknet.lava.build:443"
+export STARKNET_RPC="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
 export MINI_PAY_PRIVATE_KEY="0x..."
 export MINI_PAY_ADDRESS="0x..."
 export TELEGRAM_BOT_TOKEN="..."
@@ -156,7 +156,7 @@ export TELEGRAM_CHAT_ID="..."
 ```python
 from mini_pay import MiniPay
 
-pay = MiniPay(rpc_url="https://rpc.starknet.lava.build:443")
+pay = MiniPay(rpc_url="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10")
 
 # Send ETH
 tx_hash = pay.send(

@@ -16,8 +16,8 @@
  *     "enabled": true,
  *     "name": "ekubo-swap-monitor"
  *   },
- *   "wsRpcUrl": "wss://rpc.starknet.lava.build/ws", // optional
- *   "httpRpcUrl": "https://rpc.starknet.lava.build", // optional
+ *   "wsRpcUrl": "wss://<your-provider-websocket-url>", // optional, derived from httpRpcUrl if omitted
+ *   "httpRpcUrl": "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10", // optional (no WebSocket: polling only)
  *   "healthCheckIntervalMs": 30000, // optional, default: 30s
  *   "mode": "auto" // "auto", "websocket", "polling"
  * }
@@ -666,8 +666,8 @@ class SmartEventWatcher {
       let continuationToken = undefined;
       do {
         const events = await this.provider.getEvents({
-          fromBlock: { block_number: blockNumber },
-          toBlock: { block_number: blockNumber },
+          from_block: { block_number: blockNumber },
+          to_block: { block_number: blockNumber },
           address: this.contractAddress,
           keys: keys ? [keys] : undefined,
           chunk_size: 100,

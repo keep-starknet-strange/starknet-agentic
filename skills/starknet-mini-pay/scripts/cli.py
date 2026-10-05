@@ -27,8 +27,8 @@ from invoice import InvoiceManager
 
 # Configuration
 NETWORKS = {
-    "mainnet": "https://rpc.starknet.lava.build:443",
-    "sepolia": "https://starknet-sepolia.public.blastapi.io/rpc/v0_6"
+    "mainnet": "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10",
+    "sepolia": "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10"
 }
 
 DEFAULT_RPC = NETWORKS["mainnet"]

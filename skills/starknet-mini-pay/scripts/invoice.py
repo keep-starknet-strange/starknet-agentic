@@ -81,7 +81,7 @@ class InvoiceManager:
     def __init__(
         self,
         db_path: str = None,
-        rpc_url: str = "https://rpc.starknet.lava.build:443",
+        rpc_url: str = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10",
         default_expiry: int = None
     ):
         """

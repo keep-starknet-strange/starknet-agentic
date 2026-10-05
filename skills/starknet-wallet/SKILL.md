@@ -30,7 +30,7 @@ Manage Starknet wallets for AI agents with native Account Abstraction support.
 ## Prerequisites
 
 ```bash
-npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
+npm install starknet@^10.8.0 @avnu/avnu-sdk@^4.0.1
 ```
 
 Environment variables:
@@ -130,7 +130,7 @@ import { RpcProvider, Contract } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
 
-// ETH balance (starknet.js v8 uses options object for Contract)
+// ETH balance (starknet.js v10 uses an options object for Contract)
 const ethAddress = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
 const ethContract = new Contract({
   abi: erc20Abi,
@@ -139,7 +139,7 @@ const ethContract = new Contract({
 });
 const balance = await ethContract.balanceOf(accountAddress);
 
-// starknet.js v8: Convert uint256 to bigint
+// Convert uint256 to bigint
 const balanceBigInt = BigInt(balance.low) + (BigInt(balance.high) << 128n);
 // Format: (balanceBigInt / 10n ** 18n).toString() for whole units
 ```
@@ -278,7 +278,7 @@ import { Account, RpcProvider, CallData, cairo, ETransactionVersion } from "star
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
 
-// starknet.js v8: Account uses options object
+// starknet.js v10: Account uses an options object; provider calls go through account.provider
 const account = new Account({
   provider,
   address: process.env.STARKNET_ACCOUNT_ADDRESS,
@@ -288,7 +288,7 @@ const account = new Account({
 
 const tokenAddress = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"; // STRK
 
-// starknet.js v8: Use cairo.uint256() instead of uint256.bnToUint256()
+// Use cairo.uint256() instead of uint256.bnToUint256()
 const { transaction_hash } = await account.execute({
   contractAddress: tokenAddress,
   entrypoint: "transfer",
@@ -297,7 +297,7 @@ const { transaction_hash } = await account.execute({
     amount: cairo.uint256(amountInWei),
   }),
 });
-await account.waitForTransaction(transaction_hash);
+await account.provider.waitForTransaction(transaction_hash);
 ```
 
 ### Estimate Fees

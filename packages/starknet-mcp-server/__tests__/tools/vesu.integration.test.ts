@@ -2,7 +2,7 @@
  * Vesu integration tests — run against real Starknet mainnet RPC.
  * Skipped when STARKNET_RPC_URL is not set or is a mock URL.
  *
- * Run manually: STARKNET_RPC_URL=https://starknet-mainnet.public.blastapi.io pnpm test vesu.integration
+ * Run manually: STARKNET_RPC_URL=https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10 pnpm test vesu.integration
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
