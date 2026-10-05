@@ -11,6 +11,11 @@
   },
   "type": "module",
   "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "bin": {
     "starknet-agentic-mcp-server": "./dist/index.js"
   },

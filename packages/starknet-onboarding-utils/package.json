@@ -11,6 +11,10 @@
   },
   "type": "module",
   "main": "dist/index.js",
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "pnpm --filter @starknetfoundation/starknet-agentic-shared build && tsup src/index.ts --format esm && tsc -p tsconfig.build.json --noCheck",
     "test": "vitest run",
