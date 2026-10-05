@@ -31,10 +31,20 @@ import {
   ETransactionVersion,
   type Call,
 } from "starknet";
-import { getTokenService, configureTokenServiceProvider, TOKENS } from "./services/index.js";
+import {
+  getTokenService,
+  configureTokenServiceProvider,
+  configureTokenServiceNetwork,
+  networkForStarknetChainId,
+  TOKENS,
+} from "./services/index.js";
 import { VESU_POOL_FACTORY } from "./helpers/vesu.js";
 import { z } from "zod";
-import { AVNU_API_URLS, AVNU_PAYMASTER_URLS } from "@starknetfoundation/starknet-agentic-shared/constants";
+import {
+  AVNU_API_URLS,
+  AVNU_PAYMASTER_URLS,
+  type StarknetNetwork,
+} from "@starknetfoundation/starknet-agentic-shared/constants";
 import { formatErrorMessage } from "./utils/formatter.js";
 import { SERVER_VERSION } from "./version.js";
 import { PolicyGuard, loadPolicyConfig } from "./middleware/policyGuard.js";
@@ -77,13 +87,15 @@ const envSchema = z.object({
   NODE_ENV: z.string().optional(),
 });
 
-const isSepoliaRpc = (process.env.STARKNET_RPC_URL || "").toLowerCase().includes("sepolia");
-const defaultAvnuApiUrl = isSepoliaRpc
-  ? AVNU_API_URLS.sepolia
-  : AVNU_API_URLS.mainnet;
-const defaultAvnuPaymasterUrl = isSepoliaRpc
-  ? AVNU_PAYMASTER_URLS.sepolia
-  : AVNU_PAYMASTER_URLS.mainnet;
+// Network implied by the RPC URL. It picks the avnu defaults and the initial
+// static token set; startup then checks the token set against the chain id.
+const rpcUrlNetwork: StarknetNetwork = (process.env.STARKNET_RPC_URL || "")
+  .toLowerCase()
+  .includes("sepolia")
+  ? "sepolia"
+  : "mainnet";
+const defaultAvnuApiUrl = AVNU_API_URLS[rpcUrlNetwork];
+const defaultAvnuPaymasterUrl = AVNU_PAYMASTER_URLS[rpcUrlNetwork];
 
 const env = envSchema.parse({
   STARKNET_RPC_URL: process.env.STARKNET_RPC_URL,
@@ -219,9 +231,70 @@ const account = new Account({
   paymaster,
 });
 
-// Initialize TokenService with avnu base URL and RPC provider for on-chain fallback
-getTokenService(env.AVNU_BASE_URL);
+// Initialize TokenService with avnu base URL, the network's static tokens and
+// the RPC provider for on-chain fallback
+getTokenService(env.AVNU_BASE_URL, rpcUrlNetwork);
 configureTokenServiceProvider(provider);
+
+const CHAIN_ID_TIMEOUT_MS = 10_000;
+
+/**
+ * Make token resolution (what "USDC" etc. resolve to) follow the RPC's chain id
+ * rather than the RPC URL: the static token set, and the avnu API used for
+ * other symbols unless AVNU_BASE_URL is set. Keeps the URL-derived network if
+ * the chain id cannot be read or is neither SN_MAIN nor SN_SEPOLIA.
+ */
+async function alignTokenNetworkWithChainId(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let chainId: string;
+  try {
+    chainId = await Promise.race([
+      provider.getChainId(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`starknet_chainId timed out after ${CHAIN_ID_TIMEOUT_MS}ms`)),
+          CHAIN_ID_TIMEOUT_MS
+        );
+      }),
+    ]);
+  } catch (error) {
+    log({
+      level: "warn",
+      event: "token_service.chain_id_unavailable",
+      details: {
+        network: rpcUrlNetwork,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+    return;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const chainNetwork = networkForStarknetChainId(chainId);
+  if (!chainNetwork) {
+    log({
+      level: "warn",
+      event: "token_service.unknown_chain_id",
+      details: { chainId, network: rpcUrlNetwork },
+    });
+    return;
+  }
+  if (chainNetwork !== rpcUrlNetwork) {
+    const tokenAvnuBaseUrl = process.env.AVNU_BASE_URL ? env.AVNU_BASE_URL : AVNU_API_URLS[chainNetwork];
+    configureTokenServiceNetwork(chainNetwork, tokenAvnuBaseUrl);
+    log({
+      level: "warn",
+      event: "token_service.network_from_chain_id",
+      details: {
+        rpcUrlNetwork,
+        chainNetwork,
+        tokenAvnuBaseUrl,
+        note: "Token symbols follow the chain id. Swaps, quotes and the paymaster use AVNU_BASE_URL and AVNU_PAYMASTER_URL, which default from the RPC URL; set them explicitly for this network.",
+      },
+    });
+  }
+}
 
 // Initialize preflight policy guard
 const policyConfig = loadPolicyConfig();
@@ -379,6 +452,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Start server
 async function main() {
+  // Before accepting requests, so no tool resolves tokens for the wrong network.
+  await alignTokenNetworkWithChainId();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   log({ level: "info", event: "server.started", details: { transport: "stdio" } });

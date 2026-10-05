@@ -1,7 +1,7 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { CallData, cairo, type Call } from "starknet";
 import { resolveTokenAddressAsync } from "../utils.js";
-import { getTokenService, STATIC_TOKENS } from "../services/index.js";
+import { getTokenService } from "../services/index.js";
 import { parseDecimalToBigInt } from "../helpers/parseDecimal.js";
 import {
   parseAddress,
@@ -55,9 +55,7 @@ export async function handler(args: ToolArgs, _ctx: ToolContext): Promise<ToolRe
   // Look up token decimals for human-readable amount conversion
   const tokenService = getTokenService();
   const decimals = await tokenService.getDecimalsAsync(tokenAddress);
-  const tokenSymbol = STATIC_TOKENS.find(
-    (t) => t.address.toLowerCase() === tokenAddress.toLowerCase()
-  )?.symbol ?? tokenAddress;
+  const tokenSymbol = tokenService.getStaticSymbol(tokenAddress) ?? tokenAddress;
 
   const amountBigInt = parseDecimalToBigInt(rawAmount, decimals);
 

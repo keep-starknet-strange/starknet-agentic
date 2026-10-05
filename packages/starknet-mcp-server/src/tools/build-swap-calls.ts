@@ -1,7 +1,7 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { getQuotes, quoteToCalls, type QuoteRequest } from "@avnu/avnu-sdk";
 import { resolveTokenAddressAsync } from "../utils.js";
-import { getTokenService, STATIC_TOKENS } from "../services/index.js";
+import { getTokenService } from "../services/index.js";
 import { parseDecimalToBigInt } from "../helpers/parseDecimal.js";
 import {
   parseAddress,
@@ -104,12 +104,8 @@ export async function handler(args: ToolArgs, ctx: ToolContext): Promise<ToolRes
     executeApprove: true,
   }, { baseUrl: env.AVNU_BASE_URL });
 
-  const sellSymbol = STATIC_TOKENS.find(
-    (t) => t.address.toLowerCase() === sellTokenAddress.toLowerCase()
-  )?.symbol ?? sellTokenAddress;
-  const buySymbol = STATIC_TOKENS.find(
-    (t) => t.address.toLowerCase() === buyTokenAddress.toLowerCase()
-  )?.symbol ?? buyTokenAddress;
+  const sellSymbol = swapTokenService.getStaticSymbol(sellTokenAddress) ?? sellTokenAddress;
+  const buySymbol = swapTokenService.getStaticSymbol(buyTokenAddress) ?? buyTokenAddress;
 
   return {
     content: [

@@ -106,12 +106,13 @@ vi.mock("starknet", () => ({
 // Mock avnu-sdk
 const mockGetQuotes = vi.fn();
 const mockQuoteToCalls = vi.fn();
+const mockFetchVerifiedTokenBySymbol = vi.fn();
 
 vi.mock("@avnu/avnu-sdk", () => ({
   getQuotes: mockGetQuotes,
   quoteToCalls: mockQuoteToCalls,
   fetchTokenByAddress: vi.fn(),
-  fetchVerifiedTokenBySymbol: vi.fn(),
+  fetchVerifiedTokenBySymbol: mockFetchVerifiedTokenBySymbol,
 }));
 
 // Mock x402-starknet (its real behaviour is covered by tools/x402-sign-payment-required.test.ts
@@ -1904,5 +1905,130 @@ describe("Tool list", () => {
     const response = await capturedListHandler();
     const toolNames = response.tools.map((t: any) => t.name);
     expect(toolNames).not.toContain("x402_starknet_sign_payment_required");
+  });
+});
+
+describe("Static token network", () => {
+  const SEPOLIA_CHAIN_ID = "0x534e5f5345504f4c4941";
+  const MAINNET_CHAIN_ID = "0x534e5f4d41494e";
+  const SEPOLIA_USDC = "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343";
+  const SEPOLIA_USDC_E = "0x053b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080";
+  const recipient = "0x0111111111111111111111111111111111111111111111111111111111111111";
+
+  let stderr: string[];
+
+  // Start the server and wait until it is connected, i.e. startup has
+  // checked the chain id and would accept requests.
+  async function startServer(env: Record<string, string>, chainId: string | Error) {
+    vi.clearAllMocks();
+    capturedToolHandler = null;
+    for (const [key, value] of Object.entries({ ...mockEnv, ...env })) {
+      process.env[key] = value;
+    }
+    if (chainId instanceof Error) {
+      mockGetChainId.mockRejectedValueOnce(chainId);
+    } else {
+      mockGetChainId.mockResolvedValueOnce(chainId);
+    }
+    stderr = [];
+    const spy = vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+      stderr.push(String(chunk));
+      return true;
+    });
+    try {
+      vi.resetModules();
+      await import("../../src/index.js");
+      await vi.waitFor(() => expect(mockServerConnect).toHaveBeenCalledTimes(1));
+    } finally {
+      spy.mockRestore();
+    }
+  }
+
+  async function usdcAddress(symbol = "USDC"): Promise<string> {
+    const response = await callTool("starknet_build_transfer_calls", {
+      tokenAddress: symbol,
+      recipientAddress: recipient,
+      amount: "1",
+    });
+    expect(response.isError).toBeFalsy();
+    const result = parseResponse(response);
+    expect(result.token).toBe(symbol);
+    return result.calls[0].contractAddress;
+  }
+
+  afterEach(() => {
+    for (const key of Object.keys(mockEnv)) {
+      delete process.env[key];
+    }
+  });
+
+  it("resolves USDC and USDC.e to Sepolia addresses on a Sepolia RPC", async () => {
+    await startServer({}, SEPOLIA_CHAIN_ID);
+
+    expect(await usdcAddress()).toBe(SEPOLIA_USDC);
+    expect(await usdcAddress("USDC.e")).toBe(SEPOLIA_USDC_E);
+    expect(stderr.join("")).not.toContain("token_service.");
+  });
+
+  it("resolves USDC to the mainnet address on a mainnet RPC", async () => {
+    await startServer(
+      {
+        STARKNET_RPC_URL: "https://starknet-mainnet.example.com",
+        AVNU_BASE_URL: "https://starknet.api.avnu.fi",
+        AVNU_PAYMASTER_URL: "https://starknet.paymaster.avnu.fi",
+      },
+      MAINNET_CHAIN_ID
+    );
+
+    expect(await usdcAddress()).toBe(TOKENS.USDC);
+    expect(stderr.join("")).not.toContain("token_service.");
+  });
+
+  async function lookUpUsdt() {
+    const response = await callTool("starknet_build_transfer_calls", {
+      tokenAddress: "USDT",
+      recipientAddress: recipient,
+      amount: "1",
+    });
+    expect(response.isError).toBe(true);
+    expect(mockFetchVerifiedTokenBySymbol).toHaveBeenCalledTimes(1);
+    return mockFetchVerifiedTokenBySymbol.mock.calls[0][1]?.baseUrl;
+  }
+
+  it("follows the chain id when the RPC URL does not name the network", async () => {
+    await startServer(
+      { STARKNET_RPC_URL: "https://rpc.starknet-testnet.example.com", AVNU_BASE_URL: "", AVNU_PAYMASTER_URL: "" },
+      SEPOLIA_CHAIN_ID
+    );
+
+    expect(await usdcAddress()).toBe(SEPOLIA_USDC);
+    expect(await usdcAddress("USDC.e")).toBe(SEPOLIA_USDC_E);
+    // No built-in USDT on Sepolia: looked up on avnu's Sepolia API, not the URL-derived mainnet one.
+    expect(await lookUpUsdt()).toBe("https://sepolia.api.avnu.fi");
+    expect(stderr.join("")).toContain('"event":"token_service.network_from_chain_id"');
+  });
+
+  it("keeps an explicit AVNU_BASE_URL when following the chain id", async () => {
+    await startServer(
+      { STARKNET_RPC_URL: "https://rpc.starknet-testnet.example.com", AVNU_BASE_URL: "https://avnu.internal.example" },
+      SEPOLIA_CHAIN_ID
+    );
+
+    expect(await usdcAddress()).toBe(SEPOLIA_USDC);
+    expect(await lookUpUsdt()).toBe("https://avnu.internal.example");
+  });
+
+  it("keeps the RPC URL's network when the chain id cannot be read", async () => {
+    await startServer({}, new Error("connection refused"));
+
+    expect(await usdcAddress()).toBe(SEPOLIA_USDC);
+    expect(stderr.join("")).toContain('"event":"token_service.chain_id_unavailable"');
+  });
+
+  it("keeps the RPC URL's network for an unknown chain id", async () => {
+    await startServer({}, "0x4b4154414e41");
+
+    expect(await usdcAddress()).toBe(SEPOLIA_USDC);
+    expect(stderr.join("")).toContain('"event":"token_service.unknown_chain_id"');
   });
 });

@@ -8,7 +8,7 @@ An MCP (Model Context Protocol) server that exposes Starknet blockchain operatio
 - **Contract Interactions**: Call read/write functions on any Starknet contract
 - **DeFi Operations**: Execute swaps via avnu aggregator with best-price routing
 - **Fee Estimation**: Estimate transaction costs before execution
-- **Multi-token Support**: ETH, STRK, USDC (Circle native), USDC.e (legacy bridged USDC), USDT, and custom ERC20 tokens
+- **Multi-token Support**: ETH, STRK, USDC (Circle native), USDC.e (legacy bridged USDC) and USDT built in per network (see [Networks and token symbols](#networks-and-token-symbols)), plus any ERC20 by address
 
 ## Installation
 
@@ -39,7 +39,7 @@ STARKNET_ACCOUNT_ADDRESS=0x...
 STARKNET_SIGNER_MODE=direct
 STARKNET_PRIVATE_KEY=0x...
 
-# avnu URLs (optional -- defaults shown)
+# avnu URLs (optional -- mainnet defaults shown; Sepolia ones are used when STARKNET_RPC_URL contains "sepolia")
 AVNU_BASE_URL=https://starknet.api.avnu.fi
 AVNU_PAYMASTER_URL=https://starknet.paymaster.avnu.fi
 # Optional for Vesu on non-mainnet deployments (e.g. Sepolia V2):
@@ -93,6 +93,30 @@ SISNA server-side production key-custody guard:
 
 Production startup guard: `KEYRING_PROXY_URL` must use `https://` unless loopback is used (`http://127.0.0.1`, `http://localhost`, or `http://[::1]`).
 Production startup guard (non-loopback signer URLs): `KEYRING_TLS_CLIENT_CERT_PATH`, `KEYRING_TLS_CLIENT_KEY_PATH`, and `KEYRING_TLS_CA_PATH` are required.
+
+### Networks and token symbols
+
+These symbols resolve to fixed addresses for the server's network and take
+precedence over avnu (case-insensitive). Any other symbol is looked up in avnu's
+verified token list for that network.
+
+| Symbol | Mainnet | Sepolia |
+|--------|---------|---------|
+| `ETH` | `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7` | same as mainnet |
+| `STRK` | `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d` | same as mainnet |
+| `USDC` (Circle native) | `0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb` | `0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343` |
+| `USDC.e` (legacy bridged) | `0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8` | `0x053b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080` |
+| `USDT` | `0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8` | none |
+
+The network is first taken from `STARKNET_RPC_URL` (Sepolia if the URL contains
+`sepolia`), then checked against the RPC's chain id before the server accepts
+requests. If the two disagree, symbol resolution follows the chain id (the
+built-in symbols, and avnu lookups for other symbols unless `AVNU_BASE_URL` is
+set) and the server logs `token_service.network_from_chain_id`. Swaps, quotes and
+the paymaster still use `AVNU_BASE_URL` and `AVNU_PAYMASTER_URL`, whose defaults
+follow the URL, so set both explicitly in that case. If the chain id cannot be
+read within 10 seconds, or is neither `SN_MAIN` nor `SN_SEPOLIA`, the URL-derived
+network is kept and a warning is logged.
 
 ## Usage
 
@@ -248,8 +272,9 @@ The tool builds the payment itself from the server's requirements: one `transfer
 `amount` of `asset` to `payTo`, executable only by the server's `extra.feePayer`, valid for
 `maxTimeoutSeconds` (at most 3600). It never signs typed data supplied by the server. The
 payment is checked against the `transfer` policy (`maxAmountPerCall`, `allowedRecipients`,
-`blockedRecipients`, `allowedTokens`) before signing; with `maxAmountPerCall` set, a token
-whose decimals cannot be resolved is refused. It pays only offers on the chain the RPC
+`blockedRecipients`, `allowedTokens`) before signing; symbols in `allowedTokens` match only
+the [built-in tokens](#networks-and-token-symbols) of the chain being paid on. With
+`maxAmountPerCall` set, a token whose decimals cannot be resolved is refused. It pays only offers on the chain the RPC
 reports. Returns the `PAYMENT-SIGNATURE` request header and a summary:
 
 ```json

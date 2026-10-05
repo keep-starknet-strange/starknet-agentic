@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { TokenService } from "../../src/services/TokenService.js";
-import { resetTokenService, getTokenService } from "../../src/services/index.js";
+import { TokenService, findStaticToken } from "../../src/services/TokenService.js";
+import {
+  resetTokenService,
+  getTokenService,
+  configureTokenServiceNetwork,
+  networkForStarknetChainId,
+} from "../../src/services/index.js";
 import { TOKEN_TTL_MS } from "../../src/types/token.js";
 
 // Mock avnu SDK
@@ -31,6 +36,15 @@ const MOCK_LORDS_TOKEN = {
   tags: ["Verified"] as const,
   extensions: {},
 };
+
+// Literals rather than the shared constants, so a change there fails these tests.
+const ETH = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+const STRK = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
+const MAINNET_USDC = "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb";
+const MAINNET_USDC_E = "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8";
+const MAINNET_USDT = "0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8";
+const SEPOLIA_USDC = "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343";
+const SEPOLIA_USDC_E = "0x053b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080";
 
 const MOCK_ZEND_TOKEN = {
   address: "0x00585c32b625999e6e5e78645ff8df7a9001cf5cf3eb6b80ccdd16cb64bd3a34",
@@ -251,6 +265,137 @@ describe("TokenService", () => {
       const instance2 = getTokenService();
 
       expect(instance1).toBe(instance2);
+    });
+
+    it("should keep the first network and switch only through configureTokenServiceNetwork", () => {
+      resetTokenService();
+      const instance = getTokenService(undefined, "sepolia");
+      expect(getTokenService(undefined, "mainnet").getNetwork()).toBe("sepolia");
+
+      configureTokenServiceNetwork("mainnet");
+      expect(instance.getNetwork()).toBe("mainnet");
+      expect(instance.resolveSymbol("USDC")).toBe(MAINNET_USDC);
+    });
+  });
+
+  describe("networks", () => {
+    it("defaults to mainnet static tokens", () => {
+      expect(service.getNetwork()).toBe("mainnet");
+      expect(service.resolveSymbol("USDC")).toBe(MAINNET_USDC);
+      expect(service.resolveSymbol("USDC.e")).toBe(MAINNET_USDC_E);
+      expect(service.resolveSymbol("USDT")).toBe(MAINNET_USDT);
+    });
+
+    it("resolves Sepolia symbols to Sepolia addresses", () => {
+      const sepolia = new TokenService(undefined, "sepolia");
+
+      expect(sepolia.resolveSymbol("ETH")).toBe(ETH);
+      expect(sepolia.resolveSymbol("STRK")).toBe(STRK);
+      expect(sepolia.resolveSymbol("USDC")).toBe(SEPOLIA_USDC);
+      expect(sepolia.resolveSymbol("usdc")).toBe(SEPOLIA_USDC);
+      expect(sepolia.resolveSymbol("USDC.e")).toBe(SEPOLIA_USDC_E);
+      expect(sepolia.resolveSymbol("usdc.E")).toBe(SEPOLIA_USDC_E);
+      expect(sepolia.getDecimals(SEPOLIA_USDC)).toBe(6);
+      expect(sepolia.getDecimals(SEPOLIA_USDC_E)).toBe(6);
+    });
+
+    it("never resolves Sepolia symbols to mainnet-only addresses", () => {
+      const sepolia = new TokenService(undefined, "sepolia");
+
+      for (const mainnetOnly of [MAINNET_USDC, MAINNET_USDC_E, MAINNET_USDT]) {
+        expect(sepolia.getDecimals(mainnetOnly)).toBeUndefined();
+        expect(sepolia.getStaticSymbol(mainnetOnly)).toBeUndefined();
+      }
+      expect(sepolia.resolveSymbol("USDC")).not.toBe(MAINNET_USDC);
+      expect(sepolia.resolveSymbol("USDC.e")).not.toBe(MAINNET_USDC_E);
+      expect(sepolia.getStaticTokens().map((t) => t.symbol)).toEqual(["ETH", "STRK", "USDC", "USDC.e"]);
+    });
+
+    it("has no static USDT on Sepolia, so USDT goes to the Sepolia avnu API", async () => {
+      vi.mocked(fetchVerifiedTokenBySymbol).mockResolvedValue(null as never);
+      const sepolia = new TokenService(undefined, "sepolia");
+
+      await expect(sepolia.resolveSymbolAsync("USDT")).rejects.toThrow('Failed to fetch token by symbol "USDT"');
+      expect(fetchVerifiedTokenBySymbol).toHaveBeenCalledWith("USDT", { baseUrl: "https://sepolia.api.avnu.fi" });
+    });
+
+    it("keeps Sepolia static tokens ahead of avnu results", async () => {
+      vi.mocked(fetchTokenByAddress).mockResolvedValue({
+        ...MOCK_LORDS_TOKEN,
+        address: SEPOLIA_USDC,
+        symbol: "FAKE",
+        decimals: 18,
+      });
+      vi.mocked(fetchVerifiedTokenBySymbol).mockResolvedValue({ ...MOCK_LORDS_TOKEN, symbol: "USDC" });
+      const sepolia = new TokenService(undefined, "sepolia");
+
+      expect(await sepolia.resolveSymbolAsync("USDC")).toBe(SEPOLIA_USDC);
+      expect((await sepolia.getTokenByAddress(SEPOLIA_USDC)).decimals).toBe(6);
+      expect(fetchVerifiedTokenBySymbol).not.toHaveBeenCalled();
+      expect(fetchTokenByAddress).not.toHaveBeenCalled();
+    });
+
+    it("matches static symbols by address value, ignoring padding and case", () => {
+      const sepolia = new TokenService(undefined, "sepolia");
+
+      expect(sepolia.getStaticSymbol("0x53b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080")).toBe("USDC.e");
+      expect(sepolia.getStaticSymbol(SEPOLIA_USDC.toUpperCase().replace("0X", "0x"))).toBe("USDC");
+      expect(sepolia.getStaticSymbol("not-an-address")).toBeUndefined();
+      expect(findStaticToken(SEPOLIA_USDC, "mainnet")).toBeUndefined();
+      expect(findStaticToken(MAINNET_USDC, "mainnet")?.symbol).toBe("USDC");
+      expect(findStaticToken(MAINNET_USDC_E, "mainnet")?.symbol).toBe("USDC.e");
+      expect(findStaticToken(MAINNET_USDC_E, "sepolia")).toBeUndefined();
+    });
+
+    it("drops cached tokens when switching networks", async () => {
+      vi.mocked(fetchTokenByAddress).mockResolvedValue(MOCK_LORDS_TOKEN);
+      await service.getTokenByAddress(MOCK_LORDS_TOKEN.address);
+      expect(service.resolveSymbol("LORDS")).toBe(MOCK_LORDS_TOKEN.address);
+
+      service.setNetwork("sepolia");
+
+      expect(service.getNetwork()).toBe("sepolia");
+      expect(service.getCacheSize()).toBe(4);
+      expect(() => service.resolveSymbol("LORDS")).toThrow("Unknown token: LORDS");
+      expect(service.resolveSymbol("USDC")).toBe(SEPOLIA_USDC);
+      expect(service.getDecimals(MAINNET_USDC)).toBeUndefined();
+    });
+
+    it("defaults the avnu base URL to the network's API", async () => {
+      vi.mocked(fetchVerifiedTokenBySymbol).mockResolvedValue(MOCK_LORDS_TOKEN);
+
+      await new TokenService(undefined, "sepolia").resolveSymbolAsync("LORDS");
+      await new TokenService().resolveSymbolAsync("LORDS");
+      await new TokenService("https://custom.avnu", "sepolia").resolveSymbolAsync("LORDS");
+
+      expect(vi.mocked(fetchVerifiedTokenBySymbol).mock.calls.map(([, opts]) => opts?.baseUrl)).toEqual([
+        "https://sepolia.api.avnu.fi",
+        "https://starknet.api.avnu.fi",
+        "https://custom.avnu",
+      ]);
+    });
+
+    it("switches the avnu base URL with the network when one is given", async () => {
+      vi.mocked(fetchVerifiedTokenBySymbol).mockResolvedValue(MOCK_LORDS_TOKEN);
+
+      service.setNetwork("sepolia");
+      await service.resolveSymbolAsync("LORDS");
+      service.setNetwork("sepolia", "https://sepolia.api.avnu.fi");
+      expect(() => service.resolveSymbol("LORDS")).toThrow("Unknown token: LORDS");
+      await service.resolveSymbolAsync("LORDS");
+
+      expect(vi.mocked(fetchVerifiedTokenBySymbol).mock.calls.map(([, opts]) => opts?.baseUrl)).toEqual([
+        "https://starknet.api.avnu.fi",
+        "https://sepolia.api.avnu.fi",
+      ]);
+    });
+
+    it("maps Starknet chain ids to networks", () => {
+      expect(networkForStarknetChainId("0x534e5f4d41494e")).toBe("mainnet");
+      expect(networkForStarknetChainId("0x534e5f5345504f4c4941")).toBe("sepolia");
+      expect(networkForStarknetChainId("0x0534E5F5345504F4C4941")).toBe("sepolia");
+      expect(networkForStarknetChainId("0x4b4154414e41")).toBeUndefined(); // KATANA
+      expect(networkForStarknetChainId("SN_SEPOLIA")).toBeUndefined();
     });
   });
 

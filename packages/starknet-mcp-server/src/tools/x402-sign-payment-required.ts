@@ -5,7 +5,12 @@ import {
   prepareStarknetPayment,
   signPreparedStarknetPayment,
 } from "@starknetfoundation/starknet-agentic-x402-starknet";
-import { getTokenService, STATIC_TOKENS } from "../services/index.js";
+import {
+  findStaticToken,
+  getTokenService,
+  networkForStarknetChainId,
+  type CachedToken,
+} from "../services/index.js";
 import { formatAmount } from "../utils/formatter.js";
 import { log } from "../logger.js";
 import type { ToolArgs, ToolContext, ToolResult } from "./_shared.js";
@@ -47,12 +52,17 @@ const argsSchema = z.object({
 /** Listed only in direct signer mode (signing needs the in-process private key). */
 export const isListed = (ctx: ToolContext): boolean => ctx.signerMode === "direct";
 
-/** Symbol from the built-in token list only; runtime token metadata is not trusted for policy. */
-function trustedSymbolFor(asset: string): string | undefined {
-  return STATIC_TOKENS.find((token) => BigInt(token.address) === BigInt(asset))?.symbol;
+/**
+ * Built-in token at `asset` on the chain being paid on. Policy trusts symbols
+ * only from this list, never from runtime token metadata.
+ */
+function builtInTokenFor(asset: string, chainId: string): CachedToken | undefined {
+  const network = networkForStarknetChainId(chainId);
+  return network ? findStaticToken(asset, network) : undefined;
 }
 
-async function tokenDecimals(asset: string): Promise<number | undefined> {
+async function tokenDecimals(asset: string, builtIn: CachedToken | undefined): Promise<number | undefined> {
+  if (builtIn) return builtIn.decimals;
   try {
     const decimals = await getTokenService().getDecimalsAsync(asset);
     return Number.isInteger(decimals) && decimals >= 0 && decimals <= 255 ? decimals : undefined;
@@ -85,7 +95,8 @@ export async function handler(args: ToolArgs, ctx: ToolContext): Promise<ToolRes
   const { paymentRequiredHeader, acceptIndex } = parsedArgs.data;
 
   // The chain the configured account lives on decides which offers are payable.
-  const network = networkForChainId(await provider.getChainId());
+  const chainId = await provider.getChainId();
+  const network = networkForChainId(chainId);
 
   // Decode, select and validate; nothing is signed yet.
   const prepared = prepareStarknetPayment({
@@ -97,8 +108,9 @@ export async function handler(args: ToolArgs, ctx: ToolContext): Promise<ToolRes
   const { asset, payTo, amount } = prepared.requirements;
 
   // The payment moves `amount` of `asset` to `payTo`: hold it to the transfer policy.
-  const decimals = await tokenDecimals(asset);
-  const trustedSymbol = trustedSymbolFor(asset);
+  const builtIn = builtInTokenFor(asset, chainId);
+  const decimals = await tokenDecimals(asset, builtIn);
+  const trustedSymbol = builtIn?.symbol;
   const decision = policyGuard.evaluatePayment({ asset, payTo, amount, decimals, trustedSymbol });
   if (!decision.allowed) {
     log({

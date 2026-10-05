@@ -93,6 +93,7 @@ export const TOKEN_ADDRESSES = {
   sepolia: {
     ETH: SEPOLIA_TOKENS.ETH,
     STRK: SEPOLIA_TOKENS.STRK,
+    USDC: SEPOLIA_TOKENS.USDC,
   },
 };
 
