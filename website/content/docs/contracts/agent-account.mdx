@@ -150,16 +150,14 @@ fn register_session_key(ref self: TContractState, key: felt252, policy: SessionP
 **Example:**
 
 ```typescript
-import { Account, RpcProvider, CallData, constants } from "starknet";
+import { Account, RpcProvider, CallData } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
-const account = new Account(
-  { nodeUrl: provider },
-  accountAddress,
-  privateKey,
-  undefined,
-  constants.TRANSACTION_VERSION.V3
-);
+const account = new Account({
+  provider,
+  address: accountAddress,
+  signer: privateKey,
+});
 
 const policy = {
   valid_after: Math.floor(Date.now() / 1000),
@@ -300,7 +298,7 @@ const { transaction_hash } = await factoryAccount.execute({
   }),
 });
 
-const receipt = await factoryAccount.waitForTransaction(transaction_hash);
+const receipt = await factoryAccount.provider.waitForTransaction(transaction_hash);
 // Parse AccountDeployed event for account_address and agent_id
 ```
 
@@ -328,7 +326,7 @@ await account.execute({
 Query the bound identity:
 
 ```typescript
-const contract = new Contract(abi, agentAccountAddress, provider);
+const contract = new Contract({ abi, address: agentAccountAddress, providerOrAccount: provider });
 const [registry, agentId] = await contract.get_agent_id();
 ```
 

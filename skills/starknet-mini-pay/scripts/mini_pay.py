@@ -6,6 +6,9 @@ Simple P2P payments on Starknet
 Token addresses from official sources:
 - ETH/STRK: https://docs.starknet.io/resources/chain-info/
 - Bridged tokens: https://github.com/starknet-io/starknet-addresses
+
+Targets starknet-py 0.30.x (JSON-RPC spec 0.10). Transfers are V3
+transactions, so fees are paid in STRK.
 """
 
 import asyncio
@@ -17,12 +20,21 @@ from enum import Enum
 from starknet_py.net.full_node_client import FullNodeClient
 from starknet_py.net.account.account import Account
 from starknet_py.net.signer.key_pair import KeyPair
-from starknet_py.contract import Contract
-from starknet_py.net.client_models import Call
+from starknet_py.net.client_models import (
+    Call,
+    TransactionExecutionStatus,
+    TransactionFinalityStatus,
+)
 from starknet_py.hash.selector import get_selector_from_name
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Keyless public endpoints serving JSON-RPC spec 0.10 (required by starknet-py 0.30)
+MAINNET_RPC_URL = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
+SEPOLIA_RPC_URL = "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10"
+
+UINT128_MASK = (1 << 128) - 1
 
 
 class Token(Enum):
@@ -58,27 +70,10 @@ class PaymentResult:
 class MiniPay:
     """Core Mini-Pay class for Starknet payments."""
     
-    ERC20_ABI = [
-        {
-            "name": "transfer",
-            "type": "function",
-            "inputs": [
-                {"name": "recipient", "type": "felt"},
-                {"name": "amount", "type": "Uint256"}
-            ],
-            "outputs": [{"name": "success", "type": "felt"}],
-            "stateMutability": "external"
-        },
-        {
-            "name": "balanceOf",
-            "type": "function", 
-            "inputs": [{"name": "account", "type": "felt"}],
-            "outputs": [{"name": "balance", "type": "Uint256"}],
-            "stateMutability": "view"
-        }
-    ]
+    # Fees for V3 transactions are paid in STRK
+    FEE_TOKEN = "STRK"
     
-    def __init__(self, rpc_url: str = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10", network: str = "mainnet"):
+    def __init__(self, rpc_url: str = MAINNET_RPC_URL, network: str = "mainnet"):
         self.rpc_url = rpc_url
         self.network = network.lower()
         self.client = FullNodeClient(node_url=rpc_url)
@@ -91,12 +86,15 @@ class MiniPay:
     def _get_token_decimals(self, token: str) -> int:
         return {"ETH": 18, "STRK": 18, "USDC": 6}.get(token.upper(), 18)
     
-    def _create_account(self, address: str, private_key: str) -> Account:
+    async def _create_account(self, address: str, private_key: str) -> Account:
         key_pair = KeyPair.from_private_key(int(private_key, 16))
+        # Sign for whichever chain the RPC actually serves
+        chain_id = await self.client.get_chain_id()
         return Account(
             address=int(address, 16),
             client=self.client,
             key_pair=key_pair,
+            chain=chain_id,
         )
     
     async def _call_contract(self, call: Call, block_id: str = "latest") -> List[int]:
@@ -167,42 +165,49 @@ class MiniPay:
         except ValueError:
             raise ValueError("Invalid address format")
         
-        account = self._create_account(from_address, private_key)
+        account = await self._create_account(from_address, private_key)
         
-        token_address = self.tokens[token_symbol]
-        contract = Contract(
-            address=token_address,
-            abi=self.ERC20_ABI,
-            client=self.client
-        )
-        
-        transfer_call = contract.functions["transfer"].prepare(
-            recipient=int(to_address, 16),
-            amount=amount_wei
+        # ERC20 transfer(recipient, amount: u256); u256 is serialized as (low, high)
+        transfer_call = Call(
+            to_addr=self.tokens[token_symbol],
+            selector=get_selector_from_name("transfer"),
+            calldata=[int(to_address, 16), amount_wei & UINT128_MASK, amount_wei >> 128],
         )
         
         calls = [transfer_call]
         
+        # Sign once and resend the same transaction on retry, so a retry after an
+        # ambiguous send error cannot submit a second transfer with a new nonce.
+        invoke = None
         for attempt in range(max_retries):
             try:
-                estimated = await account.estimate_fee(calls)
-                max_fee = int(estimated.overall_fee * 1.5)
-                
-                logger.info(f"Estimated fee: {estimated.overall_fee / 10**18:.6f} ETH")
-                
-                if token_symbol != "ETH":
-                    eth_balance = await self.get_balance(from_address, "ETH")
-                    if eth_balance < max_fee:
-                        raise ValueError("Insufficient ETH for fees")
+                if invoke is None:
+                    signed = await account.sign_invoke_v3(calls, auto_estimate=True)
+                    bounds = signed.resource_bounds
+                    max_fee = sum(
+                        b.max_amount * b.max_price_per_unit
+                        for b in (bounds.l1_gas, bounds.l2_gas, bounds.l1_data_gas)
+                    )
+                    
+                    logger.info(f"Max fee: {max_fee / 10**18:.6f} {self.FEE_TOKEN}")
+                    
+                    if token_symbol != self.FEE_TOKEN:
+                        fee_balance = await self.get_balance(from_address, self.FEE_TOKEN)
+                        if fee_balance < max_fee:
+                            raise ValueError(f"Insufficient {self.FEE_TOKEN} for fees")
+                    
+                    invoke = signed
                 
                 logger.info(f"Sending {amount_wei / 10**self._get_token_decimals(token_symbol):.6f} {token_symbol}")
                 
-                result = await account.execute(calls, max_fee=max_fee)
+                result = await self.client.send_transaction(invoke)
                 tx_hash = hex(result.transaction_hash)
                 
                 logger.info(f"Transaction submitted: {tx_hash}")
                 return tx_hash
                 
+            except ValueError:
+                raise
             except Exception as e:
                 logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
                 
@@ -210,7 +215,7 @@ class MiniPay:
                     await asyncio.sleep(2 ** attempt)
                     continue
                 
-                raise RuntimeError(f"Transaction failed after {max_retries} attempts")
+                raise RuntimeError(f"Transaction failed after {max_retries} attempts: {e}") from e
     
     async def wait_for_confirmation(self, tx_hash: str, max_wait_seconds: int = 180, poll_interval: float = 3.0) -> str:
         """Wait for transaction to be confirmed."""
@@ -236,25 +241,15 @@ class MiniPay:
         try:
             receipt = await self.client.get_transaction_receipt(tx_hash)
             
-            if hasattr(receipt, 'execution_status'):
-                exec_status = str(receipt.execution_status).upper()
-                finality = getattr(receipt, 'finality_status', '')
-                
-                if 'SUCCEEDED' in exec_status and 'ACCEPTED' in str(finality).upper():
-                    return "CONFIRMED"
-                elif 'REVERTED' in exec_status or 'REJECTED' in str(finality).upper():
-                    return "REJECTED"
-                elif 'PENDING' in exec_status:
-                    return "PENDING"
-            
-            if hasattr(receipt, 'status'):
-                status = str(receipt.status).upper()
-                if 'ACCEPTED' in status:
-                    return "CONFIRMED"
-                elif 'PENDING' in status:
-                    return "PENDING"
-                elif 'REJECTED' in status:
-                    return "REJECTED"
+            if receipt.execution_status == TransactionExecutionStatus.REVERTED:
+                return "REJECTED"
+            if receipt.finality_status in (
+                TransactionFinalityStatus.ACCEPTED_ON_L2,
+                TransactionFinalityStatus.ACCEPTED_ON_L1,
+            ):
+                return "CONFIRMED"
+            if receipt.finality_status == TransactionFinalityStatus.PRE_CONFIRMED:
+                return "PENDING"
             
             return "UNKNOWN"
             
@@ -263,6 +258,16 @@ class MiniPay:
                 return "NOT_FOUND"
             return f"ERROR"
     
+    async def get_transaction(self, tx_hash: str) -> Dict[str, Any]:
+        """Get sender and block number for a transaction."""
+        tx = await self.client.get_transaction(tx_hash)
+        receipt = await self.client.get_transaction_receipt(tx_hash)
+        sender_address = getattr(tx, "sender_address", None)
+        return {
+            "sender_address": hex(sender_address) if sender_address is not None else None,
+            "block_number": receipt.block_number,
+        }
+    
     async def get_block_number(self) -> int:
         """Get current block number."""
         return await self.client.get_block_number()
@@ -270,8 +275,7 @@ class MiniPay:
 
 async def example():
     """Example usage."""
-    RPC = "https://starknet-mainnet.g.alchemy.com/v2/lq2wTFNVuh1mmqC7oPcYw"
-    pay = MiniPay(RPC)
+    pay = MiniPay(MAINNET_RPC_URL)
     
     addr = "0x068047beadC45aFF253839D4DD7c2cD1c27D502738BAd0AF935D402bdf9244ED"
     

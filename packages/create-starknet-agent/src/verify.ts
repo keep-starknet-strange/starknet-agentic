@@ -7,34 +7,62 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { spawn } from "node:child_process";
 import pc from "picocolors";
 import {
   ETH_TOKEN_ADDRESS,
+  PUBLIC_RPC_URLS,
   STRK_TOKEN_ADDRESS,
 } from "@starknetfoundation/starknet-agentic-shared/constants";
 import type { DetectedPlatform, Network } from "./types.js";
 import { detectPlatforms, getPlatformByType, isValidPlatformType } from "./platform.js";
 import { EXIT_CODES } from "./index.js";
 import { AVAILABLE_SKILLS } from "./wizards.js";
+import {
+  DEFAULT_MCP_HANDSHAKE_TIMEOUT_MS,
+  checkMcpServerHealth,
+  createRedactor,
+  redactUrl,
+  type McpHandshakeOptions,
+  type McpHandshakeResult,
+} from "./mcp-handshake.js";
+
+const MCP_SERVER_PACKAGE = "@starknetfoundation/starknet-agentic-mcp-server";
+
+/**
+ * RPC used by the end-to-end balance check when STARKNET_RPC_URL is not set:
+ * a keyless public Sepolia endpoint on RPC spec 0.10.
+ */
+export const DEFAULT_E2E_RPC_URL: string = PUBLIC_RPC_URLS.sepolia;
 
 /**
  * MCP server check result
  */
-interface McpCheckResult {
+export interface McpCheckResult {
   configExists: boolean;
   configPath?: string;
+  /** Set when the config file exists but is not valid JSON. */
+  configError?: string;
   serverConfigured: boolean;
+  /** Command line from the config, with secrets redacted. */
   serverCommand?: string;
-  serverVersion?: string;
+  /** Version pinned in the config's package argument, e.g. "latest" or "0.2.0". */
+  configuredVersion?: string;
+  /** True when the server completed the MCP initialize handshake. */
   serverResponds: boolean;
+  /** serverInfo.name from the initialize response. */
+  serverName?: string;
+  /** serverInfo.version from the initialize response. */
+  serverVersion?: string;
+  toolCount?: number;
   responseTime?: number;
+  /** Full handshake outcome, absent when no handshake was attempted. */
+  handshake?: McpHandshakeResult;
 }
 
 /**
  * Credentials check result
  */
-interface CredentialsCheckResult {
+export interface CredentialsCheckResult {
   privateKeyPresent: boolean;
   accountAddressPresent: boolean;
   rpcUrlPresent: boolean;
@@ -82,9 +110,18 @@ interface VerificationResult {
 /**
  * Redact sensitive credential values before printing verification output.
  */
-function sanitizeVerificationResultForOutput(result: VerificationResult): VerificationResult {
+function sanitizeVerificationResultForOutput(
+  result: VerificationResult,
+  verbose: boolean
+): VerificationResult {
+  const handshake = result.mcp.handshake;
   return {
     ...result,
+    mcp: {
+      ...result.mcp,
+      // stderr is already redacted, but only include it when asked for.
+      handshake: handshake && !verbose ? { ...handshake, stderrTail: undefined } : handshake,
+    },
     credentials: {
       ...result.credentials,
       accountAddressValue: result.credentials.accountAddressValue ? "[redacted]" : undefined,
@@ -102,6 +139,8 @@ export interface VerifyArgs {
   skipE2E: boolean;
   verbose: boolean;
   showHelp: boolean;
+  /** MCP handshake timeout in milliseconds (--timeout <seconds>). */
+  mcpTimeoutMs?: number;
 }
 
 /**
@@ -132,6 +171,11 @@ export function parseVerifyArgs(args: string[]): VerifyArgs {
       if (isValidPlatformType(platform)) {
         result.platform = platform;
       }
+    } else if (arg === "--timeout" && args[i + 1]) {
+      const seconds = Number(args[++i]);
+      if (Number.isFinite(seconds) && seconds > 0) {
+        result.mcpTimeoutMs = Math.round(seconds * 1000);
+      }
     }
   }
 
@@ -148,19 +192,21 @@ ${pc.bold("Usage:")}
 
 ${pc.bold("Description:")}
   Verify that your Starknet agent setup is working correctly.
-  Checks MCP server configuration, credentials, installed skills,
-  and optionally performs an end-to-end balance query.
+  Starts the configured Starknet MCP server with the env from your MCP
+  config and performs an MCP initialize handshake, then checks credentials,
+  installed skills, and optionally performs an end-to-end balance query.
 
 ${pc.bold("Options:")}
   --platform <name>    Target platform (openclaw, claude-code, cursor, etc.)
   --skip-e2e           Skip end-to-end balance test (faster, doesn't need RPC)
-  --verbose, -v        Show detailed output including config contents
+  --timeout <seconds>  MCP server handshake timeout (default: ${DEFAULT_MCP_HANDSHAKE_TIMEOUT_MS / 1000})
+  --verbose, -v        Show detailed output, including the server's stderr
   --json               Output machine-readable JSON
   --help, -h           Show this help message
 
 ${pc.bold("Exit Codes:")}
   0  All checks passed - setup is fully operational
-  1  Configuration error - MCP not configured correctly
+  1  Configuration error - MCP not configured correctly or server not reachable
   2  Missing credentials - setup incomplete
 
 ${pc.bold("Examples:")}
@@ -182,12 +228,18 @@ function expandHome(filePath: string): string {
   return filePath;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
- * Check MCP server configuration
+ * Check the MCP server: read the `mcpServers.starknet` entry from the
+ * platform's MCP config, start that command with that env (as the MCP client
+ * would) and perform an MCP initialize handshake over stdio.
  */
-async function checkMcpServer(
+export async function checkMcpServer(
   platform: DetectedPlatform,
-  verbose: boolean
+  options: McpHandshakeOptions & { onHandshakeStart?: (serverCommand: string) => void } = {}
 ): Promise<McpCheckResult> {
   const result: McpCheckResult = {
     configExists: false,
@@ -195,99 +247,94 @@ async function checkMcpServer(
     serverResponds: false,
   };
 
-  // Check if config file exists
   const configPath = expandHome(platform.configPath);
-  if (fs.existsSync(configPath)) {
-    result.configExists = true;
-    result.configPath = configPath;
+  if (!fs.existsSync(configPath)) {
+    return result;
+  }
+  result.configExists = true;
+  result.configPath = configPath;
 
-    // Read and parse config
-    try {
-      const content = fs.readFileSync(configPath, "utf-8");
-      const config = JSON.parse(content);
-
-      // Check for starknet MCP server configuration
-      if (config.mcpServers?.starknet) {
-        result.serverConfigured = true;
-        const serverConfig = config.mcpServers.starknet;
-
-        // Extract command info
-        if (serverConfig.command) {
-          result.serverCommand = `${serverConfig.command} ${(serverConfig.args || []).join(" ")}`;
-        }
-
-        // Try to extract version from args
-        const args = serverConfig.args || [];
-        const versionArg = args.find((a: string) => a.includes("@starknetfoundation/starknet-agentic-mcp-server"));
-        if (versionArg) {
-          const versionMatch = versionArg.match(/@([\d.]+|latest)$/);
-          if (versionMatch) {
-            result.serverVersion = versionMatch[1];
-          }
-        }
-      }
-    } catch {
-      // Config exists but couldn't be parsed
-    }
+  let serverConfig: unknown;
+  try {
+    const config: unknown = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    serverConfig = isRecord(config) && isRecord(config.mcpServers) ? config.mcpServers.starknet : undefined;
+  } catch (error) {
+    // Not error.message: V8's JSON.parse errors quote the input, which may hold secrets.
+    result.configError = error instanceof SyntaxError ? "not valid JSON" : "could not be read";
+    return result;
   }
 
-  // Try to ping MCP server if configured
-  if (result.serverConfigured) {
-    try {
-      const pingResult = await pingMcpServer(verbose);
-      result.serverResponds = pingResult.success;
-      result.responseTime = pingResult.responseTime;
-    } catch {
-      result.serverResponds = false;
-    }
+  if (!isRecord(serverConfig)) {
+    return result;
   }
+  result.serverConfigured = true;
+
+  const command = typeof serverConfig.command === "string" ? serverConfig.command.trim() : "";
+  const args = Array.isArray(serverConfig.args)
+    ? serverConfig.args.filter((arg): arg is string => typeof arg === "string")
+    : [];
+  const env = isRecord(serverConfig.env) ? serverConfig.env : undefined;
+
+  const packageArg = args.find((arg) => arg.includes(MCP_SERVER_PACKAGE));
+  const versionMatch = packageArg?.match(/@([^@/]+)$/);
+  if (versionMatch) {
+    result.configuredVersion = versionMatch[1];
+  }
+
+  if (!command) {
+    // Only stdio servers (command + args) can be started and checked.
+    return result;
+  }
+  result.serverCommand = createRedactor({})([command, ...args].join(" "));
+
+  const { onHandshakeStart, ...handshakeOptions } = options;
+  onHandshakeStart?.(result.serverCommand);
+  const handshake = await checkMcpServerHealth({ command, args, env }, handshakeOptions);
+  result.handshake = handshake;
+  result.serverResponds = handshake.ok;
+  result.responseTime = handshake.durationMs;
+  result.serverName = handshake.serverName;
+  result.serverVersion = handshake.serverVersion;
+  result.toolCount = handshake.toolCount;
 
   return result;
 }
 
 /**
- * Attempt to ping the MCP server
- * Uses a lightweight initialization check
+ * One-line, user-facing description of a failed MCP check, plus an optional hint.
  */
-async function pingMcpServer(
-  verbose: boolean
-): Promise<{ success: boolean; responseTime?: number }> {
-  return new Promise((resolve) => {
-    const startTime = Date.now();
-    const timeout = 10000; // 10 second timeout
-
-    // Try to spawn the MCP server with a simple ping
-    const child = spawn("npx", ["-y", "@starknetfoundation/starknet-agentic-mcp-server@latest", "--help"], {
-      stdio: verbose ? "inherit" : "pipe",
-      env: {
-        ...process.env,
-        // Minimal env for ping
-        STARKNET_RPC_URL: "https://starknet-sepolia.public.blastapi.io/rpc/v0_7",
-      },
-    });
-
-    const timeoutId = setTimeout(() => {
-      child.kill();
-      resolve({ success: false });
-    }, timeout);
-
-    child.on("close", (code) => {
-      clearTimeout(timeoutId);
-      const responseTime = Date.now() - startTime;
-
-      // npx --help typically exits with 0
-      // The server existing and responding to --help is a good sign
-      resolve({
-        success: code === 0 || code === null,
-        responseTime,
-      });
-    });
-
-    child.on("error", () => {
-      clearTimeout(timeoutId);
-      resolve({ success: false });
-    });
-  });
+export function describeMcpFailure(
+  mcp: McpCheckResult,
+  timeoutMs: number
+): { message: string; hint?: string } | undefined {
+  if (!mcp.configExists || !mcp.serverConfigured || mcp.serverResponds) {
+    return undefined;
+  }
+  const handshake = mcp.handshake;
+  if (!handshake) {
+    return {
+      message: "Starknet MCP server entry has no \"command\"; only stdio servers can be checked",
+    };
+  }
+  switch (handshake.status) {
+    case "missing-env":
+      return {
+        message: `${handshake.message} (configuration problem)`,
+        hint: `Set them in the "env" block of the starknet server in ${mcp.configPath}, or export them in the environment your MCP client starts from.`,
+      };
+    case "timeout":
+      return {
+        message: handshake.message ?? "MCP handshake timed out",
+        hint: `The first npx run downloads the server. Retry with a longer timeout, e.g. --timeout ${Math.max(120, Math.round((timeoutMs * 2) / 1000))}.`,
+      };
+    case "spawn-error":
+      return {
+        message: handshake.message ?? "Could not start the MCP server",
+        hint: "Check that the configured command is installed and on PATH.",
+      };
+    default:
+      return { message: handshake.message ?? "MCP handshake failed" };
+  }
 }
 
 /**
@@ -479,6 +526,13 @@ function checkSkills(platform: DetectedPlatform): SkillsCheckResult {
 }
 
 /**
+ * RPC URL for the end-to-end check: STARKNET_RPC_URL, else the public default.
+ */
+export function resolveE2ERpcUrl(env: NodeJS.ProcessEnv): string {
+  return env.STARKNET_RPC_URL || DEFAULT_E2E_RPC_URL;
+}
+
+/**
  * Perform end-to-end balance check
  */
 async function checkE2E(
@@ -502,7 +556,7 @@ async function checkE2E(
   try {
     // Get full address from env
     const accountAddress = process.env.STARKNET_ACCOUNT_ADDRESS;
-    const rpcUrl = process.env.STARKNET_RPC_URL || "https://starknet-sepolia.public.blastapi.io/rpc/v0_7";
+    const rpcUrl = resolveE2ERpcUrl(process.env);
 
     if (!accountAddress) {
       result.error = "Account address not available in environment";
@@ -581,7 +635,8 @@ async function callBalanceOf(
   };
 
   if (verbose) {
-    console.log(pc.dim(`  RPC call to ${rpcUrl}`));
+    // RPC URLs often embed an API key.
+    console.log(pc.dim(`  RPC call to ${redactUrl(rpcUrl)}`));
   }
 
   const response = await fetch(rpcUrl, {
@@ -637,6 +692,28 @@ function formatBalance(hexValue: string, decimals: number): string {
 }
 
 /**
+ * Exit code for a verification run. A config that is missing, unparsable or
+ * has no starknet server is a configuration error; missing credentials come
+ * next; a server that does not complete the MCP handshake is a configuration
+ * error too.
+ */
+export function computeVerifyExitCode(
+  mcp: McpCheckResult,
+  credentials: Pick<CredentialsCheckResult, "privateKeyPresent" | "accountAddressPresent">
+): number {
+  if (!mcp.configExists || mcp.configError || !mcp.serverConfigured) {
+    return EXIT_CODES.CONFIG_ERROR;
+  }
+  if (!credentials.privateKeyPresent || !credentials.accountAddressPresent) {
+    return EXIT_CODES.MISSING_CREDENTIALS;
+  }
+  if (!mcp.serverResponds) {
+    return EXIT_CODES.CONFIG_ERROR;
+  }
+  return EXIT_CODES.SUCCESS;
+}
+
+/**
  * Main verification function
  */
 export async function runVerification(args: VerifyArgs): Promise<void> {
@@ -669,35 +746,76 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     console.log(pc.bold("MCP Server"));
   }
 
-  const mcpResult = await checkMcpServer(platform, args.verbose);
+  const mcpTimeoutMs = args.mcpTimeoutMs ?? DEFAULT_MCP_HANDSHAKE_TIMEOUT_MS;
+  const mcpResult = await checkMcpServer(platform, {
+    timeoutMs: mcpTimeoutMs,
+    onHandshakeStart: args.jsonOutput
+      ? undefined
+      : (serverCommand) => {
+          console.log(`  ${pc.green("✓")} Config exists: ${expandHome(platform.configPath)}`);
+          console.log(`  ${pc.green("✓")} Server command: ${serverCommand}`);
+          console.log(
+            pc.dim(`    Starting the server for an MCP handshake (up to ${Math.round(mcpTimeoutMs / 1000)}s)...`)
+          );
+        },
+  });
+  const mcpFailure = describeMcpFailure(mcpResult, mcpTimeoutMs);
+  const unresolvedEnv = mcpResult.handshake?.unresolvedEnv ?? [];
 
   // Collect errors and warnings for MCP (regardless of output mode)
   if (!mcpResult.configExists) {
     errors.push(`MCP config not found at ${platform.configPath}`);
+  } else if (mcpResult.configError) {
+    errors.push(`MCP config at ${mcpResult.configPath} is ${mcpResult.configError}`);
   } else if (!mcpResult.serverConfigured) {
     errors.push("Starknet MCP server not configured");
-  } else if (!mcpResult.serverResponds) {
-    warnings.push("Could not verify MCP server is responding");
+  } else if (mcpFailure) {
+    errors.push(mcpFailure.message);
+  }
+  if (unresolvedEnv.length > 0) {
+    warnings.push(`MCP config references environment variables that are not set: ${unresolvedEnv.join(", ")}`);
+  }
+  if (mcpResult.handshake?.toolsListError) {
+    warnings.push(`Could not list MCP tools: ${mcpResult.handshake.toolsListError}`);
   }
 
   if (!args.jsonOutput) {
-    if (mcpResult.configExists) {
-      console.log(`  ${pc.green("✓")} Config exists: ${mcpResult.configPath}`);
-    } else {
+    const handshakeStarted = mcpResult.handshake !== undefined;
+    if (!mcpResult.configExists) {
       console.log(`  ${pc.red("✗")} Config not found: ${expandHome(platform.configPath)}`);
+    } else if (!handshakeStarted) {
+      console.log(`  ${pc.green("✓")} Config exists: ${mcpResult.configPath}`);
     }
 
-    if (mcpResult.serverConfigured) {
-      console.log(`  ${pc.green("✓")} Server binary: @starknetfoundation/starknet-agentic-mcp-server${mcpResult.serverVersion ? `@${mcpResult.serverVersion}` : ""}`);
-    } else if (mcpResult.configExists) {
+    if (mcpResult.configError) {
+      console.log(`  ${pc.red("✗")} Config is ${mcpResult.configError}`);
+    } else if (mcpResult.configExists && !mcpResult.serverConfigured) {
       console.log(`  ${pc.red("✗")} Starknet server not configured in MCP config`);
     }
 
-    if (mcpResult.serverConfigured) {
-      if (mcpResult.serverResponds) {
-        console.log(`  ${pc.green("✓")} Server responds to ping${mcpResult.responseTime ? ` (${mcpResult.responseTime}ms)` : ""}`);
-      } else {
-        console.log(`  ${pc.yellow("○")} Server ping skipped or timed out`);
+    if (mcpResult.serverResponds) {
+      const details = [
+        mcpResult.toolCount !== undefined ? `${mcpResult.toolCount} tools` : undefined,
+        mcpResult.responseTime !== undefined ? `${mcpResult.responseTime}ms` : undefined,
+      ].filter(Boolean);
+      console.log(
+        `  ${pc.green("✓")} Server reachable: ${mcpResult.serverName} v${mcpResult.serverVersion}${details.length > 0 ? ` (${details.join(", ")})` : ""}`
+      );
+    } else if (mcpFailure) {
+      console.log(`  ${pc.red("✗")} ${mcpFailure.message}`);
+      if (mcpFailure.hint) {
+        console.log(pc.dim(`    ${mcpFailure.hint}`));
+      }
+    }
+
+    if (unresolvedEnv.length > 0) {
+      console.log(`  ${pc.yellow("○")} Unset variables referenced by the config: ${unresolvedEnv.join(", ")}`);
+    }
+
+    if (args.verbose && mcpResult.handshake?.stderrTail) {
+      console.log(pc.dim("    Server stderr (redacted):"));
+      for (const line of mcpResult.handshake.stderrTail.split("\n")) {
+        console.log(pc.dim(`      ${line}`));
       }
     }
     console.log();
@@ -718,7 +836,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     errors.push("STARKNET_PRIVATE_KEY not set");
   }
   if (!credentialsResult.rpcUrlPresent) {
-    warnings.push("STARKNET_RPC_URL not set, using default public RPC");
+    warnings.push("STARKNET_RPC_URL not set; the end-to-end check uses a public Sepolia RPC");
   }
 
   if (!args.jsonOutput) {
@@ -737,7 +855,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     if (credentialsResult.rpcUrlPresent) {
       console.log(`  ${pc.green("✓")} RPC URL configured`);
     } else {
-      console.log(`  ${pc.yellow("○")} RPC URL not set ${pc.dim("(will use default public RPC)")}`);
+      console.log(`  ${pc.yellow("○")} RPC URL not set ${pc.dim("(end-to-end check uses a public Sepolia RPC)")}`);
     }
 
     if (credentialsResult.network) {
@@ -815,11 +933,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
 
   // Determine overall success
   const success = errors.length === 0;
-  const exitCode = !mcpResult.configExists
-    ? EXIT_CODES.CONFIG_ERROR
-    : !credentialsResult.privateKeyPresent || !credentialsResult.accountAddressPresent
-      ? EXIT_CODES.MISSING_CREDENTIALS
-      : EXIT_CODES.SUCCESS;
+  const exitCode = computeVerifyExitCode(mcpResult, credentialsResult);
 
   // Build verification result
   const verificationResult: VerificationResult = {
@@ -837,7 +951,7 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
 
   // Output JSON if requested
   if (args.jsonOutput) {
-    console.log(JSON.stringify(sanitizeVerificationResultForOutput(verificationResult), null, 2));
+    console.log(JSON.stringify(sanitizeVerificationResultForOutput(verificationResult, args.verbose), null, 2));
     process.exit(exitCode);
   }
 
@@ -872,6 +986,10 @@ export async function runVerification(args: VerifyArgs): Promise<void> {
     if (!mcpResult.configExists || !mcpResult.serverConfigured) {
       console.log(pc.bold("To configure MCP server:"));
       console.log(pc.cyan("  npx @starknetfoundation/create-starknet-agent"));
+      console.log();
+    } else if (mcpFailure && !args.verbose && mcpResult.handshake?.stderrTail) {
+      console.log(pc.bold("To see the MCP server's output (secrets redacted):"));
+      console.log(pc.cyan("  npx @starknetfoundation/create-starknet-agent verify --verbose"));
       console.log();
     }
 

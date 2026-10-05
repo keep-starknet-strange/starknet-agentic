@@ -414,7 +414,7 @@ The Starknet MCP server provides these tools:
 Set these environment variables in \`.env\`:
 - \`STARKNET_PRIVATE_KEY\` - Your wallet private key
 - \`STARKNET_ACCOUNT_ADDRESS\` - Your wallet address
-- \`STARKNET_RPC_URL\` - (optional) Custom RPC URL
+- \`STARKNET_RPC_URL\` - (optional) Custom RPC URL; defaults to a keyless public endpoint that may be rate-limited
 
 ## Documentation
 

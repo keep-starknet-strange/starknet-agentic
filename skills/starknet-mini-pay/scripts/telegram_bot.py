@@ -44,12 +44,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from qr_generator import QRGenerator
 from link_builder import PaymentLinkBuilder
 from invoice import InvoiceManager
-from mini_pay import MiniPay
+from mini_pay import MiniPay, MAINNET_RPC_URL
 
 
 # Configuration
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-STARKNET_RPC = os.environ.get("STARKNET_RPC", "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10")
+STARKNET_RPC = os.environ.get("STARKNET_RPC", MAINNET_RPC_URL)
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "your_secret_here")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")  # For receiving tx confirmations
 
@@ -445,6 +445,7 @@ TX: <code>{tx_hash}</code>
         if not self._validate_address(address):
             await update.message.reply_text("❌ Invalid Starknet address")
             return
+        address = self.link_builder._normalize_address(address)
         
         # Store (in production, use database)
         user_id = str(update.message.from_user.id)
@@ -565,13 +566,7 @@ TX: <code>{tx_hash}</code>
     
     def _validate_address(self, address: str) -> bool:
         """Validate Starknet address format"""
-        if not address.startswith("0x"):
-            address = f"0x{address}"
-        
-        if len(address) != 66:
-            return False
-        
-        return all(c in "0123456789abcdef" for c in address[2:])
+        return self.link_builder._validate_address(address)
     
     def _is_number(self, s: str) -> bool:
         """Check if string is a number"""

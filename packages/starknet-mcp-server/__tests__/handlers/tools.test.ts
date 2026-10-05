@@ -31,6 +31,7 @@ const mockEstimatePaymasterTransactionFee = vi.fn();
 const mockExecutePaymasterTransaction = vi.fn();
 const mockWaitForTransaction = vi.fn();
 const mockCallContract = vi.fn();
+const mockGetChainId = vi.fn(async () => "0x534e5f5345504f4c4941");
 const mockBalanceOf = vi.fn();
 const mockAccountConstructor = vi.fn().mockImplementation(function MockAccount() {
   return {
@@ -51,6 +52,7 @@ vi.mock("starknet", () => ({
     return {
       callContract: mockCallContract,
       waitForTransaction: mockWaitForTransaction,
+      getChainId: mockGetChainId,
     };
   }),
   PaymasterRpc: vi.fn().mockImplementation(function MockPaymasterRpc(opts) {
@@ -112,11 +114,18 @@ vi.mock("@avnu/avnu-sdk", () => ({
   fetchVerifiedTokenBySymbol: vi.fn(),
 }));
 
-// Mock x402-starknet
-const mockCreateStarknetPaymentSignatureHeader = vi.fn();
+// Mock x402-starknet (its real behaviour is covered by tools/x402-sign-payment-required.test.ts
+// and the package's own tests; here we check the server wiring around it).
+const mockPrepareStarknetPayment = vi.fn();
+const mockSignPreparedStarknetPayment = vi.fn();
 
 vi.mock("@starknetfoundation/starknet-agentic-x402-starknet", () => ({
-  createStarknetPaymentSignatureHeader: mockCreateStarknetPaymentSignatureHeader,
+  prepareStarknetPayment: mockPrepareStarknetPayment,
+  signPreparedStarknetPayment: mockSignPreparedStarknetPayment,
+  networkForChainId: vi.fn((chainId: string) => {
+    if (chainId === "0x534e5f5345504f4c4941") return "starknet:SN_SEPOLIA";
+    throw new Error(`Chain id ${chainId} is not a supported Starknet network`);
+  }),
 }));
 
 // Mock MCP SDK
@@ -1228,65 +1237,131 @@ describe("MCP Tool Handlers", () => {
   });
 
   describe("x402_starknet_sign_payment_required", () => {
-    it("signs payment and returns header", async () => {
-      mockCreateStarknetPaymentSignatureHeader.mockResolvedValue({
-        headerValue: "base64-encoded-signature",
-        payload: { amount: "100", token: TOKENS.USDC },
-      });
+    const X402_PAY_TO = "0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57";
+    const prepared = {
+      x402Version: 2,
+      acceptIndex: 0,
+      payer: mockEnv.STARKNET_ACCOUNT_ADDRESS,
+      maxTimeoutSecondsCap: 3600,
+      requirements: {
+        scheme: "exact",
+        network: "starknet:SN_SEPOLIA",
+        asset: TOKENS.STRK,
+        payTo: X402_PAY_TO,
+        amount: 2n * 10n ** 18n,
+        maxTimeoutSeconds: 300,
+        feePayer: "0x05f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
+      },
+      accepted: {},
+      resource: { url: "https://api.example.com/premium" },
+    };
+    const signed = {
+      headerValue: "c2lnbmVkLXBheW1lbnQ=",
+      paymentPayload: {},
+      summary: {
+        network: "starknet:SN_SEPOLIA",
+        acceptIndex: 0,
+        resourceUrl: "https://api.example.com/premium",
+        asset: TOKENS.STRK,
+        payTo: X402_PAY_TO,
+        amount: (2n * 10n ** 18n).toString(),
+        feePayer: "0x05f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
+        payer: mockEnv.STARKNET_ACCOUNT_ADDRESS,
+        nonce: "0x1",
+        validAfter: 1,
+        validUntil: 1790000300,
+        validUntilIso: "2026-09-21T14:18:20.000Z",
+      },
+    };
 
-      const paymentHeader = Buffer.from(JSON.stringify({
-        version: "1",
-        amount: "100",
-        token: TOKENS.USDC,
-      })).toString("base64");
-
-      const response = await callTool("x402_starknet_sign_payment_required", {
-        paymentRequiredHeader: paymentHeader,
-      });
-
-      const result = parseResponse(response);
-      expect(result.paymentSignatureHeader).toBe("base64-encoded-signature");
-      expect(result.payload).toBeDefined();
+    beforeEach(() => {
+      mockPrepareStarknetPayment.mockReturnValue(prepared);
+      mockSignPreparedStarknetPayment.mockResolvedValue(signed);
     });
 
-    it("uses env defaults when params not provided", async () => {
-      mockCreateStarknetPaymentSignatureHeader.mockResolvedValue({
-        headerValue: "sig",
-        payload: {},
+    afterEach(() => {
+      delete process.env.STARKNET_MCP_POLICY;
+    });
+
+    it("builds the payment for the account's chain and returns the header and a summary", async () => {
+      const response = await callTool("x402_starknet_sign_payment_required", {
+        paymentRequiredHeader: "eyJ4NDAyVmVyc2lvbiI6Mn0=",
+        acceptIndex: 0,
       });
 
-      await callTool("x402_starknet_sign_payment_required", {
-        paymentRequiredHeader: "test",
+      expect(response.isError).toBeFalsy();
+      const result = parseResponse(response);
+      expect(result.paymentSignatureHeader).toBe(signed.headerValue);
+      expect(result.summary).toMatchObject({
+        ...signed.summary,
+        assetSymbol: "STRK",
+        decimals: 18,
+        amountFormatted: "2",
       });
-
-      expect(mockCreateStarknetPaymentSignatureHeader).toHaveBeenCalledWith({
-        paymentRequiredHeader: "test",
-        rpcUrl: mockEnv.STARKNET_RPC_URL,
+      expect(result.summary.description).toContain("2 STRK");
+      expect(result.payload).toBeUndefined();
+      expect(mockGetChainId).toHaveBeenCalled();
+      expect(mockPrepareStarknetPayment).toHaveBeenCalledWith({
+        paymentRequiredHeader: "eyJ4NDAyVmVyc2lvbiI6Mn0=",
+        network: "starknet:SN_SEPOLIA",
         accountAddress: mockEnv.STARKNET_ACCOUNT_ADDRESS,
+        acceptIndex: 0,
+      });
+      expect(mockSignPreparedStarknetPayment).toHaveBeenCalledWith(prepared, {
         privateKey: mockEnv.STARKNET_PRIVATE_KEY,
       });
     });
 
-    it("ignores extra params and always signs with env-configured account", async () => {
-      mockCreateStarknetPaymentSignatureHeader.mockResolvedValue({
-        headerValue: "sig",
-        payload: {},
-      });
-
+    it("ignores extra params and always signs with the env-configured account", async () => {
       await callTool("x402_starknet_sign_payment_required", {
         paymentRequiredHeader: "test",
-        // These are intentionally ignored to avoid signing arbitrary key material.
+        // These are intentionally ignored to avoid signing arbitrary key material or documents.
         rpcUrl: "https://custom.rpc.url",
         accountAddress: "0xcustom",
         privateKey: "0xprivate",
+        typedData: { message: {} },
       });
 
-      expect(mockCreateStarknetPaymentSignatureHeader).toHaveBeenCalledWith({
+      expect(mockPrepareStarknetPayment).toHaveBeenCalledWith({
         paymentRequiredHeader: "test",
-        rpcUrl: mockEnv.STARKNET_RPC_URL,
+        network: "starknet:SN_SEPOLIA",
         accountAddress: mockEnv.STARKNET_ACCOUNT_ADDRESS,
+        acceptIndex: undefined,
+      });
+      expect(mockSignPreparedStarknetPayment).toHaveBeenCalledWith(prepared, {
         privateKey: mockEnv.STARKNET_PRIVATE_KEY,
       });
+    });
+
+    it("enforces the transfer policy from STARKNET_MCP_POLICY before signing", async () => {
+      process.env.STARKNET_MCP_POLICY = JSON.stringify({ transfer: { maxAmountPerCall: "1" } });
+      vi.resetModules();
+      await import("../../src/index.js");
+
+      const response = await callTool("x402_starknet_sign_payment_required", {
+        paymentRequiredHeader: "test",
+      });
+
+      expect(response.isError).toBe(true);
+      expect(parseResponse(response).message).toBe(
+        "Policy violation: Payment amount 2 exceeds policy limit of 1"
+      );
+      expect(mockSignPreparedStarknetPayment).not.toHaveBeenCalled();
+    });
+
+    it("signs when the payment is within the configured policy", async () => {
+      process.env.STARKNET_MCP_POLICY = JSON.stringify({
+        transfer: { maxAmountPerCall: "5", allowedRecipients: [X402_PAY_TO], allowedTokens: ["STRK"] },
+      });
+      vi.resetModules();
+      await import("../../src/index.js");
+
+      const response = await callTool("x402_starknet_sign_payment_required", {
+        paymentRequiredHeader: "test",
+      });
+
+      expect(response.isError).toBeFalsy();
+      expect(mockSignPreparedStarknetPayment).toHaveBeenCalledTimes(1);
     });
 
     it("blocks x402 signing in proxy signer mode", async () => {
@@ -1303,7 +1378,8 @@ describe("MCP Tool Handlers", () => {
       expect(response.isError).toBe(true);
       const result = parseResponse(response);
       expect(result.message).toContain("disabled in STARKNET_SIGNER_MODE=proxy");
-      expect(mockCreateStarknetPaymentSignatureHeader).not.toHaveBeenCalled();
+      expect(mockPrepareStarknetPayment).not.toHaveBeenCalled();
+      expect(mockSignPreparedStarknetPayment).not.toHaveBeenCalled();
     });
   });
 

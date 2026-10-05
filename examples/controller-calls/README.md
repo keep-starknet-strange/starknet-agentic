@@ -70,7 +70,7 @@ echo '<MCP response>' | jq '.calls' > calls.json
 
 ```ts
 import { SessionAccount } from "@cartridge/controller/node";
-import calls from "./calls.json" assert { type: "json" };
+import calls from "./calls.json" with { type: "json" };
 
 const account = new SessionAccount(provider, sessionConfig);
 const { transaction_hash } = await account.execute(calls);
@@ -82,10 +82,10 @@ See `run.mjs` for a runnable script.
 
 ```ts
 import { Account, RpcProvider } from "starknet";
-import calls from "./calls.json" assert { type: "json" };
+import calls from "./calls.json" with { type: "json" };
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
-const account = new Account(provider, address, privateKey);
+const account = new Account({ provider, address, signer: privateKey });
 const { transaction_hash } = await account.execute(calls);
 ```
 

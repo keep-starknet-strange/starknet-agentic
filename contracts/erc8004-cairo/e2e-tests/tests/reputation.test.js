@@ -28,7 +28,7 @@ const deploymentInfo = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', '..', 'deployed_addresses.json'), 'utf8')
 );
 
-// Setup provider (starknet.js v7.6.4 compatible)
+// Setup provider (starknet.js v10)
 const rpcUrl = validateEnvVar('STARKNET_RPC_URL');
 const provider = new RpcProvider({
   nodeUrl: rpcUrl,
@@ -120,7 +120,7 @@ function assert(condition, message) {
 async function waitForTx(txHash, account) {
   console.log(`   ⏳ Waiting for tx: ${txHash.slice(0, 18)}...`);
   try {
-    const receipt = await account.waitForTransaction(txHash, { retryInterval: 5000 });
+    const receipt = await account.provider.waitForTransaction(txHash, { retryInterval: 5000 });
     console.log('   ✅ Confirmed');
     return receipt;
   } catch (error) {
@@ -154,8 +154,8 @@ export default async function runTests() {
     console.log('Setup: Connecting Accounts');
     console.log('────────────────────────────────────────');
     
-    const agentOwner = new Account(provider, ACCOUNT_1.address, ACCOUNT_1.privateKey);
-    const client = new Account(provider, ACCOUNT_2.address, ACCOUNT_2.privateKey);
+    const agentOwner = new Account({ provider, address: ACCOUNT_1.address, signer: ACCOUNT_1.privateKey });
+    const client = new Account({ provider, address: ACCOUNT_2.address, signer: ACCOUNT_2.privateKey });
     
     console.log(`   👤 Agent Owner: ${agentOwner.address.slice(0, 16)}...`);
     console.log(`   👤 Client:      ${client.address.slice(0, 16)}...`);
@@ -167,17 +167,17 @@ export default async function runTests() {
     };
 
     // Create contract instances
-    const identityRegistry = new Contract(
-      identityAbi,
-      deploymentInfo.contracts.identityRegistry.address,
-      agentOwner
-    );
+    const identityRegistry = new Contract({
+      abi: identityAbi,
+      address: deploymentInfo.contracts.identityRegistry.address,
+      providerOrAccount: agentOwner,
+    });
     
-    const reputationRegistry = new Contract(
-      reputationAbi,
-      deploymentInfo.contracts.reputationRegistry.address,
-      client
-    );
+    const reputationRegistry = new Contract({
+      abi: reputationAbi,
+      address: deploymentInfo.contracts.reputationRegistry.address,
+      providerOrAccount: client,
+    });
 
     // ===================================================================
     // Test 1: Register Agent
@@ -185,7 +185,7 @@ export default async function runTests() {
     console.log('Test 1: Register Agent');
     console.log('────────────────────────────────────────');
     
-    identityRegistry.connect(agentOwner);
+    identityRegistry.providerOrAccount = agentOwner;
     
     const registerTx = await identityRegistry.register_with_token_uri('ipfs://reputation-test-agent.json');
     await waitForTx(registerTx.transaction_hash, agentOwner);
@@ -427,7 +427,7 @@ export default async function runTests() {
     console.log('Test 9: Append Response (Agent Owner)');
     console.log('────────────────────────────────────────');
     
-    reputationRegistry.connect(agentOwner);
+    reputationRegistry.providerOrAccount = agentOwner;
     
     const responseHash = BigInt(Date.now() + 100);
     const responseTx = await reputationRegistry.append_response(
@@ -455,7 +455,7 @@ export default async function runTests() {
     console.log('Test 10: Revoke Feedback');
     console.log('────────────────────────────────────────');
     
-    reputationRegistry.connect(client);
+    reputationRegistry.providerOrAccount = client;
     
     const revokeTx = await reputationRegistry.revoke_feedback(
       toUint256(agentId),

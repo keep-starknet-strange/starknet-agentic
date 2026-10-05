@@ -19,23 +19,24 @@ import aiohttp
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mini_pay import MiniPay
+from mini_pay import MiniPay, MAINNET_RPC_URL, SEPOLIA_RPC_URL
 from qr_generator import QRGenerator
 from link_builder import PaymentLinkBuilder
 from invoice import InvoiceManager
 
 
 # Configuration
+# Custom RPCs must serve JSON-RPC spec 0.10 (required by starknet-py 0.30)
 NETWORKS = {
-    "mainnet": "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10",
-    "sepolia": "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10"
+    "mainnet": MAINNET_RPC_URL,
+    "sepolia": SEPOLIA_RPC_URL
 }
 
 DEFAULT_RPC = NETWORKS["mainnet"]
 
 
-def parse_args():
-    """Parse command line arguments."""
+def build_parser():
+    """Build the command line argument parser."""
     parser = argparse.ArgumentParser(
         description="Starknet Mini-Pay CLI (Fixed)",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -75,6 +76,7 @@ def parse_args():
     qr_parser.add_argument("--output", "-o", default="qr_code.png", help="Output file")
     qr_parser.add_argument("--amount", type=float, help="Pre-fill amount")
     qr_parser.add_argument("--memo", help="Pre-fill memo")
+    qr_parser.add_argument("--token", default="ETH", help="Token (ETH, STRK, USDC)")
     
     # Link command
     link_parser = subparsers.add_parser("link", help="Create payment link")
@@ -102,7 +104,7 @@ def parse_args():
     # Config command
     config_parser = subparsers.add_parser("config", help="Show current configuration")
     
-    return parser.parse_args()
+    return parser
 
 
 async def cmd_send(args, rpc_url: str):
@@ -127,7 +129,7 @@ async def cmd_send(args, rpc_url: str):
     print(f"📤 Sending {args.amount} {token} to {args.address[:16]}...")
     print(f"   Memo: {args.memo or 'None'}")
     
-    pay = MiniPay(rpc_url=rpc_url)
+    pay = MiniPay(rpc_url=rpc_url, network=args.network)
     
     try:
         tx_hash = await pay.transfer(
@@ -160,7 +162,7 @@ async def cmd_send(args, rpc_url: str):
 
 async def cmd_balance(args, rpc_url: str):
     """Handle balance command."""
-    pay = MiniPay(rpc_url=rpc_url)
+    pay = MiniPay(rpc_url=rpc_url, network=args.network)
     
     try:
         balance = await pay.get_balance(args.address, args.token)
@@ -183,17 +185,18 @@ async def cmd_qr(args):
     qr = QRGenerator()
     
     try:
+        # Build the payment link first: it validates the address and token
+        link = PaymentLinkBuilder()
+        url = link.create(args.address, args.amount, args.memo, args.token)
+        
         qr.generate(
             address=args.address,
             amount=args.amount,
             memo=args.memo,
+            token=args.token,
             output_file=args.output
         )
         print(f"✅ QR code saved to {args.output}")
-        
-        # Also print the payment link
-        link = PaymentLinkBuilder()
-        url = link.create(args.address, args.amount, args.memo, args.token or "ETH")
         print(f"📱 Payment link: {url}")
         
         return 0
@@ -257,6 +260,16 @@ async def cmd_parse_link(args):
 
 async def cmd_invoice(args, rpc_url: str):
     """Handle invoice creation command."""
+    link = PaymentLinkBuilder()
+    
+    # Validate before saving, so a bad address or token leaves no invoice behind
+    if not link._validate_address(args.address):
+        print(f"❌ Error: Invalid Starknet address: {args.address}")
+        return 1
+    if args.token.upper() not in link.VALID_TOKENS:
+        print(f"❌ Error: Invalid token: {args.token}. Valid: {link.VALID_TOKENS}")
+        return 1
+    
     async with InvoiceManager(rpc_url=rpc_url) as invoice_mgr:
         invoice = await invoice_mgr.create(
             payer_address=args.address,
@@ -273,7 +286,6 @@ async def cmd_invoice(args, rpc_url: str):
         print(f"   Address: {args.address}")
         
         # Generate payment link
-        link = PaymentLinkBuilder()
         url = link.create(
             address=args.address,
             amount=args.amount,
@@ -287,7 +299,7 @@ async def cmd_invoice(args, rpc_url: str):
 
 async def cmd_status(args, rpc_url: str):
     """Handle status check command."""
-    pay = MiniPay(rpc_url=rpc_url)
+    pay = MiniPay(rpc_url=rpc_url, network=args.network)
     
     try:
         status = await pay.get_transaction_status(args.tx_hash)
@@ -315,14 +327,15 @@ def cmd_config(rpc_url: str):
 
 async def main():
     """Main entry point with proper async handling."""
-    args = parse_args()
+    parser = build_parser()
+    args = parser.parse_args()
     
     # Determine RPC URL
     rpc_url = args.rpc if args.rpc else NETWORKS.get(args.network, DEFAULT_RPC)
     
     # Route command
     if not args.command:
-        parse_args().print_help()
+        parser.print_help()
         return 0
     
     if args.command == "config":
@@ -350,7 +363,7 @@ async def main():
     if args.command == "status":
         return await cmd_status(args, rpc_url)
     
-    parse_args().print_help()
+    parser.print_help()
     return 0
 
 

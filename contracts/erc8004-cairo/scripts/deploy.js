@@ -50,6 +50,17 @@ function resolveNetworkMetadata(chainId) {
   );
 }
 
+const KNOWN_NETWORK_SLUGS = new Set([...KNOWN_NETWORKS.values()].map((network) => network.slug));
+
+// Maps STARKNET_NETWORK to a KNOWN_NETWORKS slug ("sepolia" | "mainnet"); null when unset or unrecognized.
+function normalizeNetwork(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  return KNOWN_NETWORK_SLUGS.has(normalized) ? normalized : null;
+}
+
 function assertChainIdNormalizationMappings() {
   const expectedMappings = [
     { chainId: constants.StarknetChainId.SN_MAIN, slug: "mainnet" },
@@ -190,6 +201,12 @@ async function main() {
   const chainId = await provider.getChainId();
   const network = resolveNetworkMetadata(chainId);
   const chainIdHex = normalizeChainId(chainId);
+  if (requestedNetwork && requestedNetwork !== network.slug) {
+    console.error(
+      `❌ Error: STARKNET_NETWORK=${requestedNetwork} does not match the RPC chain ID ${chainIdHex} (${network.label}).`,
+    );
+    process.exit(1);
+  }
 
   const reviewMetadata = enforceDeploymentSafetyGate(network);
 
@@ -197,7 +214,7 @@ async function main() {
   console.log("═══════════════════════════════════════════════════════════════\n");
   console.log("🔗 Chain ID:", chainIdHex);
 
-  // starknet.js v9 Account constructor uses options object
+  // starknet.js v10 Account constructor uses an options object
   const account = new Account({
     provider: provider,
     address: accountAddress,

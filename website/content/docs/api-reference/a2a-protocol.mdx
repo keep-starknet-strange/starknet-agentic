@@ -136,7 +136,7 @@ Registers a new agent identity on-chain.
 ```typescript
 import { Account, RpcProvider } from "starknet";
 
-const account = new Account(provider, address, privateKey);
+const account = new Account({ provider, address, signer: privateKey });
 
 const txHash = await adapter.registerAgent(account, {
   name: "MyAgent",

@@ -18,12 +18,16 @@ Simple P2P payments on Starknet. Like Lightning, but native.
 ### 1. Install Dependencies
 
 ```bash
-pip install starknet-py qrcode[pil] python-telegram-bot httpx aiosqlite --break-system-packages
+pip install -r requirements.txt
 ```
+
+`starknet-py` is pinned to the tested 0.30.x range, which requires an RPC endpoint serving
+Starknet JSON-RPC spec 0.10.
 
 ### 2. Set Environment Variables
 
 ```bash
+# Keyless public RPC (spec 0.10). Sepolia: https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10
 export STARKNET_RPC="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
 export MINI_PAY_ADDRESS="0xyour_address_here"
 export MINI_PAY_PRIVATE_KEY="0xyour_private_key_here"
@@ -34,7 +38,7 @@ export TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
 
 ```bash
 # Send 0.01 ETH
-python3.12 scripts/cli.py send 0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005 0.01 --memo "coffee"
+python3.12 scripts/cli.py send 0xrecipient 0.01 --memo "coffee"
 
 # Check transaction status
 python3.12 scripts/cli.py status 0x...
@@ -51,12 +55,12 @@ from mini_pay import MiniPay
 
 pay = MiniPay()
 
-# Send payment
-tx_hash = await pay.send(
+# Send payment (V3 transaction: the fee is paid in STRK)
+tx_hash = await pay.transfer(
     from_address="0x...",
     private_key="0x...",
     to_address="0x123...",
-    amount_wei=0.01 * 10**18,  # 0.01 ETH
+    amount_wei=10**16,  # 0.01 ETH
     token="ETH",
     memo="Coffee"
 )
@@ -89,7 +93,7 @@ starknet:<address>?amount=<value>&memo=<text>&token=<TOKEN>
 
 Example:
 ```
-starknet:0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005?amount=0.01&memo=coffee&token=ETH
+starknet:0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef?amount=0.01&memo=coffee&token=ETH
 ```
 
 ### 📄 Invoices
@@ -106,19 +110,23 @@ starknet:0x...abc?amount=25&token=USDC&memo=Invoice+#abc123
 
 ### 🤖 Telegram Bot
 
-Send and receive payments via Telegram.
+Request payments via Telegram. The bot is non-custodial: it never holds keys or sends
+transactions. Payers open its links in their own wallet and sign there. Use the CLI `send`
+and `balance` commands to transfer or check balances.
 
 ```bash
 python3.12 scripts/telegram_bot.py
 ```
 
 **Bot Commands:**
-- `/pay <address> <amount> [memo]` - Send payment
-- `/qr` - Get your QR code
-- `/balance` - Check balance
-- `/link [amount] [memo]` - Generate payment link
-- `/invoice <amount> [memo]` - Create invoice
-- `/history` - Transaction history
+- `/start` - Welcome message and quick actions
+- `/help` - Show help
+- `/myaddress <address>` - Set your receiving address (needed by `/link`, `/qr`, `/invoice`)
+- `/link [amount] [memo]` - Payment link and QR with wallet buttons
+- `/qr` - QR code for your address
+- `/invoice <amount> [memo]` - USDC invoice with expiry
+- `/status <tx_hash>` - Check transaction status
+- `/webhook <url>` - Set a notification webhook (not persisted yet)
 
 ## Architecture
 
@@ -161,8 +169,7 @@ starknet-mini-pay/
 │   ├── invoice.py        # Invoice management
 │   ├── telegram_bot.py   # Telegram bot
 │   └── starknet_client.py # RPC client
-└── tests/
-    └── test_payments.py  # Unit tests
+└── requirements.txt      # Python dependencies
 ```
 
 ## Usage Examples
@@ -176,11 +183,11 @@ from mini_pay import MiniPay
 async def main():
     pay = MiniPay(rpc_url="https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10")
     
-    tx_hash = await pay.send(
+    tx_hash = await pay.transfer(
         from_address="0xsender...",
         private_key="0xkey...",
         to_address="0xrecipient...",
-        amount_wei=0.05 * 10**18,
+        amount_wei=5 * 10**16,  # 0.05 ETH
         token="ETH",
         memo="Lunch payment"
     )
@@ -243,8 +250,7 @@ asyncio.run(main())
 
 ```bash
 export TELEGRAM_BOT_TOKEN="your_bot_token"
-export MINI_PAY_ADDRESS="0xyour_address"
-export MINI_PAY_PRIVATE_KEY="0xyour_key"
+# No private key needed: the bot never signs transactions
 
 python3.12 scripts/telegram_bot.py
 ```
@@ -257,9 +263,9 @@ Message your bot and use `/start` to begin!
 
 | Token | Address | Decimals |
 |-------|---------|----------|
-| ETH | 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82dc9dd0cc | 18 |
+| ETH | 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7 | 18 |
 | STRK | 0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d | 18 |
-| USDC | 0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005 | 6 |
+| USDC | 0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8 | 6 |
 
 ## Comparison
 
@@ -276,10 +282,10 @@ Message your bot and use `/start` to begin!
 
 ```python
 try:
-    tx_hash = await pay.send(...)
+    tx_hash = await pay.transfer(...)
 except ValueError as e:
-    if "INSUFFICIENT_BALANCE" in str(e):
-        print("Not enough ETH for transfer + fees")
+    if "Insufficient STRK for fees" in str(e):
+        print("Not enough STRK to pay the V3 transaction fee")
     elif "ACCOUNT_NOT_FOUND" in str(e):
         print("Invalid sender address")
 ```

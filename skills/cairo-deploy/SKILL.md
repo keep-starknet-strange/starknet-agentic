@@ -184,7 +184,7 @@ sncast call \
 import { Account, CallData, Contract, RpcProvider } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC! });
-const account = new Account(provider, process.env.ACCOUNT_ADDRESS!, process.env.PRIVATE_KEY!);
+const account = new Account({ provider, address: process.env.ACCOUNT_ADDRESS!, signer: process.env.PRIVATE_KEY! });
 
 const declareTx = await account.declare({ contract: compiledSierra, casm: compiledCasm });
 await provider.waitForTransaction(declareTx.transaction_hash);
@@ -195,7 +195,7 @@ const deployTx = await account.deploy({
 });
 await provider.waitForTransaction(deployTx.transaction_hash);
 
-const contract = new Contract(abi, deployTx.contract_address[0], provider).connect(account);
+const contract = new Contract({ abi, address: deployTx.contract_address[0], providerOrAccount: account });
 await contract.invoke("set_fee", [10]);
 const fee = await contract.call("get_fee", []);
 console.log({ fee });

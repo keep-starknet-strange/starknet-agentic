@@ -30,6 +30,7 @@ type TokenInfo = {
 async function resolveToken(tokenSymbolOrAddress?: string): Promise<TokenInfo> {
   if (!tokenSymbolOrAddress || tokenSymbolOrAddress.toUpperCase() === 'ETH') {
     const token = await fetchVerifiedTokenBySymbol('ETH');
+    if (!token) throw new Error('ETH not found in avnu verified token list');
     return { address: token.address, symbol: token.symbol, decimals: token.decimals };
   }
 
@@ -38,7 +39,9 @@ async function resolveToken(tokenSymbolOrAddress?: string): Promise<TokenInfo> {
     return { address: token.address, symbol: token.symbol, decimals: token.decimals };
   }
 
+  // Returns undefined when the symbol is not a verified/unruggable token
   const token = await fetchVerifiedTokenBySymbol(tokenSymbolOrAddress);
+  if (!token) throw new Error(`${tokenSymbolOrAddress} not found in avnu verified token list`);
   return { address: token.address, symbol: token.symbol, decimals: token.decimals };
 }
 

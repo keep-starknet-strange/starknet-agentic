@@ -81,7 +81,7 @@ if (!executeMode) {
     `\n# ${calls.length} call(s) built. To execute with Cartridge Controller:\n` +
     `#   node run.mjs > calls.json\n` +
     `#   # Then in your Controller-enabled app:\n` +
-    `#   import calls from "./calls.json" assert { type: "json" };\n` +
+    `#   import calls from "./calls.json" with { type: "json" };\n` +
     `#   await account.execute(calls);\n`
   );
   process.exit(0);
@@ -113,7 +113,7 @@ console.error("Executing calls with starknet.js...");
 console.error("Calls:", callsJson);
 
 const provider = new RpcProvider({ nodeUrl: rpcUrl, specVersion: rpcSpecVersion });
-const account = new Account(provider, address, privateKey);
+const account = new Account({ provider, address, signer: privateKey });
 const result = await account.execute(calls);
 
 console.log(JSON.stringify({ transactionHash: result.transaction_hash }, null, 2));

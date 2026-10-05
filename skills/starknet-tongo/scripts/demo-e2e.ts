@@ -51,8 +51,8 @@ async function main() {
     signer: required("STARKNET_PRIVATE_KEY"),
   });
 
-  // Tongo classes take the RPC URL string: tongo-sdk bundles starknet.js 9.4.2
-  // and rejects a starknet.js 10 RpcProvider instance.
+  // tongo-sdk bundles its own starknet.js 9.x: hand it the RPC URL, not the
+  // starknet.js 10 provider (which fails its internal provider check).
   const sender = new TongoAccount(
     required("TONGO_PRIVATE_KEY_SENDER"),
     tongoContractAddress,
