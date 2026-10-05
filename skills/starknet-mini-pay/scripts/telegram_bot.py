@@ -445,6 +445,7 @@ TX: <code>{tx_hash}</code>
         if not self._validate_address(address):
             await update.message.reply_text("❌ Invalid Starknet address")
             return
+        address = self.link_builder._normalize_address(address)
         
         # Store (in production, use database)
         user_id = str(update.message.from_user.id)
@@ -565,13 +566,7 @@ TX: <code>{tx_hash}</code>
     
     def _validate_address(self, address: str) -> bool:
         """Validate Starknet address format"""
-        if not address.startswith("0x"):
-            address = f"0x{address}"
-        
-        if len(address) != 66:
-            return False
-        
-        return all(c in "0123456789abcdef" for c in address[2:])
+        return self.link_builder._validate_address(address)
     
     def _is_number(self, s: str) -> bool:
         """Check if string is a number"""

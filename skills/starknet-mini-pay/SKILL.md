@@ -59,7 +59,7 @@ Related modules: [skills catalog](../README.md).
 | **QR Codes** | Generate QR codes for addresses (scan to pay) |
 | **Payment Links** | `starknet:<addr>?amount=1&memo=coffee` |
 | **Invoice System** | Generate payment requests with expiry |
-| **Telegram Bot** | Send/receive via Telegram commands |
+| **Telegram Bot** | Payment links, QR codes and invoices via Telegram (non-custodial) |
 | **Transaction History** | Track all transfers with status |
 
 ## Quick Start
@@ -77,7 +77,7 @@ python3.12 scripts/cli.py qr 0x123... --output qr.png
 python3.12 scripts/cli.py link 0x123... --amount 0.1 --memo "lunch"
 
 # Create invoice
-python3.12 scripts/cli.py invoice 0x123... 25.00 --expires 1h
+python3.12 scripts/cli.py invoice 0x123... 25.00 --expires 3600
 
 # Check transaction status
 python3.12 scripts/cli.py status 0xabcdef...
@@ -99,14 +99,19 @@ starknet:0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef?amou
 
 ### Telegram Bot Commands
 
+The bot is non-custodial: it never holds keys or sends transactions. It builds links, QR
+codes and invoices that the payer opens and signs in their own wallet. Use the CLI `send`
+and `balance` commands to transfer or check balances.
+
 ```
-/pay <address> <amount> [memo]  - Send payment
-/qr                          - Show your QR code
-/balance                     - Check balance
-/link <amount> [memo]       - Generate payment link
-/invoice <amount>           - Create invoice
-/history                     - Transaction history
-/help                        - Show help
+/start                    - Welcome message and quick actions
+/help                     - Show help
+/myaddress <address>      - Set your receiving address (needed by /link, /qr, /invoice)
+/link [amount] [memo]     - Payment link and QR with wallet buttons
+/qr                       - QR code for your address
+/invoice <amount> [memo]  - USDC invoice with expiry
+/status <tx_hash>         - Check transaction status
+/webhook <url>            - Set a notification webhook (not persisted yet)
 ```
 
 ## Architecture
@@ -123,10 +128,7 @@ starknet-mini-pay/
 │   ├── invoice.py          # Invoice system
 │   ├── telegram_bot.py     # Telegram bot
 │   └── starknet_client.py  # Starknet RPC client
-├── contracts/
-│   └── payment_request.cairo  # Optional invoice contract
-└── tests/
-    └── test_payments.py
+└── requirements.txt
 ```
 
 ## Dependencies
@@ -190,9 +192,9 @@ qr.generate(
 ### Payment Links
 
 ```python
-from link_builder import PaymentLink
+from link_builder import PaymentLinkBuilder
 
-link = PaymentLink()
+link = PaymentLinkBuilder()
 
 # Create link
 url = link.create(
@@ -209,21 +211,27 @@ data = link.parse("starknet:0x123...?amount=0.01&memo=coffee")
 ### Invoice System
 
 ```python
+import asyncio
 from invoice import InvoiceManager
 
-invoice = InvoiceManager()
+async def main():
+    # Opens (or creates) invoices.db in the working directory
+    async with InvoiceManager() as invoices:
+        # Create invoice
+        invoice = await invoices.create(
+            payer_address="0x...",  # also the recipient unless recipient_address is set
+            amount=25.00,
+            token="USDC",
+            expiry_seconds=3600,  # 1 hour
+            description="Payment for services"
+        )
+        print(invoices.create_payment_url(invoice))
 
-# Create invoice
-invoice_data = invoice.create(
-    payer_address="0x...",
-    amount=25.00,
-    token="USDC",
-    expiry_seconds=3600,  # 1 hour
-    description="Payment for services"
-)
+        # Check invoice status
+        fetched = await invoices.get(invoice.id)
+        print(fetched.status, invoices.format_expiry(fetched))  # pending 1h left
 
-# Check invoice status
-status = invoice.get_status(invoice_data.id)
+asyncio.run(main())
 ```
 
 ## Telegram Bot
@@ -237,19 +245,18 @@ python3.12 scripts/telegram_bot.py
 ### Bot Flow
 
 ```
-User: /pay 0x123... 0.5 coffee
-Bot:  📤 Sending 0.5 ETH to 0x123... (memo: coffee)
-Bot:  ⏳ Transaction pending: 0xabc...
-Bot:  ✅ Confirmed in block #12345
+User:  /myaddress 0x0123...cdef
+Bot:   ✅ Address Set
+User:  /link 0.05 coffee
+Bot:   📱 Payment Link (QR code) with "Open in ArgentX" / "Open in Braavos" buttons
+Payer: opens the link and signs the transfer in their own wallet
 ```
 
 ## Optional: Invoice Contract
 
-For trustless invoices, deploy the Cairo contract:
+This skill does not ship a contract. A trustless invoice contract could follow this sketch:
 
 ```cairo
-// contracts/payment_request.cairo
-
 #[starknet::contract]
 mod PaymentRequest {
     #[storage]

@@ -42,7 +42,8 @@ class QRGenerator:
         memo: Optional[str] = None,
         output_file: str = "qr_code.png",
         color: tuple = None,
-        logo_path: Optional[str] = None
+        logo_path: Optional[str] = None,
+        token: Optional[str] = None
     ):
         """
         Generate QR code for a Starknet address
@@ -54,9 +55,10 @@ class QRGenerator:
             output_file: Output file path
             color: RGB tuple for QR color
             logo_path: Optional logo to embed in center
+            token: Optional token symbol (ETH, the link default, is omitted)
         """
         # Build the data
-        data = self._build_address_data(address, amount, memo)
+        data = self._build_address_data(address, amount, memo, token)
         
         # Create QR code
         qr = qrcode.QRCode(
@@ -75,11 +77,12 @@ class QRGenerator:
         else:
             fg_color = self.COLORS["starknet"]
         
+        # get_image() unwraps qrcode's StyledPilImage into a PIL Image for paste()
         img = qr.make_image(
             image_factory=StyledPilImage,
             module_drawer=SquareModuleDrawer(),
             color_mask=SolidFillColorMask(front_color=fg_color),
-        )
+        ).get_image()
         
         # Add logo if provided
         if logo_path and os.path.exists(logo_path):
@@ -125,7 +128,7 @@ class QRGenerator:
             image_factory=StyledPilImage,
             module_drawer=GappedSquareModuleDrawer(),
             color_mask=SolidFillColorMask(front_color=fg_color),
-        )
+        ).get_image()
         
         img.save(output_file)
         return output_file
@@ -153,7 +156,8 @@ class QRGenerator:
         self,
         address: str,
         amount: Optional[float],
-        memo: Optional[str]
+        memo: Optional[str],
+        token: Optional[str] = None
     ) -> str:
         """Build data string for QR code"""
         # Ensure address is checksummed
@@ -168,6 +172,9 @@ class QRGenerator:
         if memo:
             parts.append(f"memo={memo}")
         
+        if token and token.upper() != "ETH":
+            parts.append(f"token={token.upper()}")
+        
         # Return as URI format
         if len(parts) > 1:
             return f"starknet:{address}?{'&'.join(parts[1:])}"
@@ -179,7 +186,7 @@ class QRGenerator:
             return address.lower()
         return address
     
-    def _add_logo(self, qr_image, logo_path: str, logo_size: float = 0.25) -> Image.Image:
+    def _add_logo(self, qr_image: Image.Image, logo_path: str, logo_size: float = 0.25) -> Image.Image:
         """
         Add logo to center of QR code
         
@@ -188,7 +195,8 @@ class QRGenerator:
             logo_path: Path to logo file
             logo_size: Size ratio (0.25 = 25% of QR size)
         """
-        logo = Image.open(logo_path)
+        # RGBA so the logo can be its own paste mask (RGB/JPEG/palette logos can't)
+        logo = Image.open(logo_path).convert("RGBA")
         
         # Calculate logo size
         qr_width, qr_height = qr_image.size
@@ -291,8 +299,8 @@ class QRGenerator:
             image_factory=qrcode.image.svg.SvgPathImage,
         )
         
-        with open(output_file, "w") as f:
-            f.write(img.to_string())
+        # save() writes a standalone UTF-8 SVG; to_string() returns bytes
+        img.save(output_file)
         
         return output_file
 
