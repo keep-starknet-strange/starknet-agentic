@@ -299,8 +299,8 @@ class QRGenerator:
             image_factory=qrcode.image.svg.SvgPathImage,
         )
         
-        with open(output_file, "w") as f:
-            f.write(img.to_string())
+        # save() writes a standalone UTF-8 SVG; to_string() returns bytes
+        img.save(output_file)
         
         return output_file
 
