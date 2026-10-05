@@ -234,8 +234,8 @@ export class PolicyGuard {
 
     // Token allowlist
     if (policy.allowedTokens && policy.allowedTokens.length > 0) {
-      const normalizedAllowed = policy.allowedTokens.map((t) => t.toLowerCase());
-      if (!normalizedAllowed.includes(token.toLowerCase())) {
+      const normalizedAllowed = policy.allowedTokens.map(normalizeAddress);
+      if (!normalizedAllowed.includes(normalizeAddress(token))) {
         return {
           allowed: false,
           reason: `Token "${token}" is not in the allowed tokens list`,
@@ -326,8 +326,8 @@ export class PolicyGuard {
 
     // Blocked buy tokens
     if (policy.blockedBuyTokens && policy.blockedBuyTokens.length > 0) {
-      const normalizedBlocked = policy.blockedBuyTokens.map((t) => t.toLowerCase());
-      if (normalizedBlocked.includes(buyToken.toLowerCase())) {
+      const normalizedBlocked = policy.blockedBuyTokens.map(normalizeAddress);
+      if (normalizedBlocked.includes(normalizeAddress(buyToken))) {
         return {
           allowed: false,
           reason: `Buy token "${buyToken}" is blocked by policy`,
@@ -372,9 +372,17 @@ export class PolicyGuard {
  * Normalize a Starknet address to lowercase with consistent 0x prefix.
  * Returns empty string for undefined/null input.
  */
+/**
+ * Canonical form for comparing addresses and token identifiers. A 0x-hex felt
+ * becomes lowercase hex without leading zeros, so "0x0049d3..." and "0x49D3..."
+ * compare equal (Starknet addresses are often written both ways); anything else,
+ * such as a token symbol, is trimmed and lowercased. Comparing raw strings let a
+ * blocked address through when written with a different number of leading zeros.
+ */
 function normalizeAddress(addr: string | undefined | null): string {
   if (!addr) return "";
-  return addr.toLowerCase();
+  const felt = parseFeltOrUndefined(addr);
+  return felt !== undefined ? `0x${felt.toString(16)}` : addr.trim().toLowerCase();
 }
 
 /** Parse a 0x-hex felt; undefined for anything else (symbols, garbage). */

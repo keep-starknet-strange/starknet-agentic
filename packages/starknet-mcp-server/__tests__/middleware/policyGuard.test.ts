@@ -574,3 +574,63 @@ describe("PolicyGuard.evaluatePayment (x402 payments as transfers)", () => {
     expect(new PolicyGuard({}).evaluate("x402_starknet_sign_payment_required", {}).allowed).toBe(true);
   });
 });
+
+// Starknet addresses are written with and without leading zeros. Policy lists
+// must match either spelling, or a blocked address slips through.
+describe("PolicyGuard address normalization", () => {
+  const PADDED = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"; // 64 hex digits
+  const UNPADDED = "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+  const UPPER = "0x49D36570D4E46F48E99674BD3FCC84644DDD6B96F7C741B1562B82F9E004DC7";
+  const OTHER = "0x0222222222222222222222222222222222222222222222222222222222222222";
+
+  it.each([
+    ["padded list, unpadded recipient", PADDED, UNPADDED],
+    ["unpadded list, padded recipient", UNPADDED, PADDED],
+    ["padded list, uppercase unpadded recipient", PADDED, UPPER],
+  ])("blocks a blocked recipient regardless of leading zeros (%s)", (_case, listed, recipient) => {
+    const guard = new PolicyGuard({ transfer: { blockedRecipients: [listed] } });
+    const result = guard.evaluate("starknet_transfer", { recipient, token: "ETH", amount: "1" });
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("blocked by policy");
+  });
+
+  it("allows an allowlisted recipient written with different leading zeros, and still blocks others", () => {
+    const guard = new PolicyGuard({ transfer: { allowedRecipients: [PADDED] } });
+    expect(guard.evaluate("starknet_transfer", { recipient: UNPADDED, token: "ETH", amount: "1" }).allowed).toBe(true);
+    expect(guard.evaluate("starknet_transfer", { recipient: OTHER, token: "ETH", amount: "1" }).allowed).toBe(false);
+  });
+
+  it("matches token addresses in allowedTokens regardless of leading zeros, keeping symbols case-insensitive", () => {
+    const guard = new PolicyGuard({ transfer: { allowedTokens: [PADDED, "STRK"] } });
+    expect(guard.evaluate("starknet_transfer", { recipient: OTHER, token: UNPADDED, amount: "1" }).allowed).toBe(true);
+    expect(guard.evaluate("starknet_transfer", { recipient: OTHER, token: "strk", amount: "1" }).allowed).toBe(true);
+    expect(guard.evaluate("starknet_transfer", { recipient: OTHER, token: OTHER, amount: "1" }).allowed).toBe(false);
+  });
+
+  it("blocks a blocked contract regardless of leading zeros", () => {
+    const guard = new PolicyGuard({ invoke: { blockedContracts: [PADDED] } });
+    const result = guard.evaluate("starknet_invoke_contract", {
+      contractAddress: UNPADDED,
+      entrypoint: "approve",
+      calldata: [],
+    });
+    expect(result.allowed).toBe(false);
+  });
+
+  it("enforces allowedContracts regardless of leading zeros", () => {
+    const guard = new PolicyGuard({ invoke: { allowedContracts: [UNPADDED] } });
+    expect(
+      guard.evaluate("starknet_invoke_contract", { contractAddress: PADDED, entrypoint: "approve", calldata: [] }).allowed
+    ).toBe(true);
+    expect(
+      guard.evaluate("starknet_invoke_contract", { contractAddress: OTHER, entrypoint: "approve", calldata: [] }).allowed
+    ).toBe(false);
+  });
+
+  it("blocks a blocked buy token regardless of leading zeros", () => {
+    const guard = new PolicyGuard({ swap: { blockedBuyTokens: [PADDED] } });
+    const result = guard.evaluate("starknet_swap", { sellToken: "STRK", buyToken: UNPADDED, amount: "1" });
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("blocked by policy");
+  });
+});
