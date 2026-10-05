@@ -8,6 +8,7 @@ import {
   checkMcpServerHealth,
   createRedactor,
   extractEnvProblems,
+  isSensitiveEnvKey,
   redactUrl,
   resolveLaunchEnv,
   type McpServerLaunch,
@@ -346,6 +347,24 @@ describe("resolveLaunchEnv", () => {
 });
 
 describe("redaction", () => {
+  it("treats names containing a secret word, or ending in _URL, as sensitive", () => {
+    for (const key of [
+      "STARKNET_PRIVATE_KEY",
+      "AVNU_PAYMASTER_API_KEY",
+      "AVNU_APIKEY",
+      "KEYRING_HMAC_SECRET",
+      "GITHUB_TOKEN",
+      "WALLET_MNEMONIC",
+      "STARKNET_RPC_URL",
+      "avnu_paymaster_url",
+    ]) {
+      expect(isSensitiveEnvKey(key), key).toBe(true);
+    }
+    for (const key of ["STARKNET_ACCOUNT_ADDRESS", "STARKNET_NETWORK", "URL_PREFIX", "NODE_ENV"]) {
+      expect(isSensitiveEnvKey(key), key).toBe(false);
+    }
+  });
+
   it("redacts API keys in URL paths, query strings and userinfo", () => {
     expect(redactUrl(RPC_WITH_KEY)).toBe(
       "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/[redacted]"

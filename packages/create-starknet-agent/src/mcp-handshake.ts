@@ -142,8 +142,15 @@ export function resolveLaunchEnv(
 // Redaction
 // ---------------------------------------------------------------------------
 
-const SENSITIVE_ENV_KEY =
-  /PRIVATE|SECRET|API_?KEY|TOKEN|PASSWORD|PASSPHRASE|HMAC|MNEMONIC|SEED|CREDENTIAL|_URL$/i;
+// An env var's value is redacted when its name contains one of these words
+// anywhere, or ends in _URL (RPC and paymaster URLs often embed API keys).
+const SENSITIVE_ENV_WORD = /PRIVATE|SECRET|API_?KEY|TOKEN|PASSWORD|PASSPHRASE|HMAC|MNEMONIC|SEED|CREDENTIAL/i;
+const URL_ENV_SUFFIX = /_URL$/i;
+
+/** Whether the value of the env var `key` must be kept out of printed output. */
+export function isSensitiveEnvKey(key: string): boolean {
+  return SENSITIVE_ENV_WORD.test(key) || URL_ENV_SUFFIX.test(key);
+}
 
 /**
  * Redact the parts of a URL that commonly carry credentials: userinfo, query
@@ -175,7 +182,7 @@ export function redactUrl(url: string): string {
  */
 export function createRedactor(env: NodeJS.ProcessEnv): (text: string) => string {
   const secrets = Object.entries(env)
-    .filter(([key, value]) => SENSITIVE_ENV_KEY.test(key) && typeof value === "string" && value.length >= 4)
+    .filter(([key, value]) => isSensitiveEnvKey(key) && typeof value === "string" && value.length >= 4)
     .map(([, value]) => value as string)
     .sort((a, b) => b.length - a.length);
 
