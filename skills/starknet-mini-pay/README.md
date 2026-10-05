@@ -34,7 +34,7 @@ export TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
 
 ```bash
 # Send 0.01 ETH
-python3.12 scripts/cli.py send 0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005 0.01 --memo "coffee"
+python3.12 scripts/cli.py send 0xYOUR_RECIPIENT_ADDRESS 0.01 --memo "coffee"
 
 # Check transaction status
 python3.12 scripts/cli.py status 0x...
@@ -89,7 +89,7 @@ starknet:<address>?amount=<value>&memo=<text>&token=<TOKEN>
 
 Example:
 ```
-starknet:0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005?amount=0.01&memo=coffee&token=ETH
+starknet:0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef?amount=0.01&memo=coffee&token=ETH
 ```
 
 ### 📄 Invoices
@@ -257,9 +257,9 @@ Message your bot and use `/start` to begin!
 
 | Token | Address | Decimals |
 |-------|---------|----------|
-| ETH | 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82dc9dd0cc | 18 |
+| ETH | 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7 | 18 |
 | STRK | 0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d | 18 |
-| USDC | 0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005 | 6 |
+| USDC | 0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb | 6 |
 
 ## Comparison
 

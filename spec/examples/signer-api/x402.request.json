@@ -6,7 +6,7 @@
   "validUntil": 1770984300,
   "calls": [
     {
-      "contractAddress": "0x053c91253bc9682c04929ca02d5d548f9c6f5f5d0f03f4e2f0f2de5ec9f6b31a",
+      "contractAddress": "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
       "entrypoint": "transfer",
       "calldata": ["0x07ab1c9e", "0x2710", "0x0"]
     }

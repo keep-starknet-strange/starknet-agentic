@@ -303,14 +303,14 @@ def example():
     
     # Simple address QR
     qr.generate(
-        address="0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005",
+        address="0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         output_file="my_address_qr.png",
         amount=0.01,
         memo="Payment for services"
     )
     
     # Payment link QR
-    payment_link = "starknet:0x053c91253bc9682c04929ca02ed00b3e423f6714d2ea42d73d1b8f3f8d400005?amount=0.01&memo=coffee"
+    payment_link = "starknet:0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef?amount=0.01&memo=coffee"
     qr.generate_link(
         payment_link=payment_link,
         output_file="coffee_payment_qr.png"
