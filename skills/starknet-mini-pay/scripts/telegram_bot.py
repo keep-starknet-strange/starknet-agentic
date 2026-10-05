@@ -44,12 +44,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from qr_generator import QRGenerator
 from link_builder import PaymentLinkBuilder
 from invoice import InvoiceManager
-from mini_pay import MiniPay
+from mini_pay import MiniPay, MAINNET_RPC_URL
 
 
 # Configuration
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-STARKNET_RPC = os.environ.get("STARKNET_RPC", "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10")
+STARKNET_RPC = os.environ.get("STARKNET_RPC", MAINNET_RPC_URL)
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "your_secret_here")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")  # For receiving tx confirmations
 
