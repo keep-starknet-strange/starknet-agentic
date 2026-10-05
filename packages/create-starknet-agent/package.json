@@ -34,7 +34,8 @@
     "test": "vitest run",
     "link:local": "pnpm build && npm link",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check:generated": "node scripts/check-generated-projects.mjs"
   },
   "dependencies": {
     "prompts": "^2.4.2",

@@ -8,6 +8,9 @@ packages:
 # `pnpm pack` / `pnpm publish` (and Changesets, which publishes through pnpm)
 # replace "catalog:" with the range below, so published manifests keep
 # concrete ranges. Dependabot updates these entries in place.
+# create-starknet-agent also writes some of these ranges into the projects it
+# generates; its build reads them from here (see
+# packages/create-starknet-agent/src/template-dependencies.ts).
 catalog:
   '@modelcontextprotocol/sdk': ^1.31.0
   '@types/node': ^26.6.3

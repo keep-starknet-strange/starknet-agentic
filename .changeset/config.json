@@ -7,8 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": [
-    "@starknetfoundation/starknet-agentic-onboarding-utils",
-    "@starknetfoundation/starknet-agentic-mcp-server"
-  ]
+  "ignore": []
 }

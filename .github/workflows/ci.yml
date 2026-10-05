@@ -23,6 +23,7 @@ jobs:
       website: ${{ steps.filter.outputs.website }}
       skills: ${{ steps.filter.outputs.skills }}
       onboarding: ${{ steps.filter.outputs.onboarding }}
+      scaffolder: ${{ steps.filter.outputs.scaffolder }}
       ci: ${{ steps.filter.outputs.ci }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,6 +75,13 @@ jobs:
               - 'packages/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+            # create-starknet-agent writes catalog versions into generated
+            # projects at build time, so catalog bumps re-run its check too.
+            scaffolder:
+              - 'packages/create-starknet-agent/**'
+              - 'packages/shared/**'
+              - 'packages/starknet-mcp-server/package.json'
               - 'pnpm-workspace.yaml'
             ci:
               - '.github/workflows/ci.yml'
@@ -402,11 +410,37 @@ jobs:
       - name: Run onboarding smoke checks
         run: pnpm --dir examples/onboard-agent smoke
 
+  generated-projects:
+    name: Generated Projects
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.scaffolder == 'true' || needs.detect-changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build create-starknet-agent
+        run: pnpm --filter @starknetfoundation/create-starknet-agent build
+
+      - name: Scaffold and type-check every template
+        run: pnpm --filter @starknetfoundation/create-starknet-agent check:generated
+
   all-checks:
     name: All Checks Passed
     if: always()
     runs-on: ubuntu-latest
-    needs: [detect-changes, secret-scan, typecheck, lint, test, cairo, website-build, validate-skills, onboarding-smoke]
+    needs: [detect-changes, secret-scan, typecheck, lint, test, cairo, website-build, validate-skills, onboarding-smoke, generated-projects]
     steps:
       - name: Verify no failures
         run: |
