@@ -103,9 +103,11 @@ function resolveOne(
 
 // One npm semver comparator: an optional operator, then a version whose minor,
 // patch and prerelease/build parts are optional (`^10.8.0`, `~4.2`, `>=1.2.3-rc.1`,
-// `4.x`). Wildcards are allowed only after an explicit major.
+// `4.x`, `1.2.x`). Wildcards are allowed only after an explicit major, and once a
+// part is a wildcard every later part must be one too: npm reads `1.x.3` as `1.x`,
+// a looser pin than the text suggests.
 const COMPARATOR =
-  /^(?:\^|~|>=|<=|>|<|=)?v?\d+(?:\.(?:\d+|x|X|\*)){0,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+  /^(?:\^|~|>=|<=|>|<|=)?v?\d+(?:\.(?:\d+(?:\.(?:\d+|[xX*]))?|[xX*](?:\.[xX*])?))?(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 /**
  * True for an npm semver range with a concrete lower bound: comparator sets

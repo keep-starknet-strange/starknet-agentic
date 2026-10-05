@@ -174,13 +174,32 @@ describe("isRegistryRange", () => {
     "^1.0.0 || ^2.0.0",
     "1.2.3 - 2.3.4",
     "4.x",
+    "1.2.x",
+    "1.x.x",
+    "^2.*",
     "^6.0.0-rc.1",
     "1.2.3+build.5",
   ])("accepts %s", (range) => {
     expect(isRegistryRange(range)).toBe(true);
   });
 
-  it.each(["", "latest", "*", "x", "^", ">=", "^1.2.3 ||", "^1 - 2", "workspace:*", "catalog:", "npm:zod@4"])(
+  it.each([
+    "",
+    "latest",
+    "*",
+    "x",
+    "^",
+    ">=",
+    "^1.2.3 ||",
+    "^1 - 2",
+    "1.x.3",
+    "^1.*.0",
+    "~2.X.5",
+    "1.2.3.4",
+    "workspace:*",
+    "catalog:",
+    "npm:zod@4",
+  ])(
     "rejects %j",
     (range) => {
       expect(isRegistryRange(range)).toBe(false);
