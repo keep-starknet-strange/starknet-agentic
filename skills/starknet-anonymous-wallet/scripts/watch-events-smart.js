@@ -666,8 +666,8 @@ class SmartEventWatcher {
       let continuationToken = undefined;
       do {
         const events = await this.provider.getEvents({
-          fromBlock: { block_number: blockNumber },
-          toBlock: { block_number: blockNumber },
+          from_block: { block_number: blockNumber },
+          to_block: { block_number: blockNumber },
           address: this.contractAddress,
           keys: keys ? [keys] : undefined,
           chunk_size: 100,
