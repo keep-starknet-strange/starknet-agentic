@@ -240,7 +240,7 @@ This agent is configured for **${networkName}**.
 
 | Variable | Description |
 |----------|-------------|
-| \`STARKNET_RPC_URL\` | Starknet RPC endpoint |
+| \`STARKNET_RPC_URL\` | Starknet RPC endpoint. Defaults to a keyless public endpoint that may be rate-limited; use your own provider (Alchemy, Infura, ...) for production |
 | \`STARKNET_ACCOUNT_ADDRESS\` | Your agent's account address |
 | \`STARKNET_PRIVATE_KEY\` | Private key for signing transactions |
 ${config.template !== "minimal" ? "| `AVNU_BASE_URL` | AVNU API endpoint for swaps |\n| `AVNU_PAYMASTER_URL` | AVNU Paymaster for gas abstraction |" : ""}

@@ -57,6 +57,18 @@ export const AVNU_PAYMASTER_URLS = {
   sepolia: "https://sepolia.paymaster.avnu.fi",
 } as const satisfies Record<StarknetNetwork, string>;
 
+/**
+ * Keyless public Starknet JSON-RPC endpoints (Cartridge), pinned to RPC spec
+ * 0.10, the version starknet.js 10 speaks. For read-only fallbacks when no
+ * STARKNET_RPC_URL is configured; they are rate limited, so production setups
+ * should use their own provider. Checked live: starknet_specVersion returns
+ * 0.10.x and starknet_chainId matches STARKNET_CHAIN_IDS.
+ */
+export const PUBLIC_RPC_URLS = {
+  mainnet: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10",
+  sepolia: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10",
+} as const satisfies Record<StarknetNetwork, string>;
+
 /** Starknet chain IDs as hex-encoded short strings ("SN_MAIN", "SN_SEPOLIA"). */
 export const STARKNET_CHAIN_IDS = {
   mainnet: "0x534e5f4d41494e",
