@@ -293,7 +293,7 @@ This implementation uses **Poseidon hashing** (native to Starknet) instead of ke
 
 - Scarb 2.14.x
 - Cairo 2.14.x
-- Snforge 0.54.x
+- Snforge 0.64.x
 - Node.js >= 22 (the deploy scripts and E2E tests use starknet.js 10)
 
 ## Setup

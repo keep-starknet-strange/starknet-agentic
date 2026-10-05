@@ -9,7 +9,8 @@
     "test:reputation": "node tests/reputation.test.js",
     "test:validation": "node tests/validation.test.js",
     "test:wallet-sig": "node tests/wallet-signature.test.js",
-    "test:all": "node test-runner.js"
+    "test:all": "node test-runner.js",
+    "check-balance": "node check-balance.js"
   },
   "keywords": ["starknet", "cairo", "erc8004", "e2e", "testing"],
   "author": "",
