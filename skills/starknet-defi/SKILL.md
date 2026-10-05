@@ -30,7 +30,8 @@ Execute DeFi operations on Starknet using avnu aggregator and native protocols.
 ## Prerequisites
 
 ```bash
-npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
+# ethers is a required peer of @avnu/avnu-sdk (snippets use its parseUnits); moment builds DCA frequencies
+npm install starknet@^10.8.0 @avnu/avnu-sdk@^4.2.0 ethers@^6.15.0 moment@^2.30.1
 ```
 
 ## Token Swaps (avnu SDK v4)
@@ -38,12 +39,17 @@ npm install starknet@^8.9.1 @avnu/avnu-sdk@^4.0.1
 ### Get Quote and Execute Swap
 
 ```typescript
-import { getQuotes, executeSwap, type QuoteRequest } from "@avnu/avnu-sdk";
+import {
+  getQuotes,
+  executeSwap,
+  fetchVerifiedTokenBySymbol,
+  type QuoteRequest,
+} from "@avnu/avnu-sdk";
 import { Account, RpcProvider, ETransactionVersion } from "starknet";
 
 const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_RPC_URL });
 
-// starknet.js v8: Account uses options object
+// starknet.js v10: Account uses options object
 const account = new Account({
   provider,
   address,
@@ -52,10 +58,10 @@ const account = new Account({
 });
 
 // Resolve token addresses via avnu SDK (or use MCP server's TokenService)
-import { fetchVerifiedTokenBySymbol } from '@avnu/avnu-sdk';
-
-const eth = await fetchVerifiedTokenBySymbol('ETH');
-const strk = await fetchVerifiedTokenBySymbol('STRK');
+const eth = await fetchVerifiedTokenBySymbol("ETH");
+const strk = await fetchVerifiedTokenBySymbol("STRK");
+// Returns undefined when the symbol is not a verified/unruggable token
+if (!eth || !strk) throw new Error("Token not found in avnu token list");
 
 // SDK v4: getQuotes takes QuoteRequest object directly
 const quoteParams: QuoteRequest = {
@@ -81,8 +87,10 @@ console.log("Tx:", result.transactionHash);
 ### Quote Response Fields (SDK v4)
 
 ```typescript
+// Main fields of the SDK's exported `Quote` type
 interface Quote {
   quoteId: string;
+  chainId: string;            // executeSwap rejects a quote from another network
   sellTokenAddress: string;
   buyTokenAddress: string;
   sellAmount: bigint;
@@ -90,12 +98,16 @@ interface Quote {
   sellAmountInUsd: number;
   buyAmountInUsd: number;
   priceImpact: number;        // In basis points (15 = 0.15%)
-  gasFeesInUsd: number;
+  gasFees: bigint;
+  gasFeesInUsd?: number;
+  expiry?: number | null;
   routes: Array<{
     name: string;             // e.g., "Ekubo", "JediSwap"
+    address: string;
     percent: number;          // e.g., 0.8 = 80%
   }>;
   fee: {
+    feeToken: string;
     avnuFees: bigint;
     integratorFees: bigint;
   };
@@ -107,11 +119,12 @@ interface Quote {
 ```typescript
 import { quoteToCalls } from "@avnu/avnu-sdk";
 
-const calls = await quoteToCalls({
-  quote: bestQuote,
+// Returns AvnuCalls: { chainId, calls }
+const { calls } = await quoteToCalls({
+  quoteId: bestQuote.quoteId,
   takerAddress: account.address,
   slippage: 0.01,
-  includeApprove: true,
+  executeApprove: true,
 });
 // `calls` can be combined with other calls in account.execute([...calls, ...otherCalls])
 ```
@@ -141,6 +154,7 @@ const result = await executeSwap({
     active: true,
     provider: paymaster,
     params: {
+      version: "0x1",
       feeMode: {
         mode: "default",
         gasToken: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", // USDC
@@ -155,22 +169,26 @@ const result = await executeSwap({
 ### Create DCA Order
 
 ```typescript
-import { executeCreateDca } from "@avnu/avnu-sdk";
+import { executeCreateDca, type CreateDcaOrder } from "@avnu/avnu-sdk";
+import { parseUnits } from "ethers";
 import moment from "moment";
 
-const dcaOrder = {
+// Amounts are base-unit decimal strings; cycles = sellAmount / sellAmountPerCycle
+const dcaOrder: CreateDcaOrder = {
   sellTokenAddress: usdcAddress,
   buyTokenAddress: strkAddress,
-  totalAmount: parseUnits("100", 6),   // Total 100 USDC
-  numberOfOrders: 10,                   // Split into 10 orders
-  frequency: moment.duration(1, "day"), // moment.Duration object, not string
-  startAt: Math.floor(Date.now() / 1000),
+  sellAmount: parseUnits("100", 6).toString(),        // Total 100 USDC
+  sellAmountPerCycle: parseUnits("10", 6).toString(), // 10 USDC per cycle -> 10 cycles
+  frequency: moment.duration(1, "day"),               // moment.Duration object, not string
+  pricingStrategy: {},                                // Market order; or { tokenToMinAmount, tokenToMaxAmount } (hex)
+  traderAddress: account.address,
 };
 
 const result = await executeCreateDca({
   provider: account,
   order: dcaOrder,
 });
+console.log("Tx:", result.transactionHash);
 ```
 
 ### Check and Cancel DCA
@@ -178,16 +196,20 @@ const result = await executeCreateDca({
 ```typescript
 import { getDcaOrders, executeCancelDca, DcaOrderStatus } from "@avnu/avnu-sdk";
 
-const orders = await getDcaOrders({
+// Returns Page<DcaOrder>; the orders are in `content`
+const { content: orders } = await getDcaOrders({
   traderAddress: account.address,
-  status: DcaOrderStatus.OPEN,  // Use enum, not string
+  status: DcaOrderStatus.ACTIVE, // INDEXING | ACTIVE | CLOSED
 });
 
-// Cancel an order
-await executeCancelDca({
-  provider: account,
-  orderAddress: orders[0].orderAddress,
-});
+// Cancel an order (unspent funds return to the trader)
+const [order] = orders;
+if (order) {
+  await executeCancelDca({
+    provider: account,
+    orderAddress: order.orderAddress,
+  });
+}
 ```
 
 ## STRK Staking
@@ -196,14 +218,19 @@ await executeCancelDca({
 
 ```typescript
 import { executeStake, getAvnuStakingInfo } from "@avnu/avnu-sdk";
+import { parseUnits } from "ethers";
 
-// Get pool info
+// Get avnu's delegation pools
 const stakingInfo = await getAvnuStakingInfo();
-// stakingInfo.pools[0] = { address, apy, tvl, token, minStake }
+// stakingInfo.delegationPools[i] = { poolAddress, tokenAddress, stakedAmount, stakedAmountInUsd, apr }
+const strkPool = stakingInfo.delegationPools.find(
+  (pool) => BigInt(pool.tokenAddress) === BigInt(TOKENS.STRK),
+);
+if (!strkPool) throw new Error("avnu STRK delegation pool not found");
 
 const result = await executeStake({
   provider: account,
-  poolAddress: stakingInfo.pools[0].address,
+  poolAddress: strkPool.poolAddress,
   amount: parseUnits("100", 18), // 100 STRK
 });
 ```
@@ -235,8 +262,9 @@ await executeClaimRewards({
 
 ```typescript
 import { executeInitiateUnstake, executeUnstake } from "@avnu/avnu-sdk";
+import { parseUnits } from "ethers";
 
-// Step 1: Initiate (starts cooldown -- 21 days for STRK)
+// Step 1: Initiate (starts the 7-day unbonding period)
 await executeInitiateUnstake({
   provider: account,
   poolAddress: poolAddress,
@@ -257,15 +285,17 @@ await executeUnstake({
 ```typescript
 import { getPrices, fetchTokens, fetchVerifiedTokenBySymbol } from "@avnu/avnu-sdk";
 
-// Get token by symbol
+// Get token by symbol (undefined if not a verified/unruggable token)
 const strk = await fetchVerifiedTokenBySymbol("STRK");
+if (!strk) throw new Error("STRK not found in avnu token list");
 
-// Get prices for multiple tokens
-const prices = await getPrices([ethAddress, strkAddress, usdcAddress]);
-// prices = { "0x049d...": 3200.50, "0x047...": 1.23, ... }
+// Get prices for multiple tokens (1-50 per request)
+const prices = await getPrices([ethAddress, strk.address, usdcAddress]);
+// prices = [{ address, decimals, starknetMarket: { usd } | null, globalMarket: { usd } | null }, ...]
+const strkUsd = prices.find((p) => BigInt(p.address) === BigInt(strk.address))?.starknetMarket?.usd;
 
-// Browse tokens with pagination
-const tokens = await fetchTokens({ page: 0, size: 20, tags: ["verified"] });
+// Browse tokens with pagination (returns Page<Token>; tokens are in `content`)
+const { content: tokens } = await fetchTokens({ page: 0, size: 20, tags: ["Verified"] });
 ```
 
 ## Protocol Reference
@@ -299,7 +329,10 @@ const tokens = await fetchTokens({ page: 0, size: 20, tags: ["verified"] });
 ## Error Handling
 
 ```typescript
-async function safeSwap(account, quote, slippage = 0.01) {
+import { executeSwap, ContractError, type Quote } from "@avnu/avnu-sdk";
+import type { AccountInterface } from "starknet";
+
+async function safeSwap(account: AccountInterface, quote: Quote, slippage = 0.01) {
   try {
     return await executeSwap({
       provider: account,
@@ -308,10 +341,18 @@ async function safeSwap(account, quote, slippage = 0.01) {
       executeApprove: true,
     });
   } catch (error) {
-    if (error.message?.includes("INSUFFICIENT_BALANCE")) {
+    // avnu API errors are plain Errors; contract reverts are ContractError with a revertError
+    const message =
+      error instanceof ContractError ? `${error.message} ${error.revertError}`
+      : error instanceof Error ? error.message
+      : String(error);
+    if (message.includes("Invalid chainId")) {
+      throw new Error("Quote and account are on different networks");
+    }
+    if (message.includes("INSUFFICIENT_BALANCE")) {
       throw new Error("Not enough tokens for swap");
     }
-    if (error.message?.includes("SLIPPAGE") || error.message?.includes("Insufficient tokens received")) {
+    if (message.includes("SLIPPAGE") || message.includes("Insufficient tokens received")) {
       // Retry with higher slippage
       return await executeSwap({
         provider: account,
@@ -320,10 +361,10 @@ async function safeSwap(account, quote, slippage = 0.01) {
         executeApprove: true,
       });
     }
-    if (error.message?.includes("QUOTE_EXPIRED")) {
+    if (message.includes("QUOTE_EXPIRED")) {
       throw new Error("Quote expired. Please retry the operation.");
     }
-    if (error.message?.includes("INSUFFICIENT_LIQUIDITY")) {
+    if (message.includes("INSUFFICIENT_LIQUIDITY")) {
       throw new Error("Insufficient liquidity. Try a smaller amount.");
     }
     throw error;

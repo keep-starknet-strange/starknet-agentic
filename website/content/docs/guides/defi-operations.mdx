@@ -100,10 +100,11 @@ await executeCreateDca({
   order: {
     sellTokenAddress: usdcAddress,
     buyTokenAddress: strkAddress,
-    totalAmount: BigInt(100 * 10**6),  // 100 USDC
-    numberOfOrders: 10,                 // 10 orders of 10 USDC each
+    sellAmount: BigInt(100 * 10**6).toString(),        // 100 USDC
+    sellAmountPerCycle: BigInt(10 * 10**6).toString(), // 10 orders of 10 USDC each
     frequency: moment.duration(1, "day"),
-    startAt: Math.floor(Date.now() / 1000),
+    pricingStrategy: {},                               // Market order, no price bounds
+    traderAddress: account.address,
   },
 });
 ```
@@ -115,19 +116,23 @@ Stake STRK to earn rewards:
 ```typescript
 import { executeStake, getAvnuStakingInfo } from "@avnu/avnu-sdk";
 
-// Get pool info
+// Find avnu's STRK delegation pool
 const stakingInfo = await getAvnuStakingInfo();
+const strkPool = stakingInfo.delegationPools.find(
+  (pool) => BigInt(pool.tokenAddress) === BigInt(strkAddress),
+);
+if (!strkPool) throw new Error("avnu STRK delegation pool not found");
 
 // Stake
 await executeStake({
   provider: account,
-  poolAddress: stakingInfo.pools[0].address,
+  poolAddress: strkPool.poolAddress,
   amount: BigInt(100 * 10**18), // 100 STRK
 });
 ```
 
 <Callout type="warning" title="Unstaking Cooldown">
-STRK has a 21-day unstaking cooldown. Plan accordingly when managing agent liquidity.
+Unstaking STRK has a 7-day unbonding period. Plan accordingly when managing agent liquidity.
 </Callout>
 
 ## Supported Protocols
