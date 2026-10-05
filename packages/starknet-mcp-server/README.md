@@ -177,7 +177,7 @@ Get token balance for an address.
 
 ```typescript
 {
-  "token": "ETH",  // or "STRK", "USDC", "USDC.e", "USDT", or contract address
+  "token": "ETH",  // or "STRK", "USDC", "USDC.e", "USDT" (mainnet only), or contract address
   "address": "0x..."  // optional, defaults to agent's address
 }
 ```

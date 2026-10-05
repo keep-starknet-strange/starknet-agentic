@@ -7,7 +7,7 @@ import type { ToolArgs, ToolContext, ToolResult } from "./_shared.js";
 export const definition: Tool = {
   name: "starknet_get_balance",
   description:
-    "Get token balance for an address on Starknet. Supports ETH, STRK, USDC (Circle native), USDC.e (legacy bridged USDC), USDT, or any token address. For multiple tokens, use starknet_get_balances instead.",
+    "Get token balance for an address on Starknet. Supports ETH, STRK, USDC (Circle native), USDC.e (legacy bridged USDC), USDT (mainnet only), or any token address. For multiple tokens, use starknet_get_balances instead.",
   inputSchema: {
     type: "object",
     properties: {
@@ -17,7 +17,7 @@ export const definition: Tool = {
       },
       token: {
         type: "string",
-        description: "Token symbol (ETH, STRK, USDC, USDC.e, USDT) or contract address",
+        description: "Token symbol (ETH, STRK, USDC, USDC.e; USDT on mainnet only) or contract address",
       },
     },
     required: ["token"],
