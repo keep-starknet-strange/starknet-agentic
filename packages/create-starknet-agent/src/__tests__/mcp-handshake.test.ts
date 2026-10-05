@@ -5,10 +5,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  appendBoundedStderr,
   checkMcpServerHealth,
   createRedactor,
   extractEnvProblems,
   isSensitiveEnvKey,
+  quoteWindowsArg,
   redactUrl,
   resolveLaunchEnv,
   type McpServerLaunch,
@@ -429,5 +431,52 @@ ZodError: [
 
   it("returns nothing for unrelated errors", () => {
     expect(extractEnvProblems("npm error 404 Not Found")).toEqual([]);
+  });
+});
+
+describe("appendBoundedStderr", () => {
+  it("keeps everything while under the limit", () => {
+    expect(appendBoundedStderr("a\n", "b\n", 100)).toBe("a\nb\n");
+  });
+
+  it("drops the cut-off first line when the buffer overflows", () => {
+    const out = appendBoundedStderr("", "first-line-secret-abcdef\nsecond\nthird\n", 20);
+    expect(out).toBe("second\nthird\n"); // whole lines only
+    expect(out).not.toContain("secret");
+  });
+
+  it("drops an overflowing fragment with no newline entirely", () => {
+    const secret = `0x${"a".repeat(80)}`;
+    expect(appendBoundedStderr("", `PRIVATE_KEY=${secret}`, 32)).toBe("");
+    expect(appendBoundedStderr("x".repeat(30), "y".repeat(30), 32)).toBe("");
+  });
+
+  it("recovers on the next complete line after dropping a fragment", () => {
+    let buffer = appendBoundedStderr("", "z".repeat(40), 32);
+    buffer = appendBoundedStderr(buffer, "\nok\n", 32);
+    expect(buffer).toBe("\nok\n");
+  });
+});
+
+describe("quoteWindowsArg", () => {
+  it("passes safe arguments through unchanged", () => {
+    expect(quoteWindowsArg("npx")).toBe("npx");
+    expect(quoteWindowsArg("-y")).toBe("-y");
+    expect(quoteWindowsArg("@starknetfoundation/starknet-agentic-mcp-server@latest")).toBe(
+      "@starknetfoundation/starknet-agentic-mcp-server@latest"
+    );
+  });
+
+  it("quotes empty arguments and arguments with spaces or shell metacharacters", () => {
+    expect(quoteWindowsArg("")).toBe('""');
+    expect(quoteWindowsArg("C:\\Program Files\\node.exe")).toBe('"C:\\Program Files\\node.exe"');
+    expect(quoteWindowsArg("a&b")).toBe('"a&b"');
+    expect(quoteWindowsArg("x|y")).toBe('"x|y"');
+  });
+
+  it("escapes embedded quotes and the backslashes before them, and trailing backslashes", () => {
+    expect(quoteWindowsArg('say "hi"')).toBe('"say \\"hi\\""');
+    expect(quoteWindowsArg('a\\"b')).toBe('"a\\\\\\"b"');
+    expect(quoteWindowsArg("dir with space\\")).toBe('"dir with space\\\\"');
   });
 });

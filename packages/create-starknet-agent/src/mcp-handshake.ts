@@ -240,6 +240,32 @@ function summarizeStderr(stderr: string): string | undefined {
   return errorLine.length > 300 ? `${errorLine.slice(0, 300)}...` : errorLine;
 }
 
+/**
+ * Append `chunk` to a bounded stderr buffer. When the buffer exceeds `max`
+ * characters, keep only whole lines from the end: the cut-off first line is
+ * dropped, and if what is left has no newline at all it is dropped entirely,
+ * so a truncated secret can never survive into the output unrecognised.
+ */
+export function appendBoundedStderr(buffer: string, chunk: string, max: number = MAX_STDERR_CHARS): string {
+  const next = buffer + chunk;
+  if (next.length <= max) return next;
+  const kept = next.slice(-max);
+  const newline = kept.indexOf("\n");
+  return newline === -1 ? "" : kept.slice(newline + 1);
+}
+
+/**
+ * Quote one argument for a cmd.exe command line (Windows only). Arguments made
+ * of safe characters are passed as is; anything else is wrapped in double
+ * quotes, with embedded quotes and the backslashes before them escaped the way
+ * the Microsoft C runtime parses them.
+ */
+export function quoteWindowsArg(arg: string): string {
+  if (arg.length > 0 && /^[A-Za-z0-9_\-./:@=+,]+$/.test(arg)) return arg;
+  const escaped = arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1");
+  return `"${escaped}"`;
+}
+
 function tail(text: string, lines: number): string {
   return text.split(/\r?\n/).filter((l) => l.trim().length > 0).slice(-lines).join("\n");
 }
@@ -367,15 +393,21 @@ export async function checkMcpServerHealth(
 
   let child: ChildProcess;
   try {
-    child = spawn(launch.command, launch.args ?? [], {
+    const spawnOptions = {
       cwd: options.cwd ?? process.cwd(),
       env,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"] as ["pipe", "pipe", "pipe"],
       detached: useProcessGroup,
-      // npx/npm are .cmd shims on Windows, which cannot be spawned without a shell.
-      shell: process.platform === "win32",
       windowsHide: true,
-    });
+    };
+    const args = launch.args ?? [];
+    child =
+      process.platform === "win32"
+        ? // npx/npm are .cmd shims on Windows and need a shell. Pass one quoted
+          // command line rather than an args array with shell: true, which Node
+          // joins without escaping (DEP0190).
+          spawn([launch.command, ...args].map(quoteWindowsArg).join(" "), { ...spawnOptions, shell: true })
+        : spawn(launch.command, args, spawnOptions);
   } catch (error) {
     return {
       ok: false,
@@ -404,12 +436,7 @@ export async function checkMcpServerHealth(
   let stderr = "";
   child.stderr?.setEncoding("utf8");
   child.stderr?.on("data", (chunk: string) => {
-    stderr += chunk;
-    if (stderr.length > MAX_STDERR_CHARS) {
-      // Drop the cut-off first line too: half a secret would slip past redaction.
-      stderr = stderr.slice(-MAX_STDERR_CHARS);
-      stderr = stderr.slice(stderr.indexOf("\n") + 1);
-    }
+    stderr = appendBoundedStderr(stderr, chunk);
   });
   // Writing to a server that already exited raises EPIPE on stdin; the exit handler reports it.
   child.stdin?.on("error", () => {});
