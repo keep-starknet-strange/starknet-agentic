@@ -31,13 +31,13 @@
     "@changesets/cli": "3.0.3",
     "@eslint/js": "^10.0.1",
     "@types/node": "catalog:",
-    "eslint": "^10.11.0",
+    "eslint": "^10.12.0",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vite": "^8.3.1",
     "vitest": "catalog:",
     "globals": "^17.13.0",
-    "typescript-eslint": "^8.70.1"
+    "typescript-eslint": "^8.71.1"
   },
   "engines": {
     "node": ">=24.0.0"
