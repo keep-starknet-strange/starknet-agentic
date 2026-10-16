@@ -518,7 +518,7 @@ cairo-auditor/
     adversarial.md             # adversarial specialist instructions
   references/
     attack-vectors/            # 170 vectors in 4 partitions
-    vulnerability-db/          # 28 canonical vulnerability classes
+    vulnerability-db/          # 34 canonical vulnerability classes
     judging.md                 # FP gate + confidence scoring
     report-formatting.md       # finding template + priority mapping
     threat-intel-sources.md    # source policy for optional web enrichment
