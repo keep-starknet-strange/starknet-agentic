@@ -1,0 +1,29 @@
+{
+  "_comment": [
+    "Precision baseline for the held-out false-positive corpus.",
+    "",
+    "Every entry here is a KNOWN DEFECT, not an allowance. The target is an empty",
+    "'known_false_positives' object. validate_precision_floor.py fails on any finding",
+    "not recorded here, and also fails when a recorded finding disappears -- that",
+    "second direction is deliberate, so fixing a detector forces you to ratchet this",
+    "file down rather than leaving stale slack in the gate.",
+    "",
+    "Do not add entries to make CI pass. An entry means a detector is wrong."
+  ],
+  "known_false_positives": {
+    "felt_selectors_bounded_math": {
+      "NO_ACCESS_CONTROL_MUTATION": {
+        "count": 2,
+        "lines": [27, 35],
+        "why_wrong": "Flags `deposit` and `withdraw`, which are intentionally permissionless user entrypoints. The detector treats any external function that writes storage without a caller check as an access-control defect, which describes most legitimate DeFi entrypoints."
+      }
+    },
+    "safe_span_and_view": {
+      "NO_ACCESS_CONTROL_MUTATION": {
+        "count": 1,
+        "lines": [25],
+        "why_wrong": "Flags `record_batch`, a permissionless batch-recording entrypoint. Same root cause as above."
+      }
+    }
+  }
+}
