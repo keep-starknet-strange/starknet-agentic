@@ -1,0 +1,132 @@
+# Merges Dependabot patch and minor PRs once every status check required on
+# the default branch has passed, without waiting for a human review.
+#
+# The default-branch ruleset requires a code-owner approval, which no bot can
+# give, and native auto-merge never applies a ruleset bypass. This workflow
+# therefore calls the merge endpoint as a dedicated GitHub App that may bypass
+# the review rule only; the required status checks sit in a ruleset the app
+# cannot bypass. Setup and threat model: docs/security/DEPENDABOT_MERGE_APP.md.
+#
+# It never checks out or runs pull-request code. The job stays skipped until
+# the DEPENDABOT_MERGE_APP_CLIENT_ID repository variable is set, and the app
+# key is a secret of the `dependabot-merge` environment, which only the
+# default branch can use. dependabot-automerge.yml keeps enabling native
+# auto-merge, so a manual approval still works without the app.
+name: Dependabot merge
+
+on:
+  workflow_run:
+    # Every workflow that reports a required status check.
+    workflows: [CI, Dependency Review, CodeQL]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-merge-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: >-
+      vars.DEPENDABOT_MERGE_APP_CLIENT_ID != '' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: dependabot-merge
+    permissions:
+      checks: read
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check the pull request can merge
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.repository.default_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          skip() { echo "::notice::Not merging: $*"; exit 0; }
+
+          pr=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
+            | jq -r --arg base "$BASE" '[.[] | select(.state == "open" and .base.ref == $base)] | first | .number // empty')
+          [ -n "$pr" ] || skip "no open pull request into $BASE has head $HEAD_SHA"
+
+          gh api "repos/$REPO/pulls/$pr" \
+            | jq -e --arg repo "$REPO" --arg base "$BASE" --arg sha "$HEAD_SHA" '
+                .state == "open" and .draft == false
+                and .user.login == "dependabot[bot]"
+                and .head.repo.full_name == $repo and .head.sha == $sha
+                and .base.ref == $base' >/dev/null \
+            || skip "#$pr is not an open Dependabot PR at $HEAD_SHA"
+
+          # Same provenance check as dependabot/fetch-metadata, applied to
+          # every commit: authored by Dependabot and signed by GitHub.
+          gh api "repos/$REPO/pulls/$pr/commits?per_page=100" > commits.json
+          jq -e 'length > 0 and all(.author.login == "dependabot[bot]" and .commit.verification.verified)' \
+            commits.json >/dev/null \
+            || skip "#$pr has commits not authored and signed by Dependabot"
+
+          # Every dependency in the last metadata block of the head commit
+          # message must be a semver patch or minor update.
+          meta=$(jq -r --arg sha "$HEAD_SHA" '.[] | select(.sha == $sha) | .commit.message' commits.json \
+            | awk '/^updated-dependencies:$/ { buf = ""; on = 1; next }
+                   on && /^\.\.\.$/ { on = 0; last = buf; next }
+                   on { buf = buf $0 "\n" }
+                   END { printf "%s", last }')
+          deps=$(grep -c '^- dependency-name:' <<<"$meta" || true)
+          updates=$(grep -c '^  update-type:' <<<"$meta" || true)
+          allowed=$(grep -cE '^  update-type: version-update:semver-(patch|minor)$' <<<"$meta" || true)
+          [ "$deps" -gt 0 ] && [ "$updates" -eq "$deps" ] && [ "$allowed" -eq "$deps" ] \
+            || skip "#$pr is not limited to semver patch and minor updates"
+
+          # Every check the default branch requires must have passed on this
+          # exact commit, whichever ruleset holds the rule.
+          gh api "repos/$REPO/rules/branches/$BASE" \
+            --jq '.[] | select(.type == "required_status_checks")
+                  | .parameters.required_status_checks[] | [.context, (.integration_id // "")] | @tsv' \
+            > required.tsv
+          [ -s required.tsv ] || skip "$BASE has no required status checks"
+          gh api --paginate "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" --jq '.check_runs[]' \
+            | jq -s . > runs.json
+          while IFS=$'\t' read -r context app_id; do
+            state=$(jq -r --arg name "$context" --arg app "$app_id" '
+              [.[] | select(.name == $name and ($app == "" or (.app.id | tostring) == $app))]
+              | sort_by(.started_at) | last
+              | if . == null then "missing" else (.conclusion // .status) end' runs.json)
+            case "$state" in
+              success | neutral | skipped) ;;
+              *) skip "required check '$context' is $state" ;;
+            esac
+          done < required.tsv
+
+          behind=$(gh api "repos/$REPO/compare/$BASE...$HEAD_SHA" --jq .behind_by)
+          [ "$behind" -eq 0 ] || skip "#$pr is $behind commit(s) behind $BASE"
+
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+
+      - name: Mint app token
+        id: app-token
+        if: steps.check.outputs.pr != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.DEPENDABOT_MERGE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDABOT_MERGE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          # GitHub refuses app merges that touch .github/workflows without it.
+          permission-workflows: write
+
+      - name: Merge
+        if: steps.check.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.check.outputs.pr }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        # `sha` makes GitHub reject the merge if the branch moved since the checks ran.
+        run: gh api -X PUT "repos/$REPO/pulls/$PR/merge" -f merge_method=squash -f sha="$HEAD_SHA" --jq .message
