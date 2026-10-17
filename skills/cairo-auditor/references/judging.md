@@ -9,6 +9,32 @@ Drop the finding if any check fails.
 1. **Concrete attack path** exists: caller -> reachable function -> state transition -> loss/impact.
 2. **Reachability**: threat actor in scope can call the path under actual access control (`assert_only_*`, role checks, caller checks, account validation paths). If only `owner/admin/governance` can call it, keep it in scope as governance/admin risk and score accordingly.
 3. **No existing guard** blocks the attack (`assert`, non-reentrant lock, OZ component guard, explicit invariant check).
+4. **Component resolution** (see below): resolve embedded OZ components before claiming a missing rotation path or missing non-zero guard.
+
+## Component Resolution (Required before reporting)
+
+The single largest false-positive family in external triage was reporting
+`IRREVOCABLE_ADMIN`, missing-rotation, or missing non-zero guards against
+contracts that embed OpenZeppelin components which already provide those
+surfaces. Before reporting any such finding, resolve embedded components:
+
+- The deterministic surface map (`{workdir}/cairo-audit-surface-map.md`) has a
+  **Component Resolution** section listing each in-scope file's Ownable /
+  AccessControl / Upgradeable components and the rotation surfaces they expose.
+  Read it first.
+- Treat the following as **valid rotation surfaces** (so the role is NOT irrevocable):
+  - Ownable: `transfer_ownership`, `renounce_ownership`, `OwnableMixinImpl`, `OwnableTwoStepMixinImpl`.
+  - AccessControl: `grant_role`, `revoke_role`, `renounce_role`, `AccessControlMixinImpl`.
+- Treat the following as **valid non-zero guards** (so no missing-guard finding):
+  - An address seeded through `<component>.initializer(addr)` where the component is OZ Ownable/AccessControl — the initializer rejects the zero address internally.
+  - A class hash routed through `UpgradeableComponent.upgrade(...)` — the component performs its own non-zero check.
+- Only report the finding if the embedded component does **not** expose the
+  relevant surface for the specific seeded role/address. Name the missing
+  surface explicitly in `guard_analysis`.
+
+This rule resolves the IRREVOCABLE_ADMIN and CRITICAL_ADDRESS_INIT false
+positives observed on `ForgeYields` (OZ `OwnableImpl` rotation + initializer
+non-zero) without suppressing genuinely irrevocable roles.
 
 ## Confidence Score
 
@@ -56,7 +82,7 @@ Rules:
 
 - Every reported finding must have at least `[CODE-TRACE]`.
 - `[PREFLIGHT-HIT]` is added by the orchestrator when a deterministic scanner flagged the same class/entry.
-- `[CROSS-AGENT]` is added by the orchestrator when 2+ agents independently reported the same root cause before deduplication.
+- `[CROSS-AGENT]` is added by the orchestrator when 2+ agents independently reported the same root cause before deduplication. Because vector agents 1-4 scan disjoint partitions, the common case is corroboration between a vector agent and the adversarial agent (Agent 5) — that is the signal that a finding survived two independent reasoning paths, and it is the cross-partition value deep mode adds.
 - `[ADVERSARIAL]` is added when Agent 5 discovered or independently confirmed the finding.
 - Tags appear on the finding metadata line after the severity field.
 - Multiple tags are space-separated: `[CODE-TRACE] [PREFLIGHT-HIT]`.
